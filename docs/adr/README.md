@@ -59,6 +59,7 @@ Current V1 architecture decisions are primarily `Accepted`.
 | ADR-015 | No Redis/BullMQ in Initial V1 |
 | ADR-016 | Vercel for Development and Commercial Hosting Strategy |
 | ADR-017 | REST API Versioned under `/api/v1` |
+| ADR-018 | Shared UUID Between Supabase Auth User and Application User |
 
 ---
 
