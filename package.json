@@ -1,0 +1,26 @@
+{
+  "name": "school-management-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-tenant School Management SaaS — V1 foundation",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @school/web dev",
+    "build": "pnpm --filter @school/web build",
+    "start": "pnpm --filter @school/web start",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "pnpm --filter @school/web test:e2e",
+    "db:generate": "pnpm --filter @school/database generate",
+    "db:migrate": "pnpm --filter @school/database migrate",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3"
+  }
+}

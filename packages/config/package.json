@@ -1,0 +1,20 @@
+{
+  "name": "@school/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tailwind": "./tailwind/tailwind.config.ts",
+    "./tsconfig/base": "./tsconfig/base.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.6.3"
+  }
+}
