@@ -1,6 +1,16 @@
 import { z } from 'zod';
 
 /**
+ * Optional environment string.
+ *
+ * Optional variables are routinely left blank in `.env` files (e.g.
+ * `SENTRY_DSN=`). An empty value is treated as "not configured" instead of
+ * failing validation, so the build only fails on genuinely required values.
+ */
+const optionalString = (schema: z.ZodString) =>
+  z.preprocess((value: unknown) => (value === '' ? undefined : value), schema.optional());
+
+/**
  * Server-side environment schema.
  *
  * Server-only secrets (Supabase service role, R2, etc.) MUST live here and
@@ -10,23 +20,23 @@ const ServerEnvSchema = z.object({
   // Supabase server-side
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  SUPABASE_SERVICE_ROLE_KEY: optionalString(z.string().min(1)),
 
   // Database (Postgres / Supabase connection string)
-  DATABASE_URL: z.string().url().optional(),
+  DATABASE_URL: z.string().url(),
 
   // Application
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  APP_URL: z.string().url().optional(),
+  APP_URL: optionalString(z.string().url()),
 
   // Cloudflare R2 (file storage)
-  R2_ACCOUNT_ID: z.string().optional(),
-  R2_ACCESS_KEY_ID: z.string().optional(),
-  R2_SECRET_ACCESS_KEY: z.string().optional(),
-  R2_BUCKET: z.string().optional(),
+  R2_ACCOUNT_ID: optionalString(z.string()),
+  R2_ACCESS_KEY_ID: optionalString(z.string()),
+  R2_SECRET_ACCESS_KEY: optionalString(z.string()),
+  R2_BUCKET: optionalString(z.string()),
 
   // Observability
-  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_DSN: optionalString(z.string().url()),
 });
 
 /**
@@ -38,7 +48,7 @@ const ServerEnvSchema = z.object({
 const ClientEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  NEXT_PUBLIC_APP_URL: optionalString(z.string().url()),
 });
 
 export type ServerEnv = z.infer<typeof ServerEnvSchema>;
