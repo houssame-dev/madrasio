@@ -8,6 +8,13 @@
       "when": 1786851727250,
       "tag": "0000_needy_romulus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786899250068,
+      "tag": "0001_even_shocker",
+      "breakpoints": true
     }
   ]
 }

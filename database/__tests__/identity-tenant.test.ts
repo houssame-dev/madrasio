@@ -1,46 +1,12 @@
-import { PGlite } from '@electric-sql/pglite';
 import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/pglite';
-import { migrate } from 'drizzle-orm/pglite/migrator';
 import { authUsers } from 'drizzle-orm/supabase';
 import { randomUUID } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import * as schema from '../drizzle/schema';
+import { createTestDb, type Db } from './helpers';
 
-const migrationsFolder = fileURLToPath(new URL('../drizzle/migrations', import.meta.url));
-
-type Db = ReturnType<typeof drizzle<typeof schema>>;
-
-let client: PGlite;
 let db: Db;
-
-/**
- * Mirrors the Supabase-managed `auth` schema in the in-memory test database.
- *
- * The production migration must NOT create `auth` / `auth.users` — those are
- * owned by Supabase Auth (ADR-018). PGlite starts blank, so the test creates a
- * Supabase-compatible `auth.users` here BEFORE running migrations, mirroring
- * the columns declared by `authUsers` from `drizzle-orm/supabase`.
- * This is test-only infrastructure, kept clearly separate from the production
- * migration.
- */
-async function createSupabaseAuth(client: PGlite) {
-  await client.exec('CREATE SCHEMA IF NOT EXISTS auth');
-  await client.exec(
-    `CREATE TABLE IF NOT EXISTS auth.users (
-      id uuid PRIMARY KEY NOT NULL,
-      email varchar(255),
-      phone text UNIQUE,
-      email_confirmed_at timestamp with time zone,
-      phone_confirmed_at timestamp with time zone,
-      last_sign_in_at timestamp with time zone,
-      created_at timestamp with time zone,
-      updated_at timestamp with time zone
-    )`,
-  );
-}
 
 async function createAuthUser(id: string = randomUUID()) {
   await db.insert(authUsers).values({ id });
@@ -59,10 +25,7 @@ async function createSchool(name: string = randomUUID()) {
 }
 
 beforeEach(async () => {
-  client = new PGlite();
-  db = drizzle(client, { schema });
-  await createSupabaseAuth(client);
-  await migrate(db, { migrationsFolder });
+  ({ db } = await createTestDb());
 });
 
 describe('users — ADR-018 shared UUID with Supabase Auth', () => {
