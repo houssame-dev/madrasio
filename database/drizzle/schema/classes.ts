@@ -1,4 +1,4 @@
-import { foreignKey, index, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { foreignKey, index, pgEnum, pgTable, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { academicYears } from './academic-years';
 import { curriculumVersions } from './curricula';
@@ -72,6 +72,11 @@ export const classes = pgTable(
       foreignColumns: [curriculumVersions.schoolId, curriculumVersions.id],
     }).onDelete('restrict'),
     uniqueIndex('classes_school_year_name_unique').on(table.schoolId, table.academicYearId, table.name),
+    // Composite FK target for enrollment/assignment class-year integrity:
+    // StudentEnrollment and TeacherAssignment reference a Class that must
+    // belong to the SAME (school_id, academic_year_id) via the triple FK
+    // `(school_id, academic_year_id, class_id)` → this unique.
+    unique('classes_school_year_id_unique').on(table.schoolId, table.academicYearId, table.id),
     index('classes_school_year_idx').on(table.schoolId, table.academicYearId),
   ],
 );

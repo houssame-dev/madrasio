@@ -20,10 +20,24 @@
  * - `subjects` — School-scoped subject identity (no coefficient)
  * - `classes` — Academic-Year-specific class context
  *
- * The remaining V1 domain schema (students, teachers, parents, grades,
- * attendance, homework, announcements, notifications, etc.) is intentionally
- * not declared yet. Schemas will be added by the dedicated database schema
- * tasks, after the corresponding domain rules are locked in.
+ * People + Access Scope Foundation (Task 004):
+ * - `students` — School-scoped academic identity (no User account in V1)
+ * - `student_enrollments` — ONLY source of truth for placement history
+ * - `teachers` — School-scoped academic profile (optional User link)
+ * - `teacher_assignments` — ONLY source of truth for Teacher academic scope
+ * - `parents` — School-scoped parent/guardian profile (optional User link)
+ * - `parent_students` — Parent ↔ Student relationship (Parent child scope)
+ *
+ * Same-School integrity is enforced with composite foreign keys on the
+ * `(school_id, id)` unique targets, and Class↔AcademicYear compatibility is
+ * enforced with the triple FK `(school_id, academic_year_id, class_id)`.
+ * Active-duplicate prevention uses partial unique indexes
+ * (`WHERE status = 'ACTIVE'`).
+ *
+ * The remaining V1 domain schema (grades, attendance, homework, announcements,
+ * notifications, etc.) is intentionally not declared yet. Schemas will be
+ * added by the dedicated database schema tasks, after the corresponding domain
+ * rules are locked in.
  *
  * Repositories live in each module's `infrastructure/` folder, never here.
  */
@@ -37,3 +51,9 @@ export * from './academic-structure';
 export * from './curricula';
 export * from './subjects';
 export * from './classes';
+export * from './students';
+export * from './teachers';
+export * from './parents';
+export * from './enrollments';
+export * from './assignments';
+export * from './parent-students';
