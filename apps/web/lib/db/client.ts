@@ -1,6 +1,8 @@
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
+import * as schema from '@school/database';
+
 import { getServerEnv } from '@/lib/config/env';
 
 /**
@@ -10,10 +12,10 @@ import { getServerEnv } from '@/lib/config/env';
  * must not import from this file directly — it consumes repositories defined
  * in each module's `infrastructure/` layer.
  *
- * Note: the schema argument is intentionally empty at this stage. The full
- * domain schema will be registered once the database schema task lands.
+ * The full domain schema is registered so typed repositories (and the
+ * authorization resolvers in `lib/authorization/server`) can query it.
  */
-type Database = NodePgDatabase<Record<string, never>>;
+type Database = NodePgDatabase<typeof schema>;
 
 let cachedDb: Database | undefined;
 let cachedPool: Pool | undefined;
@@ -27,7 +29,7 @@ export function getDb(): Database {
   }
 
   cachedPool = new Pool({ connectionString: env.DATABASE_URL });
-  cachedDb = drizzle(cachedPool);
+  cachedDb = drizzle(cachedPool, { schema });
   return cachedDb;
 }
 
