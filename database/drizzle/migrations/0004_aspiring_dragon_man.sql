@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "grading_configuration_versions_one_active_unique" ON "grading_configuration_versions" USING btree ("grading_configuration_id") WHERE "grading_configuration_versions"."status" = 'ACTIVE';

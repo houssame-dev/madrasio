@@ -28,6 +28,11 @@
  * - `parents` — School-scoped parent/guardian profile (optional User link)
  * - `parent_students` — Parent ↔ Student relationship (Parent child scope)
  *
+ * Grades — Grading Configuration Foundation (Task 006A, ADR-011):
+ * - `grading_configurations` — School-scoped logical grading configuration
+ * - `grading_configuration_versions` — immutable ruleset snapshots (DRAFT /
+ *   ACTIVE / ARCHIVED lifecycle) with a JSONB `rules` payload
+ *
  * Same-School integrity is enforced with composite foreign keys on the
  * `(school_id, id)` unique targets, and Class↔AcademicYear compatibility is
  * enforced with the triple FK `(school_id, academic_year_id, class_id)`.
@@ -57,3 +62,4 @@ export * from './parents';
 export * from './enrollments';
 export * from './assignments';
 export * from './parent-students';
+export * from './grading';
