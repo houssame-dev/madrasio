@@ -33,6 +33,11 @@
  * - `grading_configuration_versions` — immutable ruleset snapshots (DRAFT /
  *   ACTIVE / ARCHIVED lifecycle) with a JSONB `rules` payload
  *
+ * Grades — Gradebook + Assessment Foundation (Task 006B):
+ * - `gradebooks` — grading context for School + AcademicYear + AcademicPeriod +
+ *   Class + Subject bound to ONE specific GradingConfigurationVersion
+ * - `assessments` — one evaluation inside exactly one Gradebook
+ *
  * Same-School integrity is enforced with composite foreign keys on the
  * `(school_id, id)` unique targets, and Class↔AcademicYear compatibility is
  * enforced with the triple FK `(school_id, academic_year_id, class_id)`.
@@ -63,3 +68,5 @@ export * from './enrollments';
 export * from './assignments';
 export * from './parent-students';
 export * from './grading';
+export * from './gradebooks';
+export * from './assessments';

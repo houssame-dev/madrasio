@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, date, foreignKey, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { check, date, foreignKey, index, integer, pgEnum, pgTable, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { academicYears } from './academic-years';
 
@@ -45,6 +45,10 @@ export const academicPeriods = pgTable(
     }).onDelete('restrict'),
     uniqueIndex('academic_periods_year_sequence_unique').on(table.academicYearId, table.sequence),
     uniqueIndex('academic_periods_year_name_unique').on(table.academicYearId, table.name),
+    // Table-level UNIQUE constraint so Gradebook (and future Grade/Result)
+    // composite foreign keys can reference (school_id, academic_year_id, id) —
+    // enforcing that an AcademicPeriod belongs to the SAME School + AcademicYear.
+    unique('academic_periods_school_year_id_unique').on(table.schoolId, table.academicYearId, table.id),
     index('academic_periods_school_year_idx').on(table.schoolId, table.academicYearId),
     check('academic_periods_date_range_check', sql`${table.startDate} < ${table.endDate}`),
   ],
