@@ -49,6 +49,12 @@ export const assessmentStatus = pgEnum('assessment_status', ['DRAFT', 'PUBLISHED
  * Uniqueness: assessment `title` is intentionally NOT unique — two
  * Assessments in the same Gradebook may share a title unless the business
  * model explicitly forbids it (Task 006B §21).
+ *
+ * Task 006C: `(school_id, gradebook_id, id)` is a composite FK target for
+ * Grade rows. A Grade references `(school_id, gradebook_id, assessment_id)`
+ * against this unique, so a Grade can only attach an Assessment that belongs
+ * to the SAME Gradebook AND the SAME School as the Grade (cross-gradebook and
+ * cross-school Grades are structurally impossible).
  */
 export const assessments = pgTable(
   'assessments',
@@ -73,6 +79,10 @@ export const assessments = pgTable(
     }).onDelete('restrict'),
     // Composite FK target for future Grade rows: (school_id, assessment_id).
     unique('assessments_school_id_unique').on(table.schoolId, table.id),
+    // Composite FK target for Grade rows: (school_id, gradebook_id, assessment_id)
+    // → assessments(school_id, gradebook_id, id). Enforces the Assessment
+    // belongs to the SAME Gradebook + School as the Grade (Task 006C §25).
+    unique('assessments_school_gradebook_id_unique').on(table.schoolId, table.gradebookId, table.id),
     index('assessments_gradebook_idx').on(table.gradebookId),
     index('assessments_school_date_idx').on(table.schoolId, table.assessmentDate),
     check('assessments_maximum_score_check', sql`${table.maximumScore} > 0`),

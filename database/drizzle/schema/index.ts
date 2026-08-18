@@ -38,6 +38,14 @@
  *   Class + Subject bound to ONE specific GradingConfigurationVersion
  * - `assessments` — one evaluation inside exactly one Gradebook
  *
+ * Grades — Grade + Result Model (Task 006C):
+ * - `grades` — a Student's raw/recorded outcome for exactly one Assessment
+ *   (VALID / MISSING / ABSENT / EXCUSED state, not Gradebook status)
+ * - `subject_results` — calculated result for one Student + Subject + Period
+ * - `period_results` — aggregate result for one Student + AcademicPeriod
+ * - `annual_results` — annual result across the year (distinct from Period)
+ *   All three results bind the exact GradingConfigurationVersion used.
+ *
  * Same-School integrity is enforced with composite foreign keys on the
  * `(school_id, id)` unique targets, and Class↔AcademicYear compatibility is
  * enforced with the triple FK `(school_id, academic_year_id, class_id)`.
@@ -70,3 +78,5 @@ export * from './parent-students';
 export * from './grading';
 export * from './gradebooks';
 export * from './assessments';
+export * from './grades';
+export * from './results';
