@@ -96,6 +96,7 @@ export const subjectResults = pgTable(
       columns: [table.schoolId, table.gradingConfigurationVersionId],
       foreignColumns: [gradingConfigurationVersions.schoolId, gradingConfigurationVersions.id],
     }).onDelete('restrict'),
+    unique('subject_results_school_id_unique').on(table.schoolId, table.id),
     unique('subject_results_school_context_unique').on(
       table.schoolId,
       table.academicYearId,
@@ -167,6 +168,7 @@ export const periodResults = pgTable(
       columns: [table.schoolId, table.gradingConfigurationVersionId],
       foreignColumns: [gradingConfigurationVersions.schoolId, gradingConfigurationVersions.id],
     }).onDelete('restrict'),
+    unique('period_results_school_id_unique').on(table.schoolId, table.id),
     unique('period_results_school_context_unique').on(
       table.schoolId,
       table.academicYearId,
@@ -230,6 +232,7 @@ export const annualResults = pgTable(
       columns: [table.schoolId, table.gradingConfigurationVersionId],
       foreignColumns: [gradingConfigurationVersions.schoolId, gradingConfigurationVersions.id],
     }).onDelete('restrict'),
+    unique('annual_results_school_id_unique').on(table.schoolId, table.id),
     unique('annual_results_school_context_unique').on(
       table.schoolId,
       table.academicYearId,

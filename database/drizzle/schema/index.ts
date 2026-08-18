@@ -80,3 +80,5 @@ export * from './gradebooks';
 export * from './assessments';
 export * from './grades';
 export * from './results';
+export * from './publications';
+export * from './outbox';

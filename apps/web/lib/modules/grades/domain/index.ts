@@ -1,0 +1,23 @@
+export * from './grading-rules';
+export * from './results';
+export { DecimalValue, DECIMAL_SCALE } from './calculation';
+export {
+  computeSubjectResult,
+  computePeriodResult,
+  computeAnnualResult,
+  INCOMPLETE_REASONS,
+  GRADE_STATES,
+  ASSESSMENT_TYPES,
+  type IncompleteReason,
+  type CalculationOutcome,
+  type AssessmentRecord,
+  type GradeRecord,
+  type SubjectResultRecord,
+  type PeriodResultRecord,
+  type RulesInput,
+  type SubjectResultInput,
+  type PeriodResultInput,
+  type AnnualResultInput,
+  type GradeState,
+  type AssessmentType,
+} from './calculation';
