@@ -57,6 +57,13 @@
       "when": 1787063271840,
       "tag": "0007_amazing_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787073590198,
+      "tag": "0008_large_leader",
+      "breakpoints": true
     }
   ]
 }

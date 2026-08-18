@@ -46,6 +46,11 @@
  * - `annual_results` — annual result across the year (distinct from Period)
  *   All three results bind the exact GradingConfigurationVersion used.
  *
+ * Attendance Foundation (Task 007):
+ * - `attendance_records` — one Student's attendance state in one Class context
+ *   for one attendance DATE (PRESENT / ABSENT / LATE / EXCUSED), preserving
+ *   School + AcademicYear context through composite FKs.
+ *
  * Same-School integrity is enforced with composite foreign keys on the
  * `(school_id, id)` unique targets, and Class↔AcademicYear compatibility is
  * enforced with the triple FK `(school_id, academic_year_id, class_id)`.
@@ -82,3 +87,4 @@ export * from './grades';
 export * from './results';
 export * from './publications';
 export * from './outbox';
+export * from './attendance';
