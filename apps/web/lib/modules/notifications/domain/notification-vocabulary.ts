@@ -19,10 +19,16 @@ export type NotificationSourceType = (typeof NOTIFICATION_SOURCE_TYPES)[number];
 /**
  * Stable outbox event names consumed by the Notifications processor
  * (Task 010 §13). The grades events already exist (`grades/domain`);
- * `AnnouncementPublished` is produced by the announcements module (Task 009
- * publish use case) whose application layer is a later task.
+ * `AnnouncementPublished` / `AnnouncementRevisionPublished` are produced by
+ * the announcements module's publish use case (`announcements/domain`,
+ * Task 011).
  */
-export const NOTIFICATION_EVENTS = ['AnnouncementPublished', 'ResultPublished', 'ResultRevisionPublished'] as const;
+export const NOTIFICATION_EVENTS = [
+  'AnnouncementPublished',
+  'AnnouncementRevisionPublished',
+  'ResultPublished',
+  'ResultRevisionPublished',
+] as const;
 export type NotificationEventName = (typeof NOTIFICATION_EVENTS)[number];
 
 /**
@@ -36,7 +42,9 @@ export const NOTIFICATION_SOURCE_TYPES_BY_SOURCE_TYPE: Record<NotificationSource
 
 /** Maps a consumed outbox event to its notification type (or null when unsupported). */
 export function notificationTypeForEvent(eventType: string): NotificationType | null {
-  if (eventType === 'AnnouncementPublished') return 'ANNOUNCEMENT_PUBLISHED';
+  if (eventType === 'AnnouncementPublished' || eventType === 'AnnouncementRevisionPublished') {
+    return 'ANNOUNCEMENT_PUBLISHED';
+  }
   if (eventType === 'ResultPublished') return 'RESULT_PUBLISHED';
   if (eventType === 'ResultRevisionPublished') return 'RESULT_REVISED';
   return null;
@@ -44,7 +52,9 @@ export function notificationTypeForEvent(eventType: string): NotificationType | 
 
 /** Maps a consumed outbox event to its source kind (or null when unsupported). */
 export function notificationSourceTypeForEvent(eventType: string): NotificationSourceType | null {
-  if (eventType === 'AnnouncementPublished') return 'ANNOUNCEMENT_PUBLICATION';
+  if (eventType === 'AnnouncementPublished' || eventType === 'AnnouncementRevisionPublished') {
+    return 'ANNOUNCEMENT_PUBLICATION';
+  }
   if (eventType === 'ResultPublished' || eventType === 'ResultRevisionPublished') return 'RESULT_PUBLICATION';
   return null;
 }

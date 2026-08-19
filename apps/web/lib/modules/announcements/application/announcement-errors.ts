@@ -1,0 +1,49 @@
+/**
+ * Announcements use-case errors (Task 011).
+ *
+ * Feature-specific machine-readable codes (CLAUDE.md §28) layered on top of
+ * the generic cross-cutting `BUSINESS_RULE_VIOLATION`. Frontends depend on
+ * `featureCode`, never on the English message.
+ *
+ * Codes:
+ * - ANNOUNCEMENT_NOT_FOUND     — the logical Announcement does not exist in
+ *   the School context
+ * - VERSION_NOT_FOUND          — the requested AnnouncementVersion does not
+ *   belong to the Announcement / School
+ * - NOT_PUBLISHABLE            — the Announcement/Publication is in a state
+ *   that cannot be published (e.g. ARCHIVED, not yet due)
+ * - ALREADY_PUBLISHED          — the exact Version already has a publication
+ *   (BR-ANNOUNCEMENT-014: a revision requires a NEW Version)
+ * - NO_VALID_TARGETS           — the Version has no valid audience/target
+ *   combinations to publish to
+ * - NO_ELIGIBLE_RECIPIENTS     — targets exist but resolve to zero eligible
+ *   recipients (a controlled failure — never a silent publish-to-nobody)
+ * - PUBLICATION_CONFLICT       — the idempotency key was reused for a
+ *   different logical publication (or a concurrent same-sequence collision)
+ * - PUBLICATION_NOT_FOUND      — the Publication could not be resolved for
+ *   due-work processing
+ */
+
+import { BusinessRuleViolationError } from '@/lib/errors';
+
+export const ANNOUNCEMENT_ERROR_CODES = [
+  'ANNOUNCEMENT_NOT_FOUND',
+  'VERSION_NOT_FOUND',
+  'NOT_PUBLISHABLE',
+  'ALREADY_PUBLISHED',
+  'NO_VALID_TARGETS',
+  'NO_ELIGIBLE_RECIPIENTS',
+  'PUBLICATION_CONFLICT',
+  'PUBLICATION_NOT_FOUND',
+] as const;
+export type AnnouncementErrorCode = (typeof ANNOUNCEMENT_ERROR_CODES)[number];
+
+export class AnnouncementDomainError extends BusinessRuleViolationError {
+  public readonly featureCode: AnnouncementErrorCode;
+
+  constructor(featureCode: AnnouncementErrorCode, message: string) {
+    super(message, { featureCode });
+    this.name = 'AnnouncementDomainError';
+    this.featureCode = featureCode;
+  }
+}

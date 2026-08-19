@@ -35,19 +35,20 @@ async function setup(): Promise<{ testDb: NotificationsTestDb; schoolId: string 
   return { testDb, schoolId };
 }
 
-function announcementPayload(schoolId: string, publication: { announcementId: string; publicationId: string }): Record<string, unknown> {
+function announcementPayload(schoolId: string, publication: { announcementId: string; publicationId: string; versionId: string }): Record<string, unknown> {
   return {
     eventId: randomUUID(),
     eventType: 'AnnouncementPublished',
     schoolId,
     announcementId: publication.announcementId,
+    announcementVersionId: publication.versionId,
     publicationId: publication.publicationId,
     publicationVersion: 1,
     publishedAt: new Date().toISOString(),
   };
 }
 
-async function insertAndProcess(testDb: NotificationsTestDb, schoolId: string, publication: { announcementId: string; publicationId: string }) {
+async function insertAndProcess(testDb: NotificationsTestDb, schoolId: string, publication: { announcementId: string; publicationId: string; versionId: string }) {
   const event = await seedOutboxEvent(testDb.seed, 'AnnouncementPublished', announcementPayload(schoolId, publication));
   const result = await processNotificationEvent(testDb.db, { outboxEventId: event.id });
   return { event, result };

@@ -32,7 +32,12 @@ describe('vocabulary mirrors the database enums (Task 010 §3/§4)', () => {
   });
 
   it('consumed events are the V1 outbox event vocabulary', () => {
-    expect(NOTIFICATION_EVENTS).toEqual(['AnnouncementPublished', 'ResultPublished', 'ResultRevisionPublished']);
+    expect(NOTIFICATION_EVENTS).toEqual([
+      'AnnouncementPublished',
+      'AnnouncementRevisionPublished',
+      'ResultPublished',
+      'ResultRevisionPublished',
+    ]);
   });
 
   it('type ↔ source mapping matches the `notifications_type_source_check` CHECK', () => {
@@ -43,6 +48,8 @@ describe('vocabulary mirrors the database enums (Task 010 §3/§4)', () => {
   it('maps events to notification + source types (and null for unknown events)', () => {
     expect(notificationTypeForEvent('AnnouncementPublished')).toBe('ANNOUNCEMENT_PUBLISHED');
     expect(notificationSourceTypeForEvent('AnnouncementPublished')).toBe('ANNOUNCEMENT_PUBLICATION');
+    expect(notificationTypeForEvent('AnnouncementRevisionPublished')).toBe('ANNOUNCEMENT_PUBLISHED');
+    expect(notificationSourceTypeForEvent('AnnouncementRevisionPublished')).toBe('ANNOUNCEMENT_PUBLICATION');
     expect(notificationTypeForEvent('ResultPublished')).toBe('RESULT_PUBLISHED');
     expect(notificationSourceTypeForEvent('ResultPublished')).toBe('RESULT_PUBLICATION');
     expect(notificationTypeForEvent('ResultRevisionPublished')).toBe('RESULT_REVISED');

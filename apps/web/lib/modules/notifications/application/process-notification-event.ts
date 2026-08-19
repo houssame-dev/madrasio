@@ -35,6 +35,8 @@
  * authorization pipeline.
  */
 
+import type { AnnouncementEventPayload } from '@/lib/modules/announcements/domain/announcement-events';
+
 import { createAnnouncementPublishedNotificationContent } from '../domain/notification-content';
 import {
   notificationSourceTypeForEvent,
@@ -58,27 +60,25 @@ export interface ProcessNotificationEventResult {
   alreadyProcessed: boolean;
 }
 
-/** Shape of the AnnouncementPublished outbox payload produced by the announcements module. */
-export interface AnnouncementPublishedPayload {
-  eventId: string;
-  eventType: 'AnnouncementPublished';
-  schoolId: string;
-  announcementId: string;
-  publicationId: string;
-  publicationVersion: number;
-  publishedAt: string;
-}
+/**
+ * Shape of the announcement outbox payload produced by the announcements
+ * module's publish use case. Both `AnnouncementPublished` (sequence 1) and
+ * `AnnouncementRevisionPublished` (sequence > 1) share this contract
+ * (`domain/announcement-events.ts`).
+ */
+export type AnnouncementPublishedPayload = AnnouncementEventPayload;
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
 
-function validateAnnouncementPublishedPayload(payload: Record<string, unknown>): AnnouncementPublishedPayload {
+function validateAnnouncementEventPayload(payload: Record<string, unknown>): AnnouncementEventPayload {
   if (
     !isNonEmptyString(payload.eventId) ||
-    payload.eventType !== 'AnnouncementPublished' ||
+    (payload.eventType !== 'AnnouncementPublished' && payload.eventType !== 'AnnouncementRevisionPublished') ||
     !isNonEmptyString(payload.schoolId) ||
     !isNonEmptyString(payload.announcementId) ||
+    !isNonEmptyString(payload.announcementVersionId) ||
     !isNonEmptyString(payload.publicationId) ||
     typeof payload.publicationVersion !== 'number' ||
     payload.publicationVersion <= 0 ||
@@ -86,10 +86,10 @@ function validateAnnouncementPublishedPayload(payload: Record<string, unknown>):
   ) {
     throw new NotificationProcessingError(
       'EVENT_PAYLOAD_INVALID',
-      'The AnnouncementPublished payload is malformed.',
+      'The announcement event payload is malformed.',
     );
   }
-  return payload as unknown as AnnouncementPublishedPayload;
+  return payload as unknown as AnnouncementEventPayload;
 }
 
 /**
@@ -154,7 +154,7 @@ async function processEvent(
     );
   }
 
-  if (event.eventType === 'AnnouncementPublished') {
+  if (event.eventType === 'AnnouncementPublished' || event.eventType === 'AnnouncementRevisionPublished') {
     return processAnnouncementPublished(db, event, notificationType, sourceType);
   }
 
@@ -174,7 +174,7 @@ async function processAnnouncementPublished(
   notificationType: NotificationType,
   sourceType: NotificationSourceType,
 ): Promise<ProcessNotificationEventResult> {
-  const payload = validateAnnouncementPublishedPayload(event.payload);
+  const payload = validateAnnouncementEventPayload(event.payload);
   const schoolId = payload.schoolId;
 
   // School-scoped lookup: a publication from another School can never resolve
