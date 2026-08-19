@@ -80,15 +80,19 @@
  * recipients reference `users.id` directly (Users are platform identity,
  * ADR-018); active SchoolMembership validation is Application-layer.
  *
- * Same-School integrity is enforced with composite foreign keys on the
- * `(school_id, id)` unique targets, and Class↔AcademicYear compatibility is
- * enforced with the triple FK `(school_id, academic_year_id, class_id)`.
- * Active-duplicate prevention uses partial unique indexes
- * (`WHERE status = 'ACTIVE'`).
+ * Notifications Foundation (Task 010):
+ * - `notifications` — persisted, school-scoped delivery records (ADR-013).
+ *   The database record is the source of truth for delivery; realtime is NOT
+ *   mandatory in V1 (ADR-014). Produced ONLY by the Notifications processor
+ *   from durable `outbox_events` (ADR-012, `./outbox`); the recipient must
+ *   hold a SchoolMembership in the SAME School (composite FK on
+ *   `school_memberships(school_id, user_id)`, ADR-007), and UNIQUE
+ *   `(source_event_id, recipient_user_id)` makes processing idempotent
+ *   (at-least-once, CLAUDE.md §32).
  *
- * The remaining V1 domain schema (notifications, files, etc.) is intentionally
- * not declared yet. Schemas will be added by the dedicated database schema
- * tasks, after the corresponding domain rules are locked in.
+ * The remaining V1 domain schema (files, etc.) is intentionally not declared
+ * yet. Schemas will be added by the dedicated database schema tasks, after
+ * the corresponding domain rules are locked in.
  *
  * Repositories live in each module's `infrastructure/` folder, never here.
  */
@@ -118,3 +122,4 @@ export * from './outbox';
 export * from './attendance';
 export * from './homework';
 export * from './announcements';
+export * from './notifications';
