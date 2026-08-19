@@ -60,16 +60,35 @@
  * - `homework_submissions` — one Student's submission per Homework (SUBMITTED /
  *   LATE / REVIEWED / RETURNED; NOT_SUBMITTED = absence of a row).
  *
+ * Announcements Foundation (Task 009):
+ * - `announcements` — the logical communication object (no publishable content;
+ *   DRAFT / SCHEDULED / PUBLISHED / ARCHIVED lifecycle, created_by author User)
+ * - `announcement_versions` — immutable-content snapshots of one Announcement
+ *   (version_number unique WITHIN an Announcement, title + plain-text body)
+ * - `announcement_targets` — explicit audience (PARENTS | TEACHERS) + target
+ *   (SCHOOL | CLASS) combinations for one Version, with duplicate-logical-target
+ *   prevention via partial unique indexes
+ * - `announcement_publications` — explicit publication of ONE exact Version
+ *   (SCHEDULED → PUBLISHED; per-Announcement publication sequence +
+ *   idempotency_key unique)
+ * - `publication_recipient_snapshots` — immutable write-once recipient list per
+ *   publication (dedup by publication_id + recipient_user_id; no updated_at).
+ *
+ * Same-School integrity uses the established composite-FK strategy; Class
+ * targets use the triple `(school_id, academic_year_id, class_id)` FK so a
+ * Version can never target another School's Class. Authors/publishers/
+ * recipients reference `users.id` directly (Users are platform identity,
+ * ADR-018); active SchoolMembership validation is Application-layer.
+ *
  * Same-School integrity is enforced with composite foreign keys on the
  * `(school_id, id)` unique targets, and Class↔AcademicYear compatibility is
  * enforced with the triple FK `(school_id, academic_year_id, class_id)`.
  * Active-duplicate prevention uses partial unique indexes
  * (`WHERE status = 'ACTIVE'`).
  *
- * The remaining V1 domain schema (grades, attendance, homework, announcements,
- * notifications, etc.) is intentionally not declared yet. Schemas will be
- * added by the dedicated database schema tasks, after the corresponding domain
- * rules are locked in.
+ * The remaining V1 domain schema (notifications, files, etc.) is intentionally
+ * not declared yet. Schemas will be added by the dedicated database schema
+ * tasks, after the corresponding domain rules are locked in.
  *
  * Repositories live in each module's `infrastructure/` folder, never here.
  */
@@ -98,3 +117,4 @@ export * from './publications';
 export * from './outbox';
 export * from './attendance';
 export * from './homework';
+export * from './announcements';
