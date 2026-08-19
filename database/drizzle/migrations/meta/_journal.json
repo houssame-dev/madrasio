@@ -64,6 +64,13 @@
       "when": 1787073590198,
       "tag": "0008_large_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787102000598,
+      "tag": "0009_ambiguous_rockslide",
+      "breakpoints": true
     }
   ]
 }

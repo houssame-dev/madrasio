@@ -51,6 +51,15 @@
  *   for one attendance DATE (PRESENT / ABSENT / LATE / EXCUSED), preserving
  *   School + AcademicYear context through composite FKs.
  *
+ * Homework Foundation (Task 008):
+ * - `homework` — Teacher-created academic assignment with School/Teacher/
+ *   Subject/AcademicYear/AcademicPeriod context (DRAFT / PUBLISHED / CLOSED /
+ *   ARCHIVED). Independent from Grades — no Grade/Assessment/Result FKs.
+ * - `homework_targets` — explicit intended audience (CLASS targeting only),
+ *   the source of truth for who the Homework was assigned to.
+ * - `homework_submissions` — one Student's submission per Homework (SUBMITTED /
+ *   LATE / REVIEWED / RETURNED; NOT_SUBMITTED = absence of a row).
+ *
  * Same-School integrity is enforced with composite foreign keys on the
  * `(school_id, id)` unique targets, and Class↔AcademicYear compatibility is
  * enforced with the triple FK `(school_id, academic_year_id, class_id)`.
@@ -88,3 +97,4 @@ export * from './results';
 export * from './publications';
 export * from './outbox';
 export * from './attendance';
+export * from './homework';
