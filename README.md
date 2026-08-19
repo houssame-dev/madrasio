@@ -1,6 +1,6 @@
 # School Management System
 
-> A modern, multilingual, multi-tenant school management SaaS designed for private schools in Morocco.
+> A modern, multilingual, multi-tenant school management SaaS designed for private schools.
 
 [![Status](https://img.shields.io/badge/status-in%20development-yellow)](https://github.com/)
 [![License](https://img.shields.io/badge/license-TBD-lightgrey)](LICENSE)
