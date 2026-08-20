@@ -18,19 +18,37 @@
  * from another School can never resolve (CLAUDE.md §13/§26).
  */
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '@school/database';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 
 /** The minimal typed Drizzle surface the Notifications module needs. */
 export type NotificationsDb = PgDatabase<PgQueryResultHKT, typeof schema>;
 
+/** The outbox event lifecycle (mirrors the `outbox_event_status` enum). */
+export type OutboxEventStatus = 'PENDING' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
+
 /** The outbox row the processor drains (event + lifecycle + payload). */
 export interface OutboxEventRow {
   id: string;
   eventType: string;
   payload: Record<string, unknown>;
-  status: 'PENDING' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
+  status: OutboxEventStatus;
+}
+
+/**
+ * Operational outbox visibility row (Task 013 §15/§16/§19). Deliberately
+ * carries NO payload — outbox payloads can contain recipient IDs and academic
+ * context, so they are never exposed through operational views.
+ */
+export interface OutboxEventOperationalRow {
+  id: string;
+  eventType: string;
+  status: OutboxEventStatus;
+  createdAt: Date;
+  processedAt: Date | null;
+  lastError: string | null;
+  attemptCount: number;
 }
 
 /** The AnnouncementPublication row the processor needs (immutable snapshot). */
@@ -77,6 +95,60 @@ export async function findOutboxEvent(db: NotificationsDb, id: string): Promise<
     payload: (row.payload ?? {}) as Record<string, unknown>,
     status: row.status,
   };
+}
+
+/**
+ * Operational visibility for ONE outbox event (Task 013 §15). No payload is
+ * returned — payloads may contain recipient IDs and academic context and are
+ * never exposed through operational views (§19).
+ */
+export async function findOutboxEventOperational(db: NotificationsDb, id: string): Promise<OutboxEventOperationalRow | null> {
+  const [row] = await db
+    .select({
+      id: schema.outboxEvents.id,
+      eventType: schema.outboxEvents.eventType,
+      status: schema.outboxEvents.status,
+      createdAt: schema.outboxEvents.createdAt,
+      processedAt: schema.outboxEvents.processedAt,
+      lastError: schema.outboxEvents.lastError,
+      attemptCount: schema.outboxEvents.attemptCount,
+    })
+    .from(schema.outboxEvents)
+    .where(eq(schema.outboxEvents.id, id))
+    .limit(1);
+
+  return row ?? null;
+}
+
+/**
+ * Bounded, deterministic selection of retryable outbox events (Task 013
+ * §6/§9/§10/§12). Ordered by `created_at ASC, id ASC` (never unspecified row
+ * order); limited so the operation stays safe as the Outbox grows. Only the
+ * explicit statuses are selected — normal batches pass `['PENDING']` and an
+ * operational retry batch adds `['FAILED']`; PROCESSING/PROCESSED are never
+ * touched. Returns operational rows WITHOUT payload (§19).
+ */
+export async function listRetryableOutboxEvents(
+  db: NotificationsDb,
+  input: { statuses: readonly OutboxEventStatus[]; limit: number },
+): Promise<OutboxEventOperationalRow[]> {
+  if (input.limit <= 0) {
+    return [];
+  }
+  return db
+    .select({
+      id: schema.outboxEvents.id,
+      eventType: schema.outboxEvents.eventType,
+      status: schema.outboxEvents.status,
+      createdAt: schema.outboxEvents.createdAt,
+      processedAt: schema.outboxEvents.processedAt,
+      lastError: schema.outboxEvents.lastError,
+      attemptCount: schema.outboxEvents.attemptCount,
+    })
+    .from(schema.outboxEvents)
+    .where(inArray(schema.outboxEvents.status, [...input.statuses]))
+    .orderBy(asc(schema.outboxEvents.createdAt), asc(schema.outboxEvents.id))
+    .limit(input.limit);
 }
 
 export async function findAnnouncementPublication(
@@ -188,11 +260,17 @@ export async function insertNotifications(tx: NotificationsDb, rows: Notificatio
   return inserted.length;
 }
 
-/** Marks the consumed outbox event PROCESSED inside the same transaction. */
+/**
+ * Marks the consumed outbox event PROCESSED inside the same transaction.
+ *
+ * PROCESSED is the terminal successful state (Task 013 §1): `last_error` is
+ * cleared so a FAILED event that is later retried and succeeds does not carry
+ * a stale failure message into its terminal state.
+ */
 export async function markOutboxEventProcessed(tx: NotificationsDb, eventId: string): Promise<void> {
   await tx
     .update(schema.outboxEvents)
-    .set({ status: 'PROCESSED', processedAt: new Date(), updatedAt: new Date() })
+    .set({ status: 'PROCESSED', processedAt: new Date(), lastError: null, updatedAt: new Date() })
     .where(eq(schema.outboxEvents.id, eventId));
 }
 

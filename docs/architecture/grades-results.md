@@ -249,7 +249,9 @@ All endpoints are protected and server-authorized (`getSessionUserId` + school c
   persisted in-app records produced by the Notifications processor (Task 012
   closes the ResultPublished → Notifications integration gap; delivery
   channels remain out of scope, ADR-014/ADR-015).
-- No outbox processor/delivery worker yet (a later task).
+- No scheduled outbox delivery worker yet — Task 013 added the safe
+  retry/batch entry points (`docs/architecture/outbox-operations.md`); a
+  periodic runner invoking `processRetryableOutboxEvents()` is a future task.
 - No gradebook-closing automation.
 - No announcement/gradebook UI (later UI tasks).
 - Homework never automatically becomes a Grade/Assessment.
