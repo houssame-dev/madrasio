@@ -105,8 +105,12 @@ helpers only (hide buttons/navigation). The server is always authoritative.
 
 ## 9. Known placeholders
 
-- No User-level `status` column exists yet; the pipeline supports the
-  `USER_INACTIVE` stage, but the current resolver treats an existing user as
-  active. A future Authentication task may add a user lifecycle state.
+- User-level lifecycle now exists: `public.users.status` (`user_status` enum,
+  ACTIVE / SUSPENDED / DISABLED, default ACTIVE — Task 014.1). `userActive` is
+  derived from it everywhere: `lib/auth` enforces the Active User stage first
+  (`assertUserActive`, `requireCurrentContext`), and the legacy
+  `resolveCurrentContext` also reads `users.status` so the pipeline's
+  `USER_INACTIVE` stage is genuinely reachable on every authorization path.
+  See `docs/architecture/authentication-context.md` §4.
 - The full module-by-module permission matrix and SUPER_ADMIN platform
   workflows are product decisions deferred to the relevant module tasks.

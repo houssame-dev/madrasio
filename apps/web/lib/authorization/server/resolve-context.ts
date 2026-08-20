@@ -21,7 +21,10 @@ export interface ResolveContextInput {
  *
  * The membership row carries role + status; inactive memberships are kept in
  * the context so the pipeline reports INACTIVE_MEMBERSHIP (historical rows
- * are never deleted — BR-SCHOOL/BR-AUTH-005). Scope facts are intentionally
+ * are never deleted — BR-SCHOOL/BR-AUTH-005). The Active User stage is backed
+ * by `users.status` (Task 014.1): a SUSPENDED/DISABLED application User is
+ * flagged `userActive: false` so the pipeline reports USER_INACTIVE BEFORE any
+ * membership/role/permission/scope evaluation. Scope facts are intentionally
  * NOT loaded here; they are resolved on demand (`resolveTeacherScope` /
  * `resolveParentScope`) only when an operation needs a scope check.
  */
@@ -34,6 +37,16 @@ export async function resolveCurrentContext(
   if (!input.userId || !input.schoolId) {
     return empty;
   }
+
+  const [user] = await db
+    .select({ status: schema.users.status })
+    .from(schema.users)
+    .where(eq(schema.users.id, input.userId))
+    .limit(1);
+
+  // `users.id` is the auth identity UUID (ADR-018) with a FK; a missing row is
+  // a controlled provisioning state — no membership grants current scope.
+  const userActive = user?.status === 'ACTIVE';
 
   const [membership] = await db
     .select({
@@ -57,7 +70,7 @@ export async function resolveCurrentContext(
     // invalid (BR-AUTHZ-009).
     return {
       userId: input.userId,
-      userActive: true,
+      userActive,
       membership: null,
       schoolContext: null,
       role: null,
@@ -67,11 +80,10 @@ export async function resolveCurrentContext(
 
   return {
     userId: input.userId,
-    // The membership FK (and its existence) proves the application User row
-    // exists. The current schema has no User-level status source, so an
-    // existing user is treated as active; the USER_INACTIVE stage is still
-    // supported by the engine for contexts built with an inactive flag.
-    userActive: true,
+    // `userActive` comes from `users.status` (Task 014.1) — a SUSPENDED or
+    // DISABLED User is denied at the Active User stage of the pipeline, before
+    // membership/role/permission/scope evaluation.
+    userActive,
     membership: { schoolId: membership.schoolId, status: membership.status },
     schoolContext: { schoolId: membership.schoolId, isValid: true },
     role: membership.role,

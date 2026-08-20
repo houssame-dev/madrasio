@@ -52,6 +52,86 @@ describe('users — ADR-018 shared UUID with Supabase Auth', () => {
   });
 });
 
+describe('users — lifecycle status (Task 014.1)', () => {
+  it('a new user defaults to ACTIVE', async () => {
+    const id = await createAuthUser();
+    const [row] = await db.insert(schema.users).values({ id }).returning();
+    expect(row.status).toBe('ACTIVE');
+  });
+
+  it('accepts an explicit ACTIVE status', async () => {
+    const id = await createAuthUser();
+    const [row] = await db.insert(schema.users).values({ id, status: 'ACTIVE' }).returning();
+    expect(row.status).toBe('ACTIVE');
+  });
+
+  it('accepts SUSPENDED status', async () => {
+    const id = await createAuthUser();
+    const [row] = await db.insert(schema.users).values({ id, status: 'SUSPENDED' }).returning();
+    expect(row.status).toBe('SUSPENDED');
+  });
+
+  it('accepts DISABLED status', async () => {
+    const id = await createAuthUser();
+    const [row] = await db.insert(schema.users).values({ id, status: 'DISABLED' }).returning();
+    expect(row.status).toBe('DISABLED');
+  });
+
+  it('rejects an invalid status value', async () => {
+    const id = await createAuthUser();
+    await expect(
+      db.insert(schema.users).values({ id, status: 'BANNED' as never }),
+    ).rejects.toThrow();
+  });
+
+  it('a status update does not delete User relationships (membership remains)', async () => {
+    const userId = await createUser();
+    const school = await createSchool();
+    const [membership] = await db
+      .insert(schema.schoolMemberships)
+      .values({ schoolId: school.id, userId, role: 'SCHOOL_ADMIN' })
+      .returning();
+
+    const [updated] = await db
+      .update(schema.users)
+      .set({ status: 'SUSPENDED' })
+      .where(eq(schema.users.id, userId))
+      .returning();
+    expect(updated.status).toBe('SUSPENDED');
+
+    const membershipsAfter = await db
+      .select()
+      .from(schema.schoolMemberships)
+      .where(eq(schema.schoolMemberships.id, membership.id));
+    expect(membershipsAfter).toHaveLength(1);
+    expect(membershipsAfter[0].status).toBe('ACTIVE');
+
+    const schoolAfter = await db.select().from(schema.schools).where(eq(schema.schools.id, school.id));
+    expect(schoolAfter).toHaveLength(1);
+  });
+
+  it('membership and school history remain after a user is disabled', async () => {
+    const userId = await createUser();
+    const school = await createSchool();
+    await db.insert(schema.schoolMemberships).values({ schoolId: school.id, userId, role: 'TEACHER' });
+
+    await db.update(schema.users).set({ status: 'DISABLED' }).where(eq(schema.users.id, userId));
+
+    const memberships = await db
+      .select()
+      .from(schema.schoolMemberships)
+      .where(eq(schema.schoolMemberships.userId, userId));
+    expect(memberships).toHaveLength(1);
+
+    const schools = await db.select().from(schema.schools).where(eq(schema.schools.id, school.id));
+    expect(schools).toHaveLength(1);
+  });
+
+  it('auth.users → public.users FK behavior is unchanged (rejects unknown auth identity)', async () => {
+    await expect(db.insert(schema.users).values({ id: randomUUID() })).rejects.toThrow();
+  });
+});
+
 describe('schools — tenant', () => {
   it('creates a school with sensible defaults', async () => {
     const [school] = await db.insert(schema.schools).values({ name: 'École Al Noor' }).returning();
