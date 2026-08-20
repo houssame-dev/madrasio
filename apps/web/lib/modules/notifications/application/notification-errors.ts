@@ -14,7 +14,6 @@ export const NOTIFICATION_ERROR_CODES = [
   'EVENT_PAYLOAD_INVALID',
   'PUBLICATION_NOT_FOUND',
   'VERSION_NOT_FOUND',
-  'RESULT_RECIPIENT_POLICY_NOT_APPROVED',
 ] as const;
 export type NotificationErrorCode = (typeof NOTIFICATION_ERROR_CODES)[number];
 

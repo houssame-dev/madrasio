@@ -26,6 +26,7 @@ import type {
   ResultStatus,
   ResultType,
 } from '../../domain';
+import type { ResultRecipientCandidate } from '../../domain/result-recipients';
 
 /** The minimal typed Drizzle surface the repository needs (driver-agnostic). */
 export type GradesDb = PgDatabase<PgQueryResultHKT, typeof schema>;
@@ -376,6 +377,54 @@ export async function findStudentEnrollment(
     .limit(1);
 
   return row !== undefined;
+}
+
+/**
+ * Loads the Result notification recipient candidate facts for one Student
+ * (Task 012 §1/§3): the Parents of the Student in the SAME School with the
+ * relationship + membership statuses needed by the pure resolver.
+ *
+ * The query is School-scoped (tenant isolation, CLAUDE.md §13) and the join on
+ * `parents.user_id` naturally excludes Parents with no authenticated User (a
+ * NULL `user_id` can never match a membership row). The pure resolver
+ * (`domain/result-recipients`) applies the approved eligibility policy
+ * (ACTIVE ParentStudent + non-null user_id + ACTIVE SchoolMembership),
+ * deduplicates and orders the result.
+ */
+export async function findResultNotificationRecipientCandidates(
+  db: GradesDb,
+  schoolId: string,
+  studentId: string,
+): Promise<ResultRecipientCandidate[]> {
+  const rows = await db
+    .select({
+      userId: schema.parents.userId,
+      parentStudentStatus: schema.parentStudents.status,
+      membershipStatus: schema.schoolMemberships.status,
+    })
+    .from(schema.parents)
+    .innerJoin(
+      schema.parentStudents,
+      and(
+        eq(schema.parentStudents.parentId, schema.parents.id),
+        eq(schema.parentStudents.studentId, studentId),
+        eq(schema.parentStudents.schoolId, schoolId),
+      ),
+    )
+    .innerJoin(
+      schema.schoolMemberships,
+      and(
+        eq(schema.schoolMemberships.userId, schema.parents.userId),
+        eq(schema.schoolMemberships.schoolId, schoolId),
+      ),
+    )
+    .where(eq(schema.parents.schoolId, schoolId));
+
+  return rows.map((row) => ({
+    userId: row.userId,
+    parentStudentStatus: row.parentStudentStatus,
+    membershipStatus: row.membershipStatus,
+  }));
 }
 
 export async function findSubjectResultByContext(

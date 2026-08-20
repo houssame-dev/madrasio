@@ -29,29 +29,30 @@ export function createAnnouncementPublishedNotificationContent(announcementTitle
 }
 
 /**
- * Result content for an INITIAL publication. Ready for the approved Result
- * recipient policy (a later task); the processor does not use it yet.
+ * Result content for an INITIAL publication (Task 012 §14). Built ONLY from
+ * immutable event payload data (the frozen `resultValue`), never from mutable
+ * live Result rows — a later revision can never rewrite an already-created
+ * notification. Title follows the approved policy example: "Result published".
  */
 export function createResultPublishedNotificationContent(input: {
-  resultLabel: string;
   resultValue: string;
 }): NotificationContent {
   return {
     title: 'Result published',
-    body: `${input.resultLabel}: ${input.resultValue}`,
+    body: `Result value: ${input.resultValue}`,
   };
 }
 
 /**
- * Result content for a REVISION. Ready for the approved Result recipient
- * policy (a later task); the processor does not use it yet.
+ * Result content for a REVISION (Task 012 §14). Title follows the approved
+ * policy example: "Result updated". Same frozen-data-only rule as the initial
+ * publication content.
  */
 export function createResultRevisedNotificationContent(input: {
-  resultLabel: string;
   resultValue: string;
 }): NotificationContent {
   return {
-    title: 'Result revised',
-    body: `${input.resultLabel}: ${input.resultValue}`,
+    title: 'Result updated',
+    body: `Result value: ${input.resultValue}`,
   };
 }

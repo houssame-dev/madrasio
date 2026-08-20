@@ -57,6 +57,12 @@ export interface PublicationRecipientRow {
   recipientUserId: string;
 }
 
+/** The ResultPublication row the processor needs (immutable source reference). */
+export interface ResultPublicationRow {
+  id: string;
+  schoolId: string;
+}
+
 export async function findOutboxEvent(db: NotificationsDb, id: string): Promise<OutboxEventRow | null> {
   const [row] = await db
     .select()
@@ -126,6 +132,28 @@ export async function findPublicationRecipients(
     .where(eq(schema.publicationRecipientSnapshots.publicationId, publicationId));
 
   return rows;
+}
+
+/**
+ * School-scoped ResultPublication lookup (Task 012 §15/§21). The processor
+ * only needs to confirm the publication exists in the event's School so it can
+ * enforce the school context for the insert and reference the exact
+ * ResultPublication as the notification `source_id`. Recipients for Result
+ * events come EXCLUSIVELY from the frozen `recipientUserIds` in the event
+ * payload (Task 012 §7/§11) — never from ParentStudent queries.
+ */
+export async function findResultPublication(
+  db: NotificationsDb,
+  schoolId: string,
+  publicationId: string,
+): Promise<ResultPublicationRow | null> {
+  const [row] = await db
+    .select({ id: schema.resultPublications.id, schoolId: schema.resultPublications.schoolId })
+    .from(schema.resultPublications)
+    .where(and(eq(schema.resultPublications.schoolId, schoolId), eq(schema.resultPublications.id, publicationId)))
+    .limit(1);
+
+  return row ?? null;
 }
 
 export interface NotificationInsert {

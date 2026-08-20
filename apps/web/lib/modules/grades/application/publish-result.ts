@@ -22,9 +22,21 @@
  * between a read and an insert are resolved by catching the 23505 unique
  * violation and re-reading.
  *
- * ATOMICITY (Part M/T11, ADR-012): the publication row and the outbox event
- * are written inside ONE database transaction — a committed publication can
- * never be lost even if delivery fails afterwards.
+ * ATOMICITY (Part M/T11, ADR-012): the publication row, the publication-time
+ * notification recipient resolution and the outbox event (with the frozen
+ * `recipientUserIds` payload, Task 012 §6/§7/§8) are written inside ONE
+ * database transaction — a committed publication can never be lost even if
+ * delivery fails afterwards, and the frozen event recipient data always
+ * belongs to the same successful publication operation.
+ *
+ * RESULT NOTIFICATION RECIPIENTS (Task 012 §1/§5): the approved recipient
+ * policy resolves the eligible PARENT Users of the Student at publication
+ * time (ACTIVE ParentStudent + non-null user_id + ACTIVE SchoolMembership).
+ * Zero eligible Parents NEVER blocks publication — the event is still created
+ * with `recipientUserIds: []`; notifications are a downstream concern.
+ * Every publication event (initial or revision) resolves its OWN current
+ * recipients — a revision never copies the previous publication's list
+ * (Task 012 §9/§10).
  *
  * Authorized via grades.publish (school scope).
  */
@@ -33,6 +45,7 @@ import { randomUUID } from 'node:crypto';
 
 import { persistOutboxEvent } from '@/lib/events/outbox';
 
+import { resolveResultNotificationRecipients } from '../domain/result-recipients';
 import type { ResultEventPayload, ResultType } from '../domain/results';
 import type { GradesDb, PublicationRow } from '../infrastructure/repositories/result-repository';
 import * as repo from '../infrastructure/repositories/result-repository';
@@ -183,6 +196,9 @@ export async function publishResult(
       });
 
       const eventId = randomUUID();
+      const { recipientUserIds } = resolveResultNotificationRecipients(
+        await repo.findResultNotificationRecipientCandidates(tx, input.schoolId, result.studentId),
+      );
       const payload: ResultEventPayload = {
         eventId,
         eventType,
@@ -196,6 +212,7 @@ export async function publishResult(
         publicationId: publication.id,
         publicationVersion: nextVersion,
         publishedAt: publication.publishedAt,
+        recipientUserIds,
       };
       await persistOutboxEvent(tx, eventType, payload as unknown as Record<string, unknown>);
 

@@ -1,7 +1,7 @@
 # Grades — Results, Calculation, Publication (Task 006D)
 
 > Module: **Grades**
-> Status: **Implemented (Task 006D)**
+> Status: **Implemented (Task 006D; Result notification recipients approved in Task 012)**
 > Related: ADR-011 (Grading Configuration Versioning), ADR-012 (Transactional Outbox), ADR-017 (REST API v1), `docs/domain/domain-model.md` §32–§33, Task 006C (Grade + Result storage).
 
 This document defines how Results are **calculated**, **finalized**, **published** and **revised** in V1, and how historical integrity is preserved. It complements the storage foundation already defined by Task 006C.
@@ -121,7 +121,68 @@ Publication insert + outbox event insert happen in **one database transaction**.
 - `ResultPublished` (eventType) — initial publication.
 - `ResultRevisionPublished` — revision.
 
-Payloads carry `eventId`, `schoolId`, `studentId`, `resultType`, the result id(s), `resultValue`, `publicationId`, `publicationVersion`, `publishedAt`. Consumers must be idempotent (at-least-once, CLAUDE.md §32).
+Payloads carry `eventId`, `schoolId`, `studentId`, `resultType`, the result id(s), `resultValue`, `publicationId`, `publicationVersion`, `publishedAt` **and the frozen publication-time notification recipient snapshot** `recipientUserIds` (Task 012). Consumers must be idempotent (at-least-once, CLAUDE.md §32).
+
+### Atomicity of the recipient snapshot (Task 012 §8)
+
+Publication insert + notification-recipient resolution + outbox event insert happen in **one database transaction**. The frozen `recipientUserIds` payload always belongs to the same successful publication operation — a committed publication can never lose its frozen recipient decision, and a failed transaction publishes nothing and freezes nothing.
+
+---
+
+## 9. Result Notification Recipients (Task 012)
+
+Approved V1 recipient policy for `ResultPublished` / `ResultRevisionPublished`:
+
+> Notification recipients are ONLY the eligible PARENT Users of the Student
+> whose ResultPublication was published, evaluated at RESULT PUBLICATION TIME.
+
+A Parent recipient must satisfy ALL of:
+
+1. the Parent belongs to the same School as the Result;
+2. the Parent is linked to the Result student through an **ACTIVE** ParentStudent;
+3. the Parent has a non-null authenticated `user_id`;
+4. that User has an **ACTIVE** SchoolMembership in the same School.
+
+Students have no V1 accounts; Teachers, SCHOOL_ADMIN and SUPER_ADMIN are
+operational actors — never automatic Result notification recipients.
+
+### Resolution & freezing
+
+- A small pure domain resolver (`grades/domain/result-recipients`) reduces the
+  candidate facts (loaded School-scoped by the repository at publication time)
+  into a deterministic, deduplicated, canonical-ordered list of
+  `recipientUserIds`. A single authenticated User reachable through several
+  Parent/relationships appears exactly once.
+- The resolved list is frozen **inside the existing Outbox event payload** —
+  no new snapshot table, no schema change. The stored `recipientUserIds` are
+  historical event data ("Users eligible when this publication occurred") and
+  are NEVER recalculated by the Notification processor.
+- **Revisions resolve independently**: every publication event (initial or
+  revision) resolves its OWN current recipients at its own publication time.
+  A revision never copies the previous publication's list (Task 012 §9/§10).
+
+### Zero recipients (Task 012 §5)
+
+A ResultPublication is an academic record. Zero eligible Parents does NOT block
+publication — the event is still created with `recipientUserIds: []`, and
+processing it succeeds with zero notifications (PROCESSED, not an error).
+
+### Historical integrity (Task 012 §17/§18)
+
+ParentStudent and SchoolMembership rows may change AFTER publication. The frozen
+event recipient set never changes: an ENDED relationship does not remove an
+already-frozen recipient, and an INACTIVE membership does not either — the
+notifications composite FK targets `school_memberships(school_id, user_id)`,
+and INACTIVE rows still satisfy it, so delayed event processing preserves the
+historical publication-time decision.
+
+### Notification ≠ access (Task 012 §21/§22)
+
+A Notification references the exact ResultPublication as `source_id`, but
+notification existence NEVER grants Result access. Opening the source still
+requires the normal school-scoped authorization pipeline (Authenticated →
+Membership → School Context → Parent relationship/ownership → Resource state →
+ALLOW/DENY). There is no "notification possession" authorization.
 
 ---
 
@@ -169,7 +230,7 @@ All endpoints are protected and server-authorized (`getSessionUserId` + school c
 
 ---
 
-## 8. Tests
+## 10. Tests
 
 | File | Covers |
 |---|---|
@@ -177,12 +238,17 @@ All endpoints are protected and server-authorized (`getSessionUserId` + school c
 | `apps/web/__tests__/grades/result-workflow.test.ts` | PGlite end-to-end: calc→finalize→publish→revise, idempotency, snapshot immutability, config binding, outbox events, period/annual aggregation (6 tests). |
 | `apps/web/__tests__/grades/publication-auth.test.ts` | Authorization matrix + tenant isolation + resource state (8 tests). |
 | `apps/web/__tests__/grades/grading-rules.test.ts` | Rules payload validator (existing Task 006A). |
+| `apps/web/__tests__/notifications/result-recipients.test.ts` | Pure resolver: eligibility filters, deduplication, deterministic ordering, zero-parents → `[]` (Task 012 §23). |
+| `apps/web/__tests__/notifications/result-notifications.test.ts` | ResultPublished/ResultRevisionPublished payload freezing, publication → processing integration, historical stability (ParentStudent/SchoolMembership changes), zero-recipient processing, malformed payload → FAILED, source reference, end-to-end T1/T2 scenario (Task 012 §24/§25/§26). |
 
 ---
 
-## 9. Non-Goals (V1)
+## 11. Non-Goals (V1)
 
-- No notification handlers/email/SMS/push for published events.
+- No email/SMS/push delivery for published results — notifications are the
+  persisted in-app records produced by the Notifications processor (Task 012
+  closes the ResultPublished → Notifications integration gap; delivery
+  channels remain out of scope, ADR-014/ADR-015).
 - No outbox processor/delivery worker yet (a later task).
 - No gradebook-closing automation.
 - No announcement/gradebook UI (later UI tasks).

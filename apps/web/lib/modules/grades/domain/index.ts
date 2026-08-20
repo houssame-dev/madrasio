@@ -1,5 +1,6 @@
 export * from './grading-rules';
 export * from './results';
+export * from './result-recipients';
 export { DecimalValue, DECIMAL_SCALE } from './calculation';
 export {
   computeSubjectResult,

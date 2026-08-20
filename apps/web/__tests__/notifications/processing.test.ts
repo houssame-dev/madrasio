@@ -5,9 +5,15 @@
  * migrations applied (including migration 0012). Tests the outbox lifecycle,
  * idempotent replay, snapshot-based recipient resolution (§30), the
  * "notification never grants source access" rule (§31), and the Task 010.1
- * safety hardening: unknown events and unapproved-policy Result events are
- * explicit FAILED outcomes — never silently dropped, never marked PROCESSED,
- * never partially processed, and safe to reprocess.
+ * safety hardening: unknown events are explicit FAILED outcomes — never
+ * silently dropped, never marked PROCESSED, never partially processed, and
+ * safe to reprocess.
+ *
+ * Result events (ResultPublished / ResultRevisionPublished) are covered by the
+ * Task 012 policy: their recipients come from the frozen `recipientUserIds`
+ * in the event payload; see `result-notifications.test.ts` for the full
+ * publication → processing integration matrix. This file only verifies that a
+ * Result event referencing an unresolvable publication fails explicitly.
  */
 
 import { eq } from 'drizzle-orm';
@@ -231,7 +237,7 @@ describe('outbox → notification processing (Task 010 §29)', () => {
     expect(await loadNotifications(testDb)).toHaveLength(0);
   });
 
-  it('rejects a ResultPublished event until a recipient policy is approved (§15 boundary)', async () => {
+  it('a Result event referencing an unresolvable publication fails explicitly (PUBLICATION_NOT_FOUND)', async () => {
     const { testDb, schoolId } = await setup();
     const event = await seedOutboxEvent(testDb.seed, 'ResultPublished', {
       eventId: randomUUID(),
@@ -246,24 +252,25 @@ describe('outbox → notification processing (Task 010 §29)', () => {
       publicationId: randomUUID(),
       publicationVersion: 1,
       publishedAt: new Date().toISOString(),
+      recipientUserIds: [],
     });
 
-    const promise = processNotificationEvent(testDb.db, { outboxEventId: event.id });
-    await expect(promise).rejects.toMatchObject({ featureCode: 'RESULT_RECIPIENT_POLICY_NOT_APPROVED' });
+    // The event School context is enforced server-side: the publication does
+    // not exist in this School, so the event is an explicit FAILED outcome —
+    // never PROCESSED, never silently dropped, zero notifications (Task 012
+    // §20/§21).
+    await expect(processNotificationEvent(testDb.db, { outboxEventId: event.id })).rejects.toMatchObject({
+      featureCode: 'PUBLICATION_NOT_FOUND',
+    });
 
-    // The failure is EXPLICIT (Task 010.1): the event is marked FAILED —
-    // never PROCESSED, never silently dropped — and zero notifications are
-    // created. No Result recipient policy is invented here.
     const [stored] = await testDb.seed.select().from(schema.outboxEvents).where(eq(schema.outboxEvents.id, event.id));
     expect(stored.status).toBe('FAILED');
-    expect(stored.lastError).toContain('recipient policy');
     expect(stored.processedAt).toBeNull();
     expect(await loadNotifications(testDb)).toHaveLength(0);
 
-    // Reprocessing the FAILED event is safe: it re-fails with the same code
-    // and remains FAILED with no notifications.
+    // Reprocessing the FAILED event is safe: it re-fails with the same code.
     await expect(processNotificationEvent(testDb.db, { outboxEventId: event.id })).rejects.toMatchObject({
-      featureCode: 'RESULT_RECIPIENT_POLICY_NOT_APPROVED',
+      featureCode: 'PUBLICATION_NOT_FOUND',
     });
     const [storedAfterRetry] = await testDb.seed
       .select()

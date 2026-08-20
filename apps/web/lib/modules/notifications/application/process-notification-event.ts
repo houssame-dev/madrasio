@@ -18,11 +18,18 @@
  * (BR-ANNOUNCEMENT-010). Content comes from the immutable AnnouncementVersion
  * the publication references.
  *
- * RESULTS (Task 010 §15): ResultPublished / ResultRevisionPublished are a
- * BOUNDARY. No Result recipient policy is approved yet, so processing THROWS
- * `RESULT_RECIPIENT_POLICY_NOT_APPROVED` and the event is explicitly marked
- * FAILED — it is never marked PROCESSED, never silently dropped, and never
- * partially processed (a later Result policy task enables these events).
+ * RESULTS (Task 012): ResultPublished / ResultRevisionPublished recipients
+ * come EXCLUSIVELY from the frozen `recipientUserIds` frozen in the event
+ * payload at publication time (Task 012 §7/§11) — the processor NEVER queries
+ * ParentStudent. It validates the payload, deduplicates defensively, confirms
+ * the exact ResultPublication in the event's School, and creates one
+ * notification per frozen recipient (source_id = the ResultPublication).
+ * Historical events keep their frozen recipient set even if ParentStudent or
+ * SchoolMembership rows changed afterwards (Task 012 §17/§18) — the
+ * notifications composite FK targets `school_memberships`, and INACTIVE rows
+ * still satisfy it, so delayed processing never rewrites the historical
+ * decision. A valid event with zero recipients processes successfully
+ * (zero notifications, PROCESSED) — it is NOT an error (Task 012 §12).
  *
  * UNSUPPORTED EVENTS (Task 010.1): an unknown event type is likewise an
  * explicit failure — `EVENT_TYPE_NOT_SUPPORTED` is thrown and the event is
@@ -36,8 +43,13 @@
  */
 
 import type { AnnouncementEventPayload } from '@/lib/modules/announcements/domain/announcement-events';
+import type { ResultEventPayload } from '@/lib/modules/grades/domain/results';
 
-import { createAnnouncementPublishedNotificationContent } from '../domain/notification-content';
+import {
+  createAnnouncementPublishedNotificationContent,
+  createResultPublishedNotificationContent,
+  createResultRevisedNotificationContent,
+} from '../domain/notification-content';
 import {
   notificationSourceTypeForEvent,
   notificationTypeForEvent,
@@ -93,6 +105,34 @@ function validateAnnouncementEventPayload(payload: Record<string, unknown>): Ann
 }
 
 /**
+ * Validates the Result outbox payload contract (Task 012 §11/§20). The frozen
+ * `recipientUserIds` array is part of the contract; a malformed payload is an
+ * explicit FAILED outcome — never PROCESSED, never silently dropped.
+ */
+function validateResultEventPayload(payload: Record<string, unknown>): ResultEventPayload {
+  if (
+    !isNonEmptyString(payload.eventId) ||
+    (payload.eventType !== 'ResultPublished' && payload.eventType !== 'ResultRevisionPublished') ||
+    !isNonEmptyString(payload.schoolId) ||
+    !isNonEmptyString(payload.studentId) ||
+    (payload.resultType !== 'SUBJECT' && payload.resultType !== 'PERIOD' && payload.resultType !== 'ANNUAL') ||
+    !isNonEmptyString(payload.resultValue) ||
+    !isNonEmptyString(payload.publicationId) ||
+    typeof payload.publicationVersion !== 'number' ||
+    payload.publicationVersion <= 0 ||
+    !isNonEmptyString(payload.publishedAt) ||
+    !Array.isArray(payload.recipientUserIds) ||
+    payload.recipientUserIds.some((id) => !isNonEmptyString(id))
+  ) {
+    throw new NotificationProcessingError(
+      'EVENT_PAYLOAD_INVALID',
+      'The result event payload is malformed.',
+    );
+  }
+  return payload as unknown as ResultEventPayload;
+}
+
+/**
  * Processes one outbox event into persisted notifications.
  *
  * SUCCESS (supported event): notification inserts + the PROCESSED transition
@@ -100,13 +140,13 @@ function validateAnnouncementEventPayload(payload: Record<string, unknown>): Ann
  * event stays retryable with no partial notifications (Task 010 §19).
  *
  * FAILURE (Task 010.1): a deterministic domain failure — unknown/unsupported
- * event type, a Result event whose recipient policy is not approved, a
- * malformed payload, or an unresolvable source — is NEVER silently dropped
- * and NEVER marked PROCESSED. The error propagates to the caller AND the
- * event is explicitly moved to FAILED with a readable `last_error` (the
- * existing Outbox lifecycle). A FAILED event is still retryable: it is only
- * short-circuited when `PROCESSED`, so reprocessing re-attempts it (and
- * either resolves to PROCESSED or re-records the FAILED state).
+ * event type, a malformed payload, or an unresolvable source — is NEVER
+ * silently dropped and NEVER marked PROCESSED. The error propagates to the
+ * caller AND the event is explicitly moved to FAILED with a readable
+ * `last_error` (the existing Outbox lifecycle). A FAILED event is still
+ * retryable: it is only short-circuited when `PROCESSED`, so reprocessing
+ * re-attempts it (and either resolves to PROCESSED or re-records the FAILED
+ * state).
  *
  * Unexpected/infrastructure errors (NOT a `NotificationProcessingError`) are
  * left as-is (the event stays PENDING) so a transient failure remains
@@ -158,13 +198,13 @@ async function processEvent(
     return processAnnouncementPublished(db, event, notificationType, sourceType);
   }
 
-  // ResultPublished / ResultRevisionPublished — boundary (Task 010 §15). No
-  // Result recipient policy is approved yet, so the event is explicitly
-  // marked FAILED (never PROCESSED, never silently dropped) and must remain
-  // retryable until a Result recipient policy task enables it.
+  if (event.eventType === 'ResultPublished' || event.eventType === 'ResultRevisionPublished') {
+    return processResultPublished(db, event, notificationType, sourceType);
+  }
+
   throw new NotificationProcessingError(
-    'RESULT_RECIPIENT_POLICY_NOT_APPROVED',
-    `Result notification integration requires an approved recipient policy (${event.eventType}).`,
+    'EVENT_TYPE_NOT_SUPPORTED',
+    `Outbox event type "${event.eventType}" has no notification integration.`,
   );
 }
 
@@ -208,6 +248,85 @@ async function processAnnouncementPublished(
     rows.push({
       schoolId,
       recipientUserId: recipient.recipientUserId,
+      notificationType,
+      title: content.title,
+      body: content.body,
+      sourceEventId: event.id,
+      sourceType,
+      sourceId: publication.id,
+    });
+  }
+
+  // INSERT + PROCESSED mark in ONE transaction (Task 010 §19): a failure rolls
+  // back both, leaving the event retryable with no partially-created batch.
+  const notificationsCreated = await db.transaction(async (tx) => {
+    const created = await repo.insertNotifications(tx, rows);
+    await repo.markOutboxEventProcessed(tx, event.id);
+    return created;
+  });
+
+  return {
+    outboxEventId: event.id,
+    eventType: event.eventType,
+    notificationType,
+    notificationsCreated,
+    alreadyProcessed: false,
+  };
+}
+
+/**
+ * Result events (Task 012): notification recipients come EXCLUSIVELY from the
+ * frozen `recipientUserIds` in the event payload — the processor NEVER queries
+ * ParentStudent (Task 012 §11). It validates the payload, confirms the exact
+ * ResultPublication in the event's School (school-context enforcement, §7),
+ * deduplicates defensively, and inserts one notification per recipient inside
+ * the SAME transaction as the PROCESSED mark. Zero recipients processes
+ * successfully — zero notifications, PROCESSED (Task 012 §12).
+ *
+ * Content is built ONLY from immutable event payload data (the frozen
+ * `resultValue`); no live Result rows are read (Task 012 §14). The
+ * notification `source_id` points at the exact ResultPublication that caused
+ * the event (Task 012 §15).
+ */
+async function processResultPublished(
+  db: NotificationsDb,
+  event: repo.OutboxEventRow,
+  notificationType: NotificationType,
+  sourceType: NotificationSourceType,
+): Promise<ProcessNotificationEventResult> {
+  const payload = validateResultEventPayload(event.payload);
+  const schoolId = payload.schoolId;
+
+  // School-scoped lookup: a publication from another School can never resolve
+  // (tenant isolation is server-side, CLAUDE.md §13). The publication row is
+  // NOT used to recompute recipients — the frozen payload is the source of
+  // truth (Task 012 §7).
+  const publication = await repo.findResultPublication(db, schoolId, payload.publicationId);
+  if (!publication) {
+    throw new NotificationProcessingError(
+      'PUBLICATION_NOT_FOUND',
+      `Result publication ${payload.publicationId} was not found in this school.`,
+    );
+  }
+
+  const content =
+    event.eventType === 'ResultRevisionPublished'
+      ? createResultRevisedNotificationContent({ resultValue: payload.resultValue })
+      : createResultPublishedNotificationContent({ resultValue: payload.resultValue });
+
+  // Defensive deduplication (Task 012 §11 step 3) — the frozen payload is
+  // already deduplicated at publication time, but a tampered/legacy event must
+  // still produce at most one notification per recipient.
+  const seen = new Set<string>();
+  const rows: NotificationInsert[] = [];
+  for (const recipientUserId of payload.recipientUserIds) {
+    if (seen.has(recipientUserId)) {
+      continue;
+    }
+    seen.add(recipientUserId);
+    rows.push({
+      schoolId,
+      recipientUserId,
       notificationType,
       title: content.title,
       body: content.body,

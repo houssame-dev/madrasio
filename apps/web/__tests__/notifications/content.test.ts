@@ -73,15 +73,15 @@ describe('notification content (Task 010 §21/§22)', () => {
     expect(a).toEqual(b);
   });
 
-  it('result content is deterministic and distinguishes publish vs revision', () => {
-    const input = { resultLabel: 'Mathematics — Term 1', resultValue: '15.50' };
+  it('result content is deterministic, frozen-event-only, and distinguishes publish vs revision', () => {
+    const input = { resultValue: '15.50' };
     expect(createResultPublishedNotificationContent(input)).toEqual({
       title: 'Result published',
-      body: 'Mathematics — Term 1: 15.50',
+      body: 'Result value: 15.50',
     });
     expect(createResultRevisedNotificationContent(input)).toEqual({
-      title: 'Result revised',
-      body: 'Mathematics — Term 1: 15.50',
+      title: 'Result updated',
+      body: 'Result value: 15.50',
     });
   });
 });

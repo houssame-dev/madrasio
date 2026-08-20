@@ -67,4 +67,12 @@ export interface ResultEventPayload {
   publicationId: string;
   publicationVersion: number;
   publishedAt: string;
+  /**
+   * Immutable publication-time recipient snapshot (Task 012 §6/§7): the
+   * deduplicated, canonical-ordered user ids of the eligible PARENT Users of
+   * the Student, frozen when this ResultPublication was published. NEVER
+   * recalculated by the Notification processor. May be empty — zero eligible
+   * Parents does not block publication (Task 012 §5).
+   */
+  recipientUserIds: string[];
 }
