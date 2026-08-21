@@ -43,6 +43,8 @@ describe('role → permission mapping (CLAUDE.md §6, Task 005 §6)', () => {
     expect(roleHasPermission('SCHOOL_ADMIN', 'students.manage')).toBe(true);
     expect(roleHasPermission('SCHOOL_ADMIN', 'teachers.manage')).toBe(true);
     expect(roleHasPermission('SCHOOL_ADMIN', 'grades.publish')).toBe(true);
+    expect(roleHasPermission('SCHOOL_ADMIN', 'academic_structure.read')).toBe(true);
+    expect(roleHasPermission('SCHOOL_ADMIN', 'academic_structure.manage')).toBe(true);
   });
 
   it('allows a teacher to enter grades within their assignment scope', () => {
@@ -60,9 +62,16 @@ describe('role → permission mapping (CLAUDE.md §6, Task 005 §6)', () => {
   });
 
   it('does not grant teachers school/student management permissions', () => {
+    expect(roleHasPermission('TEACHER', 'academic_structure.read')).toBe(true);
+    expect(roleHasPermission('TEACHER', 'academic_structure.manage')).toBe(false);
     expect(roleHasPermission('TEACHER', 'students.manage')).toBe(false);
     expect(roleHasPermission('TEACHER', 'teachers.manage')).toBe(false);
     expect(roleHasPermission('TEACHER', 'grades.publish')).toBe(false);
+  });
+
+  it('does not expose raw academic-structure APIs to parents in V1', () => {
+    expect(roleHasPermission('PARENT', 'academic_structure.read')).toBe(false);
+    expect(roleHasPermission('PARENT', 'academic_structure.manage')).toBe(false);
   });
 
   it('denies every permission when the role is null/undefined', () => {

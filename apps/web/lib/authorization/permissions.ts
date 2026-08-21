@@ -14,6 +14,8 @@ import type { Role } from './roles';
  */
 export const PERMISSIONS = [
   'school.read',
+  'academic_structure.read',
+  'academic_structure.manage',
   'students.read',
   'students.manage',
   'teachers.read',
@@ -55,6 +57,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   SUPER_ADMIN: PERMISSIONS,
   SCHOOL_ADMIN: [
     'school.read',
+    'academic_structure.read',
+    'academic_structure.manage',
     'students.read',
     'students.manage',
     'teachers.read',
@@ -73,6 +77,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   ],
   TEACHER: [
     'school.read',
+    'academic_structure.read',
     'students.read',
     'grades.read',
     'grades.enter',

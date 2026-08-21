@@ -7,12 +7,12 @@
  */
 
 import { NextResponse } from 'next/server';
-import type { ZodType } from 'zod';
+import type { output, ZodTypeAny } from 'zod';
 
 import { AppError, ValidationError } from '@/lib/errors';
 
 /** Parses a JSON body against a Zod schema, throwing ValidationError on failure. */
-export async function parseBody<T>(request: Request, schema: ZodType<T>): Promise<T> {
+export async function parseBody<S extends ZodTypeAny>(request: Request, schema: S): Promise<output<S>> {
   let raw: unknown;
   try {
     raw = await request.json();
@@ -28,7 +28,7 @@ export async function parseBody<T>(request: Request, schema: ZodType<T>): Promis
       })),
     });
   }
-  return parsed.data;
+  return parsed.data as output<S>;
 }
 
 /** Structural detection of a module feature-scoped error (e.g. ResultDomainError). */
