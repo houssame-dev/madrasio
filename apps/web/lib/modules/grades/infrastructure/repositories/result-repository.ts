@@ -16,7 +16,7 @@
  * guarantee (CLAUDE.md §13/§19).
  */
 
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, exists, inArray, type SQL } from 'drizzle-orm';
 import * as schema from '@school/database';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 
@@ -30,6 +30,45 @@ import type { ResultRecipientCandidate } from '../../domain/result-recipients';
 
 /** The minimal typed Drizzle surface the repository needs (driver-agnostic). */
 export type GradesDb = PgDatabase<PgQueryResultHKT, typeof schema>;
+
+export interface ResultPaging { limit: number; offset: number }
+export interface ResultFilters {
+  studentId?: string;
+  academicYearId?: string;
+  academicPeriodId?: string;
+  classId?: string;
+  subjectId?: string;
+  status?: ResultStatus;
+}
+
+function resultWhere(conditions: (SQL | undefined)[]): SQL | undefined {
+  return and(...conditions.filter((condition): condition is SQL => condition !== undefined));
+}
+
+function teacherSubjectResultScope(
+  db: GradesDb,
+  schoolId: string,
+  userId: string | undefined,
+): SQL | undefined {
+  if (!userId) return undefined;
+  return exists(
+    db.select({ id: schema.teacherAssignments.id })
+      .from(schema.teacherAssignments)
+      .innerJoin(schema.teachers, and(
+        eq(schema.teachers.id, schema.teacherAssignments.teacherId),
+        eq(schema.teachers.schoolId, schema.teacherAssignments.schoolId),
+      ))
+      .where(and(
+        eq(schema.teacherAssignments.schoolId, schoolId),
+        eq(schema.teachers.userId, userId),
+        eq(schema.teachers.status, 'ACTIVE'),
+        eq(schema.teacherAssignments.status, 'ACTIVE'),
+        eq(schema.teacherAssignments.classId, schema.subjectResults.classId),
+        eq(schema.teacherAssignments.subjectId, schema.subjectResults.subjectId),
+        eq(schema.teacherAssignments.academicYearId, schema.subjectResults.academicYearId),
+      )),
+  );
+}
 
 export interface GradebookContextRow {
   gradebookId: string;
@@ -503,6 +542,77 @@ export async function findAnnualResultByContext(
     .limit(1);
 
   return row ?? null;
+}
+
+export async function listSubjectResults(
+  db: GradesDb,
+  schoolId: string,
+  paging: ResultPaging,
+  filters: ResultFilters,
+  teacherUserId?: string,
+) {
+  const condition = resultWhere([
+    eq(schema.subjectResults.schoolId, schoolId),
+    filters.studentId ? eq(schema.subjectResults.studentId, filters.studentId) : undefined,
+    filters.academicYearId ? eq(schema.subjectResults.academicYearId, filters.academicYearId) : undefined,
+    filters.academicPeriodId ? eq(schema.subjectResults.academicPeriodId, filters.academicPeriodId) : undefined,
+    filters.classId ? eq(schema.subjectResults.classId, filters.classId) : undefined,
+    filters.subjectId ? eq(schema.subjectResults.subjectId, filters.subjectId) : undefined,
+    filters.status ? eq(schema.subjectResults.status, filters.status) : undefined,
+    teacherSubjectResultScope(db, schoolId, teacherUserId),
+  ]);
+  const [rows, totals] = await Promise.all([
+    db.select().from(schema.subjectResults).where(condition)
+      .orderBy(desc(schema.subjectResults.createdAt), desc(schema.subjectResults.id))
+      .limit(paging.limit).offset(paging.offset),
+    db.select({ value: count() }).from(schema.subjectResults).where(condition),
+  ]);
+  return { rows, total: totals[0]?.value ?? 0 };
+}
+
+export async function listPeriodResults(
+  db: GradesDb,
+  schoolId: string,
+  paging: ResultPaging,
+  filters: ResultFilters,
+) {
+  const condition = resultWhere([
+    eq(schema.periodResults.schoolId, schoolId),
+    filters.studentId ? eq(schema.periodResults.studentId, filters.studentId) : undefined,
+    filters.academicYearId ? eq(schema.periodResults.academicYearId, filters.academicYearId) : undefined,
+    filters.academicPeriodId ? eq(schema.periodResults.academicPeriodId, filters.academicPeriodId) : undefined,
+    filters.classId ? eq(schema.periodResults.classId, filters.classId) : undefined,
+    filters.status ? eq(schema.periodResults.status, filters.status) : undefined,
+  ]);
+  const [rows, totals] = await Promise.all([
+    db.select().from(schema.periodResults).where(condition)
+      .orderBy(desc(schema.periodResults.createdAt), desc(schema.periodResults.id))
+      .limit(paging.limit).offset(paging.offset),
+    db.select({ value: count() }).from(schema.periodResults).where(condition),
+  ]);
+  return { rows, total: totals[0]?.value ?? 0 };
+}
+
+export async function listAnnualResults(
+  db: GradesDb,
+  schoolId: string,
+  paging: ResultPaging,
+  filters: ResultFilters,
+) {
+  const condition = resultWhere([
+    eq(schema.annualResults.schoolId, schoolId),
+    filters.studentId ? eq(schema.annualResults.studentId, filters.studentId) : undefined,
+    filters.academicYearId ? eq(schema.annualResults.academicYearId, filters.academicYearId) : undefined,
+    filters.classId ? eq(schema.annualResults.classId, filters.classId) : undefined,
+    filters.status ? eq(schema.annualResults.status, filters.status) : undefined,
+  ]);
+  const [rows, totals] = await Promise.all([
+    db.select().from(schema.annualResults).where(condition)
+      .orderBy(desc(schema.annualResults.createdAt), desc(schema.annualResults.id))
+      .limit(paging.limit).offset(paging.offset),
+    db.select({ value: count() }).from(schema.annualResults).where(condition),
+  ]);
+  return { rows, total: totals[0]?.value ?? 0 };
 }
 
 /**

@@ -1,32 +1,3 @@
-import { z } from 'zod';
+import { resultFinalizePOST } from '@/lib/api/results';
 
-import { parseBody, toResultErrorResponse } from '@/lib/api/results';
-import { getSessionUserId } from '@/lib/auth/session';
-import { getDb } from '@/lib/db/client';
-import { finalizeResult } from '@/lib/modules/grades/application';
-
-export const dynamic = 'force-dynamic';
-
-const bodySchema = z.object({
-  schoolId: z.string().uuid(),
-  resultType: z.enum(['SUBJECT', 'PERIOD', 'ANNUAL']),
-});
-
-export async function POST(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
-  try {
-    const body = await parseBody(request, bodySchema);
-    const { id } = await context.params;
-    const userId = await getSessionUserId();
-
-    const result = await finalizeResult(getDb(), {
-      userId,
-      schoolId: body.schoolId,
-      resultType: body.resultType,
-      resultId: id,
-    });
-
-    return Response.json({ data: result }, { status: 200 });
-  } catch (error) {
-    return toResultErrorResponse(error);
-  }
-}
+export const POST = resultFinalizePOST;
