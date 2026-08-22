@@ -79,6 +79,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     'school.read',
     'academic_structure.read',
     'students.read',
+    'teachers.read',
     'grades.read',
     'grades.enter',
     'attendance.read',

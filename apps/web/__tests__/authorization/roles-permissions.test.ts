@@ -48,6 +48,7 @@ describe('role → permission mapping (CLAUDE.md §6, Task 005 §6)', () => {
   });
 
   it('allows a teacher to enter grades within their assignment scope', () => {
+    expect(roleHasPermission('TEACHER', 'teachers.read')).toBe(true);
     expect(roleHasPermission('TEACHER', 'grades.enter')).toBe(true);
     expect(roleHasPermission('TEACHER', 'attendance.manage')).toBe(true);
     expect(roleHasPermission('TEACHER', 'announcements.create')).toBe(true);
