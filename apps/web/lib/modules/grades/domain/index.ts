@@ -1,5 +1,7 @@
 export * from './grading-rules';
 export * from './results';
+export * from './gradebook-contracts';
+export * from './gradebook-lifecycle';
 export * from './result-recipients';
 export { DecimalValue, DECIMAL_SCALE } from './calculation';
 export {

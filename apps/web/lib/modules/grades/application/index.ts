@@ -19,3 +19,5 @@ export {
   type PublishResultView,
 } from './publish-result';
 export { reviseResult, type ReviseResultInput } from './revise-result';
+export * from './gradebook-errors';
+export * from './gradebook-service';
