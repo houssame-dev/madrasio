@@ -418,7 +418,10 @@ export async function findResultNotificationRecipientCandidates(
         eq(schema.schoolMemberships.schoolId, schoolId),
       ),
     )
-    .where(eq(schema.parents.schoolId, schoolId));
+    .where(and(
+      eq(schema.parents.schoolId, schoolId),
+      eq(schema.parents.status, 'ACTIVE'),
+    ));
 
   return rows.map((row) => ({
     userId: row.userId,

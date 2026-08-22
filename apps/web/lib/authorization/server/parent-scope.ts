@@ -9,7 +9,7 @@ import type { AuthorizationDb } from './db';
  * source: ParentStudent (BR-ROLE-005, BR-PARENT-002).
  *
  * A user may hold multiple Parent profiles in one School; relationships are
- * collected across all of them. Only relationships belonging to the School
+ * collected across ACTIVE profiles. Only relationships belonging to the School
  * Context are returned (BR-INTEGRITY-002). Both ACTIVE and ENDED rows are
  * returned with their status so the engine can deny access on ended
  * relationships (BR-PARENT-004) while keeping history intact.
@@ -26,7 +26,11 @@ export async function resolveParentScope(
   const parentRows = await db
     .select({ id: schema.parents.id })
     .from(schema.parents)
-    .where(and(eq(schema.parents.userId, userId), eq(schema.parents.schoolId, schoolId)));
+    .where(and(
+      eq(schema.parents.userId, userId),
+      eq(schema.parents.schoolId, schoolId),
+      eq(schema.parents.status, 'ACTIVE'),
+    ));
 
   if (parentRows.length === 0) {
     return [];

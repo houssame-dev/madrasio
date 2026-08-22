@@ -190,6 +190,7 @@ export async function parentCanReadStudent(db: StudentsDb, userId: string, schoo
       eq(schema.parents.schoolId, schoolId),
       eq(schema.parents.id, schema.parentStudents.parentId),
       eq(schema.parents.userId, userId),
+      eq(schema.parents.status, 'ACTIVE'),
     ))
     .where(and(
       eq(schema.parentStudents.schoolId, schoolId),

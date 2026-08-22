@@ -42,6 +42,7 @@ describe('role → permission mapping (CLAUDE.md §6, Task 005 §6)', () => {
   it('allows a school admin to manage students, teachers and publish grades', () => {
     expect(roleHasPermission('SCHOOL_ADMIN', 'students.manage')).toBe(true);
     expect(roleHasPermission('SCHOOL_ADMIN', 'teachers.manage')).toBe(true);
+    expect(roleHasPermission('SCHOOL_ADMIN', 'parents.manage')).toBe(true);
     expect(roleHasPermission('SCHOOL_ADMIN', 'grades.publish')).toBe(true);
     expect(roleHasPermission('SCHOOL_ADMIN', 'academic_structure.read')).toBe(true);
     expect(roleHasPermission('SCHOOL_ADMIN', 'academic_structure.manage')).toBe(true);
@@ -55,6 +56,8 @@ describe('role → permission mapping (CLAUDE.md §6, Task 005 §6)', () => {
   });
 
   it('keeps a parent read-only across their children’s data', () => {
+    expect(roleHasPermission('PARENT', 'parents.read')).toBe(true);
+    expect(roleHasPermission('PARENT', 'parents.manage')).toBe(false);
     expect(roleHasPermission('PARENT', 'grades.read')).toBe(true);
     expect(roleHasPermission('PARENT', 'announcements.read')).toBe(true);
     expect(roleHasPermission('PARENT', 'notifications.read')).toBe(true);
@@ -63,6 +66,7 @@ describe('role → permission mapping (CLAUDE.md §6, Task 005 §6)', () => {
   });
 
   it('does not grant teachers school/student management permissions', () => {
+    expect(roleHasPermission('TEACHER', 'parents.read')).toBe(false);
     expect(roleHasPermission('TEACHER', 'academic_structure.read')).toBe(true);
     expect(roleHasPermission('TEACHER', 'academic_structure.manage')).toBe(false);
     expect(roleHasPermission('TEACHER', 'students.manage')).toBe(false);
