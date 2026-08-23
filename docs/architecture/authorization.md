@@ -72,8 +72,10 @@ resource-state stages run only when the operation requests them.
 
 ## 5. Scope
 
-- Teacher scope comes ONLY from `TeacherAssignment` (ADR-009); the engine
-  requires an ACTIVE assignment matching Class + Subject + AcademicYear.
+- Teacher scope comes ONLY from `TeacherAssignment` (ADR-009). Subject-bearing
+  operations require an ACTIVE assignment matching Class + Subject +
+  AcademicYear. Daily Attendance uses the same resolved assignments with a
+  Class + AcademicYear requirement because Attendance has no Subject dimension.
 - Parent scope comes ONLY from `ParentStudent` (BR-PARENT-002); the engine
   requires an ACTIVE relationship. The enrollment/academic-context refinement
   is a later module-level policy.

@@ -53,7 +53,7 @@ async function resolveScopeOnDemand(
 ): Promise<void> {
   if (!context.userId || !context.schoolContext) return;
 
-  if (scope?.kind === 'teacher') {
+  if (scope?.kind === 'teacher' || scope?.kind === 'teacherClass') {
     context.scope.teacherAssignments = await resolveTeacherScope(
       db,
       context.userId,

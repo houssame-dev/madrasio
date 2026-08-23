@@ -23,6 +23,9 @@ export interface AuthorizationRequirements {
  *
  * - `teacher` — Teacher scope over (Class, Subject, AcademicYear), granted
  *   exclusively by an ACTIVE TeacherAssignment.
+ * - `teacherClass` — Teacher scope over (Class, AcademicYear), granted when at
+ *   least one ACTIVE TeacherAssignment covers that Class/year. This is used by
+ *   subject-independent domains such as daily Attendance.
  * - `parent`  — Parent scope over a Student, granted exclusively by an ACTIVE
  *   ParentStudent relationship.
  * - `school`  — the operation is School-scoped; a valid School Context is
@@ -30,6 +33,7 @@ export interface AuthorizationRequirements {
  */
 export type ScopeRequirement =
   | { kind: 'teacher'; classId: string; subjectId: string; academicYearId: string }
+  | { kind: 'teacherClass'; classId: string; academicYearId: string }
   | { kind: 'parent'; studentId: string }
   | { kind: 'school' };
 

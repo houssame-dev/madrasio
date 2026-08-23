@@ -89,6 +89,13 @@ export function scopeSatisfies(context: CurrentContext, requirement: ScopeRequir
           a.subjectId === requirement.subjectId &&
           a.academicYearId === requirement.academicYearId,
       );
+    case 'teacherClass':
+      return context.scope.teacherAssignments.some(
+        (a) =>
+          a.status === 'ACTIVE' &&
+          a.classId === requirement.classId &&
+          a.academicYearId === requirement.academicYearId,
+      );
     case 'parent':
       return context.scope.parentStudents.some(
         (p) => p.status === 'ACTIVE' && p.studentId === requirement.studentId,
