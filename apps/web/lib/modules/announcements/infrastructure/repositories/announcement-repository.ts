@@ -23,11 +23,15 @@
  * with the publication (BR-ANNOUNCEMENT-009/010).
  */
 
-import { and, desc, eq, isNotNull } from 'drizzle-orm';
+import {
+  and, count, desc, eq, exists, gte, ilike, inArray, isNotNull, lte, or, sql,
+  type SQL,
+} from 'drizzle-orm';
 import * as schema from '@school/database';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 
 import type {
+  AnnouncementListInput,
   AnnouncementAudience,
   AnnouncementTargetType,
   ParentRecipientCandidate,
@@ -42,6 +46,8 @@ export interface AnnouncementRow {
   schoolId: string;
   status: 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'ARCHIVED';
   createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AnnouncementVersionRow {
@@ -52,6 +58,8 @@ export interface AnnouncementVersionRow {
   title: string;
   body: string;
   createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AnnouncementTargetRow {
@@ -75,6 +83,116 @@ export interface AnnouncementPublicationRow {
   publishedAt: Date | null;
   publishedBy: string;
   idempotencyKey: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Paging { limit: number; offset: number }
+
+function where(conditions: (SQL | undefined)[]): SQL | undefined {
+  return and(...conditions.filter((condition): condition is SQL => condition !== undefined));
+}
+
+function teacherManagementScope(schoolId: string, userId: string): SQL {
+  return sql`(
+    ${schema.announcements.createdBy} = ${userId}
+    AND EXISTS (
+      SELECT 1 FROM teachers teacher
+      JOIN teacher_assignments assignment
+        ON assignment.teacher_id = teacher.id
+       AND assignment.school_id = teacher.school_id
+      WHERE teacher.school_id = ${schoolId}
+        AND teacher.user_id = ${userId}
+        AND teacher.status = 'ACTIVE'
+        AND assignment.status = 'ACTIVE'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM announcement_targets target
+      JOIN announcement_versions version
+        ON version.id = target.announcement_version_id
+       AND version.school_id = target.school_id
+      WHERE version.school_id = ${schoolId}
+        AND version.announcement_id = ${schema.announcements.id}
+        AND version.version_number = (
+          SELECT MAX(latest.version_number)
+          FROM announcement_versions latest
+          WHERE latest.school_id = ${schoolId}
+            AND latest.announcement_id = ${schema.announcements.id}
+        )
+        AND (
+          target.target_type = 'SCHOOL'
+          OR NOT EXISTS (
+            SELECT 1 FROM teachers scoped_teacher
+            JOIN teacher_assignments scoped_assignment
+              ON scoped_assignment.teacher_id = scoped_teacher.id
+             AND scoped_assignment.school_id = scoped_teacher.school_id
+            WHERE scoped_teacher.school_id = ${schoolId}
+              AND scoped_teacher.user_id = ${userId}
+              AND scoped_teacher.status = 'ACTIVE'
+              AND scoped_assignment.status = 'ACTIVE'
+              AND scoped_assignment.class_id = target.class_id
+              AND scoped_assignment.academic_year_id = target.academic_year_id
+          )
+        )
+    )
+  )`;
+}
+
+export async function listAnnouncements(
+  db: AnnouncementsDb,
+  schoolId: string,
+  paging: Paging,
+  filters: AnnouncementListInput,
+  teacherUserId?: string,
+) {
+  const targetFilter = filters.audience || filters.targetType || filters.classId ? exists(
+    db.select({ id: schema.announcementTargets.id }).from(schema.announcementTargets)
+      .innerJoin(schema.announcementVersions, and(
+        eq(schema.announcementVersions.schoolId, schema.announcementTargets.schoolId),
+        eq(schema.announcementVersions.id, schema.announcementTargets.announcementVersionId),
+      )).where(and(
+        eq(schema.announcementVersions.schoolId, schoolId),
+        eq(schema.announcementVersions.announcementId, schema.announcements.id),
+        filters.audience ? eq(schema.announcementTargets.audience, filters.audience) : undefined,
+        filters.targetType ? eq(schema.announcementTargets.targetType, filters.targetType) : undefined,
+        filters.classId ? eq(schema.announcementTargets.classId, filters.classId) : undefined,
+      )),
+  ) : undefined;
+  const publicationFilter = filters.publicationStatus ? exists(
+    db.select({ id: schema.announcementPublications.id }).from(schema.announcementPublications).where(and(
+      eq(schema.announcementPublications.schoolId, schoolId),
+      eq(schema.announcementPublications.announcementId, schema.announcements.id),
+      eq(schema.announcementPublications.status, filters.publicationStatus),
+    )),
+  ) : undefined;
+  const searchFilter = filters.search ? exists(
+    db.select({ id: schema.announcementVersions.id }).from(schema.announcementVersions).where(and(
+      eq(schema.announcementVersions.schoolId, schoolId),
+      eq(schema.announcementVersions.announcementId, schema.announcements.id),
+      or(
+        ilike(schema.announcementVersions.title, `%${filters.search}%`),
+        ilike(schema.announcementVersions.body, `%${filters.search}%`),
+      ),
+    )),
+  ) : undefined;
+  const condition = where([
+    eq(schema.announcements.schoolId, schoolId),
+    filters.status ? eq(schema.announcements.status, filters.status) : undefined,
+    filters.createdFrom ? gte(schema.announcements.createdAt, filters.createdFrom) : undefined,
+    filters.createdTo ? lte(schema.announcements.createdAt, filters.createdTo) : undefined,
+    targetFilter,
+    publicationFilter,
+    searchFilter,
+    teacherUserId ? teacherManagementScope(schoolId, teacherUserId) : undefined,
+  ]);
+  const [rows, totals] = await Promise.all([
+    db.select().from(schema.announcements).where(condition)
+      .orderBy(desc(schema.announcements.createdAt), desc(schema.announcements.id))
+      .limit(paging.limit).offset(paging.offset),
+    db.select({ value: count() }).from(schema.announcements).where(condition),
+  ]);
+  return { rows, total: totals[0]?.value ?? 0 };
 }
 
 /** The candidate universe for one publication resolution (domain/recipients). */
@@ -95,8 +213,51 @@ export async function findAnnouncement(
     .limit(1);
 
   return row
-    ? { id: row.id, schoolId: row.schoolId, status: row.status, createdBy: row.createdBy }
+    ? {
+        id: row.id, schoolId: row.schoolId, status: row.status, createdBy: row.createdBy,
+        createdAt: row.createdAt, updatedAt: row.updatedAt,
+      }
     : null;
+}
+
+export async function insertAnnouncement(
+  db: AnnouncementsDb,
+  input: typeof schema.announcements.$inferInsert,
+) {
+  const [row] = await db.insert(schema.announcements).values(input).returning();
+  return row;
+}
+
+export async function findLatestVersion(db: AnnouncementsDb, schoolId: string, announcementId: string) {
+  const [row] = await db.select().from(schema.announcementVersions).where(and(
+    eq(schema.announcementVersions.schoolId, schoolId),
+    eq(schema.announcementVersions.announcementId, announcementId),
+  )).orderBy(desc(schema.announcementVersions.versionNumber), desc(schema.announcementVersions.id)).limit(1);
+  return row ?? null;
+}
+
+export async function listVersions(
+  db: AnnouncementsDb, schoolId: string, announcementId: string, paging: Paging,
+) {
+  const condition = and(
+    eq(schema.announcementVersions.schoolId, schoolId),
+    eq(schema.announcementVersions.announcementId, announcementId),
+  );
+  const [rows, totals] = await Promise.all([
+    db.select().from(schema.announcementVersions).where(condition)
+      .orderBy(desc(schema.announcementVersions.versionNumber), desc(schema.announcementVersions.id))
+      .limit(paging.limit).offset(paging.offset),
+    db.select({ value: count() }).from(schema.announcementVersions).where(condition),
+  ]);
+  return { rows, total: totals[0]?.value ?? 0 };
+}
+
+export async function insertVersion(
+  db: AnnouncementsDb,
+  input: typeof schema.announcementVersions.$inferInsert,
+) {
+  const [row] = await db.insert(schema.announcementVersions).values(input).returning();
+  return row;
 }
 
 /**
@@ -131,6 +292,8 @@ export async function findVersionForAnnouncement(
         title: row.title,
         body: row.body,
         createdBy: row.createdBy,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
       }
     : null;
 }
@@ -159,6 +322,97 @@ export async function findTargets(
     academicYearId: row.academicYearId,
     classId: row.classId,
   }));
+}
+
+export async function versionHasPublication(
+  db: AnnouncementsDb, schoolId: string, announcementVersionId: string,
+) {
+  const [row] = await db.select({ id: schema.announcementPublications.id })
+    .from(schema.announcementPublications).where(and(
+      eq(schema.announcementPublications.schoolId, schoolId),
+      eq(schema.announcementPublications.announcementVersionId, announcementVersionId),
+    )).limit(1);
+  return row !== undefined;
+}
+
+export async function hasScheduledPublication(db: AnnouncementsDb, schoolId: string, announcementId: string) {
+  const [row] = await db.select({ id: schema.announcementPublications.id })
+    .from(schema.announcementPublications).where(and(
+      eq(schema.announcementPublications.schoolId, schoolId),
+      eq(schema.announcementPublications.announcementId, announcementId),
+      eq(schema.announcementPublications.status, 'SCHEDULED'),
+    )).limit(1);
+  return row !== undefined;
+}
+
+export async function findAcademicYears(db: AnnouncementsDb, schoolId: string, ids: string[]) {
+  if (ids.length === 0) return [];
+  return db.select().from(schema.academicYears).where(and(
+    eq(schema.academicYears.schoolId, schoolId), inArray(schema.academicYears.id, ids),
+  ));
+}
+
+export async function findClasses(db: AnnouncementsDb, schoolId: string, ids: string[]) {
+  if (ids.length === 0) return [];
+  return db.select().from(schema.classes).where(and(
+    eq(schema.classes.schoolId, schoolId), inArray(schema.classes.id, ids),
+  ));
+}
+
+export async function insertTargets(
+  db: AnnouncementsDb,
+  inputs: (typeof schema.announcementTargets.$inferInsert)[],
+) {
+  return db.insert(schema.announcementTargets).values(inputs).returning();
+}
+
+export async function countTargets(db: AnnouncementsDb, schoolId: string, announcementVersionId: string) {
+  const [row] = await db.select({ value: count() }).from(schema.announcementTargets).where(and(
+    eq(schema.announcementTargets.schoolId, schoolId),
+    eq(schema.announcementTargets.announcementVersionId, announcementVersionId),
+  ));
+  return row?.value ?? 0;
+}
+
+export async function countPublications(db: AnnouncementsDb, schoolId: string, announcementId: string) {
+  const [row] = await db.select({ value: count() }).from(schema.announcementPublications).where(and(
+    eq(schema.announcementPublications.schoolId, schoolId),
+    eq(schema.announcementPublications.announcementId, announcementId),
+  ));
+  return row?.value ?? 0;
+}
+
+export async function listPublications(
+  db: AnnouncementsDb, schoolId: string, announcementId: string, paging: Paging,
+) {
+  const condition = and(
+    eq(schema.announcementPublications.schoolId, schoolId),
+    eq(schema.announcementPublications.announcementId, announcementId),
+  );
+  const [rows, totals] = await Promise.all([
+    db.select({
+      id: schema.announcementPublications.id,
+      announcementId: schema.announcementPublications.announcementId,
+      announcementVersionId: schema.announcementPublications.announcementVersionId,
+      publicationVersion: schema.announcementPublications.publicationVersion,
+      status: schema.announcementPublications.status,
+      scheduledAt: schema.announcementPublications.scheduledAt,
+      publishedAt: schema.announcementPublications.publishedAt,
+      publishedBy: schema.announcementPublications.publishedBy,
+      createdAt: schema.announcementPublications.createdAt,
+      recipientCount: count(schema.publicationRecipientSnapshots.id),
+    }).from(schema.announcementPublications).leftJoin(
+      schema.publicationRecipientSnapshots,
+      and(
+        eq(schema.publicationRecipientSnapshots.schoolId, schema.announcementPublications.schoolId),
+        eq(schema.publicationRecipientSnapshots.publicationId, schema.announcementPublications.id),
+      ),
+    ).where(condition).groupBy(schema.announcementPublications.id)
+      .orderBy(desc(schema.announcementPublications.publicationVersion), desc(schema.announcementPublications.id))
+      .limit(paging.limit).offset(paging.offset),
+    db.select({ value: count() }).from(schema.announcementPublications).where(condition),
+  ]);
+  return { rows, total: totals[0]?.value ?? 0 };
 }
 
 export async function findLatestPublication(
@@ -487,5 +741,7 @@ function toPublicationRow(row: typeof schema.announcementPublications.$inferSele
     publishedAt: row.publishedAt,
     publishedBy: row.publishedBy,
     idempotencyKey: row.idempotencyKey,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }

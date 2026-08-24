@@ -1,4 +1,4 @@
-# Announcements module (placeholder)
+# Announcements module
 
 Owned by: Announcements
 
@@ -11,4 +11,6 @@ Responsibilities:
 - Revisions / versioning
 - Historical recipient snapshots
 
-This folder is a placeholder.
+The implemented Application/API boundary is owned under
+`lib/modules/announcements`. See `docs/architecture/announcements-publication.md`
+and `docs/architecture/announcements-management-api.md`.

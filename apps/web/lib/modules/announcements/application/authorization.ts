@@ -40,6 +40,20 @@ export interface AnnouncementPublishAuthorization {
   teacherAssignments: Awaited<ReturnType<typeof resolveTeacherScope>>;
 }
 
+export async function requireAnnouncementOperation(
+  db: AnnouncementsDb,
+  input: AuthorizeInput,
+  permission: Permission,
+): Promise<AnnouncementPublishAuthorization> {
+  const context = await resolveCurrentContext(db as unknown as AuthorizationDb, input);
+  const decision = evaluateAuthorization(context, { permission });
+  if (!decision.allowed) throw denialToError(decision);
+  const teacherAssignments = context.role === 'TEACHER' && context.userId && context.schoolContext
+    ? await resolveTeacherScope(db as unknown as AuthorizationDb, context.userId, context.schoolContext.schoolId)
+    : [];
+  return { role: context.role, teacherAssignments };
+}
+
 /**
  * Runs the school-scoped publish gate and returns the authorization facts.
  * Throws the mapped denial error (401/403) on denial.
@@ -49,22 +63,7 @@ export async function requireAnnouncementPublishOperation(
   input: AuthorizeInput,
   permission: Permission = 'announcements.publish',
 ): Promise<AnnouncementPublishAuthorization> {
-  const context = await resolveCurrentContext(db as unknown as AuthorizationDb, input);
-  const decision = evaluateAuthorization(context, { permission });
-  if (!decision.allowed) {
-    throw denialToError(decision);
-  }
-
-  let teacherAssignments: AnnouncementPublishAuthorization['teacherAssignments'] = [];
-  if (context.role === 'TEACHER' && context.userId && context.schoolContext) {
-    teacherAssignments = await resolveTeacherScope(
-      db as unknown as AuthorizationDb,
-      context.userId,
-      context.schoolContext.schoolId,
-    );
-  }
-
-  return { role: context.role, teacherAssignments };
+  return requireAnnouncementOperation(db, input, permission);
 }
 
 /**

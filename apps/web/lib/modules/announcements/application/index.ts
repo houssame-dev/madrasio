@@ -9,7 +9,20 @@ export {
   type PublishDueAnnouncementResult,
 } from './publish-announcement';
 export {
+  createAnnouncement,
+  listAnnouncements,
+  getAnnouncement,
+  patchAnnouncement,
+  createAnnouncementVersion,
+  listAnnouncementVersions,
+  listAnnouncementTargets,
+  addAnnouncementTargets,
+  listAnnouncementPublications,
+  type AnnouncementActor,
+} from './announcement-management';
+export {
   requireAnnouncementPublishOperation,
+  requireAnnouncementOperation,
   assertTeacherPublicationScope,
   type AnnouncementPublishAuthorization,
 } from './authorization';

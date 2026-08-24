@@ -237,18 +237,22 @@ immutable Version title.
 
 ## 12. HTTP Surface
 
-`POST /api/v1/announcements/:id/publish` (thin, Task 011 §4/§7)
+`POST /api/v1/announcements/:id/publish` (thin, Task 011 §4/§7; hardened in Task 023)
 
 ```json
 {
-  "schoolId": "<uuid>",
   "announcementVersionId": "<uuid>",
   "idempotencyKey": "<uuid>",
   "scheduledAt": "<iso-8601>"   // optional
 }
 ```
 
-Response `201 { "data": { publicationId, schoolId, announcementId,
+The School is derived from `requireCurrentContext()` and is never accepted in
+the request body. The strict contract also rejects recipient/snapshot/outbox
+fields; the existing publisher remains solely responsible for resolving and
+freezing recipients.
+
+Response `201 { "data": { publicationId, announcementId,
 announcementVersionId, publicationVersion, status, scheduledAt, publishedAt,
 publishedBy, idempotencyKey, eventEmitted } }`.
 

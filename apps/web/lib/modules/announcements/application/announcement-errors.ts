@@ -24,7 +24,7 @@
  *   due-work processing
  */
 
-import { BusinessRuleViolationError } from '@/lib/errors';
+import { AppError, type AppErrorCode } from '@/lib/errors';
 
 export const ANNOUNCEMENT_ERROR_CODES = [
   'ANNOUNCEMENT_NOT_FOUND',
@@ -35,14 +35,37 @@ export const ANNOUNCEMENT_ERROR_CODES = [
   'NO_ELIGIBLE_RECIPIENTS',
   'PUBLICATION_CONFLICT',
   'PUBLICATION_NOT_FOUND',
+  'ANNOUNCEMENT_NOT_EDITABLE',
+  'ANNOUNCEMENT_VERSION_IMMUTABLE',
+  'INVALID_ANNOUNCEMENT_STATUS_TRANSITION',
+  'DUPLICATE_ANNOUNCEMENT_TARGET',
+  'INVALID_ANNOUNCEMENT_CONTEXT',
+  'ANNOUNCEMENT_VERSION_CONFLICT',
 ] as const;
 export type AnnouncementErrorCode = (typeof ANNOUNCEMENT_ERROR_CODES)[number];
 
-export class AnnouncementDomainError extends BusinessRuleViolationError {
+const genericCode: Record<AnnouncementErrorCode, AppErrorCode> = {
+  ANNOUNCEMENT_NOT_FOUND: 'NOT_FOUND',
+  VERSION_NOT_FOUND: 'NOT_FOUND',
+  NOT_PUBLISHABLE: 'BUSINESS_RULE_VIOLATION',
+  ALREADY_PUBLISHED: 'CONFLICT',
+  NO_VALID_TARGETS: 'BUSINESS_RULE_VIOLATION',
+  NO_ELIGIBLE_RECIPIENTS: 'BUSINESS_RULE_VIOLATION',
+  PUBLICATION_CONFLICT: 'CONFLICT',
+  PUBLICATION_NOT_FOUND: 'NOT_FOUND',
+  ANNOUNCEMENT_NOT_EDITABLE: 'BUSINESS_RULE_VIOLATION',
+  ANNOUNCEMENT_VERSION_IMMUTABLE: 'BUSINESS_RULE_VIOLATION',
+  INVALID_ANNOUNCEMENT_STATUS_TRANSITION: 'BUSINESS_RULE_VIOLATION',
+  DUPLICATE_ANNOUNCEMENT_TARGET: 'CONFLICT',
+  INVALID_ANNOUNCEMENT_CONTEXT: 'BUSINESS_RULE_VIOLATION',
+  ANNOUNCEMENT_VERSION_CONFLICT: 'CONFLICT',
+};
+
+export class AnnouncementDomainError extends AppError {
   public readonly featureCode: AnnouncementErrorCode;
 
   constructor(featureCode: AnnouncementErrorCode, message: string) {
-    super(message, { featureCode });
+    super(genericCode[featureCode], message);
     this.name = 'AnnouncementDomainError';
     this.featureCode = featureCode;
   }
