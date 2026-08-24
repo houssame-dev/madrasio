@@ -326,9 +326,14 @@ describe('Result notification processing (Task 012 §25)', () => {
     expect(stored.status).toBe('PROCESSED');
   });
 
-  it('16. zero-recipient event creates zero Notifications and becomes PROCESSED (not an error, Task 012 §12)', async () => {
+  it('16. zero-recipient revision event creates zero Notifications and becomes PROCESSED (not an error, Task 012 §12)', async () => {
     const { school, adminId, studentId } = await seedScenario();
-    const { event } = await publishSubjectResult(school, adminId, studentId, randomUUID());
+    const first = await publishSubjectResult(school, adminId, studentId, randomUUID());
+    const { event } = await publishSubjectResult(school, adminId, studentId, randomUUID(), {
+      revision: true,
+      resultId: first.resultId,
+    });
+    expect(event.eventType).toBe('ResultRevisionPublished');
     expect(payloadOf(event).recipientUserIds).toEqual([]);
 
     const result = await process(event.id);

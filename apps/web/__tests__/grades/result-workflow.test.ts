@@ -11,13 +11,14 @@
  * configuration version binding (BR-GRADE-013 / BR-HISTORY-004).
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { and, eq } from 'drizzle-orm';
 
 import * as schema from '@school/database';
 
 import { ResultDomainError } from '@/lib/modules/grades/application/result-errors';
+import * as resultRepo from '@/lib/modules/grades/infrastructure/repositories/result-repository';
 import {
   calculateAnnualResult,
   calculatePeriodResult,
@@ -224,6 +225,41 @@ describe('SubjectResult workflow', () => {
     });
     expect(revisedReplay.publicationId).toBe(revised.publicationId);
     expect(revisedReplay.publicationVersion).toBe(2);
+
+    // A replay is resolved before authoritative inputs or recipients are read.
+    // Even after Grades change again, key b1 still represents the immutable v2
+    // operation and must not rewrite the logical Result from 18.00.
+    await test.seed
+      .update(schema.grades)
+      .set({ score: '10' })
+      .where(eq(schema.grades.id, gradeRows.examGradeId));
+    const beforeChangedInputReplay = await test.seed
+      .select()
+      .from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, calculated.id));
+    const recipientQuery = vi.spyOn(resultRepo, 'findResultNotificationRecipientCandidates');
+    recipientQuery.mockClear();
+
+    const changedInputReplay = await reviseResult(test.db, {
+      userId: adminId,
+      schoolId: school.schoolId,
+      resultType: 'SUBJECT',
+      resultId: calculated.id,
+      idempotencyKey: '00000000-0000-4000-8000-0000000000b1',
+    });
+    expect(changedInputReplay).toEqual(revised);
+    expect(recipientQuery).not.toHaveBeenCalled();
+    recipientQuery.mockRestore();
+
+    const afterChangedInputReplay = await test.seed
+      .select()
+      .from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, calculated.id));
+    expect(afterChangedInputReplay).toEqual(beforeChangedInputReplay);
+    expect(await test.seed.select().from(schema.resultPublications).where(
+      eq(schema.resultPublications.subjectResultId, calculated.id),
+    )).toHaveLength(2);
+    expect(await test.seed.select().from(schema.outboxEvents)).toHaveLength(2);
   });
 
   it('refuses publish before finalize and publish of a never-finalized result', async () => {
@@ -246,6 +282,75 @@ describe('SubjectResult workflow', () => {
         idempotencyKey: '00000000-0000-4000-8000-0000000000c1',
       }),
     ).rejects.toSatisfy((error: unknown) => error instanceof ResultDomainError && error.featureCode === 'RESULT_NOT_FINALIZED');
+  });
+
+  it('rejects a revision idempotency key already used for a different Result without mutation', async () => {
+    const { school, actors, gradebook } = await seedSubjectScenario();
+    const adminId = actors.schoolAdminUserId;
+    const math = await calculateSubjectResult(test.db, {
+      userId: adminId,
+      schoolId: school.schoolId,
+      gradebookId: gradebook.gradebookId,
+      studentId: actors.studentId,
+    });
+    await finalizeResult(test.db, {
+      userId: adminId, schoolId: school.schoolId, resultType: 'SUBJECT', resultId: math.id,
+    });
+    await publishResult(test.db, {
+      userId: adminId,
+      schoolId: school.schoolId,
+      resultType: 'SUBJECT',
+      resultId: math.id,
+      idempotencyKey: '00000000-0000-4000-8000-0000000000b2',
+    });
+    const revisionKey = '00000000-0000-4000-8000-0000000000b3';
+    await reviseResult(test.db, {
+      userId: adminId,
+      schoolId: school.schoolId,
+      resultType: 'SUBJECT',
+      resultId: math.id,
+      idempotencyKey: revisionKey,
+    });
+
+    const physicsGradebook = await seedGradebook(
+      test.seed, school.schoolId, school, school.subjectPhysicsId,
+    );
+    await seedGrades(
+      test.seed, school.schoolId, physicsGradebook.gradebookId,
+      physicsGradebook, actors.studentId, '14', '16',
+    );
+    const physics = await calculateSubjectResult(test.db, {
+      userId: adminId,
+      schoolId: school.schoolId,
+      gradebookId: physicsGradebook.gradebookId,
+      studentId: actors.studentId,
+    });
+    await finalizeResult(test.db, {
+      userId: adminId, schoolId: school.schoolId, resultType: 'SUBJECT', resultId: physics.id,
+    });
+    await publishResult(test.db, {
+      userId: adminId,
+      schoolId: school.schoolId,
+      resultType: 'SUBJECT',
+      resultId: physics.id,
+      idempotencyKey: '00000000-0000-4000-8000-0000000000b4',
+    });
+    const before = await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, physics.id));
+
+    await expect(reviseResult(test.db, {
+      userId: adminId,
+      schoolId: school.schoolId,
+      resultType: 'SUBJECT',
+      resultId: physics.id,
+      idempotencyKey: revisionKey,
+    })).rejects.toSatisfy(
+      (error: unknown) => error instanceof ResultDomainError && error.featureCode === 'PUBLICATION_CONFLICT',
+    );
+    expect(await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, physics.id))).toEqual(before);
+    expect(await test.seed.select().from(schema.resultPublications)
+      .where(eq(schema.resultPublications.subjectResultId, physics.id))).toHaveLength(1);
   });
 
   it('refuses a revision when the result was never published', async () => {
@@ -462,6 +567,16 @@ describe('PeriodResult and AnnualResult workflow', () => {
     expect(published.resultValue).toBe('16.00');
     expect(published.publicationVersion).toBe(1);
     expect(published.academicPeriodId).toBe(school.period1Id);
+
+    const revised = await reviseResult(test.db, {
+      userId: adminId,
+      schoolId: school.schoolId,
+      resultType: 'PERIOD',
+      resultId: period.id,
+      idempotencyKey: '00000000-0000-4000-8000-0000000000e2',
+    });
+    expect(revised.publicationVersion).toBe(2);
+    expect(revised.resultValue).toBe('16.00');
   });
 
   it('computes an AnnualResult as a DISTINCT aggregate across periods (not the latest period)', async () => {
@@ -544,6 +659,16 @@ describe('PeriodResult and AnnualResult workflow', () => {
     expect(published.resultValue).toBe('16.75');
     expect(published.academicPeriodId).toBeNull();
     expect(published.publicationVersion).toBe(1);
+
+    const revised = await reviseResult(test.db, {
+      userId: adminId,
+      schoolId: school.schoolId,
+      resultType: 'ANNUAL',
+      resultId: annual.id,
+      idempotencyKey: '00000000-0000-4000-8000-0000000000f3',
+    });
+    expect(revised.publicationVersion).toBe(2);
+    expect(revised.resultValue).toBe('16.75');
   });
 
   it('refuses a PeriodResult when the aggregated SubjectResults disagree on configuration version', async () => {

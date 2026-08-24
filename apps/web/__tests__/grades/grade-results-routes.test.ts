@@ -120,11 +120,35 @@ describe('Task 020 Grade and Result HTTP contracts', () => {
     expect(await published.json()).toMatchObject({ data: { publicationVersion: 1 } });
     expect(await test.seed.select().from(schema.notifications)).toHaveLength(0);
 
+    const revisionKey = randomUUID();
     const revised = await resultRevisePOST(json('POST', {
-      resultType: 'SUBJECT', idempotencyKey: randomUUID(),
+      resultType: 'SUBJECT', idempotencyKey: revisionKey,
     }), params(result.id));
     expect(revised.status).toBe(201);
-    expect(await revised.json()).toMatchObject({ data: { publicationVersion: 2 } });
+    const revisionBody = await revised.json();
+    expect(revisionBody).toMatchObject({ data: { publicationVersion: 2, resultValue: '17.00' } });
+
+    await test.seed.update(schema.grades).set({ score: '20' }).where(
+      eq(schema.grades.assessmentId, gradebook.assessmentExamId),
+    );
+    const replay = await resultRevisePOST(json('POST', {
+      resultType: 'SUBJECT', idempotencyKey: revisionKey,
+    }), params(result.id));
+    expect(replay.status).toBe(201);
+    expect(await replay.json()).toEqual(revisionBody);
+    expect((await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, result.id)))[0]).toMatchObject({
+      value: '17.00', status: 'FINALIZED',
+    });
+    expect(await test.seed.select().from(schema.resultPublications)
+      .where(eq(schema.resultPublications.subjectResultId, result.id))).toHaveLength(2);
+    expect(await test.seed.select().from(schema.outboxEvents)).toHaveLength(2);
+
+    const conflict = await resultRevisePOST(json('POST', {
+      resultType: 'SUBJECT', idempotencyKey: publicationKey,
+    }), params(result.id));
+    expect(conflict.status).toBe(409);
+    expect(await conflict.json()).toMatchObject({ error: { featureCode: 'PUBLICATION_CONFLICT' } });
   });
 
   it('keeps PeriodResult and AnnualResult as separate calculation/read contracts', async () => {

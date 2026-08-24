@@ -686,6 +686,36 @@ export async function findResultRow(
   };
 }
 
+/**
+ * Locks one tenant-scoped Result row for the lifetime of the caller's
+ * transaction, then returns the normalized row. Revision orchestration uses
+ * this to serialize recalculation and publication sequencing for one logical
+ * Result without introducing an application/distributed lock.
+ */
+export async function findResultRowForUpdate(
+  db: GradesDb,
+  schoolId: string,
+  resultType: ResultType,
+  resultId: string,
+): Promise<ResultRow | null> {
+  const table =
+    resultType === 'SUBJECT'
+      ? schema.subjectResults
+      : resultType === 'PERIOD'
+        ? schema.periodResults
+        : schema.annualResults;
+
+  const [locked] = await db
+    .select({ id: table.id })
+    .from(table)
+    .where(and(eq(table.schoolId, schoolId), eq(table.id, resultId)))
+    .for('update')
+    .limit(1);
+
+  if (!locked) return null;
+  return findResultRow(db, schoolId, resultType, resultId);
+}
+
 export async function upsertSubjectResult(
   db: GradesDb,
   schoolId: string,

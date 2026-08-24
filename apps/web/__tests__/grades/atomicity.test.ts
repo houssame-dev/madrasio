@@ -17,7 +17,7 @@ import { eq } from 'drizzle-orm';
 
 import * as schema from '@school/database';
 
-import { calculateSubjectResult, finalizeResult, publishResult } from '@/lib/modules/grades/application';
+import { calculateSubjectResult, finalizeResult, publishResult, reviseResult } from '@/lib/modules/grades/application';
 
 import {
   createGradesTestDb,
@@ -145,5 +145,62 @@ describe('Publication / outbox atomicity (Task 006D.1 §6)', () => {
     expect(events).toHaveLength(1);
     expect(events[0].eventType).toBe('ResultPublished');
     expect(published.publicationVersion).toBe(1);
+  });
+
+  it('rolls back recalculation, finalization, revision publication and event when revision outbox persistence fails', async () => {
+    const real = await vi.importActual<typeof import('@/lib/events/outbox')>('@/lib/events/outbox');
+    mockedPersistOutboxEvent.mockImplementation(real.persistOutboxEvent);
+
+    const school = await seedSchool(test.seed);
+    const actors = await seedStudentAndActors(test.seed, school.schoolId, school.yearId, school.classId);
+    const gradebook = await seedGradebook(test.seed, school.schoolId, school, school.subjectMathId);
+    const grades = await seedGrades(
+      test.seed, school.schoolId, gradebook.gradebookId, gradebook, actors.studentId, '16', '18',
+    );
+    const calculated = await calculateSubjectResult(test.db, {
+      userId: actors.schoolAdminUserId,
+      schoolId: school.schoolId,
+      gradebookId: gradebook.gradebookId,
+      studentId: actors.studentId,
+    });
+    await finalizeResult(test.db, {
+      userId: actors.schoolAdminUserId,
+      schoolId: school.schoolId,
+      resultType: 'SUBJECT',
+      resultId: calculated.id,
+    });
+    const initial = await publishResult(test.db, {
+      userId: actors.schoolAdminUserId,
+      schoolId: school.schoolId,
+      resultType: 'SUBJECT',
+      resultId: calculated.id,
+      idempotencyKey: '00000000-0000-4000-8000-0000000000c6',
+    });
+
+    await test.seed.update(schema.grades).set({ score: '20' }).where(eq(schema.grades.id, grades.examGradeId));
+    const before = await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, calculated.id));
+    mockedPersistOutboxEvent.mockImplementation(async () => {
+      throw new Error('simulated revision outbox persistence failure');
+    });
+
+    await expect(reviseResult(test.db, {
+      userId: actors.schoolAdminUserId,
+      schoolId: school.schoolId,
+      resultType: 'SUBJECT',
+      resultId: calculated.id,
+      idempotencyKey: '00000000-0000-4000-8000-0000000000c7',
+    })).rejects.toThrow('simulated revision outbox persistence failure');
+
+    const after = await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, calculated.id));
+    expect(after).toEqual(before);
+    expect(after[0]).toMatchObject({ value: '17.00', status: 'FINALIZED' });
+    const publications = await test.seed.select().from(schema.resultPublications)
+      .where(eq(schema.resultPublications.subjectResultId, calculated.id));
+    expect(publications).toHaveLength(1);
+    expect(publications[0].id).toBe(initial.publicationId);
+    expect(await test.seed.select().from(schema.outboxEvents)).toHaveLength(1);
+    expect(await test.seed.select().from(schema.notifications)).toHaveLength(0);
   });
 });

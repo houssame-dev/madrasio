@@ -90,7 +90,38 @@ CALCULATED ──finalize──▶ FINALIZED ──publish──▶ Publication 
 - **Calculate** — compute + upsert (`CALCULATED`). Idempotent while `CALCULATED`.
 - **Finalize** — `CALCULATED → FINALIZED` (one-way; guarded).
 - **Publish** — requires `FINALIZED`; creates a snapshot row + outbox event (`ResultPublished`).
-- **Revise** — explicit; requires an existing publication; recomputes with the SAME bound configuration version, re-finalizes, publishes `ResultRevisionPublished` (version N+1).
+- **Revise** — explicit; requires an existing publication; recomputes with the SAME bound configuration version, re-finalizes, publishes `ResultRevisionPublished` (version N+1). The complete revision is one transaction.
+
+### Atomic revision orchestration
+
+A new revision executes as one logical database operation:
+
+```text
+idempotency preflight
+  → lock tenant-scoped Result row
+  → in-transaction idempotency recheck
+  → load authoritative calculation inputs
+  → recalculate with the existing fixed-point engine
+  → finalize with the existing lifecycle validation
+  → resolve and freeze current recipients
+  → insert immutable ResultPublication
+  → insert ResultRevisionPublished OutboxEvent
+  → commit
+```
+
+The Result row lock serializes revisions for the same logical Result; existing
+publication-version and idempotency constraints remain the final concurrency
+defence. A uniqueness loser rolls back its whole transaction before resolving
+the winning publication.
+
+An already-completed revision key is resolved immediately after authorization.
+Replay does not load calculation inputs, recalculate, finalize, resolve
+recipients, create another publication, or create another event—even when the
+underlying Grades changed after the first request.
+
+Any calculation, finalization, recipient, publication, or Outbox failure rolls
+back the recalculated Result as well as all new publication state. The prior
+FINALIZED value and all historical publications/events remain unchanged.
 
 ### Configuration binding (BR-GRADE-013 / BR-HISTORY-004)
 
@@ -115,6 +146,10 @@ The caller supplies a stable `idempotencyKey`. Replays return the existing row. 
 ### Atomicity (ADR-012)
 
 Publication insert + outbox event insert happen in **one database transaction**. A committed publication can never lose its event, and a failed transaction publishes nothing.
+
+For explicit revisions, that same transaction also owns recalculation and
+finalization. There is no intermediate committed revised Result without its
+matching publication and event.
 
 ### Outbox events
 
@@ -166,6 +201,8 @@ operational actors — never automatic Result notification recipients.
 A ResultPublication is an academic record. Zero eligible Parents does NOT block
 publication — the event is still created with `recipientUserIds: []`, and
 processing it succeeds with zero notifications (PROCESSED, not an error).
+This policy is unchanged for atomic revisions: the revision, publication, and
+event commit with `recipientUserIds: []`.
 
 ### Historical integrity (Task 012 §17/§18)
 

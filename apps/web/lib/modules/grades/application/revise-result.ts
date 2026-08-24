@@ -4,7 +4,7 @@
  * An EXPLICIT revision recomputes a FINALIZED result, re-finalizes it and
  * publishes a NEW version of the historical snapshot:
  *
- *   recalc (revision mode) → finalize → publish(revision: true)
+ *   idempotency → row lock → recalc → finalize → publication + outbox → commit
  *
  * The old publication rows are never mutated or deleted — the new value is a
  * new `publication_version` snapshot (Part H3/I). A revision never happens
@@ -30,7 +30,14 @@ import {
   calculatePeriodResult,
   calculateSubjectResult,
 } from './calculate-result';
-import { publishResult, type PublishResultView } from './publish-result';
+import { finalizeResult } from './finalize-result';
+import {
+  findIdempotentPublication,
+  isPublicationUniqueViolation,
+  publishResultInTransaction,
+  recoverConcurrentPublication,
+  type PublishResultView,
+} from './publish-result';
 import { requireResultOperation } from './authorization';
 import { ResultDomainError } from './result-errors';
 
@@ -56,78 +63,123 @@ export async function reviseResult(
     { permission: 'grades.publish', scope: { kind: 'school' } },
   );
 
-  const result = await repo.findResultRow(db, input.schoolId, input.resultType, input.resultId);
-  if (!result) {
-    throw new ResultDomainError('RESULT_NOT_FOUND', `Result ${input.resultId} was not found in this school.`);
-  }
-  if (result.status !== 'FINALIZED') {
-    throw new ResultDomainError(
-      'RESULT_NOT_FINALIZED',
-      'Only FINALIZED results can be revised. Finalize the result first.',
-    );
-  }
   if (!input.userId) {
     throw new ResultDomainError('RESULT_NOT_FOUND', 'A publisher identity is required to revise a result.');
   }
 
-  // 1. Recalculate in revision mode (bypasses the FINALIZED guard; updates the
-  //    value while keeping the same configuration version binding).
-  if (input.resultType === 'SUBJECT') {
-    const gradebook = await repo.findGradebookByContext(
-      db,
-      input.schoolId,
-      result.academicYearId,
-      result.academicPeriodId!,
-      result.classId,
-      result.subjectId!,
-    );
-    if (!gradebook) {
-      throw new ResultDomainError(
-        'RESULT_NOT_FOUND',
-        'The gradebook context for this subject result no longer exists.',
-      );
-    }
-    await calculateSubjectResult(db, {
-      userId: input.userId,
-      schoolId: input.schoolId,
-      gradebookId: gradebook.gradebookId,
-      studentId: result.studentId,
-      revision: true,
-    });
-  } else if (input.resultType === 'PERIOD') {
-    await calculatePeriodResult(db, {
-      userId: input.userId,
-      schoolId: input.schoolId,
-      studentId: result.studentId,
-      academicYearId: result.academicYearId,
-      academicPeriodId: result.academicPeriodId!,
-      classId: result.classId,
-      revision: true,
-    });
-  } else {
-    await calculateAnnualResult(db, {
-      userId: input.userId,
-      schoolId: input.schoolId,
-      studentId: result.studentId,
-      academicYearId: result.academicYearId,
-      classId: result.classId,
-      revision: true,
-    });
-  }
-
-  // 2. Finalize the recomputed value.
-  const finalized = await repo.setResultFinalized(db, input.schoolId, input.resultType, input.resultId);
-  if (!finalized) {
-    throw new ResultDomainError('RESULT_NOT_FOUND', `Result ${input.resultId} was not found in this school.`);
-  }
-
-  // 3. Publish the next version (revision semantics; ResultRevisionPublished).
-  return publishResult(db, {
+  const publicationInput = {
     userId: input.userId,
     schoolId: input.schoolId,
     resultType: input.resultType,
     resultId: input.resultId,
     idempotencyKey: input.idempotencyKey,
     revision: true,
-  });
+  } as const;
+
+  // Fast replay path: authorization is still enforced, but no Result/input or
+  // recipient query and no transaction/mutation is needed for a completed key.
+  const replay = await findIdempotentPublication(db, publicationInput);
+  if (replay) return replay;
+
+  try {
+    return await db.transaction(async (tx) => {
+      // Serialize all revisions of this logical Result. The idempotency key is
+      // rechecked only after the lock is acquired so a waiting same-key request
+      // observes the winner before any recalculation.
+      const result = await repo.findResultRowForUpdate(
+        tx,
+        input.schoolId,
+        input.resultType,
+        input.resultId,
+      );
+      if (!result) {
+        throw new ResultDomainError(
+          'RESULT_NOT_FOUND',
+          `Result ${input.resultId} was not found in this school.`,
+        );
+      }
+
+      const transactionalReplay = await findIdempotentPublication(tx, publicationInput);
+      if (transactionalReplay) return transactionalReplay;
+
+      if (result.status !== 'FINALIZED') {
+        throw new ResultDomainError(
+          'RESULT_NOT_FINALIZED',
+          'Only FINALIZED results can be revised. Finalize the result first.',
+        );
+      }
+      if (!await repo.findLatestPublication(tx, input.schoolId, input.resultType, input.resultId)) {
+        throw new ResultDomainError(
+          'RESULT_NOT_PUBLISHED',
+          'A revision requires a previously published version of the result.',
+        );
+      }
+
+      // Reuse the existing calculation engine and validation paths. Passing
+      // the transaction executor keeps every authoritative input read and the
+      // Result upsert inside this one transaction.
+      if (input.resultType === 'SUBJECT') {
+        const gradebook = await repo.findGradebookByContext(
+          tx,
+          input.schoolId,
+          result.academicYearId,
+          result.academicPeriodId!,
+          result.classId,
+          result.subjectId!,
+        );
+        if (!gradebook) {
+          throw new ResultDomainError(
+            'RESULT_NOT_FOUND',
+            'The gradebook context for this subject result no longer exists.',
+          );
+        }
+        await calculateSubjectResult(tx, {
+          userId: input.userId,
+          schoolId: input.schoolId,
+          gradebookId: gradebook.gradebookId,
+          studentId: result.studentId,
+          revision: true,
+        });
+      } else if (input.resultType === 'PERIOD') {
+        await calculatePeriodResult(tx, {
+          userId: input.userId,
+          schoolId: input.schoolId,
+          studentId: result.studentId,
+          academicYearId: result.academicYearId,
+          academicPeriodId: result.academicPeriodId!,
+          classId: result.classId,
+          revision: true,
+        });
+      } else {
+        await calculateAnnualResult(tx, {
+          userId: input.userId,
+          schoolId: input.schoolId,
+          studentId: result.studentId,
+          academicYearId: result.academicYearId,
+          classId: result.classId,
+          revision: true,
+        });
+      }
+
+      // Reuse the normal CALCULATED → FINALIZED validation rather than a
+      // revision-specific lifecycle bypass.
+      await finalizeResult(tx, {
+        userId: input.userId,
+        schoolId: input.schoolId,
+        resultType: input.resultType,
+        resultId: input.resultId,
+      });
+
+      // Publication snapshot, current recipient resolution and outbox event
+      // share this same transaction. No nested transaction is opened.
+      return publishResultInTransaction(tx, publicationInput);
+    });
+  } catch (error) {
+    // Any uniqueness race aborts and rolls back the complete revision first;
+    // only then may the winning canonical publication be returned.
+    if (isPublicationUniqueViolation(error)) {
+      return recoverConcurrentPublication(db, publicationInput);
+    }
+    throw error;
+  }
 }

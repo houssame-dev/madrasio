@@ -133,23 +133,33 @@ Finalization reuses the committed `CALCULATED → FINALIZED` guard and remains
 SchoolAdmin-only through `grades.manage`. Repeated finalization is a controlled
 conflict. FINALIZED rows reject normal recalculation.
 
-Publication reuses the existing single transaction:
+Publication reuses the existing transaction-aware primitive:
 
 1. insert immutable ResultPublication snapshot;
 2. resolve publication-time eligible Parent recipients;
 3. persist `ResultPublished` or `ResultRevisionPublished` in `outbox_events`.
 
-Only FINALIZED Results publish. Initial publication creates version 1; explicit
-revision recalculates with the same historical configuration binding,
-re-finalizes, and creates the next immutable publication version. Existing
-idempotency and concurrent-publication constraints remain authoritative.
+Only FINALIZED Results publish. Initial publication creates version 1. An
+explicit revision authorizes and resolves a completed idempotency key before
+mutation; a replay returns the same publication without recalculation,
+finalization, recipient resolution, publication, or Outbox work.
+
+For a new key, the server locks the tenant-scoped Result row and performs the
+in-transaction idempotency recheck, authoritative-input recalculation with the
+same historical configuration binding, normal finalization, recipient freeze,
+immutable next-version publication, and Outbox insert in one transaction.
+Any failure rolls back the revised Result value/state and all new publication
+state. Existing database idempotency and publication-version constraints remain
+authoritative for races; recovery happens only after the losing transaction has
+rolled back.
 
 Eligible automatic recipients are only ACTIVE Parent profiles connected by an
 ACTIVE ParentStudent relationship, with a non-null User and ACTIVE same-School
 membership at publication time. Zero recipients does not block publication.
 Every publication freezes its own canonical `recipientUserIds`; relationship or
 membership changes do not rewrite an old event, and a revision resolves its own
-current recipient set.
+current recipient set. A zero-recipient revision still commits its publication
+and `ResultRevisionPublished` event with `recipientUserIds: []`.
 
 Routes never insert Notifications. The existing processor consumes the frozen
 Outbox payload and retains PENDING / FAILED / PROCESSED and idempotent retry

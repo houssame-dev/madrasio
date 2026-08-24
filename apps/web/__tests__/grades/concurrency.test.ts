@@ -29,6 +29,7 @@ import {
   calculateSubjectResult,
   finalizeResult,
   publishResult,
+  reviseResult,
   type PublishResultView,
 } from '@/lib/modules/grades/application';
 
@@ -62,11 +63,14 @@ async function seedCalculatedAndFinalized(): Promise<{
   school: SeededSchool;
   actors: SeededStudent;
   resultId: string;
+  examGradeId: string;
 }> {
   const school = await seedSchool(test.seed);
   const actors = await seedStudentAndActors(test.seed, school.schoolId, school.yearId, school.classId);
   const gradebook = await seedGradebook(test.seed, school.schoolId, school, school.subjectMathId);
-  await seedGrades(test.seed, school.schoolId, gradebook.gradebookId, gradebook, actors.studentId, '16', '18');
+  const grades = await seedGrades(
+    test.seed, school.schoolId, gradebook.gradebookId, gradebook, actors.studentId, '16', '18',
+  );
 
   const calculated = await calculateSubjectResult(test.db, {
     userId: actors.schoolAdminUserId,
@@ -81,16 +85,17 @@ async function seedCalculatedAndFinalized(): Promise<{
     resultId: calculated.id,
   });
 
-  return { school, actors, resultId: calculated.id };
+  return { school, actors, resultId: calculated.id, examGradeId: grades.examGradeId };
 }
 
 async function seedPublishedV1(): Promise<{
   school: SeededSchool;
   actors: SeededStudent;
   resultId: string;
+  examGradeId: string;
   published: PublishResultView;
 }> {
-  const { school, actors, resultId } = await seedCalculatedAndFinalized();
+  const { school, actors, resultId, examGradeId } = await seedCalculatedAndFinalized();
   const published = await publishResult(test.db, {
     userId: actors.schoolAdminUserId,
     schoolId: school.schoolId,
@@ -98,7 +103,7 @@ async function seedPublishedV1(): Promise<{
     resultId,
     idempotencyKey: '00000000-0000-4000-8000-0000000000c0',
   });
-  return { school, actors, resultId, published };
+  return { school, actors, resultId, examGradeId, published };
 }
 
 function publicationInsertValues(
@@ -219,6 +224,36 @@ describe('Concurrent publication (Task 006D.1 §5)', () => {
     const events = await test.seed.select().from(schema.outboxEvents);
     expect(events).toHaveLength(2);
     expect(events.map((e) => e.eventType).sort()).toEqual(['ResultPublished', 'ResultRevisionPublished']);
+  });
+
+  it('two concurrent same-key revision orchestrations commit one recalculation, publication and event', async () => {
+    const { school, actors, resultId, examGradeId } = await seedPublishedV1();
+    await test.seed.update(schema.grades).set({ score: '20' }).where(eq(schema.grades.id, examGradeId));
+    const key = '00000000-0000-4000-8000-0000000000c8';
+
+    const attempts = await Promise.all([
+      reviseResult(test.db, {
+        userId: actors.schoolAdminUserId,
+        schoolId: school.schoolId,
+        resultType: 'SUBJECT',
+        resultId,
+        idempotencyKey: key,
+      }),
+      reviseResult(test.db, {
+        userId: actors.schoolAdminUserId,
+        schoolId: school.schoolId,
+        resultType: 'SUBJECT',
+        resultId,
+        idempotencyKey: key,
+      }),
+    ]);
+
+    expect(attempts[0].publicationId).toBe(attempts[1].publicationId);
+    expect(attempts[0]).toMatchObject({ publicationVersion: 2, resultValue: '18.00' });
+    const publications = await test.seed.select().from(schema.resultPublications)
+      .where(eq(schema.resultPublications.subjectResultId, resultId));
+    expect(publications.map((row) => row.publicationVersion)).toEqual([1, 2]);
+    expect(await test.seed.select().from(schema.outboxEvents)).toHaveLength(2);
   });
 
   it('the database rejects a duplicate publication snapshot (same result + version)', async () => {

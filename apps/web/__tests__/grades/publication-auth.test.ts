@@ -16,6 +16,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
+import * as schema from '@school/database';
 
 import { AppError } from '@/lib/errors';
 import {
@@ -251,6 +253,11 @@ describe('Results authorization matrix (Part U)', () => {
       idempotencyKey: '00000000-0000-4000-8000-0000000000a3',
     });
 
+    const beforeResult = await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, calculated.id));
+    const beforePublications = await test.seed.select().from(schema.resultPublications);
+    const beforeEvents = await test.seed.select().from(schema.outboxEvents);
+
     await expectForbidden(
       reviseResult(test.db, {
         userId: actors.teacherUserId,
@@ -260,5 +267,9 @@ describe('Results authorization matrix (Part U)', () => {
         idempotencyKey: '00000000-0000-4000-8000-0000000000a4',
       }),
     );
+    expect(await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, calculated.id))).toEqual(beforeResult);
+    expect(await test.seed.select().from(schema.resultPublications)).toEqual(beforePublications);
+    expect(await test.seed.select().from(schema.outboxEvents)).toEqual(beforeEvents);
   });
 });
