@@ -66,7 +66,7 @@ describe('markNotificationRead (Task 010 §8/§9)', () => {
 
     const marked = await markNotificationRead(testDb.db, { userId: recipient, schoolId, notificationId });
 
-    expect(marked).toBe(true);
+    expect(marked).toMatchObject({ id: notificationId });
     expect(await readAtOf(testDb, notificationId)).toBeInstanceOf(Date);
   });
 
@@ -78,7 +78,7 @@ describe('markNotificationRead (Task 010 §8/§9)', () => {
 
     const marked = await markNotificationRead(testDb.db, { userId: stranger, schoolId, notificationId });
 
-    expect(marked).toBe(false);
+    expect(marked).toBeNull();
     expect(await readAtOf(testDb, notificationId)).toBeNull();
   });
 
@@ -97,7 +97,7 @@ describe('markNotificationRead (Task 010 §8/§9)', () => {
       notificationId,
     });
 
-    expect(marked).toBe(false);
+    expect(marked).toBeNull();
     expect(await readAtOf(testDb, notificationId)).toBeNull();
   });
 
@@ -112,7 +112,7 @@ describe('markNotificationRead (Task 010 §8/§9)', () => {
     const again = await markNotificationRead(testDb.db, { userId: recipient, schoolId, notificationId });
     const secondReadAt = await readAtOf(testDb, notificationId);
 
-    expect(again).toBe(true);
+    expect(again).toMatchObject({ id: notificationId, readAt: firstReadAt });
     expect(secondReadAt).toBeInstanceOf(Date);
     expect(secondReadAt!.getTime()).toBe(firstReadAt!.getTime());
   });

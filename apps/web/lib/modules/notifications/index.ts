@@ -1,5 +1,5 @@
 /**
- * Notifications module (Task 010).
+ * Notifications module (Tasks 010, 012, 013, and 024).
  *
  * Persisted, school-scoped notifications whose DATABASE record is the source
  * of truth (ADR-013). The processor consumes durable outbox events

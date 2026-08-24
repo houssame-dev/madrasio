@@ -22,13 +22,13 @@ export interface MarkNotificationReadInput {
 }
 
 /**
- * Marks the notification read. Returns true when the recipient-owned
- * notification in the current School existed (and was therefore marked),
- * false otherwise (wrong recipient / wrong School / not found).
+ * Marks the notification read. Returns the recipient-owned Notification when
+ * it exists, including on an idempotent replay, or null for an unowned,
+ * foreign-School, or missing id.
  */
 export async function markNotificationRead(
   db: NotificationsDb,
   input: MarkNotificationReadInput,
-): Promise<boolean> {
+): ReturnType<typeof repo.markNotificationRead> {
   return repo.markNotificationRead(db, input.notificationId, input.schoolId, input.userId);
 }

@@ -95,7 +95,7 @@ export async function seedSchool(seed: NotificationsTestDb['seed'], name = 'Seed
 export async function seedUser(
   seed: NotificationsTestDb['seed'],
   schoolId: string,
-  role: 'PARENT' | 'TEACHER' | 'SCHOOL_ADMIN' = 'PARENT',
+  role: 'PARENT' | 'TEACHER' | 'SCHOOL_ADMIN' | 'SUPER_ADMIN' = 'PARENT',
 ): Promise<string> {
   const userId = randomUUID();
   await seed.insert(authUsers).values({ id: userId });

@@ -18,9 +18,13 @@
  * from another School can never resolve (CLAUDE.md §13/§26).
  */
 
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, lte } from 'drizzle-orm';
 import * as schema from '@school/database';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
+
+import type {
+  NotificationInboxQuery, NotificationView,
+} from '../../domain/contracts';
 
 /** The minimal typed Drizzle surface the Notifications module needs. */
 export type NotificationsDb = PgDatabase<PgQueryResultHKT, typeof schema>;
@@ -239,6 +243,90 @@ export interface NotificationInsert {
   sourceId: string;
 }
 
+const notificationViewSelection = {
+  id: schema.notifications.id,
+  notificationType: schema.notifications.notificationType,
+  sourceType: schema.notifications.sourceType,
+  sourceId: schema.notifications.sourceId,
+  title: schema.notifications.title,
+  body: schema.notifications.body,
+  readAt: schema.notifications.readAt,
+  createdAt: schema.notifications.createdAt,
+};
+
+function inboxConditions(
+  schoolId: string,
+  recipientUserId: string,
+  input: NotificationInboxQuery,
+) {
+  const conditions = [
+    eq(schema.notifications.schoolId, schoolId),
+    eq(schema.notifications.recipientUserId, recipientUserId),
+  ];
+  if (input.status === 'READ') conditions.push(isNotNull(schema.notifications.readAt));
+  if (input.status === 'UNREAD') conditions.push(isNull(schema.notifications.readAt));
+  if (input.notificationType) conditions.push(eq(schema.notifications.notificationType, input.notificationType));
+  if (input.sourceType) conditions.push(eq(schema.notifications.sourceType, input.sourceType));
+  if (input.sourceId) conditions.push(eq(schema.notifications.sourceId, input.sourceId));
+  if (input.createdFrom) conditions.push(gte(schema.notifications.createdAt, input.createdFrom));
+  if (input.createdTo) conditions.push(lte(schema.notifications.createdAt, input.createdTo));
+  return conditions;
+}
+
+export async function listNotifications(
+  db: NotificationsDb,
+  schoolId: string,
+  recipientUserId: string,
+  input: NotificationInboxQuery,
+): Promise<{ rows: NotificationView[]; total: number }> {
+  const where = and(...inboxConditions(schoolId, recipientUserId, input));
+  const [rows, totals] = await Promise.all([
+    db
+      .select(notificationViewSelection)
+      .from(schema.notifications)
+      .where(where)
+      .orderBy(desc(schema.notifications.createdAt), desc(schema.notifications.id))
+      .limit(input.pageSize)
+      .offset((input.page - 1) * input.pageSize),
+    db.select({ value: count() }).from(schema.notifications).where(where),
+  ]);
+  return { rows, total: Number(totals[0]?.value ?? 0) };
+}
+
+export async function findNotification(
+  db: NotificationsDb,
+  notificationId: string,
+  schoolId: string,
+  recipientUserId: string,
+): Promise<NotificationView | null> {
+  const [row] = await db
+    .select(notificationViewSelection)
+    .from(schema.notifications)
+    .where(and(
+      eq(schema.notifications.id, notificationId),
+      eq(schema.notifications.schoolId, schoolId),
+      eq(schema.notifications.recipientUserId, recipientUserId),
+    ))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function countUnreadNotifications(
+  db: NotificationsDb,
+  schoolId: string,
+  recipientUserId: string,
+): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(schema.notifications)
+    .where(and(
+      eq(schema.notifications.schoolId, schoolId),
+      eq(schema.notifications.recipientUserId, recipientUserId),
+      isNull(schema.notifications.readAt),
+    ));
+  return Number(row?.value ?? 0);
+}
+
 /**
  * Bulk-inserts notifications inside the caller's transaction with
  * `ON CONFLICT DO NOTHING` on `(source_event_id, recipient_user_id)`
@@ -293,34 +381,35 @@ export async function markOutboxEventFailed(db: NotificationsDb, eventId: string
 }
 
 /**
- * Mark-READ (Task 010 §8/§26): sets `read_at` only when still NULL
- * (`COALESCE`), so an already-read notification is never rewritten and
- * `read_at` can never move backward. Recipient + School scoped: a User can
- * only ever affect their OWN notifications in their current School
- * (BR-NOTIFICATION-007). Returns the notification id when the scoped row
- * exists, or null otherwise.
+ * Mark-READ (Task 010 §8/§26, Task 024 §30): conditionally sets `read_at`
+ * only while it is NULL. An already-read or concurrently won row is fetched
+ * without rewriting its first timestamp. Recipient + School scoped: a User
+ * can only ever affect their OWN notifications in their current School
+ * (BR-NOTIFICATION-007). Returns the safe row when it exists, or null.
  */
 export async function markNotificationRead(
   db: NotificationsDb,
   notificationId: string,
   schoolId: string,
   recipientUserId: string,
-): Promise<boolean> {
+): Promise<NotificationView | null> {
+  const readAt = new Date();
   const [row] = await db
     .update(schema.notifications)
     .set({
-      readAt: sql`COALESCE(${schema.notifications.readAt}, now())`,
-      updatedAt: new Date(),
+      readAt,
     })
     .where(
       and(
         eq(schema.notifications.id, notificationId),
         eq(schema.notifications.schoolId, schoolId),
         eq(schema.notifications.recipientUserId, recipientUserId),
+        isNull(schema.notifications.readAt),
       ),
     )
-    .returning({ id: schema.notifications.id });
-  return row !== undefined;
+    .returning(notificationViewSelection);
+  if (row) return row;
+  return findNotification(db, notificationId, schoolId, recipientUserId);
 }
 
 /**
@@ -333,17 +422,17 @@ export async function markAllNotificationsRead(
   schoolId: string,
   recipientUserId: string,
 ): Promise<number> {
+  const readAt = new Date();
   const rows = await db
     .update(schema.notifications)
     .set({
-      readAt: sql`COALESCE(${schema.notifications.readAt}, now())`,
-      updatedAt: new Date(),
+      readAt,
     })
     .where(
       and(
         eq(schema.notifications.schoolId, schoolId),
         eq(schema.notifications.recipientUserId, recipientUserId),
-        sql`${schema.notifications.readAt} IS NULL`,
+        isNull(schema.notifications.readAt),
       ),
     )
     .returning({ id: schema.notifications.id });

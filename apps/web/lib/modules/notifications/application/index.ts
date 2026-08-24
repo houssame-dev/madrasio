@@ -23,3 +23,15 @@ export {
 } from './process-retryable-outbox-events';
 export { markNotificationRead, type MarkNotificationReadInput } from './mark-notification-read';
 export { markAllNotificationsRead, type MarkAllNotificationsReadInput } from './mark-all-notifications-read';
+export {
+  listNotificationInbox,
+  getNotification,
+  markInboxNotificationRead,
+  markNotificationInboxRead,
+  getUnreadNotificationCount,
+  type NotificationActor,
+} from './notification-inbox';
+export {
+  NotificationInboxError,
+  type NotificationInboxFeatureCode,
+} from './notification-inbox-errors';
