@@ -15,6 +15,17 @@ export interface RelationshipFilters {
   studentId?: string;
 }
 
+export interface SelfParentProfileRow {
+  parentId: string;
+  parentFirstName: string;
+  parentLastName: string;
+  relationshipId: string | null;
+  studentId: string | null;
+  studentFirstName: string | null;
+  studentLastName: string | null;
+  studentCode: string | null;
+}
+
 function where(conditions: (SQL | undefined)[]): SQL | undefined {
   return and(...conditions.filter((condition): condition is SQL => condition !== undefined));
 }
@@ -57,6 +68,53 @@ export async function findParent(db: ParentsDb, schoolId: string, id: string) {
     eq(schema.parents.schoolId, schoolId), eq(schema.parents.id, id),
   )).limit(1);
   return row ?? null;
+}
+
+/**
+ * Current Parent portal bootstrap, resolved only from ACTIVE profiles owned by
+ * the authenticated User in the current School. LEFT joins retain profiles
+ * with no current children; ENDED relationships are excluded at the join.
+ */
+export async function listSelfParentProfiles(
+  db: ParentsDb,
+  schoolId: string,
+  userId: string,
+): Promise<SelfParentProfileRow[]> {
+  return db
+    .select({
+      parentId: schema.parents.id,
+      parentFirstName: schema.parents.firstName,
+      parentLastName: schema.parents.lastName,
+      relationshipId: schema.parentStudents.id,
+      studentId: schema.students.id,
+      studentFirstName: schema.students.firstName,
+      studentLastName: schema.students.lastName,
+      studentCode: schema.students.studentCode,
+    })
+    .from(schema.parents)
+    .leftJoin(schema.parentStudents, and(
+      eq(schema.parentStudents.schoolId, schoolId),
+      eq(schema.parentStudents.parentId, schema.parents.id),
+      eq(schema.parentStudents.status, 'ACTIVE'),
+    ))
+    .leftJoin(schema.students, and(
+      eq(schema.students.schoolId, schoolId),
+      eq(schema.students.id, schema.parentStudents.studentId),
+    ))
+    .where(and(
+      eq(schema.parents.schoolId, schoolId),
+      eq(schema.parents.userId, userId),
+      eq(schema.parents.status, 'ACTIVE'),
+    ))
+    .orderBy(
+      asc(schema.parents.lastName),
+      asc(schema.parents.firstName),
+      asc(schema.parents.id),
+      asc(schema.students.lastName),
+      asc(schema.students.firstName),
+      asc(schema.students.id),
+      asc(schema.parentStudents.id),
+    );
 }
 
 export async function insertParent(

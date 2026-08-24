@@ -78,7 +78,7 @@ export async function seedTeacherScope(
   const [teacher] = await context.test.seed.insert(schema.teachers).values({
     schoolId: context.schoolId, userId: actor.userId!, firstName: 'Karim', lastName: 'Alaoui',
   }).returning();
-  await context.test.seed.insert(schema.teacherAssignments).values({
+  const [assignment] = await context.test.seed.insert(schema.teacherAssignments).values({
     schoolId: context.schoolId,
     teacherId: teacher.id,
     classId,
@@ -87,7 +87,8 @@ export async function seedTeacherScope(
     effectiveFrom: '2025-09-01',
     effectiveUntil: status === 'ENDED' ? '2025-10-01' : null,
     status,
-  });
+  }).returning();
+  return { teacher, assignment };
 }
 
 export async function seedParentRelationship(

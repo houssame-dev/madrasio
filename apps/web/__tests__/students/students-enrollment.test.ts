@@ -168,6 +168,59 @@ describe('Teacher and Parent read policy', () => {
     await expect(app.createStudent(context.db, teacher, { firstName: 'No', lastName: 'Write' })).rejects.toBeInstanceOf(ForbiddenError);
   });
 
+  it('removes all Student scope when the Teacher profile is inactive and restores it on reactivation', async () => {
+    const student = await seedStudent(context.test, context.schoolId, 'Scoped');
+    await enroll(student.id, context.classAId);
+    const teacherActor = await createActor(context.test, context.schoolId, 'TEACHER');
+    const { teacher, assignment } = await seedTeacherScope(
+      context,
+      teacherActor,
+      context.classAId,
+    );
+
+    expect((await app.listStudents(context.db, teacherActor, {
+      page: 1, pageSize: 50,
+    })).data.map((row) => row.id)).toEqual([student.id]);
+    await expect(app.getStudent(context.db, teacherActor, student.id))
+      .resolves.toMatchObject({ id: student.id });
+    await expect(app.getCurrentEnrollment(
+      context.db, teacherActor, student.id, context.yearId,
+    )).resolves.toMatchObject({ classId: context.classAId });
+
+    await context.test.seed.update(schema.teachers).set({ status: 'INACTIVE' })
+      .where(eq(schema.teachers.id, teacher.id));
+    expect((await app.listStudents(context.db, teacherActor, {
+      page: 1, pageSize: 50,
+    })).data).toEqual([]);
+    await expect(app.getStudent(context.db, teacherActor, student.id))
+      .rejects.toMatchObject({ featureCode: 'STUDENT_NOT_FOUND' });
+    await expect(app.getCurrentEnrollment(
+      context.db, teacherActor, student.id, context.yearId,
+    )).rejects.toMatchObject({ featureCode: 'STUDENT_NOT_FOUND' });
+    expect((await context.test.seed.select().from(schema.teacherAssignments)
+      .where(eq(schema.teacherAssignments.id, assignment.id)))[0].status).toBe('ACTIVE');
+
+    await context.test.seed.update(schema.teachers).set({ status: 'ACTIVE' })
+      .where(eq(schema.teachers.id, teacher.id));
+    expect((await app.listStudents(context.db, teacherActor, {
+      page: 1, pageSize: 50,
+    })).data.map((row) => row.id)).toEqual([student.id]);
+    await expect(app.getStudent(context.db, teacherActor, student.id))
+      .resolves.toMatchObject({ id: student.id });
+    await expect(app.getCurrentEnrollment(
+      context.db, teacherActor, student.id, context.yearId,
+    )).resolves.toMatchObject({ classId: context.classAId });
+
+    await context.test.seed.update(schema.teacherAssignments).set({ status: 'ENDED' })
+      .where(eq(schema.teacherAssignments.id, assignment.id));
+    expect((await app.listStudents(context.db, teacherActor, {
+      page: 1, pageSize: 50,
+    })).data).toEqual([]);
+    expect((await app.listStudents(context.db, context.admin, {
+      page: 1, pageSize: 50,
+    })).data.map((row) => row.id)).toContain(student.id);
+  });
+
   it('ENDED assignments grant no scope; Parents have related detail but no general list', async () => {
     const student = await seedStudent(context.test, context.schoolId); await enroll(student.id);
     const teacher = await createActor(context.test, context.schoolId, 'TEACHER'); await seedTeacherScope(context, teacher, context.classAId, 'ENDED');

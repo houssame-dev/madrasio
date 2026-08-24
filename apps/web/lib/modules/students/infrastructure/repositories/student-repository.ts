@@ -89,6 +89,7 @@ export async function listTeacherStudents(
     eq(schema.teachers.schoolId, schoolId),
     eq(schema.teachers.id, schema.teacherAssignments.teacherId),
     eq(schema.teachers.userId, userId),
+    eq(schema.teachers.status, 'ACTIVE'),
   ]);
   const from = db.selectDistinct({
     id: schema.students.id,
@@ -157,6 +158,7 @@ export async function teacherCanReadStudent(db: StudentsDb, userId: string, scho
       eq(schema.teachers.schoolId, schoolId),
       eq(schema.teachers.id, schema.teacherAssignments.teacherId),
       eq(schema.teachers.userId, userId),
+      eq(schema.teachers.status, 'ACTIVE'),
     ))
     .where(and(eq(schema.students.schoolId, schoolId), eq(schema.students.id, studentId))).limit(1);
   return row !== undefined;
@@ -174,6 +176,7 @@ export async function teacherCanReadPlacement(
       eq(schema.teachers.schoolId, schoolId),
       eq(schema.teachers.id, schema.teacherAssignments.teacherId),
       eq(schema.teachers.userId, userId),
+      eq(schema.teachers.status, 'ACTIVE'),
     ))
     .where(and(
       eq(schema.teacherAssignments.schoolId, schoolId),

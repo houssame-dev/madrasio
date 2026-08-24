@@ -61,6 +61,13 @@ export function parentsPOST(request: Request) {
   });
 }
 
+export function parentProfilesGET() {
+  return run(async () => {
+    const value = await actor();
+    return Response.json(await service.listSelfParentProfiles(value.db, value.actor));
+  });
+}
+
 export function parentGET(_request: Request, context: Params) {
   return run(async () => {
     const value = await actor();

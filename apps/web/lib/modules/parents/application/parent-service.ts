@@ -99,6 +99,70 @@ export async function getParent(db: ParentsDb, actor: Actor, id: string) {
   return view(await assertParentReadable(db, actor, id));
 }
 
+export interface ParentBootstrapProfile {
+  parent: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    status: 'ACTIVE';
+  };
+  children: Array<{
+    relationshipId: string;
+    student: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      studentCode: string | null;
+    };
+  }>;
+}
+
+/**
+ * Self-scoped current Parent portal bootstrap. Permission/context checks run
+ * before the repository query; identity and School always come from the actor
+ * derived by requireCurrentContext at the HTTP boundary.
+ */
+export async function listSelfParentProfiles(
+  db: ParentsDb,
+  actor: Actor,
+): Promise<{ data: ParentBootstrapProfile[] }> {
+  await read(db, actor);
+  const rows = await repo.listSelfParentProfiles(db, actor.schoolId, actor.userId!);
+  const profiles = new Map<string, ParentBootstrapProfile>();
+  for (const row of rows) {
+    let profile = profiles.get(row.parentId);
+    if (!profile) {
+      profile = {
+        parent: {
+          id: row.parentId,
+          firstName: row.parentFirstName,
+          lastName: row.parentLastName,
+          status: 'ACTIVE',
+        },
+        children: [],
+      };
+      profiles.set(row.parentId, profile);
+    }
+    if (
+      row.relationshipId !== null
+      && row.studentId !== null
+      && row.studentFirstName !== null
+      && row.studentLastName !== null
+    ) {
+      profile.children.push({
+        relationshipId: row.relationshipId,
+        student: {
+          id: row.studentId,
+          firstName: row.studentFirstName,
+          lastName: row.studentLastName,
+          studentCode: row.studentCode,
+        },
+      });
+    }
+  }
+  return { data: [...profiles.values()] };
+}
+
 export async function createParent(db: ParentsDb, actor: Actor, input: ParentCreate) {
   await manage(db, actor);
   if (input.userId) await assertValidUserLink(db, actor, input.userId);

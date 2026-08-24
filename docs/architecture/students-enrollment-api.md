@@ -54,8 +54,11 @@ identifiers or role system.
   end enrollments.
 - `students.read`: School administrators may list/detail Students and read
   enrollment history. Teachers may list and read only Students reached through
-  an `ACTIVE` TeacherAssignment for the exact Class and AcademicYear of an
-  `ACTIVE` enrollment. The SQL query is scoped before pagination and counting.
+  an `ACTIVE` User-linked Teacher profile and an `ACTIVE` TeacherAssignment for
+  the exact Class and AcademicYear of an `ACTIVE` enrollment. The SQL query is
+  scoped before pagination and counting. Deactivating the Teacher profile
+  immediately removes list, detail, and current-placement scope without ending
+  or deleting the historical TeacherAssignment.
 - Parents receive no general Student list or enrollment-history access. A
   parent may read a related Student and that Student's explicit current-year
   placement only through an `ACTIVE` ParentStudent relationship.

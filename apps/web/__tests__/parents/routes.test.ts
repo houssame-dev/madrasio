@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '@school/database';
+import { eq } from 'drizzle-orm';
 
 import { AuthError } from '@/lib/auth/auth-errors';
 import type { CurrentContext } from '@/lib/authorization/context';
@@ -23,7 +24,7 @@ vi.mock('@/lib/auth/require-context', () => ({
 }));
 
 import {
-  endRelationshipPOST, parentGET, parentPATCH, parentsGET, parentsPOST,
+  endRelationshipPOST, parentGET, parentPATCH, parentProfilesGET, parentsGET, parentsPOST,
   relationshipsGET, relationshipsPOST,
 } from '@/lib/api/parents';
 
@@ -125,6 +126,96 @@ describe('Parents and Relationships HTTP contracts', () => {
     expect((await parentPATCH(json('PATCH', { firstName: 'Self' }), params(own.id))).status).toBe(200);
     expect((await parentPATCH(json('PATCH', { parentCode: 'ADMIN' }), params(own.id))).status)
       .toBe(403);
+  });
+
+  it('bootstraps only current-School ACTIVE self profiles and relationships', async () => {
+    const parentUser = await seedUser(seeded.test.seed);
+    await seedMembership(seeded.test.seed, parentUser, seeded.schoolId, 'PARENT');
+    const [own, inactive] = await seeded.test.seed.insert(schema.parents).values([{
+      schoolId: seeded.schoolId,
+      userId: parentUser,
+      firstName: 'Own',
+      lastName: 'Parent',
+    }, {
+      schoolId: seeded.schoolId,
+      userId: parentUser,
+      firstName: 'Inactive',
+      lastName: 'Parent',
+      status: 'INACTIVE',
+    }]).returning();
+    const currentChild = await seedStudent(seeded.test, seeded.schoolId, 'Current');
+    const oldChild = await seedStudent(seeded.test, seeded.schoolId, 'Old');
+    const [currentRelationship] = await seeded.test.seed.insert(schema.parentStudents).values([{
+      schoolId: seeded.schoolId,
+      parentId: own.id,
+      studentId: currentChild.id,
+      status: 'ACTIVE',
+    }, {
+      schoolId: seeded.schoolId,
+      parentId: own.id,
+      studentId: oldChild.id,
+      status: 'ENDED',
+    }]).returning();
+    const otherUser = await seedUser(seeded.test.seed);
+    await seedMembership(seeded.test.seed, otherUser, seeded.schoolId, 'PARENT');
+    await seeded.test.seed.insert(schema.parents).values({
+      schoolId: seeded.schoolId,
+      userId: otherUser,
+      firstName: 'Other',
+      lastName: 'Parent',
+    });
+
+    mocks.context = contextFor(parentUser, seeded.schoolId, 'PARENT');
+    const response = await parentProfilesGET();
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload).toEqual({
+      data: [{
+        parent: {
+          id: own.id,
+          firstName: own.firstName,
+          lastName: own.lastName,
+          status: 'ACTIVE',
+        },
+        children: [{
+          relationshipId: currentRelationship.id,
+          student: {
+            id: currentChild.id,
+            firstName: currentChild.firstName,
+            lastName: currentChild.lastName,
+            studentCode: currentChild.studentCode,
+          },
+        }],
+      }],
+    });
+    expect(payload.data.map((profile: { parent: { id: string } }) => profile.parent.id))
+      .not.toContain(inactive.id);
+
+    await seeded.test.seed.update(schema.parentStudents).set({ status: 'ENDED' })
+      .where(eq(schema.parentStudents.id, currentRelationship.id));
+    expect(await (await parentProfilesGET()).json()).toEqual({
+      data: [{
+        parent: {
+          id: own.id,
+          firstName: own.firstName,
+          lastName: own.lastName,
+          status: 'ACTIVE',
+        },
+        children: [],
+      }],
+    });
+  });
+
+  it('returns an empty bootstrap and maps authentication/context failures', async () => {
+    const parentUser = await seedUser(seeded.test.seed);
+    await seedMembership(seeded.test.seed, parentUser, seeded.schoolId, 'PARENT');
+    mocks.context = contextFor(parentUser, seeded.schoolId, 'PARENT');
+    expect(await (await parentProfilesGET()).json()).toEqual({ data: [] });
+
+    mocks.authError = new UnauthenticatedError();
+    expect((await parentProfilesGET()).status).toBe(401);
+    mocks.authError = new AuthError('SCHOOL_CONTEXT_REQUIRED', 'Select a School.');
+    expect((await parentProfilesGET()).status).toBe(403);
   });
 
   it('hides foreign-School resources and maps CurrentContext denials', async () => {

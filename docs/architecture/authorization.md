@@ -76,6 +76,11 @@ resource-state stages run only when the operation requests them.
   operations require an ACTIVE assignment matching Class + Subject +
   AcademicYear. Daily Attendance uses the same resolved assignments with a
   Class + AcademicYear requirement because Attendance has no Subject dimension.
+- Current Teacher scope also requires the User-linked Teacher profile itself to
+  be ACTIVE. An ACTIVE assignment attached to an INACTIVE Teacher profile
+  grants no Student, Grade, Attendance, Homework, or Announcement scope. The
+  assignment remains stored as history and scope becomes available again if
+  the profile is validly reactivated while the assignment is still ACTIVE.
 - Parent scope comes ONLY from `ParentStudent` (BR-PARENT-002); the engine
   requires an ACTIVE relationship. The enrollment/academic-context refinement
   is a later module-level policy.

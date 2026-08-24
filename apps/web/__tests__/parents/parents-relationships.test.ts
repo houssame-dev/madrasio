@@ -122,6 +122,121 @@ describe('Parent identity, linking, lifecycle, and authorization', () => {
   });
 });
 
+describe('Parent self bootstrap', () => {
+  it('returns all ACTIVE self-owned profiles and ACTIVE children with a minimal Student DTO', async () => {
+    const parentActor = await createActor(context, 'PARENT');
+    const parentA = await seedParent(context, { userId: parentActor.userId });
+    const parentB = await seedParent(context, { userId: parentActor.userId });
+    const studentA = await seedStudent(context.test, context.schoolId, 'Bootstrap-A');
+    const studentB = await seedStudent(context.test, context.schoolId, 'Bootstrap-B');
+    const relationshipA = await app.createRelationship(
+      context.parentDb, context.admin, parentA.id, { studentId: studentA.id },
+    );
+    await app.createRelationship(
+      context.parentDb, context.admin, parentA.id, { studentId: studentB.id },
+    );
+
+    const result = await app.listSelfParentProfiles(context.parentDb, parentActor);
+    expect(result.data.map((profile) => profile.parent.id).sort())
+      .toEqual([parentA.id, parentB.id].sort());
+    const profileA = result.data.find((profile) => profile.parent.id === parentA.id)!;
+    const profileB = result.data.find((profile) => profile.parent.id === parentB.id)!;
+    expect(profileA.children).toHaveLength(2);
+    expect(profileB.children).toEqual([]);
+    expect(profileA.children[0]).toMatchObject({
+      relationshipId: relationshipA.id,
+      student: {
+        id: studentA.id,
+        firstName: studentA.firstName,
+        lastName: studentA.lastName,
+        studentCode: studentA.studentCode,
+      },
+    });
+    expect(Object.keys(profileA.children[0].student).sort()).toEqual([
+      'firstName', 'id', 'lastName', 'studentCode',
+    ]);
+    expect(profileA).not.toHaveProperty('currentClass');
+    expect(profileA).not.toHaveProperty('currentEnrollment');
+    expect(await studentApp.getStudent(context.db, parentActor, studentA.id))
+      .toMatchObject({ id: studentA.id });
+  });
+
+  it('excludes ENDED relationships, inactive profiles, other Users, and other Schools', async () => {
+    const parentActor = await createActor(context, 'PARENT');
+    const active = await seedParent(context, { userId: parentActor.userId });
+    const inactive = await seedParent(context, {
+      userId: parentActor.userId, status: 'INACTIVE',
+    });
+    const otherUser = await seedUser(context.test.seed);
+    await seedMembership(context.test.seed, otherUser, context.schoolId, 'PARENT');
+    await seedParent(context, { userId: otherUser });
+    const activeStudent = await seedStudent(context.test, context.schoolId, 'Current');
+    const endedStudent = await seedStudent(context.test, context.schoolId, 'Ended');
+    await app.createRelationship(
+      context.parentDb, context.admin, active.id, { studentId: activeStudent.id },
+    );
+    const ended = await app.createRelationship(
+      context.parentDb, context.admin, active.id, { studentId: endedStudent.id },
+    );
+    await app.endRelationship(context.parentDb, context.admin, ended.id);
+
+    const otherSchool = await seedSchool(context.test.seed, 'Bootstrap Other School');
+    await seedMembership(context.test.seed, parentActor.userId!, otherSchool.id, 'PARENT');
+    const [foreignParent] = await context.test.seed.insert(schema.parents).values({
+      schoolId: otherSchool.id,
+      userId: parentActor.userId,
+      firstName: 'Foreign',
+      lastName: 'Profile',
+    }).returning();
+
+    const current = await app.listSelfParentProfiles(context.parentDb, parentActor);
+    expect(current.data).toHaveLength(1);
+    expect(current.data[0].parent.id).toBe(active.id);
+    expect(current.data[0].parent.id).not.toBe(inactive.id);
+    expect(current.data[0].children.map((child) => child.student.id)).toEqual([activeStudent.id]);
+    await expect(studentApp.getStudent(context.db, parentActor, endedStudent.id))
+      .rejects.toMatchObject({ featureCode: 'STUDENT_NOT_FOUND' });
+
+    const switched = await app.listSelfParentProfiles(context.parentDb, {
+      userId: parentActor.userId,
+      schoolId: otherSchool.id,
+    });
+    expect(switched.data).toMatchObject([{ parent: { id: foreignParent.id }, children: [] }]);
+  });
+
+  it('returns an empty collection without an ACTIVE linked profile and remains self-scoped by role', async () => {
+    const parentActor = await createActor(context, 'PARENT');
+    expect(await app.listSelfParentProfiles(context.parentDb, parentActor)).toEqual({ data: [] });
+
+    const adminSelf = await seedParent(context, { userId: context.admin.userId });
+    expect(await app.listSelfParentProfiles(context.parentDb, context.admin))
+      .toMatchObject({ data: [{ parent: { id: adminSelf.id }, children: [] }] });
+
+    const teacherActor = await createActor(context, 'TEACHER');
+    await seedParent(context, { userId: teacherActor.userId });
+    await expect(app.listSelfParentProfiles(context.parentDb, teacherActor))
+      .rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it('uses real application User and membership lifecycle gates', async () => {
+    const suspended = await seedUser(context.test.seed, randomUUID(), undefined, 'SUSPENDED');
+    await seedMembership(context.test.seed, suspended, context.schoolId, 'PARENT');
+    await seedParent(context, { userId: suspended });
+    await expect(app.listSelfParentProfiles(context.parentDb, {
+      userId: suspended, schoolId: context.schoolId,
+    })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    const inactiveMembership = await seedUser(context.test.seed);
+    await seedMembership(
+      context.test.seed, inactiveMembership, context.schoolId, 'PARENT', 'INACTIVE',
+    );
+    await seedParent(context, { userId: inactiveMembership });
+    await expect(app.listSelfParentProfiles(context.parentDb, {
+      userId: inactiveMembership, schoolId: context.schoolId,
+    })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+});
+
 describe('ParentStudent creation, multiplicity, history, and ending', () => {
   it('supports multiple children and multiple Parents while filtering Parent lists through ACTIVE relationships', async () => {
     const parentA = await seedParent(context);

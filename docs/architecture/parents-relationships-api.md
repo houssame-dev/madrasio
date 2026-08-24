@@ -81,8 +81,32 @@ Results.
 |---|---|
 | Parent | `GET/POST /api/v1/parents`; `GET/PATCH /api/v1/parents/:id` |
 | ParentStudent | `GET/POST /api/v1/parents/:id/students`; `POST /api/v1/parent-student-relationships/:id/end` |
+| Parent self bootstrap | `GET /api/v1/me/parent-profiles` |
 
 There are no DELETE routes and no generic relationship PATCH.
+
+## Current Parent self bootstrap
+
+`GET /api/v1/me/parent-profiles` gives a fresh Parent portal enough identity
+to navigate the existing child-scoped APIs without accepting a client-selected
+Parent or User id. It returns every ACTIVE Parent profile where `school_id` is
+the authoritative current School and `user_id` is the authenticated User,
+together with only ACTIVE ParentStudent relationships and a minimal Student
+identity (`id`, names, optional code). A profile with no current children has
+`children: []`; a User with no ACTIVE linked profile receives `data: []`.
+
+The endpoint is always self-owned even for an administrator or membership-
+scoped SUPER_ADMIN; it never becomes a School-wide Parent directory. TEACHER
+has no `parents.read` permission and receives no Parent data. INACTIVE or
+ARCHIVED profiles and ENDED relationships are excluded, but their historical
+rows remain unchanged. Profiles and children are restricted to the current
+School, so switching School contexts changes the returned collection.
+
+The bootstrap deliberately does not embed a current Class or current
+Enrollment. There is no global current AcademicYear policy; clients use the
+returned Student id with the existing explicit current-placement endpoint and
+an `academicYearId` when placement is needed. The existing administrator-only
+`GET /api/v1/parents` behavior is unchanged.
 
 ## Cross-module behavior and history
 
