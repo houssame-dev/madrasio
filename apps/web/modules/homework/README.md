@@ -1,4 +1,4 @@
-# Homework module (placeholder)
+# Homework module
 
 Owned by: Homework
 
@@ -9,4 +9,5 @@ Responsibilities:
 - Review
 
 Homework does NOT automatically become a Grade/Assessment. Integration with
-Grades is explicit and optional. This folder is a placeholder.
+Grades is explicit and optional. The implemented Application/API boundary is
+owned under `lib/modules/homework`; see `docs/architecture/homework-api.md`.
