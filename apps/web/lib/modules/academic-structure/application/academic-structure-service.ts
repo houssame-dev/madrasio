@@ -42,12 +42,36 @@ export async function createAcademicYear(db: AcademicStructureDb, actor: Actor, 
   return view(await unique(() => repo.insertAcademicYear(db, actor.schoolId, input)));
 }
 export async function patchAcademicYear(db: AcademicStructureDb, actor: Actor, id: string, input: AcademicYearPatch) {
-  await manage(db, actor); const current = await repo.findAcademicYear(db, actor.schoolId, id); if (!current) notFound('Academic year');
-  if (input.status) assertTransition('academic-year', current.status, input.status);
-  const startDate = input.startDate ?? current.startDate; const endDate = input.endDate ?? current.endDate; assertDateRange(startDate, endDate);
-  const periods = await repo.findPeriodsForYear(db, actor.schoolId, id);
-  for (const period of periods) assertPeriodInsideYear(period, { startDate, endDate });
-  return view((await unique(() => repo.updateAcademicYear(db, actor.schoolId, id, input))) ?? notFound('Academic year'));
+  await manage(db, actor);
+  return db.transaction(async (tx) => {
+    const current = await repo.findAcademicYearForUpdate(tx, actor.schoolId, id);
+    if (!current) notFound('Academic year');
+    if (input.status) assertTransition('academic-year', current.status, input.status);
+
+    const startDate = input.startDate ?? current.startDate;
+    const endDate = input.endDate ?? current.endDate;
+    assertDateRange(startDate, endDate);
+    const datesChanged = startDate !== current.startDate || endDate !== current.endDate;
+    if (datesChanged) {
+      if (current.status !== 'PLANNED') {
+        throw new AcademicStructureError(
+          'ACADEMIC_YEAR_DATES_IMMUTABLE',
+          'Academic year dates are immutable after the year leaves PLANNED status.',
+        );
+      }
+      if (await repo.academicYearHasDateSensitiveDependents(tx, actor.schoolId, id)) {
+        throw new AcademicStructureError(
+          'ACADEMIC_YEAR_DATES_IMMUTABLE',
+          'Academic year dates are immutable after date-sensitive academic operations exist.',
+        );
+      }
+      const periods = await repo.findPeriodsForYear(tx, actor.schoolId, id);
+      for (const period of periods) assertPeriodInsideYear(period, { startDate, endDate });
+    }
+
+    return view((await unique(() => repo.updateAcademicYear(tx, actor.schoolId, id, input)))
+      ?? notFound('Academic year'));
+  });
 }
 
 export async function listAcademicPeriods(db: AcademicStructureDb, actor: Actor, academicYearId: string, input: PageInput & StatusFilter<'PLANNED' | 'ACTIVE' | 'CLOSED'>) {
@@ -56,16 +80,48 @@ export async function listAcademicPeriods(db: AcademicStructureDb, actor: Actor,
 }
 export async function getAcademicPeriod(db: AcademicStructureDb, actor: Actor, id: string) { await read(db, actor); const row = await repo.findAcademicPeriod(db, actor.schoolId, id); return view(row ?? notFound('Academic period')); }
 export async function createAcademicPeriod(db: AcademicStructureDb, actor: Actor, academicYearId: string, input: AcademicPeriodCreate) {
-  await manage(db, actor); const year = await repo.findAcademicYear(db, actor.schoolId, academicYearId); if (!year) notFound('Academic year');
-  assertPeriodInsideYear(input, year); if (input.status && input.status !== 'PLANNED') assertTransition('period', 'PLANNED', input.status);
-  return view(await unique(() => repo.insertAcademicPeriod(db, actor.schoolId, academicYearId, input)));
+  await manage(db, actor);
+  return db.transaction(async (tx) => {
+    const year = await repo.findAcademicYearForUpdate(tx, actor.schoolId, academicYearId);
+    if (!year) notFound('Academic year');
+    assertPeriodInsideYear(input, year);
+    if (input.status && input.status !== 'PLANNED') assertTransition('period', 'PLANNED', input.status);
+    return view(await unique(() => repo.insertAcademicPeriod(tx, actor.schoolId, academicYearId, input)));
+  });
 }
 export async function patchAcademicPeriod(db: AcademicStructureDb, actor: Actor, id: string, input: AcademicPeriodPatch) {
-  await manage(db, actor); const current = await repo.findAcademicPeriod(db, actor.schoolId, id); if (!current) notFound('Academic period');
-  const year = await repo.findAcademicYear(db, actor.schoolId, current.academicYearId); if (!year) notFound('Academic year');
-  if (input.status) assertTransition('period', current.status, input.status);
-  assertPeriodInsideYear({ startDate: input.startDate ?? current.startDate, endDate: input.endDate ?? current.endDate }, year);
-  return view((await unique(() => repo.updateAcademicPeriod(db, actor.schoolId, id, input))) ?? notFound('Academic period'));
+  await manage(db, actor);
+  const observed = await repo.findAcademicPeriod(db, actor.schoolId, id);
+  if (!observed) notFound('Academic period');
+  return db.transaction(async (tx) => {
+    const year = await repo.findAcademicYearForUpdate(tx, actor.schoolId, observed.academicYearId);
+    if (!year) notFound('Academic year');
+    const current = await repo.findAcademicPeriod(tx, actor.schoolId, id);
+    if (!current || current.academicYearId !== year.id) notFound('Academic period');
+    if (input.status) assertTransition('period', current.status, input.status);
+
+    const startDate = input.startDate ?? current.startDate;
+    const endDate = input.endDate ?? current.endDate;
+    assertPeriodInsideYear({ startDate, endDate }, year);
+    const datesChanged = startDate !== current.startDate || endDate !== current.endDate;
+    if (datesChanged) {
+      if (current.status !== 'PLANNED') {
+        throw new AcademicStructureError(
+          'ACADEMIC_PERIOD_DATES_IMMUTABLE',
+          'Academic period dates are immutable after the period leaves PLANNED status.',
+        );
+      }
+      if (await repo.academicPeriodHasOperationalDependents(tx, actor.schoolId, id)) {
+        throw new AcademicStructureError(
+          'ACADEMIC_PERIOD_DATES_IMMUTABLE',
+          'Academic period dates are immutable after period-scoped academic operations exist.',
+        );
+      }
+    }
+
+    return view((await unique(() => repo.updateAcademicPeriod(tx, actor.schoolId, id, input)))
+      ?? notFound('Academic period'));
+  });
 }
 
 export async function listStages(db: AcademicStructureDb, actor: Actor, input: PageInput & StatusFilter<'ACTIVE' | 'INACTIVE'>) { await read(db, actor); const result = await repo.listStages(db, actor.schoolId, paging(input), input.status); return page(result.rows.map(view), result.total, input); }

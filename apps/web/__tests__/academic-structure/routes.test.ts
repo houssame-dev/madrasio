@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({ db: null as unknown, context: null as unknown,
 vi.mock('@/lib/db/client', () => ({ getDb: () => mocks.db }));
 vi.mock('@/lib/auth/require-context', () => ({ requireCurrentContext: async () => { if (mocks.authError) throw mocks.authError; return mocks.context; } }));
 
-import { academicYearGET, academicYearPATCH, academicYearsGET, academicYearsPOST, classesGET, classesPOST, curriculumSubjectsPOST, subjectGET, subjectsGET, subjectsPOST, versionGET } from '@/lib/api/academic-structure';
+import { academicYearGET, academicYearPATCH, academicYearsGET, academicYearsPOST, classesGET, classesPOST, curriculumSubjectsPOST, periodPATCH, periodsPOST, subjectGET, subjectsGET, subjectsPOST, versionGET } from '@/lib/api/academic-structure';
 
 let test: AuthTestDb;
 let schoolId: string;
@@ -34,6 +34,32 @@ describe('representative academic structure HTTP contracts', () => {
     expect((await academicYearGET(new Request('http://local'), params({ id: created.id }))).status).toBe(200);
     const invalid = await academicYearPATCH(json('http://local', 'PATCH', { status: 'ARCHIVED' }), params({ id: created.id }));
     expect(await invalid.json()).toMatchObject({ error: { featureCode: 'INVALID_STATUS_TRANSITION' } });
+  });
+
+  it('exposes controlled calendar containment and historical immutability errors', async () => {
+    const yearResponse = await academicYearsPOST(json('http://local', 'POST', {
+      name: 'Calendar safety', startDate: '2025-09-01', endDate: '2026-07-01',
+    }));
+    const year = (await yearResponse.json()).data;
+    const periodResponse = await periodsPOST(json('http://local', 'POST', {
+      name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-20',
+    }), params({ id: year.id }));
+    expect(periodResponse.status).toBe(201);
+    const period = (await periodResponse.json()).data;
+
+    const excludesPeriod = await academicYearPATCH(json('http://local', 'PATCH', { startDate: '2025-10-01' }), params({ id: year.id }));
+    expect(excludesPeriod.status).toBe(422);
+    expect(await excludesPeriod.json()).toMatchObject({ error: { featureCode: 'INVALID_ACADEMIC_CONTEXT' } });
+
+    expect((await periodPATCH(json('http://local', 'PATCH', { status: 'ACTIVE' }), params({ id: period.id }))).status).toBe(200);
+    const immutablePeriod = await periodPATCH(json('http://local', 'PATCH', { endDate: '2025-12-19' }), params({ id: period.id }));
+    expect(immutablePeriod.status).toBe(422);
+    expect(await immutablePeriod.json()).toMatchObject({ error: { featureCode: 'ACADEMIC_PERIOD_DATES_IMMUTABLE' } });
+
+    expect((await academicYearPATCH(json('http://local', 'PATCH', { status: 'ACTIVE' }), params({ id: year.id }))).status).toBe(200);
+    const immutableYear = await academicYearPATCH(json('http://local', 'PATCH', { endDate: '2026-06-30' }), params({ id: year.id }));
+    expect(immutableYear.status).toBe(422);
+    expect(await immutableYear.json()).toMatchObject({ error: { featureCode: 'ACADEMIC_YEAR_DATES_IMMUTABLE' } });
   });
 
   it('rejects malformed payloads and client-provided schoolId', async () => {

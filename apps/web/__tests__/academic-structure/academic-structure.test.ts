@@ -38,6 +38,7 @@ describe('AcademicYear and AcademicPeriod application rules', () => {
     const list = await app.listAcademicYears(db, a, { page: 1, pageSize: 50 });
     expect(list.data.map((row) => row.id)).toEqual([yearA.id]);
     await expect(app.getAcademicYear(db, b, yearA.id)).rejects.toMatchObject({ featureCode: 'NOT_FOUND' });
+    await expect(app.patchAcademicYear(db, b, yearA.id, { endDate: '2026-06-30' })).rejects.toMatchObject({ featureCode: 'NOT_FOUND' });
   });
 
   it('allows only PLANNED → ACTIVE → CLOSED → ARCHIVED', async () => {
@@ -55,6 +56,152 @@ describe('AcademicYear and AcademicPeriod application rules', () => {
     await expect(app.createAcademicPeriod(db, a, year.id, { name: 'Bad', sequence: 2, startDate: '2025-08-01', endDate: '2025-12-01' })).rejects.toMatchObject({ featureCode: 'INVALID_ACADEMIC_CONTEXT' });
     const b = await actor('SCHOOL_ADMIN', 'School B');
     await expect(app.createAcademicPeriod(db, b, year.id, { name: 'Term', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-01' })).rejects.toMatchObject({ featureCode: 'NOT_FOUND' });
+    await expect(app.patchAcademicPeriod(db, b, period.id, { endDate: '2025-12-19' })).rejects.toMatchObject({ featureCode: 'NOT_FOUND' });
+  });
+
+  it('allows safe PLANNED date corrections while preserving Period containment', async () => {
+    const a = await actor();
+    const year = await app.createAcademicYear(db, a, { name: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-01' });
+    const period = await app.createAcademicPeriod(db, a, year.id, { name: 'Term 1', sequence: 1, startDate: '2025-09-15', endDate: '2025-12-20' });
+
+    const corrected = await app.patchAcademicYear(db, a, year.id, { startDate: '2025-09-10', endDate: '2026-06-30' });
+    expect(corrected).toMatchObject({ startDate: '2025-09-10', endDate: '2026-06-30' });
+    await expect(app.patchAcademicYear(db, a, year.id, { startDate: '2025-10-01' }))
+      .rejects.toMatchObject({ featureCode: 'INVALID_ACADEMIC_CONTEXT' });
+    expect(await app.getAcademicPeriod(db, a, period.id)).toMatchObject({ startDate: '2025-09-15', endDate: '2025-12-20' });
+  });
+
+  it.each(['ACTIVE', 'CLOSED', 'ARCHIVED'] as const)('keeps %s AcademicYear dates immutable while allowing safe metadata updates', async (status) => {
+    const a = await actor();
+    const year = await app.createAcademicYear(db, a, { name: `Year ${status}`, startDate: '2025-09-01', endDate: '2026-07-01' });
+    if (status === 'ACTIVE') await app.patchAcademicYear(db, a, year.id, { status: 'ACTIVE' });
+    if (status === 'CLOSED') {
+      await app.patchAcademicYear(db, a, year.id, { status: 'ACTIVE' });
+      await app.patchAcademicYear(db, a, year.id, { status: 'CLOSED' });
+    }
+    if (status === 'ARCHIVED') {
+      await app.patchAcademicYear(db, a, year.id, { status: 'ACTIVE' });
+      await app.patchAcademicYear(db, a, year.id, { status: 'CLOSED' });
+      await app.patchAcademicYear(db, a, year.id, { status: 'ARCHIVED' });
+    }
+
+    await expect(app.patchAcademicYear(db, a, year.id, { endDate: '2026-06-30' }))
+      .rejects.toMatchObject({ featureCode: 'ACADEMIC_YEAR_DATES_IMMUTABLE' });
+    expect((await app.patchAcademicYear(db, a, year.id, { name: `Renamed ${status}` })).name).toBe(`Renamed ${status}`);
+  });
+
+  it('freezes Year and Period dates once operational history exists without rewriting that history', async () => {
+    const a = await actor(); const s = await structure(a);
+    const period = await app.createAcademicPeriod(db, a, s.year.id, { name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-20' });
+    const klass = await app.createClass(db, a, { academicYearId: s.year.id, levelId: s.level.id, curriculumVersionId: s.version.id, name: 'Class A' });
+    const subject = await app.createSubject(db, a, { name: 'Mathematics' });
+    const [student] = await db.insert(schema.students).values({ schoolId: a.schoolId, firstName: 'Ada', lastName: 'Lovelace' }).returning();
+    const [enrollment] = await db.insert(schema.studentEnrollments).values({
+      schoolId: a.schoolId, studentId: student!.id, academicYearId: s.year.id,
+      classId: klass.id, effectiveFrom: '2025-09-01',
+    }).returning();
+    const [configuration] = await db.insert(schema.gradingConfigurations).values({ schoolId: a.schoolId, name: 'Default' }).returning();
+    const [configurationVersion] = await db.insert(schema.gradingConfigurationVersions).values({
+      schoolId: a.schoolId, gradingConfigurationId: configuration!.id, versionNumber: 1, rules: {},
+    }).returning();
+    const [gradebook] = await db.insert(schema.gradebooks).values({
+      schoolId: a.schoolId, academicYearId: s.year.id, academicPeriodId: period.id,
+      classId: klass.id, subjectId: subject.id, gradingConfigurationVersionId: configurationVersion!.id,
+    }).returning();
+    const [assessment] = await db.insert(schema.assessments).values({
+      schoolId: a.schoolId, gradebookId: gradebook!.id, title: 'Midterm', assessmentType: 'TEST',
+      maximumScore: '20', assessmentDate: '2025-10-10',
+    }).returning();
+    const [attendance] = await db.insert(schema.attendanceRecords).values({
+      schoolId: a.schoolId, studentId: student!.id, classId: klass.id,
+      academicYearId: s.year.id, attendanceDate: '2025-10-10', status: 'PRESENT',
+    }).returning();
+    const [teacher] = await db.insert(schema.teachers).values({
+      schoolId: a.schoolId, firstName: 'Grace', lastName: 'Hopper',
+    }).returning();
+    const [homework] = await db.insert(schema.homework).values({
+      schoolId: a.schoolId, teacherId: teacher!.id, subjectId: subject.id,
+      academicYearId: s.year.id, academicPeriodId: period.id, title: 'Exercises', dueDate: '2025-11-01',
+    }).returning();
+    const [subjectResult] = await db.insert(schema.subjectResults).values({
+      schoolId: a.schoolId, studentId: student!.id, academicYearId: s.year.id,
+      academicPeriodId: period.id, classId: klass.id, subjectId: subject.id,
+      gradingConfigurationVersionId: configurationVersion!.id, value: '15',
+    }).returning();
+    const [periodResult] = await db.insert(schema.periodResults).values({
+      schoolId: a.schoolId, studentId: student!.id, academicYearId: s.year.id,
+      academicPeriodId: period.id, classId: klass.id,
+      gradingConfigurationVersionId: configurationVersion!.id, value: '15',
+    }).returning();
+    const [annualResult] = await db.insert(schema.annualResults).values({
+      schoolId: a.schoolId, studentId: student!.id, academicYearId: s.year.id,
+      classId: klass.id, gradingConfigurationVersionId: configurationVersion!.id, value: '15',
+    }).returning();
+
+    await expect(app.patchAcademicYear(db, a, s.year.id, { endDate: '2026-06-30' }))
+      .rejects.toMatchObject({ featureCode: 'ACADEMIC_YEAR_DATES_IMMUTABLE' });
+    await expect(app.patchAcademicPeriod(db, a, period.id, { endDate: '2025-12-19' }))
+      .rejects.toMatchObject({ featureCode: 'ACADEMIC_PERIOD_DATES_IMMUTABLE' });
+    expect((await db.select().from(schema.studentEnrollments)).find((row) => row.id === enrollment!.id))
+      .toMatchObject({ academicYearId: s.year.id, effectiveFrom: '2025-09-01' });
+    expect((await db.select().from(schema.gradebooks)).find((row) => row.id === gradebook!.id))
+      .toMatchObject({ academicYearId: s.year.id, academicPeriodId: period.id });
+    expect((await db.select().from(schema.assessments)).find((row) => row.id === assessment!.id))
+      .toMatchObject({ gradebookId: gradebook!.id, assessmentDate: '2025-10-10' });
+    expect((await db.select().from(schema.attendanceRecords)).find((row) => row.id === attendance!.id))
+      .toMatchObject({ academicYearId: s.year.id, attendanceDate: '2025-10-10' });
+    expect((await db.select().from(schema.homework)).find((row) => row.id === homework!.id))
+      .toMatchObject({ academicYearId: s.year.id, academicPeriodId: period.id, dueDate: '2025-11-01' });
+    expect((await db.select().from(schema.subjectResults)).find((row) => row.id === subjectResult!.id))
+      .toMatchObject({ academicYearId: s.year.id, academicPeriodId: period.id, value: '15.00' });
+    expect((await db.select().from(schema.periodResults)).find((row) => row.id === periodResult!.id))
+      .toMatchObject({ academicYearId: s.year.id, academicPeriodId: period.id, value: '15.00' });
+    expect((await db.select().from(schema.annualResults)).find((row) => row.id === annualResult!.id))
+      .toMatchObject({ academicYearId: s.year.id, value: '15.00' });
+  });
+
+  it.each(['ACTIVE', 'CLOSED'] as const)('keeps %s AcademicPeriod dates immutable while retaining normal lifecycle/metadata patches', async (status) => {
+    const a = await actor();
+    const year = await app.createAcademicYear(db, a, { name: `Year ${status}`, startDate: '2025-09-01', endDate: '2026-07-01' });
+    const period = await app.createAcademicPeriod(db, a, year.id, { name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-20' });
+    await app.patchAcademicPeriod(db, a, period.id, { status: 'ACTIVE' });
+    if (status === 'CLOSED') await app.patchAcademicPeriod(db, a, period.id, { status: 'CLOSED' });
+
+    await expect(app.patchAcademicPeriod(db, a, period.id, { endDate: '2025-12-19' }))
+      .rejects.toMatchObject({ featureCode: 'ACADEMIC_PERIOD_DATES_IMMUTABLE' });
+    expect((await app.patchAcademicPeriod(db, a, period.id, { name: `Renamed ${status}` })).name).toBe(`Renamed ${status}`);
+  });
+
+  it('serializes a Year shrink against a concurrent Period expansion', async () => {
+    const a = await actor();
+    const year = await app.createAcademicYear(db, a, { name: 'Race Year', startDate: '2025-09-01', endDate: '2026-07-01' });
+    const period = await app.createAcademicPeriod(db, a, year.id, { name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-20' });
+
+    const outcomes = await Promise.allSettled([
+      app.patchAcademicYear(db, a, year.id, { endDate: '2026-03-31' }),
+      app.patchAcademicPeriod(db, a, period.id, { endDate: '2026-05-31' }),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+    const finalYear = await app.getAcademicYear(db, a, year.id);
+    const finalPeriod = await app.getAcademicPeriod(db, a, period.id);
+    expect(finalPeriod.startDate >= finalYear.startDate && finalPeriod.endDate <= finalYear.endDate).toBe(true);
+  });
+
+  it('serializes a Year shrink against Period creation and permits two compatible concurrent creates', async () => {
+    const a = await actor();
+    const year = await app.createAcademicYear(db, a, { name: 'Race Create Year', startDate: '2025-09-01', endDate: '2026-07-01' });
+    const conflicting = await Promise.allSettled([
+      app.patchAcademicYear(db, a, year.id, { endDate: '2025-12-31' }),
+      app.createAcademicPeriod(db, a, year.id, { name: 'Late term', sequence: 1, startDate: '2026-01-01', endDate: '2026-03-31' }),
+    ]);
+    expect(conflicting.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+
+    const year2 = await app.createAcademicYear(db, a, { name: 'Compatible Year', startDate: '2026-09-01', endDate: '2027-07-01' });
+    const compatible = await Promise.all([
+      app.createAcademicPeriod(db, a, year2.id, { name: 'Term 1', sequence: 1, startDate: '2026-09-01', endDate: '2026-12-20' }),
+      app.createAcademicPeriod(db, a, year2.id, { name: 'Term 2', sequence: 2, startDate: '2027-01-05', endDate: '2027-03-31' }),
+    ]);
+    expect(compatible).toHaveLength(2);
   });
 });
 

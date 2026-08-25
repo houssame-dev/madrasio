@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, exists, ilike, or, type SQL } from 'drizzle-orm';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import * as schema from '@school/database';
 
@@ -23,6 +23,48 @@ export async function findAcademicYear(db: AcademicStructureDb, schoolId: string
   return row ?? null;
 }
 
+/** Shared containment serialization key for Year date edits and Period writes. */
+export async function findAcademicYearForUpdate(db: AcademicStructureDb, schoolId: string, id: string) {
+  const [row] = await db.select().from(schema.academicYears)
+    .where(and(eq(schema.academicYears.schoolId, schoolId), eq(schema.academicYears.id, id)))
+    .for('update')
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * Date-sensitive operational history that makes PLANNED Year boundaries
+ * stable. Classes alone intentionally do not count because they carry no date.
+ */
+export async function academicYearHasDateSensitiveDependents(
+  db: AcademicStructureDb,
+  schoolId: string,
+  academicYearId: string,
+): Promise<boolean> {
+  const [row] = await db.select({
+    enrollment: exists(db.select({ id: schema.studentEnrollments.id }).from(schema.studentEnrollments)
+      .where(and(eq(schema.studentEnrollments.schoolId, schoolId), eq(schema.studentEnrollments.academicYearId, academicYearId)))),
+    assignment: exists(db.select({ id: schema.teacherAssignments.id }).from(schema.teacherAssignments)
+      .where(and(eq(schema.teacherAssignments.schoolId, schoolId), eq(schema.teacherAssignments.academicYearId, academicYearId)))),
+    attendance: exists(db.select({ id: schema.attendanceRecords.id }).from(schema.attendanceRecords)
+      .where(and(eq(schema.attendanceRecords.schoolId, schoolId), eq(schema.attendanceRecords.academicYearId, academicYearId)))),
+    gradebook: exists(db.select({ id: schema.gradebooks.id }).from(schema.gradebooks)
+      .where(and(eq(schema.gradebooks.schoolId, schoolId), eq(schema.gradebooks.academicYearId, academicYearId)))),
+    homework: exists(db.select({ id: schema.homework.id }).from(schema.homework)
+      .where(and(eq(schema.homework.schoolId, schoolId), eq(schema.homework.academicYearId, academicYearId)))),
+    subjectResult: exists(db.select({ id: schema.subjectResults.id }).from(schema.subjectResults)
+      .where(and(eq(schema.subjectResults.schoolId, schoolId), eq(schema.subjectResults.academicYearId, academicYearId)))),
+    periodResult: exists(db.select({ id: schema.periodResults.id }).from(schema.periodResults)
+      .where(and(eq(schema.periodResults.schoolId, schoolId), eq(schema.periodResults.academicYearId, academicYearId)))),
+    annualResult: exists(db.select({ id: schema.annualResults.id }).from(schema.annualResults)
+      .where(and(eq(schema.annualResults.schoolId, schoolId), eq(schema.annualResults.academicYearId, academicYearId)))),
+  }).from(schema.academicYears).where(and(
+    eq(schema.academicYears.schoolId, schoolId),
+    eq(schema.academicYears.id, academicYearId),
+  )).limit(1);
+  return row !== undefined && Object.values(row).some(Boolean);
+}
+
 export async function insertAcademicYear(db: AcademicStructureDb, schoolId: string, input: Omit<typeof schema.academicYears.$inferInsert, 'schoolId'>) {
   const [row] = await db.insert(schema.academicYears).values({ ...input, schoolId }).returning(); return row;
 }
@@ -39,6 +81,36 @@ export async function listAcademicPeriods(db: AcademicStructureDb, schoolId: str
 }
 export async function findAcademicPeriod(db: AcademicStructureDb, schoolId: string, id: string) {
   const [row] = await db.select().from(schema.academicPeriods).where(and(eq(schema.academicPeriods.schoolId, schoolId), eq(schema.academicPeriods.id, id))).limit(1); return row ?? null;
+}
+
+/** Operational period context whose dates must no longer move. */
+export async function academicPeriodHasOperationalDependents(
+  db: AcademicStructureDb,
+  schoolId: string,
+  academicPeriodId: string,
+): Promise<boolean> {
+  const [row] = await db.select({
+    gradebook: exists(db.select({ id: schema.gradebooks.id }).from(schema.gradebooks).where(and(
+      eq(schema.gradebooks.schoolId, schoolId),
+      eq(schema.gradebooks.academicPeriodId, academicPeriodId),
+    ))),
+    homework: exists(db.select({ id: schema.homework.id }).from(schema.homework).where(and(
+      eq(schema.homework.schoolId, schoolId),
+      eq(schema.homework.academicPeriodId, academicPeriodId),
+    ))),
+    subjectResult: exists(db.select({ id: schema.subjectResults.id }).from(schema.subjectResults).where(and(
+      eq(schema.subjectResults.schoolId, schoolId),
+      eq(schema.subjectResults.academicPeriodId, academicPeriodId),
+    ))),
+    periodResult: exists(db.select({ id: schema.periodResults.id }).from(schema.periodResults).where(and(
+      eq(schema.periodResults.schoolId, schoolId),
+      eq(schema.periodResults.academicPeriodId, academicPeriodId),
+    ))),
+  }).from(schema.academicPeriods).where(and(
+    eq(schema.academicPeriods.schoolId, schoolId),
+    eq(schema.academicPeriods.id, academicPeriodId),
+  )).limit(1);
+  return row !== undefined && Object.values(row).some(Boolean);
 }
 export async function findPeriodsForYear(db: AcademicStructureDb, schoolId: string, academicYearId: string) {
   return db.select().from(schema.academicPeriods).where(and(eq(schema.academicPeriods.schoolId, schoolId), eq(schema.academicPeriods.academicYearId, academicYearId)));

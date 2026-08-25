@@ -280,6 +280,19 @@ When academic configuration changes in a way that affects historical interpretat
 
 A CurriculumVersion already used by historical academic records must not be semantically rewritten.
 
+### BR-ACADEMIC-007 — Academic Calendar Boundaries Preserve History
+
+AcademicYear and AcademicPeriod date corrections are permitted only while the
+affected calendar entity is PLANNED and has no date-sensitive operational
+history. Every AcademicPeriod must remain within its AcademicYear after any
+calendar write. ACTIVE, CLOSED, and ARCHIVED calendar boundaries are historical
+and must not move.
+
+Calendar correction must never rewrite Classes, Enrollments, Assignments,
+Attendance, Gradebooks, Assessments, Homework, Grades, or Results. Concurrent
+Year and Period writes must serialize their containment decision on the owning
+School-scoped AcademicYear.
+
 ---
 
 # 8. Subject Rules

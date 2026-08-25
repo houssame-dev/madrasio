@@ -55,11 +55,18 @@ There are no DELETE routes.
 ## Lifecycle and historical safety
 
 - AcademicYear: `PLANNED → ACTIVE → CLOSED → ARCHIVED`. Dates must form a
-  valid range. Shrinking a year is rejected if an existing period would fall
-  outside it. Multiple ACTIVE years are allowed because no approved invariant
-  or database constraint says otherwise.
+  valid range. A real date change is allowed only while the current status is
+  `PLANNED`, before date-sensitive operational rows exist, and only if every
+  existing Period remains contained. Date-sensitive rows are Enrollments,
+  TeacherAssignments, AttendanceRecords, Gradebooks, Homework, and Subject,
+  Period, or Annual Results. A Class by itself does not freeze Year dates
+  because Class carries no calendar date. Multiple ACTIVE years are allowed
+  because no approved invariant or database constraint says otherwise.
 - AcademicPeriod: `PLANNED → ACTIVE → CLOSED`. Its start must be before its end,
-  and both dates must remain inside its AcademicYear.
+  and both dates must remain inside its AcademicYear. A real date change is
+  allowed only while the current status is `PLANNED` and before a Gradebook,
+  Homework, SubjectResult, or PeriodResult references the Period. ACTIVE and
+  CLOSED Period dates are immutable.
 - Stage, Level, Track, Subject: `ACTIVE`/`INACTIVE` reference-data lifecycle;
   no destructive deletion.
 - Curriculum: `ACTIVE ↔ INACTIVE`; either may become terminal `ARCHIVED`.
@@ -73,7 +80,23 @@ There are no DELETE routes.
   archive another version.
 - Class: `ACTIVE → CLOSED → ARCHIVED`. `academicYearId` is accepted only on
   creation and is absent from the PATCH contract. Historical enrollment or
-  assignment rows are never changed as a side effect.
+assignment rows are never changed as a side effect.
+
+Metadata-only PATCH operations and the existing lifecycle transitions remain
+available; the date restrictions do not turn a Year or Period into a globally
+immutable row. Rejected date edits never rewrite, cascade, reassign, or delete
+downstream history.
+
+## Calendar containment concurrency
+
+Year date PATCH, Period creation, and Period PATCH share one tenant-scoped
+serialization key: the owning AcademicYear row is locked inside the write
+transaction before containment is checked and before the write occurs. This
+prevents a Year shrink from racing a Period creation or expansion into a final
+state where the Period lies outside the Year. The same lock also serializes a
+Period lifecycle transition against a date edit. Locks are resolved through
+`(school_id, academic_year_id)` lookup, so a foreign tenant identifier remains
+`NOT_FOUND` and cannot become an authorization or lock-scope shortcut.
 
 ## Relationships and coefficients
 
@@ -109,5 +132,6 @@ year lists, always with an id tie-breaker.
 
 The shared API error envelope is reused. Feature codes introduced here are
 `NOT_FOUND`, `INVALID_STATUS_TRANSITION`, `DUPLICATE_RESOURCE`,
-`INVALID_ACADEMIC_CONTEXT`, and `CURRICULUM_VERSION_IMMUTABLE`. SQL constraint
-names and raw database errors are not exposed.
+`INVALID_ACADEMIC_CONTEXT`, `CURRICULUM_VERSION_IMMUTABLE`,
+`ACADEMIC_YEAR_DATES_IMMUTABLE`, and `ACADEMIC_PERIOD_DATES_IMMUTABLE`. SQL
+constraint names and raw database errors are not exposed.
