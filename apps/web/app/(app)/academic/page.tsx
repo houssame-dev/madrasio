@@ -1,6 +1,8 @@
-import { FeaturePlaceholder } from '@/components/app/feature-placeholder';
-import { copy } from '@/lib/frontend/copy';
+import { Suspense } from 'react';
+import { AcademicWorkspace } from '@/components/academic/academic-workspace';
+import { PageLoading } from '@/components/ui/states';
+import { academicCopy as t } from '@/lib/frontend/academic/copy';
 
 export default function AcademicPage() {
-  return <FeaturePlaceholder title={copy.academic} permission="academic_structure.read" roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']} />;
+  return <Suspense fallback={<PageLoading label={t.loadingWorkspace} />}><AcademicWorkspace /></Suspense>;
 }
