@@ -128,7 +128,9 @@ export async function findIdempotentPublication(
   db: GradesDb,
   input: PublishResultInput,
 ): Promise<PublishResultView | null> {
-  const replay = await repo.findPublicationByIdempotencyKey(db, input.idempotencyKey);
+  const replay = await repo.findPublicationByIdempotencyKey(
+    db, input.schoolId, input.idempotencyKey,
+  );
   if (!replay) return null;
   if (!publicationMatchesRequest(replay, input)) {
     throw new ResultDomainError(
@@ -226,7 +228,9 @@ export async function recoverConcurrentPublication(
   db: GradesDb,
   input: PublishResultInput,
 ): Promise<PublishResultView> {
-  const concurrent = await repo.findPublicationByIdempotencyKey(db, input.idempotencyKey);
+  const concurrent = await repo.findPublicationByIdempotencyKey(
+    db, input.schoolId, input.idempotencyKey,
+  );
   if (concurrent && publicationMatchesRequest(concurrent, input)) return toView(concurrent);
   if (concurrent) {
     throw new ResultDomainError(

@@ -284,6 +284,102 @@ describe('SubjectResult workflow', () => {
     ).rejects.toSatisfy((error: unknown) => error instanceof ResultDomainError && error.featureCode === 'RESULT_NOT_FINALIZED');
   });
 
+  it('scopes initial and revision idempotency lookup to School and normalizes a global-key collision', async () => {
+    const schoolA = await seedSubjectScenario();
+    const resultA = await calculateSubjectResult(test.db, {
+      userId: schoolA.actors.schoolAdminUserId,
+      schoolId: schoolA.school.schoolId,
+      gradebookId: schoolA.gradebook.gradebookId,
+      studentId: schoolA.actors.studentId,
+    });
+    await finalizeResult(test.db, {
+      userId: schoolA.actors.schoolAdminUserId, schoolId: schoolA.school.schoolId,
+      resultType: 'SUBJECT', resultId: resultA.id,
+    });
+    const sharedKey = '00000000-0000-4000-8000-0000000000aa';
+    const publicationA = await publishResult(test.db, {
+      userId: schoolA.actors.schoolAdminUserId, schoolId: schoolA.school.schoolId,
+      resultType: 'SUBJECT', resultId: resultA.id, idempotencyKey: sharedKey,
+    });
+
+    const schoolB = await seedSubjectScenario();
+    const resultB = await calculateSubjectResult(test.db, {
+      userId: schoolB.actors.schoolAdminUserId,
+      schoolId: schoolB.school.schoolId,
+      gradebookId: schoolB.gradebook.gradebookId,
+      studentId: schoolB.actors.studentId,
+    });
+    await finalizeResult(test.db, {
+      userId: schoolB.actors.schoolAdminUserId, schoolId: schoolB.school.schoolId,
+      resultType: 'SUBJECT', resultId: resultB.id,
+    });
+
+    expect(await resultRepo.findPublicationByIdempotencyKey(
+      test.db, schoolB.school.schoolId, sharedKey,
+    )).toBeNull();
+    expect(await resultRepo.findPublicationByIdempotencyKey(
+      test.db, schoolA.school.schoolId, sharedKey,
+    )).toMatchObject({ id: publicationA.publicationId });
+
+    const lookup = vi.spyOn(resultRepo, 'findPublicationByIdempotencyKey');
+    lookup.mockClear();
+    const beforeInitialConflict = await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, resultB.id));
+    let initialError: unknown;
+    try {
+      await publishResult(test.db, {
+        userId: schoolB.actors.schoolAdminUserId, schoolId: schoolB.school.schoolId,
+        resultType: 'SUBJECT', resultId: resultB.id, idempotencyKey: sharedKey,
+      });
+    } catch (error) {
+      initialError = error;
+    }
+    expect(initialError).toSatisfy(
+      (error: unknown) => error instanceof ResultDomainError && error.featureCode === 'PUBLICATION_CONFLICT',
+    );
+    expect(String((initialError as Error).message)).not.toContain(publicationA.publicationId);
+    expect(String((initialError as Error).message)).not.toContain(resultA.id);
+    expect(lookup.mock.calls.every((call) => call[1] === schoolB.school.schoolId)).toBe(true);
+    expect(await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, resultB.id))).toEqual(beforeInitialConflict);
+    expect(await test.seed.select().from(schema.resultPublications)
+      .where(eq(schema.resultPublications.schoolId, schoolB.school.schoolId))).toHaveLength(0);
+
+    const publicationB = await publishResult(test.db, {
+      userId: schoolB.actors.schoolAdminUserId, schoolId: schoolB.school.schoolId,
+      resultType: 'SUBJECT', resultId: resultB.id,
+      idempotencyKey: '00000000-0000-4000-8000-0000000000ab',
+    });
+    await test.seed.update(schema.grades).set({ score: '20' })
+      .where(eq(schema.grades.id, schoolB.gradeRows.examGradeId));
+    const beforeRevisionConflict = await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, resultB.id));
+    lookup.mockClear();
+    let revisionError: unknown;
+    try {
+      await reviseResult(test.db, {
+        userId: schoolB.actors.schoolAdminUserId, schoolId: schoolB.school.schoolId,
+        resultType: 'SUBJECT', resultId: resultB.id, idempotencyKey: sharedKey,
+      });
+    } catch (error) {
+      revisionError = error;
+    }
+    expect(revisionError).toSatisfy(
+      (error: unknown) => error instanceof ResultDomainError && error.featureCode === 'PUBLICATION_CONFLICT',
+    );
+    expect(lookup.mock.calls.every((call) => call[1] === schoolB.school.schoolId)).toBe(true);
+    lookup.mockRestore();
+    expect(await test.seed.select().from(schema.subjectResults)
+      .where(eq(schema.subjectResults.id, resultB.id))).toEqual(beforeRevisionConflict);
+    expect(await test.seed.select().from(schema.resultPublications)
+      .where(eq(schema.resultPublications.schoolId, schoolB.school.schoolId)))
+      .toMatchObject([{ id: publicationB.publicationId, publicationVersion: 1 }]);
+    const schoolBEvents = (await test.seed.select().from(schema.outboxEvents)).filter(
+      (event) => (event.payload as Record<string, unknown>).schoolId === schoolB.school.schoolId,
+    );
+    expect(schoolBEvents).toHaveLength(1);
+  });
+
   it('rejects a revision idempotency key already used for a different Result without mutation', async () => {
     const { school, actors, gradebook } = await seedSubjectScenario();
     const adminId = actors.schoolAdminUserId;

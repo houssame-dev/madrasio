@@ -153,6 +153,14 @@ state. Existing database idempotency and publication-version constraints remain
 authoritative for races; recovery happens only after the losing transaction has
 rolled back.
 
+Every idempotency preflight, in-transaction recheck, and post-race recovery is
+resolved by current School plus idempotency key. The committed database key
+remains globally unique; a key already committed by another School can still
+lose at insert, but recovery never loads that foreign publication and returns
+the same generic `PUBLICATION_CONFLICT` without tenant metadata. The losing
+initial publication or complete revision transaction leaves no Result,
+ResultPublication, or Outbox mutation.
+
 Eligible automatic recipients are only ACTIVE Parent profiles connected by an
 ACTIVE ParentStudent relationship, with a non-null User and ACTIVE same-School
 membership at publication time. Zero recipients does not block publication.

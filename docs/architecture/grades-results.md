@@ -141,7 +141,14 @@ One `result_publications` row is both the publication record and the immutable s
 
 ### Idempotency (BR-CONCURRENCY-002)
 
-The caller supplies a stable `idempotencyKey`. Replays return the existing row. Concurrent races that slip between read and insert are resolved by catching the unique violation (`23505`) and re-reading the canonical row. A key already used for a **different** result → `PUBLICATION_CONFLICT`.
+The caller supplies a stable `idempotencyKey`. Application lookups always use
+the current School plus key; a same-School replay of the same operation returns
+the existing row. Concurrent races that slip between read and insert are
+resolved by catching the unique violation (`23505`) and re-reading only within
+that School. The database key remains globally unique, so a key used by another
+School is normalized to the same generic `PUBLICATION_CONFLICT` and never
+returns foreign publication or Result metadata. A same-School key already used
+for a different result also returns `PUBLICATION_CONFLICT`.
 
 ### Atomicity (ADR-012)
 

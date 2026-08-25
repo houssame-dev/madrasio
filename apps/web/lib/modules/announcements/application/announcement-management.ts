@@ -112,10 +112,16 @@ export async function listAnnouncements(
     db, actor.schoolId, paging(input), input,
     auth.role === 'TEACHER' ? actor.userId ?? undefined : undefined,
   );
-  const data = await Promise.all(result.rows.map(async (row) => ({
-    ...view(row),
-    latestVersion: await repo.findLatestVersion(db, actor.schoolId, row.id).then((value) => value ? view(value) : null),
-  })));
+  const latestVersions = await repo.findLatestVersions(
+    db, actor.schoolId, result.rows.map((row) => row.id),
+  );
+  const latestByAnnouncement = new Map(
+    latestVersions.map((version) => [version.announcementId, version]),
+  );
+  const data = result.rows.map((row) => {
+    const latestVersion = latestByAnnouncement.get(row.id);
+    return { ...view(row), latestVersion: latestVersion ? view(latestVersion) : null };
+  });
   return { data, meta: { page: input.page, pageSize: input.pageSize, total: result.total } };
 }
 

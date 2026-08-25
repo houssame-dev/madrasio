@@ -78,6 +78,51 @@ describe('Announcement management and version history', () => {
     expect(detail).not.toHaveProperty('recipientSnapshots');
   });
 
+  it('loads each paginated Announcement latest Version set-wise without changing list semantics', async () => {
+    const first = await create('First v1');
+    const firstV2 = await app.createAnnouncementVersion(test.db, admin, first.announcement.id, {
+      title: 'First v2', body: 'Latest first body',
+    });
+    const second = await create('Second v1');
+    await app.createAnnouncementVersion(test.db, admin, second.announcement.id, {
+      title: 'Second v2', body: 'Older second body',
+    });
+    const secondV3 = await app.createAnnouncementVersion(test.db, admin, second.announcement.id, {
+      title: 'Second v3', body: 'Latest second body',
+    });
+    const other = await seedSchool(test.seed, 'Other');
+    const otherAdminId = await seedUser(test.seed, other.schoolId, 'SCHOOL_ADMIN');
+    const foreign = await app.createAnnouncement(test.db, {
+      userId: otherAdminId, schoolId: other.schoolId,
+    }, { title: 'Foreign', body: 'Foreign body' });
+
+    const list = await app.listAnnouncements(test.db, admin, { page: 1, pageSize: 50 });
+    const latest = new Map(list.data.map((item) => [item.id, item.latestVersion]));
+    expect(list.meta).toEqual({ page: 1, pageSize: 50, total: 2 });
+    expect(latest.get(first.announcement.id)).toMatchObject({ id: firstV2.id, versionNumber: 2 });
+    expect(latest.get(second.announcement.id)).toMatchObject({ id: secondV3.id, versionNumber: 3 });
+    expect(latest.has(foreign.announcement.id)).toBe(false);
+
+    const page1 = await app.listAnnouncements(test.db, admin, { page: 1, pageSize: 1 });
+    const page2 = await app.listAnnouncements(test.db, admin, { page: 2, pageSize: 1 });
+    expect(page1.data).toHaveLength(1);
+    expect(page2.data).toHaveLength(1);
+    expect(page1.data[0].id).not.toBe(page2.data[0].id);
+    expect(page1.meta.total).toBe(2);
+    expect(page2.meta.total).toBe(2);
+
+    expect(await app.listAnnouncements(test.db, admin, { page: 99, pageSize: 50 }))
+      .toEqual({ data: [], meta: { page: 99, pageSize: 50, total: 2 } });
+  });
+
+  it('preserves the existing null latestVersion behavior for an unexpected Version-less row', async () => {
+    const [orphan] = await test.seed.insert(schema.announcements).values({
+      schoolId: school.schoolId, createdBy: adminId,
+    }).returning();
+    const list = await app.listAnnouncements(test.db, admin, { page: 1, pageSize: 50 });
+    expect(list.data.find((item) => item.id === orphan.id)?.latestVersion).toBeNull();
+  });
+
   it('creates immutable sequential content snapshots and returns deterministic history', async () => {
     const created = await create('Version 1', 'Original');
     const second = await app.createAnnouncementVersion(test.db, admin, created.announcement.id, {

@@ -236,6 +236,25 @@ export async function findLatestVersion(db: AnnouncementsDb, schoolId: string, a
   return row ?? null;
 }
 
+/** Loads at most one latest Version for every requested current-School Announcement. */
+export async function findLatestVersions(
+  db: AnnouncementsDb,
+  schoolId: string,
+  announcementIds: string[],
+): Promise<AnnouncementVersionRow[]> {
+  if (announcementIds.length === 0) return [];
+  return db.selectDistinctOn([
+    schema.announcementVersions.announcementId,
+  ]).from(schema.announcementVersions).where(and(
+    eq(schema.announcementVersions.schoolId, schoolId),
+    inArray(schema.announcementVersions.announcementId, announcementIds),
+  )).orderBy(
+    schema.announcementVersions.announcementId,
+    desc(schema.announcementVersions.versionNumber),
+    desc(schema.announcementVersions.id),
+  );
+}
+
 export async function listVersions(
   db: AnnouncementsDb, schoolId: string, announcementId: string, paging: Paging,
 ) {

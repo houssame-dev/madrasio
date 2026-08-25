@@ -117,6 +117,11 @@ created range, and bounded content search. Search/target filters may match any
 historical Version while authorization always evaluates current/latest
 management scope.
 
+Pagination remains over logical Announcements. After the School-scoped page is
+selected, its latest Versions are loaded in one set-based School-scoped query
+using the existing highest `versionNumber` semantics. The list therefore
+returns exactly one row per Announcement without a per-row Version lookup.
+
 Responses use `{ data }` and pagination `meta`. Stable feature errors cover
 not-found resources, immutable/non-editable state, duplicate target, invalid
 academic context, version allocation conflict, and the existing publication

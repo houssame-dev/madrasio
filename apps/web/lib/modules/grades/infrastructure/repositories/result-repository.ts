@@ -880,14 +880,19 @@ export async function findLatestPublication(
   return row ? toPublicationRow(row) : null;
 }
 
+/** Tenant-safe idempotency resolution; the database key remains globally unique. */
 export async function findPublicationByIdempotencyKey(
   db: GradesDb,
+  schoolId: string,
   idempotencyKey: string,
 ): Promise<PublicationRow | null> {
   const [row] = await db
     .select()
     .from(schema.resultPublications)
-    .where(eq(schema.resultPublications.idempotencyKey, idempotencyKey))
+    .where(and(
+      eq(schema.resultPublications.schoolId, schoolId),
+      eq(schema.resultPublications.idempotencyKey, idempotencyKey),
+    ))
     .limit(1);
 
   return row ? toPublicationRow(row) : null;
