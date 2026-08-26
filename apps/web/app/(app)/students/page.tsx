@@ -1,6 +1,8 @@
-import { FeaturePlaceholder } from '@/components/app/feature-placeholder';
-import { copy } from '@/lib/frontend/copy';
+import { Suspense } from 'react';
+import { StudentsWorkspace } from '@/components/students/students-workspace';
+import { PageLoading } from '@/components/ui/states';
+import { studentCopy as t } from '@/lib/frontend/students/copy';
 
 export default function StudentsPage() {
-  return <FeaturePlaceholder title={copy.students} permission="students.read" roles={['SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER']} />;
+  return <Suspense fallback={<PageLoading label={t.loadingStudents} />}><StudentsWorkspace /></Suspense>;
 }
