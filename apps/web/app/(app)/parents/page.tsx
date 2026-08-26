@@ -1,6 +1,8 @@
-import { FeaturePlaceholder } from '@/components/app/feature-placeholder';
-import { copy } from '@/lib/frontend/copy';
+import { Suspense } from 'react';
+import { ParentsWorkspace } from '@/components/parents/parents-workspace';
+import { PageLoading } from '@/components/ui/states';
+import { parentCopy as t } from '@/lib/frontend/parents/copy';
 
 export default function ParentsPage() {
-  return <FeaturePlaceholder title={copy.parents} permission="parents.read" roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']} />;
+  return <Suspense fallback={<PageLoading label={t.loadingParents} />}><ParentsWorkspace /></Suspense>;
 }

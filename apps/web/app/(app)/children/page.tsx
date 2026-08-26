@@ -1,6 +1,5 @@
-import { FeaturePlaceholder } from '@/components/app/feature-placeholder';
-import { copy } from '@/lib/frontend/copy';
+import { ChildrenWorkspace } from '@/components/children/children-workspace';
 
 export default function ChildrenPage() {
-  return <FeaturePlaceholder title={copy.children} permission="students.read" roles={['PARENT']} />;
+  return <ChildrenWorkspace />;
 }
