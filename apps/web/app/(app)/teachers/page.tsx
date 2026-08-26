@@ -1,6 +1,8 @@
-import { FeaturePlaceholder } from '@/components/app/feature-placeholder';
-import { copy } from '@/lib/frontend/copy';
+import { Suspense } from 'react';
+import { TeachersWorkspace } from '@/components/teachers/teachers-workspace';
+import { PageLoading } from '@/components/ui/states';
+import { teacherCopy as t } from '@/lib/frontend/teachers/copy';
 
 export default function TeachersPage() {
-  return <FeaturePlaceholder title={copy.teachers} permission="teachers.read" roles={['SCHOOL_ADMIN', 'SUPER_ADMIN']} />;
+  return <Suspense fallback={<PageLoading label={t.loadingTeachers} />}><TeachersWorkspace /></Suspense>;
 }
