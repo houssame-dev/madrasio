@@ -1,6 +1,8 @@
-import { FeaturePlaceholder } from '@/components/app/feature-placeholder';
-import { copy } from '@/lib/frontend/copy';
+import { Suspense } from 'react';
+import { GradebooksWorkspace } from '@/components/grades/gradebooks-workspace';
+import { PageLoading } from '@/components/ui/states';
+import { gradeCopy as t } from '@/lib/frontend/grades/copy';
 
 export default function GradesPage() {
-  return <FeaturePlaceholder title={copy.grades} permission="grades.read" />;
+  return <Suspense fallback={<PageLoading label={t.loading} />}><GradebooksWorkspace /></Suspense>;
 }

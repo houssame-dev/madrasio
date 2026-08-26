@@ -62,6 +62,16 @@ export function gradebooksGET(request: Request) {
   });
 }
 
+export function gradingConfigurationVersionsGET(request: Request) {
+  return run(async () => {
+    const input = query(request, z.object(baseQuery).strict());
+    const value = await actor();
+    return Response.json(await service.listEligibleGradingConfigurationVersions(
+      value.db, value.actor, input,
+    ));
+  });
+}
+
 export function gradebooksPOST(request: Request) {
   return run(async () => {
     const input = await parseBody(request, gradebookCreateSchema);

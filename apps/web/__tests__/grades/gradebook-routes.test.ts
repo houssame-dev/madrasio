@@ -6,6 +6,7 @@ import { UnauthenticatedError } from '@/lib/errors';
 import {
   assignTeacher, createGradebookTestContext, gradebookInput, type GradebookTestContext,
 } from './gradebook-test-helpers';
+import { seedParentActor } from './test-helpers';
 
 const mocks = vi.hoisted(() => ({
   db: null as unknown,
@@ -23,6 +24,7 @@ vi.mock('@/lib/auth/require-context', () => ({
 import {
   assessmentGET, assessmentPATCH, assessmentsGET, assessmentsPOST,
   gradebookGET, gradebookPATCH, gradebooksGET, gradebooksPOST,
+  gradingConfigurationVersionsGET,
 } from '@/lib/api/gradebooks';
 
 let seeded: GradebookTestContext;
@@ -55,6 +57,26 @@ const assessment = () => ({
 });
 
 describe('Gradebook and Assessment HTTP contracts', () => {
+  it('returns a bounded, safe grading configuration version discovery envelope', async () => {
+    const response = await gradingConfigurationVersionsGET(new Request(
+      'http://local/api/v1/grading-configuration-versions?page=1&pageSize=50',
+    ));
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload).toEqual({
+      data: [{
+        id: seeded.school.configVersionId,
+        versionNumber: 1,
+        configuration: { id: expect.any(String), name: 'Default' },
+      }],
+      meta: { page: 1, pageSize: 50, total: 1 },
+    });
+    expect(payload.data[0]).not.toHaveProperty('rules');
+    expect((await gradingConfigurationVersionsGET(new Request(
+      'http://local/api/v1/grading-configuration-versions?pageSize=101',
+    ))).status).toBe(400);
+  });
+
   it('covers Gradebook create, filtered list, detail, and lifecycle patch envelopes', async () => {
     const createdResponse = await gradebooksPOST(json('POST', gradebookInput(seeded)));
     expect(createdResponse.status).toBe(201);
@@ -121,5 +143,13 @@ describe('Gradebook and Assessment HTTP contracts', () => {
     expect(await response.json()).toMatchObject({
       error: { featureCode: 'SCHOOL_CONTEXT_REQUIRED' },
     });
+  });
+
+  it('permits Teacher setup discovery and denies Parent discovery', async () => {
+    mocks.context = contextFor(seeded.teacher.userId!, seeded.school.schoolId, 'TEACHER');
+    expect((await gradingConfigurationVersionsGET(new Request('http://local'))).status).toBe(200);
+    const { parentUserId } = await seedParentActor(seeded.test.seed, seeded.school.schoolId);
+    mocks.context = contextFor(parentUserId, seeded.school.schoolId, 'PARENT');
+    expect((await gradingConfigurationVersionsGET(new Request('http://local'))).status).toBe(403);
   });
 });

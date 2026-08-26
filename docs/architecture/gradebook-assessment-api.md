@@ -24,6 +24,12 @@ Teacher-scoped list predicates are applied in SQL before count and pagination.
 Ending an assignment or deactivating the Teacher profile removes access on the
 next request without changing historical Gradebooks or Assessments.
 
+The Gradebook-setup-only discovery route uses the same boundary: School
+administrators use `grades.manage`, Teachers use `grades.enter`, and Parents
+are denied. Teacher access to this minimal option list does not grant grading
+configuration management or bypass the exact TeacherAssignment check applied
+when a Gradebook is created.
+
 ## Gradebook identity and creation
 
 A Gradebook is identified by its committed academic context:
@@ -91,6 +97,7 @@ the authoritative `CurriculumSubject.coefficient`.
 
 | Method | Route |
 |---|---|
+| GET | `/api/v1/grading-configuration-versions` |
 | GET / POST | `/api/v1/gradebooks` |
 | GET / PATCH | `/api/v1/gradebooks/:id` |
 | GET / POST | `/api/v1/gradebooks/:id/assessments` |
@@ -101,6 +108,15 @@ There are no DELETE routes. Single-resource responses use `{ data }`. Lists use
 `pageSize=50`, maximum `pageSize=100`. Gradebooks filter by academic identity,
 configuration version, and status; Assessments filter by status, type, and
 bounded date range. Ordering always includes deterministic tie-breakers.
+
+`GET /api/v1/grading-configuration-versions` is a narrow, current-School
+discovery contract for new Gradebook setup. It returns only ACTIVE versions
+whose parent GradingConfiguration is also ACTIVE, ordered by configuration
+name, version number, and version ID. Each row contains only version identity,
+`versionNumber`, and parent configuration identity/name; rules JSON, School,
+statuses, and timestamps are not exposed. It uses the same bounded SQL
+pagination and returns an ordinary empty list when no eligible option exists.
+There is no `latest`, `current`, recommended, or default-version semantic.
 
 Strict Zod contracts reject unsupported or authoritative fields. Controlled
 feature errors include Gradebook/Assessment not-found, duplicate Gradebook,

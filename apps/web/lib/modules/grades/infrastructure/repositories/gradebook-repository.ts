@@ -21,6 +21,41 @@ export interface AssessmentFilters {
   dateTo?: string;
 }
 
+export async function listEligibleGradingConfigurationVersions(
+  db: GradebooksDb,
+  schoolId: string,
+  paging: Paging,
+) {
+  const condition = and(
+    eq(schema.gradingConfigurationVersions.schoolId, schoolId),
+    eq(schema.gradingConfigurations.schoolId, schoolId),
+    eq(schema.gradingConfigurations.status, 'ACTIVE'),
+    eq(schema.gradingConfigurationVersions.status, 'ACTIVE'),
+  );
+  const base = db.select({
+    id: schema.gradingConfigurationVersions.id,
+    versionNumber: schema.gradingConfigurationVersions.versionNumber,
+    configurationId: schema.gradingConfigurations.id,
+    configurationName: schema.gradingConfigurations.name,
+  }).from(schema.gradingConfigurationVersions).innerJoin(schema.gradingConfigurations, and(
+    eq(schema.gradingConfigurations.id, schema.gradingConfigurationVersions.gradingConfigurationId),
+    eq(schema.gradingConfigurations.schoolId, schema.gradingConfigurationVersions.schoolId),
+  )).where(condition);
+  const [rows, totals] = await Promise.all([
+    base.orderBy(
+      asc(schema.gradingConfigurations.name),
+      asc(schema.gradingConfigurationVersions.versionNumber),
+      asc(schema.gradingConfigurationVersions.id),
+    ).limit(paging.limit).offset(paging.offset),
+    db.select({ value: count() }).from(schema.gradingConfigurationVersions)
+      .innerJoin(schema.gradingConfigurations, and(
+        eq(schema.gradingConfigurations.id, schema.gradingConfigurationVersions.gradingConfigurationId),
+        eq(schema.gradingConfigurations.schoolId, schema.gradingConfigurationVersions.schoolId),
+      )).where(condition),
+  ]);
+  return { rows, total: totals[0]?.value ?? 0 };
+}
+
 function where(conditions: (SQL | undefined)[]): SQL | undefined {
   return and(...conditions.filter((condition): condition is SQL => condition !== undefined));
 }

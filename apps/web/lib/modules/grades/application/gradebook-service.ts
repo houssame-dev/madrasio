@@ -6,6 +6,7 @@ import { ForbiddenError } from '@/lib/errors';
 
 import type {
   AssessmentCreate, AssessmentPatch, GradebookCreate, GradebookPatch, PageInput, PageResult,
+  GradingConfigurationVersionOption,
 } from '../domain/gradebook-contracts';
 import {
   assertAssessmentStatusTransition, assertGradebookStatusTransition,
@@ -85,6 +86,31 @@ async function requireManageScope(
   await requireOperation(db as unknown as AuthorizationDb, actor, {
     permission: 'grades.manage', scope: { kind: 'school' },
   });
+}
+
+async function requireGradebookSetupDiscovery(db: GradebooksDb, actor: GradebookActor) {
+  const currentRole = await role(db, actor);
+  if (currentRole === 'PARENT') throw new ForbiddenError();
+  await requireOperation(db as unknown as AuthorizationDb, actor, {
+    permission: currentRole === 'TEACHER' ? 'grades.enter' : 'grades.manage',
+    scope: { kind: 'school' },
+  });
+}
+
+export async function listEligibleGradingConfigurationVersions(
+  db: GradebooksDb,
+  actor: GradebookActor,
+  input: PageInput,
+): Promise<PageResult<GradingConfigurationVersionOption>> {
+  await requireGradebookSetupDiscovery(db, actor);
+  const result = await repo.listEligibleGradingConfigurationVersions(
+    db, actor.schoolId, paging(input),
+  );
+  return page(result.rows.map((row) => ({
+    id: row.id,
+    versionNumber: row.versionNumber,
+    configuration: { id: row.configurationId, name: row.configurationName },
+  })), result.total, input);
 }
 
 async function scopedGradebook(

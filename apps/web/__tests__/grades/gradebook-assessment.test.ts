@@ -26,6 +26,63 @@ const assessmentInput = (title = 'Quiz 1') => ({
 });
 
 describe('Gradebook application contracts', () => {
+  it('discovers only current-School ACTIVE configuration/version options with safe DTOs and deterministic pagination', async () => {
+    const [alpha] = await context.test.seed.insert(schema.gradingConfigurations).values({
+      schoolId: context.school.schoolId, name: 'Alpha', status: 'ACTIVE',
+    }).returning();
+    const [alphaVersion] = await context.test.seed.insert(schema.gradingConfigurationVersions).values({
+      schoolId: context.school.schoolId, gradingConfigurationId: alpha.id,
+      versionNumber: 3, status: 'ACTIVE', rules: { secret: 'not exposed' },
+    }).returning();
+    const [inactive] = await context.test.seed.insert(schema.gradingConfigurations).values({
+      schoolId: context.school.schoolId, name: 'Inactive', status: 'INACTIVE',
+    }).returning();
+    await context.test.seed.insert(schema.gradingConfigurationVersions).values({
+      schoolId: context.school.schoolId, gradingConfigurationId: inactive.id,
+      versionNumber: 1, status: 'ACTIVE', rules: {},
+    });
+    const [draftConfig] = await context.test.seed.insert(schema.gradingConfigurations).values({
+      schoolId: context.school.schoolId, name: 'Draft only', status: 'ACTIVE',
+    }).returning();
+    await context.test.seed.insert(schema.gradingConfigurationVersions).values([
+      { schoolId: context.school.schoolId, gradingConfigurationId: draftConfig.id, versionNumber: 1, status: 'DRAFT', rules: {} },
+      { schoolId: context.school.schoolId, gradingConfigurationId: draftConfig.id, versionNumber: 2, status: 'ARCHIVED', rules: {} },
+    ]);
+    const foreign = await seedSchool(context.test.seed);
+    const first = await app.listEligibleGradingConfigurationVersions(
+      context.db, context.admin, { page: 1, pageSize: 1 },
+    );
+    const second = await app.listEligibleGradingConfigurationVersions(
+      context.db, context.admin, { page: 2, pageSize: 1 },
+    );
+    expect(first).toEqual({
+      data: [{ id: alphaVersion.id, versionNumber: 3, configuration: { id: alpha.id, name: 'Alpha' } }],
+      meta: { page: 1, pageSize: 1, total: 2 },
+    });
+    expect(second.data[0]).toMatchObject({ id: context.school.configVersionId, configuration: { name: 'Default' } });
+    expect([...first.data, ...second.data]).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: foreign.configVersionId }),
+    ]));
+    expect(first.data[0]).not.toHaveProperty('rules');
+    expect(first.data[0]).not.toHaveProperty('schoolId');
+    expect(first.data[0]).not.toHaveProperty('status');
+  });
+
+  it('allows Gradebook-authorized Teachers, denies Parents, and returns an empty eligible list normally', async () => {
+    expect((await app.listEligibleGradingConfigurationVersions(
+      context.db, context.teacher, { page: 1, pageSize: 50 },
+    )).data).toHaveLength(1);
+    const { parentUserId } = await seedParentActor(context.test.seed, context.school.schoolId);
+    await expect(app.listEligibleGradingConfigurationVersions(context.db, {
+      userId: parentUserId, schoolId: context.school.schoolId,
+    }, { page: 1, pageSize: 50 })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await context.test.seed.update(schema.gradingConfigurationVersions).set({ status: 'ARCHIVED' })
+      .where(eq(schema.gradingConfigurationVersions.id, context.school.configVersionId));
+    expect(await app.listEligibleGradingConfigurationVersions(
+      context.db, context.admin, { page: 1, pageSize: 50 },
+    )).toEqual({ data: [], meta: { page: 1, pageSize: 50, total: 0 } });
+  });
+
   it('creates a DRAFT Gradebook with server school and exact configuration binding', async () => {
     const created = await app.createGradebook(context.db, context.admin, gradebookInput(context));
     expect(created).toMatchObject({

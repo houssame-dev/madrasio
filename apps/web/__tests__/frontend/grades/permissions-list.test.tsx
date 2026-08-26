@@ -1,0 +1,18 @@
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { GradebooksWorkspace } from '@/components/grades/gradebooks-workspace';
+import { renderGrades, setupGradebookFetch } from './test-helpers';
+
+const navigation = vi.hoisted(() => ({ search: '', replace: vi.fn(), push: vi.fn() }));
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(navigation.search), usePathname: () => '/grades', useRouter: () => ({ replace: navigation.replace, push: navigation.push }) }));
+afterEach(() => { vi.restoreAllMocks(); navigation.search = ''; navigation.replace.mockReset(); navigation.push.mockReset(); });
+
+describe('Gradebook permissions and list', () => {
+  it.each(['SCHOOL_ADMIN', 'SUPER_ADMIN'] as const)('shows current-School setup and create action to %s', async (role) => { const fetchMock = vi.spyOn(globalThis, 'fetch'); setupGradebookFetch(fetchMock); renderGrades(<GradebooksWorkspace />, role); expect(await screen.findByText('Mathematics Term 1')).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Create Gradebook' })).toBeInTheDocument(); });
+  it('uses the same backend-scoped list for Teacher without a School-wide client filter', async () => { const fetchMock = vi.spyOn(globalThis, 'fetch'); setupGradebookFetch(fetchMock); renderGrades(<GradebooksWorkspace />, 'TEACHER'); expect(await screen.findByText('Mathematics Term 1')).toBeInTheDocument(); const gradebookCall = fetchMock.mock.calls.find(([url]) => String(url).startsWith('/api/v1/gradebooks?')); expect(String(gradebookCall?.[0])).toBe('/api/v1/gradebooks?page=1&pageSize=20'); });
+  it('denies Parent before making raw Gradebook requests', () => { const fetchMock = vi.spyOn(globalThis, 'fetch'); renderGrades(<GradebooksWorkspace />, 'PARENT'); expect(screen.getByRole('heading', { name: 'Access unavailable' })).toBeInTheDocument(); expect(fetchMock).not.toHaveBeenCalled(); });
+  it('renders exact context and backend pagination metadata', async () => { navigation.search = 'page=2&status=DRAFT'; const fetchMock = vi.spyOn(globalThis, 'fetch'); setupGradebookFetch(fetchMock); fetchMock.mockImplementationOnce(async () => Response.json({ data: [], meta: { page: 2, pageSize: 20, total: 45 } })); renderGrades(<GradebooksWorkspace />); expect(await screen.findByText('Page 2 / 3 · 45')).toBeInTheDocument(); await userEvent.click(screen.getByRole('button', { name: 'Next' })); await waitFor(() => expect(navigation.replace).toHaveBeenCalledWith('/grades?page=3&status=DRAFT', { scroll: false })); });
+  it('changes Year by clearing stale Period and Class filters', async () => { navigation.search = 'academicYearId=old&academicPeriodId=old-period&classId=old-class'; const fetchMock = vi.spyOn(globalThis, 'fetch'); setupGradebookFetch(fetchMock); renderGrades(<GradebooksWorkspace />); await screen.findByText('Mathematics Term 1'); await userEvent.selectOptions(screen.getByLabelText('Academic Year'), ''); expect(navigation.replace).toHaveBeenCalledWith('/grades?page=1', { scroll: false }); });
+  it('uses the explicit bounded configuration-version discovery endpoint', async () => { const fetchMock = vi.spyOn(globalThis, 'fetch'); setupGradebookFetch(fetchMock); renderGrades(<GradebooksWorkspace />); await screen.findByText('Mathematics Term 1'); await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/grading-configuration-versions?page=1&pageSize=100', expect.any(Object))); expect(fetchMock.mock.calls.some(([url, init]) => String(url) === '/api/v1/gradebooks' && (init as RequestInit | undefined)?.method === 'POST')).toBe(false); });
+});

@@ -58,3 +58,9 @@ export interface PageResult<T> {
   data: T[];
   meta: { page: number; pageSize: number; total: number };
 }
+
+export interface GradingConfigurationVersionOption {
+  id: string;
+  versionNumber: number;
+  configuration: { id: string; name: string };
+}
