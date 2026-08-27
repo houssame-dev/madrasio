@@ -21,6 +21,12 @@ const body = (method: 'POST' | 'PATCH', value: unknown): RequestInit => ({ metho
 
 export const studentsApi = {
   list: (params: StudentListParams) => apiRequest<PageResponse<StudentDto>>(query('/api/v1/students', params)),
+  all: async (params: Omit<StudentListParams, 'page' | 'pageSize'> = {}) => {
+    const first = await apiRequest<PageResponse<StudentDto>>(query('/api/v1/students', { ...params, page: 1, pageSize: 100 }));
+    const rows = [...first.data]; const pages = Math.ceil(first.meta.total / 100);
+    for (let page = 2; page <= pages; page += 1) rows.push(...(await apiRequest<PageResponse<StudentDto>>(query('/api/v1/students', { ...params, page, pageSize: 100 }))).data);
+    return rows;
+  },
   detail: (studentId: string) => data<StudentDto>(`/api/v1/students/${studentId}`),
   create: (input: { firstName: string; lastName: string; studentCode?: string | null }) => data<StudentDto>('/api/v1/students', body('POST', input)),
   patch: (studentId: string, input: Partial<Pick<StudentDto, 'firstName' | 'lastName' | 'studentCode' | 'status'>>) => data<StudentDto>(`/api/v1/students/${studentId}`, body('PATCH', input)),

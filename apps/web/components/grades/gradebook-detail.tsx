@@ -16,6 +16,7 @@ import { gradeCopy as t } from '@/lib/frontend/grades/copy';
 import { gradeKeys, invalidateGradebook } from '@/lib/frontend/grades/queries';
 import { AssessmentsPanel } from './assessments-panel';
 import { GradebookLifecycleActions } from './gradebook-lifecycle-actions';
+import { GradebookGradesPanel } from './grade-entry/gradebook-grades-panel';
 
 export function GradebookDetailWorkspace({ gradebookId }: { gradebookId: string }) {
   const app = useAppContext(); const role = app.currentSchool?.role; const schoolId = app.currentSchool?.id;
@@ -52,5 +53,6 @@ function GradebookDetail({ gradebookId, schoolId, role }: { gradebookId: string;
       <div className="sm:col-span-2"><dt className="text-xs font-medium uppercase text-muted-foreground">{t.configurationVersion}</dt><dd className="mt-1 break-all font-mono text-sm">{value.gradingConfigurationVersionId}</dd></div>
     </dl></section>
     <AssessmentsPanel schoolId={schoolId} gradebook={value} period={period} canManage={canManage} />
+    <GradebookGradesPanel schoolId={schoolId} gradebookId={value.id} />
   </div>;
 }

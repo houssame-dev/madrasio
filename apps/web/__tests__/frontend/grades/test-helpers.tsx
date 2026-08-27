@@ -14,6 +14,8 @@ export const subjectId = '00000000-0000-4000-8000-000000000206';
 export const versionId = '00000000-0000-4000-8000-000000000207';
 export const gradebookId = '00000000-0000-4000-8000-000000000208';
 export const assessmentId = '00000000-0000-4000-8000-000000000209';
+export const studentId = '00000000-0000-4000-8000-000000000214';
+export const resultId = '00000000-0000-4000-8000-000000000215';
 export const timestamps = { createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' };
 export const year = { id: yearId, name: '2026/2027', startDate: '2026-09-01', endDate: '2027-06-30', status: 'ACTIVE' as const, ...timestamps };
 export const period = { id: periodId, academicYearId: yearId, name: 'Term 1', sequence: 1, startDate: '2026-09-01', endDate: '2026-12-20', status: 'ACTIVE' as const, ...timestamps };
@@ -22,6 +24,10 @@ export const subject = { id: subjectId, name: 'Mathematics', code: 'MATH', statu
 export const gradebook = { id: gradebookId, academicYearId: yearId, academicPeriodId: periodId, classId, subjectId, gradingConfigurationVersionId: versionId, name: 'Mathematics Term 1', status: 'DRAFT' as const, ...timestamps };
 export const assessment = { id: assessmentId, gradebookId, title: 'Quiz 1', assessmentType: 'QUIZ' as const, maximumScore: '20.00', weight: '1.50', status: 'DRAFT' as const, assessmentDate: '2026-10-10', ...timestamps };
 export const configurationVersion = { id: versionId, versionNumber: 2, configuration: { id: '00000000-0000-4000-8000-000000000213', name: 'Standard Grading' } };
+export const student = { id: studentId, firstName: 'Sara', lastName: 'Amrani', studentCode: 'S-001', status: 'ACTIVE' as const, ...timestamps };
+export const validGrade = { id: '00000000-0000-4000-8000-000000000216', gradebookId, assessmentId, studentId, state: 'VALID' as const, score: '12.25', ...timestamps };
+export const matrix = { data: { gradebook: { ...gradebook, status: 'OPEN' as const }, assessments: [{ ...assessment, status: 'PUBLISHED' as const }], students: [{ student, grades: [validGrade] }] }, meta: { page: 1, pageSize: 100, total: 1, assessmentLimit: 100, assessmentTotal: 1 } };
+export const subjectResult = { id: resultId, resultType: 'SUBJECT' as const, studentId, academicYearId: yearId, academicPeriodId: periodId, classId, subjectId, gradingConfigurationVersionId: versionId, value: '12.25', status: 'CALCULATED' as const, ...timestamps };
 
 export function page<T>(data: T[], pageNumber = 1, pageSize = 20, total = data.length) { return { data, meta: { page: pageNumber, pageSize, total } }; }
 
@@ -48,6 +54,7 @@ export function setupGradebookFetch(fetchMock: MockInstance, rows = [gradebook],
       return Response.json(page(options.versions ?? [configurationVersion], 1, 100));
     }
     if (url === `/api/v1/gradebooks/${gradebookId}`) return Response.json({ data: gradebook });
+    if (url.startsWith(`/api/v1/gradebooks/${gradebookId}/grades?`)) return Response.json(matrix);
     if (url.startsWith(`/api/v1/gradebooks/${gradebookId}/assessments`)) return Response.json(page([assessment]));
     if (url === '/api/v1/academic-years?page=1&pageSize=100') return Response.json(page([year], 1, 100));
     if (url === '/api/v1/classes?page=1&pageSize=100') return Response.json(page([klass], 1, 100));

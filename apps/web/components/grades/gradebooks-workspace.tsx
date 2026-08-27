@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { Button } from '@school/ui';
@@ -51,7 +52,7 @@ export function GradebooksWorkspace() {
   if (years.isError || classes.isError || subjects.isError) return <ApiErrorState title={t.unavailable} onRetry={() => { void years.refetch(); void classes.refetch(); void subjects.refetch(); }} />;
   const availableClasses = academicYearId ? classes.data.filter((row) => row.academicYearId === academicYearId) : classes.data;
   return <div className="mx-auto max-w-[110rem] space-y-6">
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{role === 'TEACHER' ? t.teacherDescription : t.description}</p></div>{canCreate ? <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{t.createGradebook}</Button> : null}</header>
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{role === 'TEACHER' ? t.teacherDescription : t.description}</p></div><div className="flex flex-wrap gap-2"><Link href="/grades/results" className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">{t.resultsWorkspace}</Link>{canCreate ? <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{t.createGradebook}</Button> : null}</div></header>
     <section className="space-y-3" aria-labelledby="gradebook-filters"><h2 id="gradebook-filters" className="text-sm font-semibold">{t.filters}</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <label><span className="sr-only">{t.academicYear}</span><select aria-label={t.academicYear} className={selectClassName} value={academicYearId ?? ''} onChange={(event) => updateUrl({ academicYearId: event.target.value || undefined, academicPeriodId: undefined, classId: undefined, page: 1 })}><option value="">{t.allYears}</option>{years.data.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
       <label><span className="sr-only">{t.period}</span><select aria-label={t.period} className={selectClassName} value={academicPeriodId ?? ''} disabled={!academicYearId || periods.isPending} onChange={(event) => updateUrl({ academicPeriodId: event.target.value || undefined, page: 1 })}><option value="">{t.allPeriods}</option>{periods.data?.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>

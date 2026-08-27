@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import type { AssessmentListParams, GradebookListParams } from './types';
+import type { AssessmentListParams, GradebookListParams, ResultListParams, ResultType } from './types';
 
 export const gradeKeys = {
   all: (schoolId: string) => ['grades', schoolId] as const,
@@ -9,7 +9,26 @@ export const gradeKeys = {
   gradebookDetail: (schoolId: string, gradebookId: string) => ['grades', schoolId, 'gradebooks', 'detail', gradebookId] as const,
   assessments: (schoolId: string, gradebookId: string) => ['grades', schoolId, 'gradebooks', gradebookId, 'assessments'] as const,
   assessmentList: (schoolId: string, gradebookId: string, params: AssessmentListParams) => ['grades', schoolId, 'gradebooks', gradebookId, 'assessments', params] as const,
+  gradeMatrix: (schoolId: string, gradebookId: string, page: number) => ['grades', schoolId, 'gradebooks', gradebookId, 'matrix', page] as const,
+  gradeMatrices: (schoolId: string, gradebookId: string) => ['grades', schoolId, 'gradebooks', gradebookId, 'matrix'] as const,
+  results: (schoolId: string) => ['grades', schoolId, 'results'] as const,
+  resultType: (schoolId: string, resultType: ResultType) => ['grades', schoolId, 'results', resultType] as const,
+  resultList: (schoolId: string, resultType: ResultType, params: ResultListParams) => ['grades', schoolId, 'results', resultType, 'list', params] as const,
+  resultDetail: (schoolId: string, resultType: ResultType, resultId: string) => ['grades', schoolId, 'results', resultType, 'detail', resultId] as const,
 };
+
+export async function invalidateAfterGradeSave(queryClient: QueryClient, schoolId: string, gradebookId: string) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: gradeKeys.gradeMatrices(schoolId, gradebookId) }),
+    queryClient.invalidateQueries({ queryKey: gradeKeys.results(schoolId) }),
+  ]);
+}
+
+export async function invalidateResult(queryClient: QueryClient, schoolId: string, resultType: ResultType, resultId?: string) {
+  const tasks = [queryClient.invalidateQueries({ queryKey: gradeKeys.resultType(schoolId, resultType) })];
+  if (resultId) tasks.push(queryClient.invalidateQueries({ queryKey: gradeKeys.resultDetail(schoolId, resultType, resultId) }));
+  await Promise.all(tasks);
+}
 
 export async function invalidateGradebook(queryClient: QueryClient, schoolId: string, gradebookId: string, includeLists = false) {
   const tasks = [
