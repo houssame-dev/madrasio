@@ -1,6 +1,8 @@
-import { FeaturePlaceholder } from '@/components/app/feature-placeholder';
-import { copy } from '@/lib/frontend/copy';
+import { Suspense } from 'react';
+import { HomeworkWorkspace } from '@/components/homework/homework-workspace';
+import { PageLoading } from '@/components/ui/states';
+import { homeworkCopy as t } from '@/lib/frontend/homework/copy';
 
 export default function HomeworkPage() {
-  return <FeaturePlaceholder title={copy.homework} permission="homework.read" />;
+  return <Suspense fallback={<PageLoading label={t.loading} />}><HomeworkWorkspace /></Suspense>;
 }
