@@ -7,6 +7,7 @@ import { ApiClientError } from '@/lib/frontend/api-client';
 import { copy, roleLabels } from '@/lib/frontend/copy';
 import { useSelectCurrentSchool } from '@/lib/frontend/current-user';
 import { Button } from '@school/ui';
+import { LogoutButton } from '@/components/auth/logout-button';
 
 export function SchoolSelectionPanel({ memberships }: { memberships: readonly MeMembershipDto[] }) {
   const selection = useSelectCurrentSchool();
@@ -44,6 +45,7 @@ export function SchoolSelectionPanel({ memberships }: { memberships: readonly Me
               : copy.requestFailedDescription}
           </p>
         ) : null}
+        <div className="mt-6 flex justify-end border-t pt-4"><LogoutButton /></div>
       </section>
     </main>
   );

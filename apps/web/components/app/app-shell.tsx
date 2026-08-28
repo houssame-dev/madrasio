@@ -11,6 +11,7 @@ import { AppContextProvider } from './app-context';
 import { NavigationLinks } from './navigation-links';
 import { SchoolSwitcher } from './school-selector';
 import { NotificationUnreadBadge } from '@/components/notifications/notification-unread-badge';
+import { LogoutButton } from '@/components/auth/logout-button';
 
 export function AppShell({ context, children }: { context: MeResponseDto; children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -79,6 +80,7 @@ export function AppShell({ context, children }: { context: MeResponseDto; childr
             </div>
             <NotificationUnreadBadge />
             <SchoolSwitcher memberships={context.memberships} currentSchoolId={context.currentSchool.id} />
+            <LogoutButton variant="ghost" />
           </header>
           <main className="min-h-[calc(100vh-var(--app-topbar-height))] p-[var(--app-page-padding)]">{children}</main>
         </div>

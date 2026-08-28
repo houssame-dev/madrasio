@@ -1,0 +1,18 @@
+export const authCopy = {
+  loginTitle: 'Sign in',
+  loginDescription: 'Use your school account to continue.',
+  email: 'Email address',
+  password: 'Password',
+  submit: 'Sign in',
+  submitting: 'Signing in…',
+  invalidCredentials: 'The email or password is incorrect.',
+  signInUnavailable: 'Sign in is unavailable right now. Please try again.',
+  logout: 'Log out',
+  loggingOut: 'Logging out…',
+  logoutFailed: 'We could not log you out. Please try again.',
+  sessionExpired: 'Your session expired. Returning to sign in…',
+  accountInactive: 'Account inactive',
+  accountInactiveDescription: 'Your application account is inactive. Contact your administrator if you need access restored.',
+  accountProvisioning: 'Account setup incomplete',
+  accountProvisioningDescription: 'Your authenticated account has not finished being provisioned for the application.',
+} as const;

@@ -10,7 +10,7 @@ test('GET /api/health returns ok', async ({ request }) => {
   });
 });
 
-test('home enters the protected app without exposing content before bootstrap', async ({ page }) => {
+test('expired protected bootstrap redirects to the public login without exposing app content', async ({ page }) => {
   await page.route('**/api/v1/me', async (route) => {
     await route.fulfill({
       status: 401,
@@ -19,6 +19,9 @@ test('home enters the protected app without exposing content before bootstrap', 
     });
   });
   await page.goto('/');
-  await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Sign in required/i);
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in');
+  await expect(page.getByLabel('Email address')).toHaveAttribute('autocomplete', 'email');
+  await expect(page.getByLabel('Password')).toHaveAttribute('autocomplete', 'current-password');
+  await expect(page.getByText('Your school workspace')).not.toBeVisible();
 });

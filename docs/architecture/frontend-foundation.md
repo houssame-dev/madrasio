@@ -39,11 +39,10 @@ is `['me']`.
 Bootstrap distinguishes loading, unauthenticated (401), inactive/provisioning
 or authorization failure (403), transient failures, no ACTIVE membership,
 School-selection-required, and a valid current School. Protected shell content
-is not rendered while the query is pending. The repository has no login route,
-so an unauthenticated user receives a controlled state instead of an invented
-redirect. There is likewise no safe complete logout flow: Supabase sign-out
-alone would leave the server-managed current-School selector unless a server
-endpoint also clears it, so logout remains deferred.
+is not rendered while the query is pending. Task 038 adds `/login` and a
+canonical server logout. An unauthenticated `/me` result clears the entire
+query cache and redirects to `/login`; authenticated blocked states preserve
+their explanation and expose logout.
 
 ## Current School switching and cache safety
 

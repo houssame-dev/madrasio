@@ -150,8 +150,9 @@ profile, parent profile, or an arbitrary request-body value.
 
 **The cookie is a SELECTOR, never proof of authorization.** Every request
 re-validates: cookie schoolId + authenticated user + ACTIVE SchoolMembership
-(Task 014 §18/§32). `clearSelectedSchoolId()` is the logout companion — the
-future logout flow must also clear this cookie (Task 014 §29).
+(Task 014 §18/§32). `clearSelectedSchoolId()` is the logout companion and is
+called by `POST /api/v1/auth/logout` after the server attempts local Supabase
+sign-out (Task 038).
 
 ## 8. Multi-School users & role changes
 
@@ -261,30 +262,29 @@ Postgres errors are never exposed.
 
 ## 13. Middleware / session-refresh decision
 
-No middleware exists today and NONE is added by this task. Rationale:
+No middleware exists today and Task 038 does not add one. Rationale:
 
 - Route Handlers already use the request-scoped `getServerSupabase()` client,
   and the committed flows resolve identity server-side per request.
-- No Server Component / protected page reads the session yet (no UI in this
-  task), so the main benefit of `updateSession`-style middleware (refresh on
-  navigation) is not yet needed.
+- Protected UI is gated by the client `/me` bootstrap, and `/login` performs a
+  server-side authenticated-user check. Route Handlers continue to use the
+  request-scoped server Supabase adapter.
 - Adding middleware now would impose a hard Supabase env dependency on EVERY
   request and risk breaking unauthenticated pages/e2e (no brittle external
   Supabase dependency in CI, Task 014 §45).
 
-A minimal session-refresh middleware is documented as a candidate for the
-Authentication UI milestone, when protected SSR reads exist. Middleware will
+A minimal session-refresh middleware remains a candidate if protected SSR
+reads expand and browser session behavior proves it necessary. Middleware will
 NEVER be an authorization source — role/membership state can change, so
 protected operations always resolve server context through authoritative DB
 state (Task 014 §28).
 
-## 14. No Student role / no UI
+## 14. No Student role / authentication UI boundary
 
 V1 roles remain SUPER_ADMIN, SCHOOL_ADMIN, TEACHER, PARENT. No STUDENT role was
-introduced (BR-AUTH-002). This task builds stable server/application contracts
-only — no login page, school selector component, navbar, profile page, or
-dashboard (Task 014 §47). The future login/logout UI flow must also clear the
-current-school cookie on logout.
+introduced (BR-AUTH-002). Task 014 built server/application contracts only;
+Tasks 025 and 038 subsequently added the app bootstrap, school selector, login,
+and logout UI. The authentication layer still does not create a Student role.
 
 ## 15. What was NOT changed
 
