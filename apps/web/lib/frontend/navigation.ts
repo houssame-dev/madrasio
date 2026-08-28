@@ -33,7 +33,7 @@ export const navigationItems: readonly NavigationItem[] = [
   { label: copy.academic, href: '/academic', icon: School, permission: 'academic_structure.read' },
   { label: copy.students, href: '/students', icon: GraduationCap, permission: 'students.read', roles: STAFF_ROLES },
   { label: copy.children, href: '/children', icon: GraduationCap, permission: 'students.read', roles: ['PARENT'] },
-  { label: copy.teachers, href: '/teachers', icon: UserRoundCheck, permission: 'teachers.read', roles: ADMIN_ROLES },
+  { label: copy.teachers, href: '/teachers', icon: UserRoundCheck, permission: 'teachers.read', roles: STAFF_ROLES },
   { label: copy.parents, href: '/parents', icon: Users, permission: 'parents.read', roles: ADMIN_ROLES },
   { label: copy.grades, href: '/grades', icon: ClipboardList, permission: 'grades.read' },
   { label: copy.attendance, href: '/attendance', icon: CalendarCheck, permission: 'attendance.read' },

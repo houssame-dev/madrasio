@@ -20,8 +20,8 @@ describe('role-aware navigation', () => {
 
   it('keeps teacher navigation free of administrator directories', () => {
     const labels = visibleNavigationItems('TEACHER').map((item) => item.label);
-    expect(labels).toEqual(expect.arrayContaining(['Students', 'Grades & Results', 'Attendance', 'Homework', 'Announcements', 'Notifications']));
-    expect(labels).not.toEqual(expect.arrayContaining(['Academic Structure', 'Teachers', 'Parents']));
+    expect(labels).toEqual(expect.arrayContaining(['Students', 'Teachers', 'Grades & Results', 'Attendance', 'Homework', 'Announcements', 'Notifications']));
+    expect(labels).not.toEqual(expect.arrayContaining(['Academic Structure', 'Parents']));
   });
 
   it('gives parents a child-facing route and no administration routes', () => {

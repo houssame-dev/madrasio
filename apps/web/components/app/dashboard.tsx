@@ -3,6 +3,7 @@
 import { Building2, ShieldCheck } from 'lucide-react';
 
 import { copy, roleLabels } from '@/lib/frontend/copy';
+import { TeacherOperationalDashboard } from '@/components/dashboard/teacher-operational-dashboard';
 import { useAppContext } from './app-context';
 
 export function Dashboard() {
@@ -10,6 +11,7 @@ export function Dashboard() {
   const current = context.currentSchool;
   const school = context.memberships.find((membership) => membership.schoolId === current?.id);
   if (!current) return null;
+  if (current.role === 'TEACHER') return <TeacherOperationalDashboard />;
 
   return (
     <section className="mx-auto max-w-6xl space-y-6">
