@@ -27,6 +27,7 @@ import {
   endRelationshipPOST, parentGET, parentPATCH, parentProfilesGET, parentsGET, parentsPOST,
   relationshipsGET, relationshipsPOST,
 } from '@/lib/api/parents';
+import { childAcademicYearsGET, childPlacementGET, childResultsGET } from '@/lib/api/parent-children';
 
 let seeded: ParentsTestContext;
 beforeEach(async () => {
@@ -52,6 +53,7 @@ const json = (method: string, body: unknown) => new Request('http://local', {
   body: JSON.stringify(body),
 });
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
+const childParams = (studentId: string) => ({ params: Promise.resolve({ studentId }) });
 
 describe('Parents and Relationships HTTP contracts', () => {
   it('covers Parent create/list/detail/patch envelopes', async () => {
@@ -216,6 +218,31 @@ describe('Parents and Relationships HTTP contracts', () => {
     expect((await parentProfilesGET()).status).toBe(401);
     mocks.authError = new AuthError('SCHOOL_CONTEXT_REQUIRED', 'Select a School.');
     expect((await parentProfilesGET()).status).toBe(403);
+  });
+
+  it('exposes validated Parent-only child academic read routes', async () => {
+    const parentUser = await seedUser(seeded.test.seed);
+    await seedMembership(seeded.test.seed, parentUser, seeded.schoolId, 'PARENT');
+    const [parent] = await seeded.test.seed.insert(schema.parents).values({
+      schoolId: seeded.schoolId, userId: parentUser, firstName: 'Route', lastName: 'Parent',
+    }).returning();
+    const student = await seedStudent(seeded.test, seeded.schoolId, 'RouteChild');
+    await seeded.test.seed.insert(schema.parentStudents).values({ schoolId: seeded.schoolId, parentId: parent.id, studentId: student.id });
+    await seeded.test.seed.insert(schema.studentEnrollments).values({
+      schoolId: seeded.schoolId, studentId: student.id, academicYearId: seeded.yearId,
+      classId: seeded.classAId, effectiveFrom: '2025-09-01', status: 'ACTIVE',
+    });
+    mocks.context = contextFor(parentUser, seeded.schoolId, 'PARENT');
+    expect(await (await childAcademicYearsGET(new Request('http://local'), childParams(student.id))).json())
+      .toMatchObject({ data: [{ id: seeded.yearId, name: '2025/2026' }] });
+    expect((await childPlacementGET(new Request('http://local'), childParams(student.id))).status).toBe(400);
+    expect(await (await childPlacementGET(new Request(`http://local?academicYearId=${seeded.yearId}`), childParams(student.id))).json())
+      .toMatchObject({ data: { classId: seeded.classAId, academicYearId: seeded.yearId } });
+    expect((await childResultsGET(new Request(`http://local?academicYearId=${seeded.yearId}&resultType=ANNUAL&academicPeriodId=${crypto.randomUUID()}`), childParams(student.id))).status).toBe(400);
+    expect((await childResultsGET(new Request(`http://local?academicYearId=${seeded.yearId}&resultType=SUBJECT&pageSize=101`), childParams(student.id))).status).toBe(400);
+    expect((await childAcademicYearsGET(new Request('http://local'), childParams(crypto.randomUUID()))).status).toBe(404);
+    mocks.context = contextFor(seeded.admin.userId!, seeded.schoolId, 'SCHOOL_ADMIN');
+    expect((await childAcademicYearsGET(new Request('http://local'), childParams(student.id))).status).toBe(403);
   });
 
   it('hides foreign-School resources and maps CurrentContext denials', async () => {

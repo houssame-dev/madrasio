@@ -7,6 +7,7 @@ export const copy = {
   academic: 'Academic Structure',
   students: 'Students',
   children: 'Children',
+  myChildren: 'My Children',
   teachers: 'Teachers',
   parents: 'Parents',
   grades: 'Grades & Results',

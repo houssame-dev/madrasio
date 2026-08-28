@@ -1,3 +1,26 @@
 'use client';
-import { useQuery } from '@tanstack/react-query'; import { StatusBadge } from '@/components/academic/ui'; import { AccessDeniedWithReturn } from '@/components/app/route-access'; import { useAppContext } from '@/components/app/app-context'; import { ApiErrorState, InlineLoading } from '@/components/ui/states'; import { can } from '@/lib/frontend/permissions'; import { parentsApi } from '@/lib/frontend/parents/api'; import { parentCopy as t } from '@/lib/frontend/parents/copy'; import { parentKeys } from '@/lib/frontend/parents/queries';
-export function ChildrenWorkspace() { const context = useAppContext(); const role = context.currentSchool?.role; const schoolId = context.currentSchool?.id; const allowed = role === 'PARENT' && !!schoolId && can(role, 'parents.read'); const query = useQuery({ queryKey: parentKeys.selfProfiles(schoolId ?? 'no-school'), queryFn: parentsApi.selfProfiles, enabled: allowed }); if (!allowed || !schoolId) return <AccessDeniedWithReturn />; if (query.isPending) return <InlineLoading label={t.loadingChildren} />; if (query.isError) return <ApiErrorState title={t.unavailable} description={t.unavailableDescription} onRetry={() => void query.refetch()} />; return <div className="mx-auto max-w-5xl space-y-6"><header><h1 className="text-2xl font-semibold tracking-tight">{t.childrenTitle}</h1><p className="mt-1 text-sm text-muted-foreground">{t.childrenDescription}</p></header>{query.data.length === 0 ? <div className="rounded-lg border border-dashed p-8 text-center"><h2 className="font-semibold">{t.noProfiles}</h2><p className="mt-1 text-sm text-muted-foreground">{t.noProfilesDescription}</p></div> : query.data.map((profile) => <section key={profile.parent.id} className="space-y-4 rounded-lg border bg-card p-5"><div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold">{profile.parent.firstName} {profile.parent.lastName}</h2><StatusBadge status={profile.parent.status} /></div>{profile.children.length === 0 ? <div className="rounded-md border border-dashed p-5"><p className="font-medium">{t.noChildren}</p><p className="text-sm text-muted-foreground">{t.noChildrenDescription}</p></div> : <ul className="grid gap-3 sm:grid-cols-2">{profile.children.map(({ relationshipId, student }) => <li key={relationshipId} className="rounded-md border p-4"><p className="font-medium">{student.firstName} {student.lastName}</p><p className="mt-1 text-sm text-muted-foreground">{t.studentCode}: {student.studentCode ?? t.unknown}</p></li>)}</ul>}</section>)}<p className="text-sm text-muted-foreground">{t.currentOnly}</p></div>; }
+
+import { useQuery } from '@tanstack/react-query';
+import { useAppContext } from '@/components/app/app-context';
+import { AccessDeniedWithReturn } from '@/components/app/route-access';
+import { ChildCard } from '@/components/parent/child-card';
+import { ApiErrorState, EmptyState, InlineLoading } from '@/components/ui/states';
+import { parentPortalCopy as t } from '@/lib/frontend/parent-portal/copy';
+import { parentBootstrapQuery } from '@/lib/frontend/parent-portal/queries';
+import { relatedChildren } from '@/lib/frontend/parent-portal/types';
+import { can } from '@/lib/frontend/permissions';
+
+export function ChildrenWorkspace() {
+  const context = useAppContext();
+  const role = context.currentSchool?.role;
+  const schoolId = context.currentSchool?.id;
+  const allowed = role === 'PARENT' && !!schoolId && can(role, 'parents.read');
+  const profiles = useQuery({ ...parentBootstrapQuery(schoolId ?? 'no-school'), enabled: allowed });
+  if (!allowed || !schoolId) return <AccessDeniedWithReturn />;
+  if (profiles.isPending) return <InlineLoading label={t.childrenLoading} />;
+  if (profiles.isError) return <ApiErrorState title={t.unavailable} description={t.unavailableDescription} onRetry={() => void profiles.refetch()} />;
+  if (profiles.data.length === 0) return <EmptyState title={t.noProfile} description={t.noProfileDescription} />;
+  const children = relatedChildren(profiles.data);
+  if (children.length === 0) return <EmptyState title={t.noChildren} description={t.noChildrenDescription} />;
+  return <div className="mx-auto max-w-5xl space-y-6"><header><h1 className="text-2xl font-semibold tracking-tight">{t.myChildren}</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t.childrenDescription}</p></header><section className="grid gap-4 sm:grid-cols-2" aria-label={t.myChildren}>{children.map((child) => <ChildCard child={child} key={child.id} />)}</section></div>;
+}

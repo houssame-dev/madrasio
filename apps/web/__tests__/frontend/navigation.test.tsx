@@ -26,8 +26,8 @@ describe('role-aware navigation', () => {
 
   it('gives parents a child-facing route and no administration routes', () => {
     const labels = visibleNavigationItems('PARENT').map((item) => item.label);
-    expect(labels).toEqual(expect.arrayContaining(['Dashboard', 'Children', 'Grades & Results', 'Notifications']));
-    expect(labels).not.toEqual(expect.arrayContaining(['Students', 'Teachers', 'Parents', 'Academic Structure', 'Homework', 'Announcements']));
+    expect(labels).toEqual(['Dashboard', 'My Children', 'Notifications']);
+    expect(labels).not.toEqual(expect.arrayContaining(['Students', 'Teachers', 'Parents', 'Academic Structure', 'Grades & Results', 'Attendance', 'Homework', 'Announcements']));
   });
 
   it('marks the exact active route', () => {

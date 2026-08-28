@@ -24,15 +24,11 @@ describe('role-aware Dashboard', () => {
     expect(urls.every((url) => !url.includes('schoolId=') && !url.includes('userId='))).toBe(true);
   });
 
-  it('preserves the neutral dashboard for SchoolAdmin and Parent without Teacher requests', () => {
+  it('preserves the neutral dashboard for SchoolAdmin without Teacher requests', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch');
-    const admin = renderDashboard(<Dashboard />, 'SCHOOL_ADMIN');
+    renderDashboard(<Dashboard />, 'SCHOOL_ADMIN');
     expect(screen.getByRole('heading', { name: 'Your school workspace' })).toBeInTheDocument();
     expect(screen.queryByText('Take attendance')).not.toBeInTheDocument();
-    admin.unmount();
-    renderDashboard(<Dashboard />, 'PARENT');
-    expect(screen.getByRole('heading', { name: 'Your school workspace' })).toBeInTheDocument();
-    expect(screen.queryByText('Open gradebooks')).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
