@@ -10,6 +10,7 @@ import { copy, roleLabels } from '@/lib/frontend/copy';
 import { AppContextProvider } from './app-context';
 import { NavigationLinks } from './navigation-links';
 import { SchoolSwitcher } from './school-selector';
+import { NotificationUnreadBadge } from '@/components/notifications/notification-unread-badge';
 
 export function AppShell({ context, children }: { context: MeResponseDto; children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -76,6 +77,7 @@ export function AppShell({ context, children }: { context: MeResponseDto; childr
               <p className="truncate text-sm font-medium">{school?.schoolName ?? copy.currentSchool}</p>
               <p className="truncate text-xs text-muted-foreground">{roleLabels[context.currentSchool.role]}</p>
             </div>
+            <NotificationUnreadBadge />
             <SchoolSwitcher memberships={context.memberships} currentSchoolId={context.currentSchool.id} />
           </header>
           <main className="min-h-[calc(100vh-var(--app-topbar-height))] p-[var(--app-page-padding)]">{children}</main>
