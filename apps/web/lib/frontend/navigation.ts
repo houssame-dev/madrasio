@@ -38,7 +38,7 @@ export const navigationItems: readonly NavigationItem[] = [
   { label: copy.grades, href: '/grades', icon: ClipboardList, permission: 'grades.read' },
   { label: copy.attendance, href: '/attendance', icon: CalendarCheck, permission: 'attendance.read' },
   { label: copy.homework, href: '/homework', icon: BookOpen, permission: 'homework.read', roles: STAFF_ROLES },
-  { label: copy.announcements, href: '/announcements', icon: Megaphone, permission: 'announcements.read' },
+  { label: copy.announcements, href: '/announcements', icon: Megaphone, permission: 'announcements.read', roles: STAFF_ROLES },
   { label: copy.notifications, href: '/notifications', icon: Bell, permission: 'notifications.read' },
 ] as const;
 
