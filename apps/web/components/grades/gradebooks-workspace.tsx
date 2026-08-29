@@ -18,6 +18,7 @@ import { gradesApi } from '@/lib/frontend/grades/api';
 import { gradeCopy as t } from '@/lib/frontend/grades/copy';
 import { gradeKeys } from '@/lib/frontend/grades/queries';
 import type { GradebookStatus } from '@/lib/frontend/grades/types';
+import { currentUserActiveAssignments } from '@/lib/frontend/teachers/api';
 import { GradebookForm } from './gradebook-form';
 import { GradebooksTable } from './gradebooks-table';
 
@@ -47,12 +48,14 @@ export function GradebooksWorkspace() {
   const subjects = useQuery({ queryKey: academicKeys.selectors(schoolId ?? 'no-school', 'subjects'), queryFn: () => listAllResource<SubjectDto>('/api/v1/subjects'), enabled: allowed });
   const periods = useQuery({ queryKey: academicKeys.selectors(schoolId ?? 'no-school', `periods:${academicYearId ?? 'none'}`), queryFn: () => listAllResource<AcademicPeriodDto>(`/api/v1/academic-years/${academicYearId}/periods`), enabled: allowed && !!academicYearId });
   const versions = useQuery({ queryKey: gradeKeys.configurationVersions(schoolId ?? 'no-school'), queryFn: gradesApi.allConfigurationVersions, enabled: allowed && canCreate });
+  const teacherScope = useQuery({ queryKey: gradeKeys.teacherScope(schoolId ?? 'no-school', app.user.id), queryFn: () => currentUserActiveAssignments(app.user.id), enabled: allowed && canCreate && role === 'TEACHER' });
   if (!allowed || !role || !schoolId) return <AccessDeniedWithReturn />;
-  if (years.isPending || classes.isPending || subjects.isPending) return <InlineLoading label={t.loading} />;
-  if (years.isError || classes.isError || subjects.isError) return <ApiErrorState title={t.unavailable} onRetry={() => { void years.refetch(); void classes.refetch(); void subjects.refetch(); }} />;
+  if (years.isPending || classes.isPending || subjects.isPending || (role === 'TEACHER' && teacherScope.isPending)) return <InlineLoading label={t.loading} />;
+  if (years.isError || classes.isError || subjects.isError || teacherScope.isError) return <ApiErrorState title={t.unavailable} onRetry={() => { void years.refetch(); void classes.refetch(); void subjects.refetch(); if (role === 'TEACHER') void teacherScope.refetch(); }} />;
   const availableClasses = academicYearId ? classes.data.filter((row) => row.academicYearId === academicYearId) : classes.data;
+  const canOpenCreate = canCreate && (role !== 'TEACHER' || (teacherScope.data?.length ?? 0) > 0);
   return <div className="mx-auto max-w-[110rem] space-y-6">
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{role === 'TEACHER' ? t.teacherDescription : t.description}</p></div><div className="flex flex-wrap gap-2"><Link href="/grades/results" className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">{t.resultsWorkspace}</Link>{canCreate ? <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{t.createGradebook}</Button> : null}</div></header>
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{role === 'TEACHER' ? t.teacherDescription : t.description}</p></div><div className="flex flex-wrap gap-2"><Link href="/grades/results" className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">{t.resultsWorkspace}</Link>{canOpenCreate ? <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{t.createGradebook}</Button> : null}</div></header>
     <section className="space-y-3" aria-labelledby="gradebook-filters"><h2 id="gradebook-filters" className="text-sm font-semibold">{t.filters}</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <label><span className="sr-only">{t.academicYear}</span><select aria-label={t.academicYear} className={selectClassName} value={academicYearId ?? ''} onChange={(event) => updateUrl({ academicYearId: event.target.value || undefined, academicPeriodId: undefined, classId: undefined, page: 1 })}><option value="">{t.allYears}</option>{years.data.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
       <label><span className="sr-only">{t.period}</span><select aria-label={t.period} className={selectClassName} value={academicPeriodId ?? ''} disabled={!academicYearId || periods.isPending} onChange={(event) => updateUrl({ academicPeriodId: event.target.value || undefined, page: 1 })}><option value="">{t.allPeriods}</option>{periods.data?.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
@@ -61,6 +64,6 @@ export function GradebooksWorkspace() {
       <label><span className="sr-only">{t.status}</span><select aria-label={t.status} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{statuses.map((row) => <option key={row} value={row}>{row}</option>)}</select></label>
     </div></section>
     {gradebooks.isError ? <ApiErrorState title={t.unavailable} description={t.unavailableDescription} onRetry={() => void gradebooks.refetch()} /> : <GradebooksTable schoolId={schoolId} result={gradebooks.data} loading={gradebooks.isPending} years={years.data} classes={classes.data} subjects={subjects.data} onPage={(next) => updateUrl({ page: next })} />}
-    <Modal open={creating} title={t.createGradebook} description={t.createDescription} onClose={() => setCreating(false)}>{creating ? <GradebookForm schoolId={schoolId} years={years.data} classes={classes.data} subjects={subjects.data} versions={versions.data ?? []} versionsPending={versions.isPending} versionsError={versions.isError} refetchVersions={() => versions.refetch()} onCancel={() => setCreating(false)} /> : null}</Modal>
+    <Modal open={creating} title={t.createGradebook} description={t.createDescription} onClose={() => setCreating(false)}>{creating ? <GradebookForm schoolId={schoolId} years={years.data} classes={classes.data} subjects={subjects.data} assignments={role === 'TEACHER' ? teacherScope.data ?? [] : undefined} versions={versions.data ?? []} versionsPending={versions.isPending} versionsError={versions.isError} refetchVersions={() => versions.refetch()} onCancel={() => setCreating(false)} /> : null}</Modal>
   </div>;
 }

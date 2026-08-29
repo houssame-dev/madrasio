@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GradebooksWorkspace } from '@/components/grades/gradebooks-workspace';
 import {
-  classId, gradebookId, periodId, renderGrades, setupGradebookFetch,
-  subjectId, versionId, yearId,
+  classId, gradebookId, klass, periodId, renderGrades, setupGradebookFetch,
+  subject, subjectId, timestamps, versionId, year, yearId,
 } from './test-helpers';
 
 const navigation = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
@@ -88,5 +88,21 @@ describe('Gradebook creation completion', () => {
     renderGrades(<GradebooksWorkspace />, 'TEACHER');
     expect(await screen.findByRole('button', { name: 'Create Gradebook' })).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('grading-configuration-versions'))).toBe(true);
+  });
+
+  it('limits Teacher creation selectors to exact active assignment context', async () => {
+    const otherYear = { ...year, id: '00000000-0000-4000-8000-000000000219', name: '2027/2028', ...timestamps };
+    const otherClass = { ...klass, id: '00000000-0000-4000-8000-000000000220', name: '2B', ...timestamps };
+    const otherSubject = { ...subject, id: '00000000-0000-4000-8000-000000000221', name: 'Physics', ...timestamps };
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    setupGradebookFetch(fetchMock, undefined, { years: [year, otherYear], classes: [klass, otherClass], subjects: [subject, otherSubject] });
+    renderGrades(<GradebooksWorkspace />, 'TEACHER');
+    const dialog = await openForm();
+    expect(within(dialog).queryByRole('option', { name: '2027/2028' })).not.toBeInTheDocument();
+    await userEvent.selectOptions(within(dialog).getByLabelText('Academic Year'), yearId);
+    expect(within(dialog).queryByRole('option', { name: '2B' })).not.toBeInTheDocument();
+    await userEvent.selectOptions(within(dialog).getByLabelText('Class'), classId);
+    expect(within(dialog).getByRole('option', { name: 'Mathematics (MATH)' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('option', { name: 'Physics (MATH)' })).not.toBeInTheDocument();
   });
 });

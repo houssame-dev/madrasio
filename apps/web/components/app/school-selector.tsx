@@ -65,7 +65,7 @@ export function SchoolSwitcher({ memberships, currentSchoolId }: { memberships: 
           value={currentSchoolId}
           disabled={selection.isPending}
           onChange={(event) => selection.mutate(event.target.value)}
-          className="max-w-48 rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-28 rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-auto sm:max-w-48"
         >
           {memberships.map((membership) => <option key={membership.schoolId} value={membership.schoolId}>{membership.schoolName}</option>)}
         </select>

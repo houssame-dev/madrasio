@@ -24,12 +24,21 @@ export function AppShell({ context, children }: { context: MeResponseDto; childr
     if (!mobileOpen) return;
     const trigger = mobileTriggerRef.current;
     closeButtonRef.current?.focus();
-    const closeOnEscape = (event: KeyboardEvent) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setMobileOpen(false);
+      if (event.key === 'Tab') {
+        const panel = closeButtonRef.current?.closest('[role="dialog"]');
+        const focusable = Array.from(panel?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])') ?? []);
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
     };
-    window.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('keydown', onKeyDown);
     return () => {
-      window.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('keydown', onKeyDown);
       trigger?.focus();
     };
   }, [mobileOpen]);
@@ -80,7 +89,7 @@ export function AppShell({ context, children }: { context: MeResponseDto; childr
             </div>
             <NotificationUnreadBadge />
             <SchoolSwitcher memberships={context.memberships} currentSchoolId={context.currentSchool.id} />
-            <LogoutButton variant="ghost" />
+            <LogoutButton variant="ghost" compact />
           </header>
           <main className="min-h-[calc(100vh-var(--app-topbar-height))] p-[var(--app-page-padding)]">{children}</main>
         </div>

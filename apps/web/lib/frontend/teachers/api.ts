@@ -37,3 +37,18 @@ export async function listAllAssignments(teacherId: string, params: Omit<Assignm
   }
   return rows;
 }
+
+/**
+ * Resolves only the authenticated User's ACTIVE Teacher profiles and assignments.
+ * The Teacher list/detail APIs remain server-scoped; `userId` is used only to
+ * compose the already-authorized response and is never sent as authority.
+ */
+export async function currentUserActiveAssignments(userId: string): Promise<TeacherAssignmentDto[]> {
+  const first = await teachersApi.list({ status: 'ACTIVE', page: 1, pageSize: 100 });
+  const teachers = [...first.data];
+  for (let page = 2; page <= Math.ceil(first.meta.total / 100); page += 1) {
+    teachers.push(...(await teachersApi.list({ status: 'ACTIVE', page, pageSize: 100 })).data);
+  }
+  const profiles = teachers.filter((teacher) => teacher.userId === userId);
+  return (await Promise.all(profiles.map((teacher) => listAllAssignments(teacher.id, { status: 'ACTIVE' })))).flat();
+}

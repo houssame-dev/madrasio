@@ -33,7 +33,7 @@ export function GradeEntryDialog({ open, schoolId, gradebookId, assessment, onCl
   const [notice, setNotice] = useState<string>();
   const seededMatrix = useRef<string>();
   const dirtyRef = useRef(dirty); dirtyRef.current = dirty;
-  const matrix = useQuery({ queryKey: gradeKeys.gradeMatrix(schoolId, gradebookId, page), queryFn: () => gradesApi.gradeMatrix(gradebookId, { page, pageSize: 100 }), enabled: open && !!assessment });
+  const matrix = useQuery({ queryKey: gradeKeys.gradeMatrix(schoolId, gradebookId, page, 100), queryFn: () => gradesApi.gradeMatrix(gradebookId, { page, pageSize: 100 }), enabled: open && !!assessment });
   const rows = matrix.data?.data.students;
   useEffect(() => {
     if (!open) { seededMatrix.current = undefined; return; }

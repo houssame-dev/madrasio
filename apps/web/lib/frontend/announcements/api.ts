@@ -1,6 +1,6 @@
 import { apiRequest } from '@/lib/frontend/api-client';
-import { listAllAssignments, teachersApi } from '@/lib/frontend/teachers/api';
-import type { TeacherAssignmentDto, TeacherDto } from '@/lib/frontend/teachers/types';
+import { currentUserActiveAssignments } from '@/lib/frontend/teachers/api';
+import type { TeacherAssignmentDto } from '@/lib/frontend/teachers/types';
 import type { AnnouncementDetailDto, AnnouncementDto, AnnouncementListParams, AnnouncementPage, AnnouncementPublicationPage, AnnouncementPublishDto, AnnouncementTargetDto, AnnouncementTargetInput, AnnouncementVersionDto, AnnouncementVersionPage } from './types';
 
 function query(path: `/api/v1/${string}`, params: object = {}): `/api/v1/${string}` {
@@ -32,8 +32,5 @@ export async function allAnnouncementPublications(id: string) {
 
 /** Current-user authoring scope only; never used to resolve publication recipients. */
 export async function currentUserAnnouncementAssignments(userId: string): Promise<TeacherAssignmentDto[]> {
-  const first = await teachersApi.list({ status: 'ACTIVE', page: 1, pageSize: 100 }); const teachers: TeacherDto[] = [...first.data];
-  for (let page = 2; page <= Math.ceil(first.meta.total / 100); page += 1) teachers.push(...(await teachersApi.list({ status: 'ACTIVE', page, pageSize: 100 })).data);
-  const owned = teachers.filter((teacher) => teacher.userId === userId);
-  return (await Promise.all(owned.map((teacher) => listAllAssignments(teacher.id, { status: 'ACTIVE' })))).flat();
+  return currentUserActiveAssignments(userId);
 }

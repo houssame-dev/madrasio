@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AppBootstrap } from '@/components/app/app-bootstrap';
@@ -36,6 +37,25 @@ describe('/me application bootstrap', () => {
     expect(screen.getByTestId('mobile-navigation-trigger')).toHaveAccessibleName('Open navigation');
     expect(screen.getAllByText('Atlas School').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
+  });
+
+  it('keeps the multi-School mobile topbar compact and traps focus in its navigation dialog', async () => {
+    renderBootstrap(async () => Response.json({ data: { user: { id: 'user' }, currentSchool: { id: schoolA, role: 'SCHOOL_ADMIN' }, memberships: [{ schoolId: schoolA, schoolName: 'Atlas School', role: 'SCHOOL_ADMIN', status: 'ACTIVE' }, { schoolId: schoolB, schoolName: 'Rif School', role: 'TEACHER', status: 'ACTIVE' }] } }));
+    const trigger = await screen.findByRole('button', { name: 'Open navigation' });
+    expect(screen.getByRole('combobox', { name: 'Switch current school' })).toHaveClass('w-28');
+    expect(screen.getByRole('button', { name: 'Log out' })).toHaveClass('w-10');
+
+    await userEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: 'Main navigation' });
+    const close = within(dialog).getByRole('button', { name: 'Close navigation' });
+    expect(close).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(within(dialog).getByRole('link', { name: 'Notifications' })).toHaveFocus();
+    await userEvent.tab();
+    expect(close).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Main navigation' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
   it('shows only returned memberships when multiple schools need selection', async () => {

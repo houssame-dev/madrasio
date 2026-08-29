@@ -14,6 +14,7 @@ export const subjectId = '00000000-0000-4000-8000-000000000206';
 export const versionId = '00000000-0000-4000-8000-000000000207';
 export const gradebookId = '00000000-0000-4000-8000-000000000208';
 export const assessmentId = '00000000-0000-4000-8000-000000000209';
+export const teacherId = '00000000-0000-4000-8000-000000000217';
 export const studentId = '00000000-0000-4000-8000-000000000214';
 export const resultId = '00000000-0000-4000-8000-000000000215';
 export const timestamps = { createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' };
@@ -28,6 +29,8 @@ export const student = { id: studentId, firstName: 'Sara', lastName: 'Amrani', s
 export const validGrade = { id: '00000000-0000-4000-8000-000000000216', gradebookId, assessmentId, studentId, state: 'VALID' as const, score: '12.25', ...timestamps };
 export const matrix = { data: { gradebook: { ...gradebook, status: 'OPEN' as const }, assessments: [{ ...assessment, status: 'PUBLISHED' as const }], students: [{ student, grades: [validGrade] }] }, meta: { page: 1, pageSize: 100, total: 1, assessmentLimit: 100, assessmentTotal: 1 } };
 export const subjectResult = { id: resultId, resultType: 'SUBJECT' as const, studentId, academicYearId: yearId, academicPeriodId: periodId, classId, subjectId, gradingConfigurationVersionId: versionId, value: '12.25', status: 'CALCULATED' as const, ...timestamps };
+export const teacher = { id: teacherId, firstName: 'Omar', lastName: 'Idrissi', teacherCode: 'T-001', userId, status: 'ACTIVE' as const, ...timestamps };
+export const teacherAssignment = { id: '00000000-0000-4000-8000-000000000218', teacherId, academicYearId: yearId, classId, subjectId, effectiveFrom: '2026-09-01', effectiveUntil: null, status: 'ACTIVE' as const, ...timestamps };
 
 export function page<T>(data: T[], pageNumber = 1, pageSize = 20, total = data.length) { return { data, meta: { page: pageNumber, pageSize, total } }; }
 
@@ -41,6 +44,9 @@ export function setupGradebookFetch(fetchMock: MockInstance, rows = [gradebook],
   versions?: typeof configurationVersion[];
   discoveryError?: boolean;
   createError?: { featureCode: string; message: string };
+  years?: typeof year[];
+  classes?: typeof klass[];
+  subjects?: typeof subject[];
 } = {}) {
   fetchMock.mockImplementation(async (input, init) => {
     const url = String(input);
@@ -56,10 +62,12 @@ export function setupGradebookFetch(fetchMock: MockInstance, rows = [gradebook],
     if (url === `/api/v1/gradebooks/${gradebookId}`) return Response.json({ data: gradebook });
     if (url.startsWith(`/api/v1/gradebooks/${gradebookId}/grades?`)) return Response.json(matrix);
     if (url.startsWith(`/api/v1/gradebooks/${gradebookId}/assessments`)) return Response.json(page([assessment]));
-    if (url === '/api/v1/academic-years?page=1&pageSize=100') return Response.json(page([year], 1, 100));
-    if (url === '/api/v1/classes?page=1&pageSize=100') return Response.json(page([klass], 1, 100));
-    if (url === '/api/v1/subjects?page=1&pageSize=100') return Response.json(page([subject], 1, 100));
+    if (url === '/api/v1/academic-years?page=1&pageSize=100') return Response.json(page(options.years ?? [year], 1, 100));
+    if (url === '/api/v1/classes?page=1&pageSize=100') return Response.json(page(options.classes ?? [klass], 1, 100));
+    if (url === '/api/v1/subjects?page=1&pageSize=100') return Response.json(page(options.subjects ?? [subject], 1, 100));
     if (url === `/api/v1/academic-years/${yearId}/periods?page=1&pageSize=100`) return Response.json(page([period], 1, 100));
+    if (url === '/api/v1/teachers?status=ACTIVE&page=1&pageSize=100') return Response.json(page([teacher], 1, 100));
+    if (url === `/api/v1/teachers/${teacherId}/assignments?status=ACTIVE&page=1&pageSize=100`) return Response.json(page([teacherAssignment], 1, 100));
     throw new Error(`Unexpected request: ${url}`);
   });
 }

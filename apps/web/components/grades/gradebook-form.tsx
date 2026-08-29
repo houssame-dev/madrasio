@@ -16,12 +16,14 @@ import { gradeErrorMessage, mapGradeValidation } from '@/lib/frontend/grades/err
 import { gradeKeys } from '@/lib/frontend/grades/queries';
 import { gradebookFormSchema, type GradebookFormValues } from '@/lib/frontend/grades/schemas';
 import type { GradingConfigurationVersionOptionDto } from '@/lib/frontend/grades/types';
+import type { TeacherAssignmentDto } from '@/lib/frontend/teachers/types';
 
-export function GradebookForm({ schoolId, years, classes, subjects, versions, versionsPending, versionsError, refetchVersions, onCancel }: {
+export function GradebookForm({ schoolId, years, classes, subjects, assignments, versions, versionsPending, versionsError, refetchVersions, onCancel }: {
   schoolId: string;
   years: AcademicYearDto[];
   classes: ClassDto[];
   subjects: SubjectDto[];
+  assignments?: TeacherAssignmentDto[];
   versions: GradingConfigurationVersionOptionDto[];
   versionsPending: boolean;
   versionsError: boolean;
@@ -30,12 +32,12 @@ export function GradebookForm({ schoolId, years, classes, subjects, versions, ve
 }) {
   const router = useRouter(); const queryClient = useQueryClient(); const [error, setError] = useState<string>();
   const form = useForm<GradebookFormValues>({ resolver: zodResolver(gradebookFormSchema), defaultValues: { name: '', academicYearId: '', academicPeriodId: '', classId: '', subjectId: '', gradingConfigurationVersionId: '' } });
-  const yearId = form.watch('academicYearId');
+  const yearId = form.watch('academicYearId'); const classId = form.watch('classId');
   const periods = useQuery({ queryKey: academicKeys.selectors(schoolId, `periods:${yearId || 'none'}`), queryFn: () => listAllResource<AcademicPeriodDto>(`/api/v1/academic-years/${yearId}/periods`), enabled: !!yearId });
-  const eligibleYears = years.filter((row) => row.status === 'PLANNED' || row.status === 'ACTIVE');
+  const eligibleYears = years.filter((row) => (row.status === 'PLANNED' || row.status === 'ACTIVE') && (!assignments || assignments.some((assignment) => assignment.academicYearId === row.id)));
   const eligiblePeriods = (periods.data ?? []).filter((row) => row.status === 'PLANNED' || row.status === 'ACTIVE');
-  const eligibleClasses = classes.filter((row) => row.academicYearId === yearId && row.status === 'ACTIVE');
-  const eligibleSubjects = subjects.filter((row) => row.status === 'ACTIVE');
+  const eligibleClasses = classes.filter((row) => row.academicYearId === yearId && row.status === 'ACTIVE' && (!assignments || assignments.some((assignment) => assignment.academicYearId === yearId && assignment.classId === row.id)));
+  const eligibleSubjects = subjects.filter((row) => row.status === 'ACTIVE' && (!assignments || assignments.some((assignment) => assignment.academicYearId === yearId && assignment.classId === classId && assignment.subjectId === row.id)));
   const mutation = useMutation({
     mutationFn: (values: GradebookFormValues) => gradesApi.createGradebook({ ...values, name: values.name.trim() || null }),
     onSuccess: async (value) => { await queryClient.invalidateQueries({ queryKey: gradeKeys.gradebooks(schoolId) }); router.push(`/grades/${value.id}`); },
@@ -51,9 +53,9 @@ export function GradebookForm({ schoolId, years, classes, subjects, versions, ve
   return <form className="space-y-4" noValidate onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
     {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}
     <Field label={t.optionalName} htmlFor="gradebook-name" error={form.formState.errors.name?.message}><input id="gradebook-name" className={inputClassName} {...form.register('name')} /></Field>
-    <Field label={t.academicYear} htmlFor="gradebook-year" error={form.formState.errors.academicYearId?.message}><select id="gradebook-year" className={selectClassName} {...form.register('academicYearId', { onChange: () => { form.setValue('academicPeriodId', ''); form.setValue('classId', ''); } })}><option value="">{t.selectYear}</option>{eligibleYears.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></Field>
-    <div className="grid gap-4 sm:grid-cols-2"><Field label={t.period} htmlFor="gradebook-period" error={form.formState.errors.academicPeriodId?.message}><select id="gradebook-period" className={selectClassName} disabled={!yearId || periods.isPending} {...form.register('academicPeriodId')}><option value="">{t.selectPeriod}</option>{eligiblePeriods.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></Field><Field label={t.class} htmlFor="gradebook-class" error={form.formState.errors.classId?.message}><select id="gradebook-class" className={selectClassName} disabled={!yearId} {...form.register('classId')}><option value="">{t.selectClass}</option>{eligibleClasses.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></Field></div>
-    <Field label={t.subject} htmlFor="gradebook-subject" error={form.formState.errors.subjectId?.message}><select id="gradebook-subject" className={selectClassName} {...form.register('subjectId')}><option value="">{t.selectSubject}</option>{eligibleSubjects.map((row) => <option key={row.id} value={row.id}>{row.name}{row.code ? ` (${row.code})` : ''}</option>)}</select></Field>
+    <Field label={t.academicYear} htmlFor="gradebook-year" error={form.formState.errors.academicYearId?.message}><select id="gradebook-year" className={selectClassName} {...form.register('academicYearId', { onChange: () => { form.setValue('academicPeriodId', ''); form.setValue('classId', ''); form.setValue('subjectId', ''); } })}><option value="">{t.selectYear}</option>{eligibleYears.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></Field>
+    <div className="grid gap-4 sm:grid-cols-2"><Field label={t.period} htmlFor="gradebook-period" error={form.formState.errors.academicPeriodId?.message}><select id="gradebook-period" className={selectClassName} disabled={!yearId || periods.isPending} {...form.register('academicPeriodId')}><option value="">{t.selectPeriod}</option>{eligiblePeriods.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></Field><Field label={t.class} htmlFor="gradebook-class" error={form.formState.errors.classId?.message}><select id="gradebook-class" className={selectClassName} disabled={!yearId} {...form.register('classId', { onChange: () => form.setValue('subjectId', '') })}><option value="">{t.selectClass}</option>{eligibleClasses.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></Field></div>
+    <Field label={t.subject} htmlFor="gradebook-subject" error={form.formState.errors.subjectId?.message}><select id="gradebook-subject" className={selectClassName} disabled={!!assignments && !classId} {...form.register('subjectId')}><option value="">{t.selectSubject}</option>{eligibleSubjects.map((row) => <option key={row.id} value={row.id}>{row.name}{row.code ? ` (${row.code})` : ''}</option>)}</select></Field>
     <Field label={t.configurationVersion} htmlFor="gradebook-version" error={form.formState.errors.gradingConfigurationVersionId?.message}><select id="gradebook-version" className={selectClassName} {...form.register('gradingConfigurationVersionId')}><option value="">{t.selectConfigurationVersion}</option>{versions.map((row) => <option key={row.id} value={row.id}>{t.versionLabel(row.configuration.name, row.versionNumber)}</option>)}</select></Field>
     <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={t.create} />
   </form>;

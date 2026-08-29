@@ -1,6 +1,6 @@
 import { apiRequest } from '@/lib/frontend/api-client';
-import { listAllAssignments, teachersApi } from '@/lib/frontend/teachers/api';
-import type { PageResponse, TeacherAssignmentDto, TeacherDto } from '@/lib/frontend/teachers/types';
+import { currentUserActiveAssignments } from '@/lib/frontend/teachers/api';
+import type { PageResponse, TeacherAssignmentDto } from '@/lib/frontend/teachers/types';
 import type {
   HomeworkCreateInput, HomeworkDto, HomeworkListParams, HomeworkPatchInput,
   HomeworkRosterResponse, HomeworkSubmissionDto, HomeworkSubmissionListParams, HomeworkTargetDto,
@@ -35,12 +35,5 @@ export const homeworkApi = {
 };
 
 export async function currentUserHomeworkAssignments(userId: string): Promise<TeacherAssignmentDto[]> {
-  const first = await teachersApi.list({ status: 'ACTIVE', page: 1, pageSize: 100 });
-  const teachers: TeacherDto[] = [...first.data];
-  for (let page = 2; page <= Math.ceil(first.meta.total / 100); page += 1) {
-    teachers.push(...(await teachersApi.list({ status: 'ACTIVE', page, pageSize: 100 }) as PageResponse<TeacherDto>).data);
-  }
-  const owned = teachers.filter((teacher) => teacher.userId === userId);
-  return (await Promise.all(owned.map((teacher) => listAllAssignments(teacher.id, { status: 'ACTIVE' })))).flat();
+  return currentUserActiveAssignments(userId);
 }
-
