@@ -14,6 +14,10 @@ import { getServerEnv } from '@/lib/config/env';
  *
  * The full domain schema is registered so typed repositories (and the
  * authorization resolvers in `lib/authorization/server`) can query it.
+ * Hosted `DATABASE_URL` targets the Supabase transaction pooler. Drizzle's
+ * node-postgres queries remain unnamed (the application does not call
+ * `.prepare()`), which avoids transaction-pooler-incompatible named prepared
+ * statements. Migration tooling uses its separate connection convention.
  */
 type Database = NodePgDatabase<typeof schema>;
 
