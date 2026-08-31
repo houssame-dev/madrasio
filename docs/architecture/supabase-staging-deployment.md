@@ -142,11 +142,15 @@ This is a **MEDIUM environment deviation**, not a direct-runtime incompatibility
 the application uses the trusted PostgreSQL connection and does not depend on
 Data API roles. RLS was neither manually enabled nor disabled during Task 041.
 
-The disabled Data API was verified both before and after migration. A safe
-request for the migrated `schools` resource using the public project key
-returned HTTP `503` / `PGRST002` because no schema cache is exposed, and no rows
-or OpenAPI schema were returned. This matches the intended server-only data
-architecture.
+The disabled Data API was verified both before and after migration. For current
+Supabase gateway/PostgREST behavior, the Dashboard/management setting
+`Enable Data API = OFF` is the authoritative configuration checkpoint. A safe
+request for the normal `schools` table resource using the validated public
+project key could not query application data and returned no rows or schema.
+The check intentionally does not depend on one HTTP status or error code:
+gateway responses such as `Access to schema is forbidden` may vary independently
+of key validity. `Invalid API key` remains a distinct target/key failure, and any
+successful application-table response is a hard isolation failure.
 
 ## 9. Runtime and transaction-pooler verification
 
