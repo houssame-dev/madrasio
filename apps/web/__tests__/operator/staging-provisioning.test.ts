@@ -11,7 +11,12 @@ import {
   type SafeLogger,
 } from '@/scripts/operator/contracts';
 import { runFirstTenantBootstrap, runStagingDemoSeed } from '@/scripts/operator/orchestration';
-import { verifyHostedHttpPreflight } from '@/scripts/operator/runtime';
+import { DEMO_GRADING_RULES, verifyHostedHttpPreflight } from '@/scripts/operator/runtime';
+import {
+  computeAnnualResult,
+  computePeriodResult,
+  computeSubjectResult,
+} from '@/lib/modules/grades/domain/calculation/engine';
 
 const adminId = '00000000-0000-4000-8000-000000000001';
 const teacherId = '00000000-0000-4000-8000-000000000002';
@@ -238,9 +243,85 @@ describe('staging demo seed orchestration', () => {
     return {
       inspect: vi.fn().mockResolvedValue({ kind: 'empty', schoolId }),
       create: vi.fn().mockResolvedValue(undefined),
+      reconcileGradingFixture: vi.fn().mockResolvedValue(undefined),
       ...overrides,
     };
   }
+
+  it('uses grading rules supported by every V1 result calculation stage', () => {
+    const subject = computeSubjectResult({
+      assessments: [
+        { id: 'quiz', assessmentType: 'QUIZ', maximumScore: '20.00', weight: '1.00' },
+        { id: 'exam', assessmentType: 'EXAM', maximumScore: '20.00', weight: '1.00' },
+      ],
+      grades: [
+        { assessmentId: 'quiz', score: '14.00', state: 'VALID' },
+        { assessmentId: 'exam', score: '18.00', state: 'VALID' },
+      ],
+      coefficient: '2.00',
+      rules: DEMO_GRADING_RULES,
+    });
+    const period = computePeriodResult({
+      subjectResults: [
+        { subjectId: 'math', coefficient: '2.00', value: '16.00' },
+        { subjectId: 'french', coefficient: '1.00', value: '13.00' },
+      ],
+      rules: DEMO_GRADING_RULES,
+    });
+    const annual = computeAnnualResult({
+      periodResults: [
+        { academicPeriodId: 'term-one', value: '15.00' },
+        { academicPeriodId: 'term-two', value: '17.00' },
+      ],
+      rules: DEMO_GRADING_RULES,
+    });
+
+    expect(subject.status).toBe('complete');
+    expect(period.status).toBe('complete');
+    expect(annual.status).toBe('complete');
+  });
+
+  it('reconciles only the exact legacy grading state and verifies the successor', async () => {
+    const authPort = auth({
+      listUsers: vi.fn().mockResolvedValue([
+        { id: adminId, email: config.BOOTSTRAP_ADMIN_EMAIL },
+        { id: teacherId, email: config.STAGING_TEACHER_EMAIL },
+        { id: parentId, email: config.STAGING_PARENT_EMAIL },
+      ]),
+    });
+    const inspect = vi
+      .fn()
+      .mockResolvedValueOnce({ kind: 'reconcilable', schoolId })
+      .mockResolvedValueOnce({ kind: 'complete', schoolId });
+    const storePort = seedStore({ inspect });
+
+    await expect(
+      runStagingDemoSeed(config, { auth: authPort, store: storePort, logger: logger() }),
+    ).resolves.toEqual({ status: 'reconciled', schoolId });
+    expect(storePort.reconcileGradingFixture).toHaveBeenCalledOnce();
+    expect(storePort.reconcileGradingFixture).toHaveBeenCalledWith(schoolId);
+    expect(storePort.create).not.toHaveBeenCalled();
+    expect(authPort.createUser).not.toHaveBeenCalled();
+  });
+
+  it('treats an exact reconciled rerun as a no-op without another version', async () => {
+    const authPort = auth({
+      listUsers: vi.fn().mockResolvedValue([
+        { id: adminId, email: config.BOOTSTRAP_ADMIN_EMAIL },
+        { id: teacherId, email: config.STAGING_TEACHER_EMAIL },
+        { id: parentId, email: config.STAGING_PARENT_EMAIL },
+      ]),
+    });
+    const storePort = seedStore({
+      inspect: vi.fn().mockResolvedValue({ kind: 'complete', schoolId }),
+    });
+
+    await expect(
+      runStagingDemoSeed(config, { auth: authPort, store: storePort, logger: logger() }),
+    ).resolves.toEqual({ status: 'already-complete', schoolId });
+    expect(storePort.reconcileGradingFixture).not.toHaveBeenCalled();
+    expect(storePort.create).not.toHaveBeenCalled();
+  });
 
   it('compensates both newly created test identities when the seed transaction fails', async () => {
     const authPort = auth({

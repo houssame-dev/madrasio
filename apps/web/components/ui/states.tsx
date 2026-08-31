@@ -10,12 +10,15 @@ interface StateProps {
   action?: ReactNode;
 }
 
-function StatePanel({ icon, title, description, action }: StateProps & { icon: ReactNode }) {
+function StatePanel({ icon, title, description, action, headingLevel = 1 }: StateProps & { icon: ReactNode; headingLevel?: 1 | 2 }) {
+  const heading = headingLevel === 1
+    ? <h1 className="text-xl font-semibold">{title}</h1>
+    : <h2 className="text-xl font-semibold">{title}</h2>;
   return (
     <section className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-lg border bg-card p-8 text-center shadow-sm">
       <span className="rounded-full bg-muted p-3 text-muted-foreground" aria-hidden="true">{icon}</span>
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold">{title}</h1>
+        {heading}
         {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
       </div>
       {action}
@@ -37,11 +40,11 @@ export function InlineLoading({ label = copy.loadingApplication }: { label?: str
 }
 
 export function EmptyState({ title, description, action }: StateProps) {
-  return <StatePanel icon={<Inbox className="size-6" />} title={title} description={description} action={action} />;
+  return <StatePanel icon={<Inbox className="size-6" />} title={title} description={description} action={action} headingLevel={2} />;
 }
 
 export function ApiErrorState({ title = copy.requestFailed, description = copy.requestFailedDescription, onRetry }: Partial<StateProps> & { onRetry?: () => void }) {
-  return <StatePanel icon={<AlertCircle className="size-6" />} title={title} description={description} action={onRetry ? <Button type="button" variant="outline" onClick={onRetry}>{copy.tryAgain}</Button> : undefined} />;
+  return <StatePanel icon={<AlertCircle className="size-6" />} title={title} description={description} action={onRetry ? <Button type="button" variant="outline" onClick={onRetry}>{copy.tryAgain}</Button> : undefined} headingLevel={2} />;
 }
 
 export function AccessDeniedState({ title = copy.accessDenied, description = copy.accessDeniedDescription, action }: Partial<StateProps>) {

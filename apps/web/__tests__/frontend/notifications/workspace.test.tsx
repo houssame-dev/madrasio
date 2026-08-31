@@ -36,7 +36,8 @@ describe('NotificationsWorkspace', () => {
   it('uses backend read/source filters and server pagination in the URL contract', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => String(input).includes('unread-count') ? json({ data: { count: 0 } }) : json(page([])));
     renderNotifications(<NotificationsWorkspace />);
-    await screen.findByRole('heading', { name: 'No notifications yet' });
+    await screen.findByRole('heading', { name: 'No notifications yet', level: 2 });
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     fireEvent.change(screen.getByLabelText('Read status'), { target: { value: 'UNREAD' } });
     expect(navigation.replace).toHaveBeenCalledWith('/notifications?status=UNREAD&page=1', { scroll: false });
     fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'RESULT_PUBLICATION' } });

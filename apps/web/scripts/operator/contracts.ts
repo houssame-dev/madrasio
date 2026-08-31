@@ -195,6 +195,7 @@ export interface BootstrapStorePort {
 export type SeedDbState =
   | { kind: 'empty'; schoolId: string }
   | { kind: 'complete'; schoolId: string }
+  | { kind: 'reconcilable'; schoolId: string }
   | { kind: 'partial'; reason: string };
 
 export interface DemoSeedStorePort {
@@ -205,4 +206,5 @@ export interface DemoSeedStorePort {
     schoolName: string;
   }): Promise<SeedDbState>;
   create(input: { schoolId: string; teacherUserId: string; parentUserId: string }): Promise<void>;
+  reconcileGradingFixture(schoolId: string): Promise<void>;
 }

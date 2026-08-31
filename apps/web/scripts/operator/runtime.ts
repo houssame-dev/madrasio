@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import { createClient } from '@supabase/supabase-js';
 import * as schema from '@school/database';
 import { and, eq, inArray, sql } from 'drizzle-orm';
@@ -42,6 +44,27 @@ export const DEMO_IDS = {
   gradingVersion: 'c0420000-0000-4000-8000-000000000016',
   teacherMembership: 'c0420000-0000-4000-8000-000000000017',
   parentMembership: 'c0420000-0000-4000-8000-000000000018',
+  gradingVersionSuccessor: 'c0420000-0000-4000-8000-000000000019',
+} as const;
+
+export const LEGACY_DEMO_GRADING_RULES = {
+  schemaVersion: 1,
+  periodCalculation: { mode: 'WEIGHTED_AVERAGE' },
+  annualCalculation: { mode: 'WEIGHTED_AVERAGE' },
+  assessmentWeighting: { mode: 'WEIGHTED' },
+  coefficientUsage: { mode: 'USE_CURRICULUM_SUBJECT_COEFFICIENT' },
+  rounding: { mode: 'HALF_UP', scale: 2 },
+  thresholds: { maxScore: 20, passingScore: 10 },
+} as const;
+
+export const DEMO_GRADING_RULES = {
+  schemaVersion: 1,
+  periodCalculation: { mode: 'WEIGHTED_AVERAGE' },
+  annualCalculation: { mode: 'SIMPLE_AVERAGE' },
+  assessmentWeighting: { mode: 'EQUAL' },
+  coefficientUsage: { mode: 'USE_CURRICULUM_SUBJECT_COEFFICIENT' },
+  rounding: { mode: 'HALF_UP', scale: 2 },
+  thresholds: { maxScore: 20, passingScore: 10 },
 } as const;
 
 class SupabaseAuthAdmin implements AuthAdminPort {
@@ -160,7 +183,7 @@ class BootstrapStore implements BootstrapStorePort {
   }
 }
 
-class DemoSeedStore implements DemoSeedStorePort {
+export class DemoSeedStore implements DemoSeedStorePort {
   constructor(private readonly db: Db) {}
 
   async inspect(input: {
@@ -304,7 +327,7 @@ class DemoSeedStore implements DemoSeedStorePort {
       };
     }
 
-    const [teacherLink, parentLink, academicLink, enrollmentLinks, gradingLink] = await Promise.all(
+    const [teacherLink, parentLink, academicLink, enrollmentLinks, gradingVersions] = await Promise.all(
       [
         this.db
           .select({ teacherId: schema.teachers.id })
@@ -412,7 +435,12 @@ class DemoSeedStore implements DemoSeedStorePort {
             ),
           ),
         this.db
-          .select({ versionId: schema.gradingConfigurationVersions.id })
+          .select({
+            versionId: schema.gradingConfigurationVersions.id,
+            versionNumber: schema.gradingConfigurationVersions.versionNumber,
+            status: schema.gradingConfigurationVersions.status,
+            rules: schema.gradingConfigurationVersions.rules,
+          })
           .from(schema.gradingConfigurationVersions)
           .innerJoin(
             schema.gradingConfigurations,
@@ -429,26 +457,119 @@ class DemoSeedStore implements DemoSeedStorePort {
           )
           .where(
             and(
-              eq(schema.gradingConfigurationVersions.id, DEMO_IDS.gradingVersion),
+              inArray(schema.gradingConfigurationVersions.id, [
+                DEMO_IDS.gradingVersion,
+                DEMO_IDS.gradingVersionSuccessor,
+              ]),
               eq(schema.gradingConfigurationVersions.schoolId, schoolId),
-              eq(schema.gradingConfigurationVersions.status, 'ACTIVE'),
               eq(schema.gradingConfigurations.id, DEMO_IDS.gradingConfiguration),
               eq(schema.gradingConfigurations.status, 'ACTIVE'),
             ),
           ),
       ],
     );
-    return teacherLink.length === 1 &&
+    const baseLinksValid = teacherLink.length === 1 &&
       parentLink.length === 1 &&
       academicLink.length === 1 &&
-      enrollmentLinks.length === 2 &&
-      gradingLink.length === 1
-      ? { kind: 'complete', schoolId }
-      : {
-          kind: 'partial',
-          reason:
-            'Deterministic rows exist but their Auth, membership, assignment, or relationship links differ.',
-        };
+      enrollmentLinks.length === 2;
+    if (!baseLinksValid) {
+      return {
+        kind: 'partial',
+        reason:
+          'Deterministic rows exist but their Auth, membership, assignment, or relationship links differ.',
+      };
+    }
+
+    const historical = gradingVersions.find((row) => row.versionId === DEMO_IDS.gradingVersion);
+    const successor = gradingVersions.find(
+      (row) => row.versionId === DEMO_IDS.gradingVersionSuccessor,
+    );
+    const freshValid = historical?.versionNumber === 1 &&
+      historical.status === 'ACTIVE' &&
+      isDeepStrictEqual(historical.rules, DEMO_GRADING_RULES) &&
+      successor === undefined;
+    const legacy = historical?.versionNumber === 1 &&
+      historical.status === 'ACTIVE' &&
+      isDeepStrictEqual(historical.rules, LEGACY_DEMO_GRADING_RULES) &&
+      successor === undefined;
+    const reconciled = historical?.versionNumber === 1 &&
+      historical.status === 'ARCHIVED' &&
+      isDeepStrictEqual(historical.rules, LEGACY_DEMO_GRADING_RULES) &&
+      successor?.versionNumber === 2 &&
+      successor.status === 'ACTIVE' &&
+      isDeepStrictEqual(successor.rules, DEMO_GRADING_RULES);
+
+    if (freshValid || reconciled) return { kind: 'complete', schoolId };
+    if (legacy) return { kind: 'reconcilable', schoolId };
+    return {
+      kind: 'partial',
+      reason: 'The deterministic grading version state is neither fresh, legacy-reconcilable, nor exactly reconciled.',
+    };
+  }
+
+  async reconcileGradingFixture(schoolId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const versions = await tx
+        .select({
+          id: schema.gradingConfigurationVersions.id,
+          versionNumber: schema.gradingConfigurationVersions.versionNumber,
+          status: schema.gradingConfigurationVersions.status,
+          rules: schema.gradingConfigurationVersions.rules,
+        })
+        .from(schema.gradingConfigurationVersions)
+        .where(
+          and(
+            eq(schema.gradingConfigurationVersions.schoolId, schoolId),
+            eq(
+              schema.gradingConfigurationVersions.gradingConfigurationId,
+              DEMO_IDS.gradingConfiguration,
+            ),
+            inArray(schema.gradingConfigurationVersions.id, [
+              DEMO_IDS.gradingVersion,
+              DEMO_IDS.gradingVersionSuccessor,
+            ]),
+          ),
+        )
+        .for('update');
+      const historical = versions.find((row) => row.id === DEMO_IDS.gradingVersion);
+      const successor = versions.find((row) => row.id === DEMO_IDS.gradingVersionSuccessor);
+      const alreadyReconciled = historical?.versionNumber === 1 &&
+        historical.status === 'ARCHIVED' &&
+        isDeepStrictEqual(historical.rules, LEGACY_DEMO_GRADING_RULES) &&
+        successor?.versionNumber === 2 &&
+        successor.status === 'ACTIVE' &&
+        isDeepStrictEqual(successor.rules, DEMO_GRADING_RULES);
+      if (alreadyReconciled) return;
+      const exactLegacy = historical?.versionNumber === 1 &&
+        historical.status === 'ACTIVE' &&
+        isDeepStrictEqual(historical.rules, LEGACY_DEMO_GRADING_RULES) &&
+        successor === undefined;
+      if (!exactLegacy) {
+        throw new OperatorError(
+          'DEMO_SEED_RECONCILIATION_REFUSED',
+          'The grading fixture does not match the exact reviewed legacy state.',
+        );
+      }
+
+      await tx
+        .update(schema.gradingConfigurationVersions)
+        .set({ status: 'ARCHIVED', updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.gradingConfigurationVersions.id, DEMO_IDS.gradingVersion),
+            eq(schema.gradingConfigurationVersions.schoolId, schoolId),
+            eq(schema.gradingConfigurationVersions.status, 'ACTIVE'),
+          ),
+        );
+      await tx.insert(schema.gradingConfigurationVersions).values({
+        id: DEMO_IDS.gradingVersionSuccessor,
+        schoolId,
+        gradingConfigurationId: DEMO_IDS.gradingConfiguration,
+        versionNumber: 2,
+        status: 'ACTIVE',
+        rules: DEMO_GRADING_RULES,
+      });
+    });
   }
 
   async create(input: {
@@ -691,15 +812,7 @@ class DemoSeedStore implements DemoSeedStorePort {
         gradingConfigurationId: DEMO_IDS.gradingConfiguration,
         versionNumber: 1,
         status: 'ACTIVE',
-        rules: {
-          schemaVersion: 1,
-          periodCalculation: { mode: 'WEIGHTED_AVERAGE' },
-          annualCalculation: { mode: 'WEIGHTED_AVERAGE' },
-          assessmentWeighting: { mode: 'WEIGHTED' },
-          coefficientUsage: { mode: 'USE_CURRICULUM_SUBJECT_COEFFICIENT' },
-          rounding: { mode: 'HALF_UP', scale: 2 },
-          thresholds: { maxScore: 20, passingScore: 10 },
-        },
+        rules: DEMO_GRADING_RULES,
       });
     });
   }

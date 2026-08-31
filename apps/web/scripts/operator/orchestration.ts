@@ -86,7 +86,7 @@ export async function runFirstTenantBootstrap(
 export async function runStagingDemoSeed(
   config: SeedConfig,
   deps: { auth: AuthAdminPort; store: DemoSeedStorePort; logger: SafeLogger },
-): Promise<{ status: 'created' | 'already-complete'; schoolId: string }> {
+): Promise<{ status: 'created' | 'reconciled' | 'already-complete'; schoolId: string }> {
   const users = await deps.auth.listUsers();
   const admin = exactUser(users, config.BOOTSTRAP_ADMIN_EMAIL);
   const teacher = exactUser(users, config.STAGING_TEACHER_EMAIL);
@@ -101,6 +101,23 @@ export async function runStagingDemoSeed(
   if (state.kind === 'complete' && admin && teacher && parent) {
     deps.logger.info('demo_seed_already_complete', { schoolId: state.schoolId });
     return { status: 'already-complete', schoolId: state.schoolId };
+  }
+  if (state.kind === 'reconcilable' && admin && teacher && parent) {
+    await deps.store.reconcileGradingFixture(state.schoolId);
+    const verified = await deps.store.inspect({
+      adminUserId: admin.id,
+      teacherUserId: teacher.id,
+      parentUserId: parent.id,
+      schoolName: config.BOOTSTRAP_SCHOOL_NAME,
+    });
+    if (verified.kind !== 'complete') {
+      throw new OperatorError(
+        'DEMO_SEED_RECONCILIATION_FAILED',
+        'The deterministic grading fixture reconciliation did not reach the exact complete state.',
+      );
+    }
+    deps.logger.info('demo_seed_grading_reconciled', { schoolId: state.schoolId });
+    return { status: 'reconciled', schoolId: state.schoolId };
   }
   if (state.kind !== 'empty' || !admin || teacher || parent) {
     throw new OperatorError(

@@ -129,6 +129,20 @@ Demo entities use stable Task 042 UUIDs plus existing database business keys.
 This avoids unsafe name-only matching. The exact complete fixture set is a
 no-op; zero fixture rows is fresh; any subset or conflicting link stops.
 
+The one reviewed legacy exception is the original hosted Task 042 grading
+version. Its exact rules used `WEIGHTED` Assessment aggregation without
+`weightsByType` and unsupported V1 Annual `WEIGHTED_AVERAGE`. When—and only
+when—the complete deterministic fixture has that exact ACTIVE version 1 and no
+successor, `seed:staging-demo` performs one atomic reconciliation: archive the
+legacy version without changing its rules, then create deterministic ACTIVE
+version 2 with the supported rules below. The at-most-one-ACTIVE database
+constraint remains intact. Any variation is a partial-state refusal.
+
+An exact reconciled rerun is a no-op. Existing Gradebooks remain bound to
+version 1; the operator never updates, deletes, or rebinds historical academic
+rows. Fresh databases continue to receive the supported rules directly as
+version 1 and need no successor.
+
 ## Demo fixture scope
 
 The deterministic dataset contains:
@@ -144,8 +158,11 @@ The deterministic dataset contains:
   membership, Teacher profile, and one active assignment;
 - one confirmed Parent Auth/application identity, active `PARENT` membership,
   Parent profile, and one active relationship to the first Student;
-- one active GradingConfiguration and active version with a valid minimal rule
-  object so Task 043 can create a Gradebook.
+- one active GradingConfiguration and active version whose fixture rules use
+  equal Assessment weighting, CurriculumSubject coefficients for the weighted
+  Period average, and the V1-supported simple Annual average. Exact rule
+  equality is part of seed rerun inspection so an incompatible fixture is a
+  controlled partial-state finding rather than a false idempotent no-op.
 
 The Teacher and Parent accounts are controlled STAGING test fixtures only.
 They are not invitations and do not define the Task 045 lifecycle.
@@ -216,3 +233,20 @@ scope denied. The final hosted audit found no unexpected Auth identities and
 zero Gradebook, Assessment, Grade, Result, ResultPublication, Attendance,
 Homework, HomeworkSubmission, Announcement, AnnouncementPublication,
 Notification, or OutboxEvent rows. No secret value is recorded here.
+
+## Task 043.1 reconciliation outcome
+
+The approved STAGING project contained the exact legacy grading state described
+above. The guarded operator preflight passed, version 1 became `ARCHIVED` with
+its JSON rules semantically unchanged, and deterministic version 2 became the
+sole `ACTIVE` version. An immediate operator rerun returned
+`already-complete` and created no duplicate. The original Gradebook stayed
+bound to version 1 and was later moved through the canonical `OPEN → CLOSED`
+lifecycle; it was not rebound or deleted.
+
+Version 2 uses `EQUAL` Assessment weighting, CurriculumSubject coefficients for
+weighted Period results, and V1-supported simple Annual averaging. Task 043.1
+created new successor-bound Gradebooks and completed Subject, Period, Annual,
+publication, and revision workflows through application APIs. Direct SQL was
+used only for read-only auditing; no historical repair or domain write bypassed
+the operator/application boundaries.
