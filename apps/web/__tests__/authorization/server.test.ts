@@ -14,13 +14,13 @@ let db: AuthzTestDb['db'];
 let seed: AuthzTestDb['seed'];
 
 async function createAuthUser(id: string = randomUUID()) {
-  await seed.insert(authUsers).values({ id });
+  await seed.insert(authUsers).values({ id, email: `${id}@test.example` });
   return id;
 }
 
 async function createUser(id: string = randomUUID()) {
   await createAuthUser(id);
-  await seed.insert(schema.users).values({ id });
+  await seed.insert(schema.users).values({ id, email: `${id}@test.example` });
   return id;
 }
 

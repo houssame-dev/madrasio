@@ -125,8 +125,8 @@ interface SeededParent {
 
 async function seedLinkedParent(schoolId: string, studentId: string, parentStudentStatus: 'ACTIVE' | 'ENDED' = 'ACTIVE'): Promise<SeededParent> {
   const userId = randomUUID();
-  await test.seed.insert(authUsers).values({ id: userId });
-  await test.seed.insert(schema.users).values({ id: userId });
+  await test.seed.insert(authUsers).values({ id: userId, email: `${userId}@test.example` });
+  await test.seed.insert(schema.users).values({ id: userId, email: `${userId}@test.example` });
   await test.seed.insert(schema.schoolMemberships).values({ schoolId, userId, role: 'PARENT', status: 'ACTIVE' });
   const parentId = randomUUID();
   await test.seed.insert(schema.parents).values({ id: parentId, schoolId, userId, firstName: 'Nadia', lastName: 'Benali' });

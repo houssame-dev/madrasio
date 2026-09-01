@@ -80,6 +80,13 @@ Some entities are platform-level rather than school-owned, such as the global id
 
 User represents an authenticated system identity.
 
+Its application-owned `email` is the unique canonical lookup projection of
+the Supabase Auth email: surrounding whitespace is trimmed and letters are
+lowercased. Supabase Auth still owns authentication, credentials, and the
+source identity. The projection is not a credential and is not authorization
+authority. An Auth/application email mismatch must fail closed pending a
+controlled reconciliation.
+
 A User may participate in one or more Schools.
 
 User identity is separate from academic/business profiles.

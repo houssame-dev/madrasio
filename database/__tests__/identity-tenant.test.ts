@@ -9,13 +9,13 @@ import { createTestDb, type Db } from './helpers';
 let db: Db;
 
 async function createAuthUser(id: string = randomUUID()) {
-  await db.insert(authUsers).values({ id });
+  await db.insert(authUsers).values({ id, email: `${id}@test.example` });
   return id;
 }
 
 async function createUser(id: string = randomUUID()) {
   await createAuthUser(id);
-  await db.insert(schema.users).values({ id });
+  await db.insert(schema.users).values({ id, email: `${id}@test.example` });
   return id;
 }
 
@@ -33,13 +33,14 @@ describe('users — ADR-018 shared UUID with Supabase Auth', () => {
     const id = randomUUID();
     await createAuthUser(id);
 
-    const [row] = await db.insert(schema.users).values({ id }).returning();
+    const [row] = await db.insert(schema.users).values({ id, email: `${id}@test.example` }).returning();
 
     expect(row.id).toBe(id);
   });
 
   it('rejects an application user whose id does not exist in auth.users', async () => {
-    await expect(db.insert(schema.users).values({ id: randomUUID() })).rejects.toThrow();
+    const id = randomUUID();
+    await expect(db.insert(schema.users).values({ id, email: `${id}@test.example` })).rejects.toThrow();
   });
 
   it('cascades deletion of an auth user to the application user', async () => {
@@ -50,37 +51,57 @@ describe('users — ADR-018 shared UUID with Supabase Auth', () => {
     const remaining = await db.select().from(schema.users).where(eq(schema.users.id, id));
     expect(remaining).toHaveLength(0);
   });
+
+  it('rejects null, blank, and non-canonical application email values', async () => {
+    const nullId = await createAuthUser();
+    const blankId = await createAuthUser();
+    const mixedCaseId = await createAuthUser();
+    await expect(db.insert(schema.users).values({ id: nullId, email: null as never })).rejects.toThrow();
+    await expect(db.insert(schema.users).values({ id: blankId, email: '' })).rejects.toThrow();
+    await expect(
+      db.insert(schema.users).values({ id: mixedCaseId, email: ' Mixed@Example.com ' }),
+    ).rejects.toThrow();
+  });
+
+  it('enforces one application User per canonical email', async () => {
+    const firstId = await createAuthUser();
+    const secondId = await createAuthUser();
+    await db.insert(schema.users).values({ id: firstId, email: 'unique@example.com' });
+    await expect(
+      db.insert(schema.users).values({ id: secondId, email: 'unique@example.com' }),
+    ).rejects.toThrow();
+  });
 });
 
 describe('users — lifecycle status (Task 014.1)', () => {
   it('a new user defaults to ACTIVE', async () => {
     const id = await createAuthUser();
-    const [row] = await db.insert(schema.users).values({ id }).returning();
+    const [row] = await db.insert(schema.users).values({ id, email: `${id}@test.example` }).returning();
     expect(row.status).toBe('ACTIVE');
   });
 
   it('accepts an explicit ACTIVE status', async () => {
     const id = await createAuthUser();
-    const [row] = await db.insert(schema.users).values({ id, status: 'ACTIVE' }).returning();
+    const [row] = await db.insert(schema.users).values({ id, email: `${id}@test.example`, status: 'ACTIVE' }).returning();
     expect(row.status).toBe('ACTIVE');
   });
 
   it('accepts SUSPENDED status', async () => {
     const id = await createAuthUser();
-    const [row] = await db.insert(schema.users).values({ id, status: 'SUSPENDED' }).returning();
+    const [row] = await db.insert(schema.users).values({ id, email: `${id}@test.example`, status: 'SUSPENDED' }).returning();
     expect(row.status).toBe('SUSPENDED');
   });
 
   it('accepts DISABLED status', async () => {
     const id = await createAuthUser();
-    const [row] = await db.insert(schema.users).values({ id, status: 'DISABLED' }).returning();
+    const [row] = await db.insert(schema.users).values({ id, email: `${id}@test.example`, status: 'DISABLED' }).returning();
     expect(row.status).toBe('DISABLED');
   });
 
   it('rejects an invalid status value', async () => {
     const id = await createAuthUser();
     await expect(
-      db.insert(schema.users).values({ id, status: 'BANNED' as never }),
+      db.insert(schema.users).values({ id, email: `${id}@test.example`, status: 'BANNED' as never }),
     ).rejects.toThrow();
   });
 
@@ -128,7 +149,8 @@ describe('users — lifecycle status (Task 014.1)', () => {
   });
 
   it('auth.users → public.users FK behavior is unchanged (rejects unknown auth identity)', async () => {
-    await expect(db.insert(schema.users).values({ id: randomUUID() })).rejects.toThrow();
+    const id = randomUUID();
+    await expect(db.insert(schema.users).values({ id, email: `${id}@test.example` })).rejects.toThrow();
   });
 });
 

@@ -67,8 +67,8 @@ async function seedLinkedParent(
   let userId: string | null = null;
   if (withUser) {
     userId = randomUUID();
-    await test.seed.insert(authUsers).values({ id: userId });
-    await test.seed.insert(schema.users).values({ id: userId });
+    await test.seed.insert(authUsers).values({ id: userId, email: `${userId}@test.example` });
+    await test.seed.insert(schema.users).values({ id: userId, email: `${userId}@test.example` });
     await test.seed
       .insert(schema.schoolMemberships)
       .values({ schoolId, userId, role: 'PARENT', status: opts.membershipStatus ?? 'ACTIVE' });
@@ -178,8 +178,8 @@ describe('ResultPublished payload freezes publication-time recipients (Task 012 
     await test.seed.insert(schema.schools).values({ id: otherSchoolId, name: 'Other School' });
     // A parent User with an ACTIVE membership ONLY in the other School.
     const otherUserId = randomUUID();
-    await test.seed.insert(authUsers).values({ id: otherUserId });
-    await test.seed.insert(schema.users).values({ id: otherUserId });
+    await test.seed.insert(authUsers).values({ id: otherUserId, email: `${otherUserId}@test.example` });
+    await test.seed.insert(schema.users).values({ id: otherUserId, email: `${otherUserId}@test.example` });
     await test.seed
       .insert(schema.schoolMemberships)
       .values({ schoolId: otherSchoolId, userId: otherUserId, role: 'PARENT', status: 'ACTIVE' });

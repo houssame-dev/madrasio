@@ -104,8 +104,9 @@ export async function seedUser(
   role: 'PARENT' | 'TEACHER' | 'SCHOOL_ADMIN' | 'SUPER_ADMIN' = 'PARENT',
 ): Promise<string> {
   const userId = randomUUID();
-  await seed.insert(authUsers).values({ id: userId });
-  await seed.insert(schema.users).values({ id: userId });
+  const email = `${userId}@test.example`;
+  await seed.insert(authUsers).values({ id: userId, email });
+  await seed.insert(schema.users).values({ id: userId, email });
   await seed.insert(schema.schoolMemberships).values({ schoolId, userId, role, status: 'ACTIVE' });
   return userId;
 }

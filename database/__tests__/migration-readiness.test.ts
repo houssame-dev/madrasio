@@ -33,6 +33,8 @@ describe('hosted migration readiness', () => {
     );
     expect(journal.entries.map((entry) => `${entry.tag}.sql`)).toEqual(files);
     expect(new Set(journal.entries.map((entry) => entry.tag)).size).toBe(journal.entries.length);
+    expect(files).toHaveLength(15);
+    expect(files.at(-1)).toBe('0014_canonical-user-email.sql');
   });
 
   it('references Supabase Auth without owning its managed schema or table', async () => {
@@ -44,6 +46,7 @@ describe('hosted migration readiness', () => {
     expect(sql).not.toMatch(
       /(?:ALTER|DROP)\s+TABLE\s+(?:IF\s+EXISTS\s+)?["']?auth["']?\s*\.["']?users/i,
     );
+    expect(sql).not.toMatch(/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+["']?auth["']?\s*\.["']?users/i);
   });
 
   it('does not introduce hosted extensions, RLS policies, or session-affine objects', async () => {

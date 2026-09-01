@@ -2,8 +2,9 @@
  * Schema entrypoint.
  *
  * Identity + Tenant foundation:
- * - `users` — application user (shared UUID with Supabase Auth, ADR-018) with
- *   a global lifecycle `status` (ACTIVE / SUSPENDED / DISABLED, Task 014.1)
+ * - `users` — application user (shared UUID with Supabase Auth, ADR-018),
+ *   canonical email lookup projection (ADR-019), and global lifecycle `status`
+ *   (ACTIVE / SUSPENDED / DISABLED, Task 014.1)
  * - `schools` — tenant
  * - `school_memberships` — User ↔ School connection with V1 roles
  *

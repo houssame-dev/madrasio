@@ -184,6 +184,16 @@ Historical data remains intact.
 
 Even if authentication succeeds, a User cannot operate within a School if their SchoolMembership is no longer active.
 
+### BR-AUTH-006 — Application User Email Is a Canonical Identity Projection
+
+Every V1 email-authenticated application User stores the normalized Supabase
+Auth email on `public.users.email`, using trim plus lowercase. The value is
+required, unique, and database-checked for canonical form. It supports exact
+server-side identity lookup and multi-School User reuse; it is not a
+credential, role, permission, or School authority. A mismatch with the exact
+Auth User must fail closed and must not be silently repaired during normal
+SchoolAdmin provisioning.
+
 ---
 
 # 5. School Rules

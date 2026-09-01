@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { normalizeEmail } from '@/lib/auth/email';
+
 export const STAGING_PROJECT_REF = 'cqeaxlttezunirsmkrxz';
 
 export class OperatorError extends Error {
@@ -46,7 +48,7 @@ const seedSchema = commonSchema
       value.BOOTSTRAP_ADMIN_EMAIL,
       value.STAGING_TEACHER_EMAIL,
       value.STAGING_PARENT_EMAIL,
-    ].map((email) => email.toLowerCase());
+    ].map(normalizeEmail);
     if (new Set(emails).size !== emails.length) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -182,11 +184,12 @@ export type BootstrapDbState =
 
 export interface BootstrapStorePort {
   inspect(
-    authUserId: string | null,
+    authUser: AuthIdentity | null,
     input: { schoolName: string; timezone: string },
   ): Promise<BootstrapDbState>;
   create(input: {
     authUserId: string;
+    authUserEmail: string;
     schoolName: string;
     timezone: string;
   }): Promise<{ schoolId: string }>;
@@ -200,11 +203,15 @@ export type SeedDbState =
 
 export interface DemoSeedStorePort {
   inspect(input: {
-    adminUserId: string | null;
-    teacherUserId: string | null;
-    parentUserId: string | null;
+    adminUser: AuthIdentity | null;
+    teacherUser: AuthIdentity | null;
+    parentUser: AuthIdentity | null;
     schoolName: string;
   }): Promise<SeedDbState>;
-  create(input: { schoolId: string; teacherUserId: string; parentUserId: string }): Promise<void>;
+  create(input: {
+    schoolId: string;
+    teacherUser: AuthIdentity;
+    parentUser: AuthIdentity;
+  }): Promise<void>;
   reconcileGradingFixture(schoolId: string): Promise<void>;
 }

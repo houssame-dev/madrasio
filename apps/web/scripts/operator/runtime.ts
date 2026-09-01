@@ -6,6 +6,8 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
+import { normalizeEmail } from '@/lib/auth/email';
+
 import type {
   AuthAdminPort,
   AuthIdentity,
@@ -112,7 +114,7 @@ class BootstrapStore implements BootstrapStorePort {
   constructor(private readonly db: Db) {}
 
   async inspect(
-    authUserId: string | null,
+    authUser: AuthIdentity | null,
     input: { schoolName: string; timezone: string },
   ): Promise<BootstrapDbState> {
     const [userCount, schoolCount, membershipCount] = await Promise.all([
@@ -121,7 +123,7 @@ class BootstrapStore implements BootstrapStorePort {
       this.db.select({ value: sql<number>`count(*)::int` }).from(schema.schoolMemberships),
     ]);
     const coreCount = userCount[0].value + schoolCount[0].value + membershipCount[0].value;
-    if (!authUserId) {
+    if (!authUser) {
       return coreCount === 0
         ? { kind: 'empty' }
         : {
@@ -132,6 +134,7 @@ class BootstrapStore implements BootstrapStorePort {
     const rows = await this.db
       .select({
         userStatus: schema.users.status,
+        userEmail: schema.users.email,
         schoolId: schema.schools.id,
         schoolName: schema.schools.name,
         schoolStatus: schema.schools.status,
@@ -142,10 +145,11 @@ class BootstrapStore implements BootstrapStorePort {
       .from(schema.users)
       .innerJoin(schema.schoolMemberships, eq(schema.schoolMemberships.userId, schema.users.id))
       .innerJoin(schema.schools, eq(schema.schools.id, schema.schoolMemberships.schoolId))
-      .where(eq(schema.users.id, authUserId));
+      .where(eq(schema.users.id, authUser.id));
     if (
       rows.length === 1 &&
       rows[0].userStatus === 'ACTIVE' &&
+      rows[0].userEmail === normalizeEmail(authUser.email) &&
       rows[0].role === 'SCHOOL_ADMIN' &&
       rows[0].membershipStatus === 'ACTIVE' &&
       rows[0].schoolName === input.schoolName &&
@@ -161,9 +165,18 @@ class BootstrapStore implements BootstrapStorePort {
     };
   }
 
-  async create(input: { authUserId: string; schoolName: string; timezone: string }) {
+  async create(input: {
+    authUserId: string;
+    authUserEmail: string;
+    schoolName: string;
+    timezone: string;
+  }) {
     return this.db.transaction(async (tx) => {
-      await tx.insert(schema.users).values({ id: input.authUserId, status: 'ACTIVE' });
+      await tx.insert(schema.users).values({
+        id: input.authUserId,
+        email: normalizeEmail(input.authUserEmail),
+        status: 'ACTIVE',
+      });
       const [school] = await tx
         .insert(schema.schools)
         .values({
@@ -187,12 +200,12 @@ export class DemoSeedStore implements DemoSeedStorePort {
   constructor(private readonly db: Db) {}
 
   async inspect(input: {
-    adminUserId: string | null;
-    teacherUserId: string | null;
-    parentUserId: string | null;
+    adminUser: AuthIdentity | null;
+    teacherUser: AuthIdentity | null;
+    parentUser: AuthIdentity | null;
     schoolName: string;
   }): Promise<SeedDbState> {
-    if (!input.adminUserId)
+    if (!input.adminUser)
       return { kind: 'partial', reason: 'The intended bootstrap admin Auth identity is missing.' };
     const adminRows = await this.db
       .select({ schoolId: schema.schools.id })
@@ -200,7 +213,7 @@ export class DemoSeedStore implements DemoSeedStorePort {
       .innerJoin(schema.schools, eq(schema.schools.id, schema.schoolMemberships.schoolId))
       .where(
         and(
-          eq(schema.schoolMemberships.userId, input.adminUserId),
+          eq(schema.schoolMemberships.userId, input.adminUser.id),
           eq(schema.schoolMemberships.role, 'SCHOOL_ADMIN'),
           eq(schema.schoolMemberships.status, 'ACTIVE'),
           eq(schema.schools.name, input.schoolName),
@@ -317,10 +330,10 @@ export class DemoSeedStore implements DemoSeedStorePort {
       )::int as count
     `);
     const existingDomainCount = (existingDomain.rows[0] as { count: number }).count;
-    if (present === 0 && existingDomainCount === 0 && !input.teacherUserId && !input.parentUserId) {
+    if (present === 0 && existingDomainCount === 0 && !input.teacherUser && !input.parentUser) {
       return { kind: 'empty', schoolId };
     }
-    if (present !== expected || !input.teacherUserId || !input.parentUserId) {
+    if (present !== expected || !input.teacherUser || !input.parentUser) {
       return {
         kind: 'partial',
         reason: 'Only part of the deterministic Task 042 fixture set exists.',
@@ -330,7 +343,7 @@ export class DemoSeedStore implements DemoSeedStorePort {
     const [teacherLink, parentLink, academicLink, enrollmentLinks, gradingVersions] = await Promise.all(
       [
         this.db
-          .select({ teacherId: schema.teachers.id })
+          .select({ teacherId: schema.teachers.id, userEmail: schema.users.email })
           .from(schema.teachers)
           .innerJoin(schema.users, eq(schema.users.id, schema.teachers.userId))
           .innerJoin(
@@ -348,14 +361,14 @@ export class DemoSeedStore implements DemoSeedStorePort {
             and(
               eq(schema.teachers.id, DEMO_IDS.teacher),
               eq(schema.teachers.schoolId, schoolId),
-              eq(schema.teachers.userId, input.teacherUserId),
+              eq(schema.teachers.userId, input.teacherUser.id),
               eq(schema.schoolMemberships.role, 'TEACHER'),
               eq(schema.schoolMemberships.status, 'ACTIVE'),
               eq(schema.teacherAssignments.id, DEMO_IDS.assignment),
             ),
           ),
         this.db
-          .select({ parentId: schema.parents.id })
+          .select({ parentId: schema.parents.id, userEmail: schema.users.email })
           .from(schema.parents)
           .innerJoin(schema.users, eq(schema.users.id, schema.parents.userId))
           .innerJoin(
@@ -370,7 +383,7 @@ export class DemoSeedStore implements DemoSeedStorePort {
             and(
               eq(schema.parents.id, DEMO_IDS.parent),
               eq(schema.parents.schoolId, schoolId),
-              eq(schema.parents.userId, input.parentUserId),
+              eq(schema.parents.userId, input.parentUser.id),
               eq(schema.schoolMemberships.role, 'PARENT'),
               eq(schema.schoolMemberships.status, 'ACTIVE'),
               eq(schema.parentStudents.studentId, DEMO_IDS.studentOne),
@@ -468,8 +481,16 @@ export class DemoSeedStore implements DemoSeedStorePort {
           ),
       ],
     );
-    const baseLinksValid = teacherLink.length === 1 &&
+    const adminIdentity = await this.db
+      .select({ email: schema.users.email })
+      .from(schema.users)
+      .where(eq(schema.users.id, input.adminUser.id));
+    const baseLinksValid = adminIdentity.length === 1 &&
+      adminIdentity[0].email === normalizeEmail(input.adminUser.email) &&
+      teacherLink.length === 1 &&
+      teacherLink[0].userEmail === normalizeEmail(input.teacherUser.email) &&
       parentLink.length === 1 &&
+      parentLink[0].userEmail === normalizeEmail(input.parentUser.email) &&
       academicLink.length === 1 &&
       enrollmentLinks.length === 2;
     if (!baseLinksValid) {
@@ -574,26 +595,26 @@ export class DemoSeedStore implements DemoSeedStorePort {
 
   async create(input: {
     schoolId: string;
-    teacherUserId: string;
-    parentUserId: string;
+    teacherUser: AuthIdentity;
+    parentUser: AuthIdentity;
   }): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx.insert(schema.users).values([
-        { id: input.teacherUserId, status: 'ACTIVE' },
-        { id: input.parentUserId, status: 'ACTIVE' },
+        { id: input.teacherUser.id, email: normalizeEmail(input.teacherUser.email), status: 'ACTIVE' },
+        { id: input.parentUser.id, email: normalizeEmail(input.parentUser.email), status: 'ACTIVE' },
       ]);
       await tx.insert(schema.schoolMemberships).values([
         {
           id: DEMO_IDS.teacherMembership,
           schoolId: input.schoolId,
-          userId: input.teacherUserId,
+          userId: input.teacherUser.id,
           role: 'TEACHER',
           status: 'ACTIVE',
         },
         {
           id: DEMO_IDS.parentMembership,
           schoolId: input.schoolId,
-          userId: input.parentUserId,
+          userId: input.parentUser.id,
           role: 'PARENT',
           status: 'ACTIVE',
         },
@@ -760,7 +781,7 @@ export class DemoSeedStore implements DemoSeedStorePort {
         .values({
           id: DEMO_IDS.teacher,
           schoolId: input.schoolId,
-          userId: input.teacherUserId,
+          userId: input.teacherUser.id,
           firstName: 'Staging',
           lastName: 'Teacher',
           teacherCode: 'STG-TCH-001',
@@ -783,7 +804,7 @@ export class DemoSeedStore implements DemoSeedStorePort {
         .values({
           id: DEMO_IDS.parent,
           schoolId: input.schoolId,
-          userId: input.parentUserId,
+          userId: input.parentUser.id,
           firstName: 'Staging',
           lastName: 'Parent',
           parentCode: 'STG-PAR-001',
@@ -894,12 +915,12 @@ export async function runHostedPreflight(config: BootstrapConfig, db: Db): Promi
     !row ||
     row.database !== 'postgres' ||
     row.auth_users !== 'auth.users' ||
-    row.migration_count !== 14 ||
+    row.migration_count !== 15 ||
     row.public_table_count !== 39
   ) {
     throw new OperatorError(
       'HOSTED_PREFLIGHT_FAILED',
-      'Hosted database metadata, Auth dependency, or migration journal is not the reviewed Task 041 state.',
+      'Hosted database metadata, Auth dependency, or migration journal is not the reviewed state.',
     );
   }
 

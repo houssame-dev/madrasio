@@ -62,7 +62,7 @@ Before Auth or database writes, each command positively verifies:
 - `MIGRATION_DATABASE_URL` identifies that project's Session Pooler on port
   `5432`, never transaction mode;
 - `auth.users` exists, the database is the reviewed database, all 39 public
-  application tables exist, and the Drizzle journal contains all 14 entries;
+  application tables exist, and the Drizzle journal contains all 15 entries;
 - public signup and anonymous sign-in remain disabled through the safe public
   Auth settings endpoint;
 - the operator has positively confirmed in Dashboard/management configuration
@@ -83,15 +83,23 @@ does not carry authoritative roles, School context, permissions, Teacher data,
 or Parent data.
 
 The returned Auth UUID is used unchanged as `public.users.id`, preserving
-ADR-018:
+ADR-018. The canonical email returned by that same Auth operation is normalized
+with trim plus lowercase and stored as `public.users.email`, preserving
+ADR-019:
 
 ```text
 auth.users.id = public.users.id
+normalize(auth.users.email) = public.users.email
 ```
 
 After Auth creation, one Drizzle transaction creates `public.users`, the
 School, and its active `SCHOOL_ADMIN` membership. No `SUPER_ADMIN`, Teacher,
 Parent, or Student profile is created by first-tenant bootstrap.
+
+Completed bootstrap and demo-seed reruns verify both projections against the
+intended Auth identities. An email mismatch is a partial-state blocker; the
+operator does not silently rewrite it. This preserves deterministic future
+multi-School identity reuse.
 
 ## Auth/database compensation
 

@@ -1,4 +1,5 @@
-import { pgEnum, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { check, pgEnum, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 
 import { authUsers } from './auth';
 
@@ -33,14 +34,26 @@ export const userStatus = pgEnum('user_status', ['ACTIVE', 'SUSPENDED', 'DISABLE
  * Per ADR-018, `id` is the SAME UUID as the Supabase Auth user
  * (`auth.users.id`), enforced with a foreign key. The application must never
  * store passwords, hashes, sessions, or Supabase credentials here — those are
- * owned by Supabase Auth. Profile fields stay minimal until V1 domain profiles
- * (teacher/parent/school admin) require them.
+ * owned by Supabase Auth. `email` is only the canonical application lookup
+ * projection accepted by ADR-019; Auth remains the source identity and exact
+ * UUID/email verification is required before reuse.
  */
-export const users = pgTable('users', {
-  id: uuid('id')
-    .primaryKey()
-    .references(() => authUsers.id, { onDelete: 'cascade' }),
-  status: userStatus('status').notNull().default('ACTIVE'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id')
+      .primaryKey()
+      .references(() => authUsers.id, { onDelete: 'cascade' }),
+    email: text('email').notNull(),
+    status: userStatus('status').notNull().default('ACTIVE'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique('users_email_unique').on(table.email),
+    check(
+      'users_email_canonical_check',
+      sql`${table.email} = lower(btrim(${table.email})) and length(${table.email}) > 0`,
+    ),
+  ],
+);

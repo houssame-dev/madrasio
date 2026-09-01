@@ -1,6 +1,7 @@
 import { consoleLogger, OperatorError, parseSeedConfig } from './contracts';
 import { runStagingDemoSeed } from './orchestration';
 import { createOperatorRuntime } from './runtime';
+import { normalizeEmail } from '@/lib/auth/email';
 
 async function main(): Promise<void> {
   const config = parseSeedConfig(process.env);
@@ -9,7 +10,7 @@ async function main(): Promise<void> {
     consoleLogger.info('demo_seed_preflight_started', { target: 'staging' });
     await runtime.preflight();
     consoleLogger.info('demo_seed_preflight_passed', {
-      migrationCount: 14,
+      migrationCount: 15,
       applicationTableCount: 39,
     });
     const result = await runStagingDemoSeed(config, {
@@ -19,10 +20,10 @@ async function main(): Promise<void> {
     });
     const users = await runtime.auth.listUsers();
     const teacher = users.find(
-      (user) => user.email.toLowerCase() === config.STAGING_TEACHER_EMAIL.toLowerCase(),
+      (user) => normalizeEmail(user.email) === normalizeEmail(config.STAGING_TEACHER_EMAIL),
     );
     const parent = users.find(
-      (user) => user.email.toLowerCase() === config.STAGING_PARENT_EMAIL.toLowerCase(),
+      (user) => normalizeEmail(user.email) === normalizeEmail(config.STAGING_PARENT_EMAIL),
     );
     if (!teacher || !parent)
       throw new OperatorError(

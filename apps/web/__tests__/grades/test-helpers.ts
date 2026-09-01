@@ -230,15 +230,17 @@ export async function seedStudentAndActors(
     .values({ schoolId, studentId, academicYearId: yearId, classId, effectiveFrom: '2025-09-01', status: 'ACTIVE' });
 
   const schoolAdminUserId = randomUUID();
-  await seed.insert(authUsers).values({ id: schoolAdminUserId });
-  await seed.insert(schema.users).values({ id: schoolAdminUserId });
+  const schoolAdminEmail = `${schoolAdminUserId}@test.example`;
+  await seed.insert(authUsers).values({ id: schoolAdminUserId, email: schoolAdminEmail });
+  await seed.insert(schema.users).values({ id: schoolAdminUserId, email: schoolAdminEmail });
   await seed
     .insert(schema.schoolMemberships)
     .values({ schoolId, userId: schoolAdminUserId, role: 'SCHOOL_ADMIN', status: 'ACTIVE' });
 
   const teacherUserId = randomUUID();
-  await seed.insert(authUsers).values({ id: teacherUserId });
-  await seed.insert(schema.users).values({ id: teacherUserId });
+  const teacherEmail = `${teacherUserId}@test.example`;
+  await seed.insert(authUsers).values({ id: teacherUserId, email: teacherEmail });
+  await seed.insert(schema.users).values({ id: teacherUserId, email: teacherEmail });
   await seed
     .insert(schema.schoolMemberships)
     .values({ schoolId, userId: teacherUserId, role: 'TEACHER', status: 'ACTIVE' });
@@ -257,8 +259,9 @@ export async function seedParentActor(
   schoolId: string,
 ): Promise<{ parentUserId: string }> {
   const parentUserId = randomUUID();
-  await seed.insert(authUsers).values({ id: parentUserId });
-  await seed.insert(schema.users).values({ id: parentUserId });
+  const parentEmail = `${parentUserId}@test.example`;
+  await seed.insert(authUsers).values({ id: parentUserId, email: parentEmail });
+  await seed.insert(schema.users).values({ id: parentUserId, email: parentEmail });
   await seed
     .insert(schema.schoolMemberships)
     .values({ schoolId, userId: parentUserId, role: 'PARENT', status: 'ACTIVE' });

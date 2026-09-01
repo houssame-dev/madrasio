@@ -34,8 +34,8 @@ in a generic Vercel build.
 
 ## 3. Migration inventory
 
-The committed chain contains 14 SQL migrations and 14 matching snapshots. The
-journal indices are continuous from `0` through `13`, tags are unique, every
+The committed chain contains 15 SQL migrations and 15 matching snapshots. The
+journal indices are continuous from `0` through `14`, tags are unique, every
 journal entry has exactly one SQL file, and no SQL migration exists outside
 the journal.
 
@@ -55,6 +55,7 @@ the journal.
 | 0011  | `0011_last_ezekiel`        | Backfills recipient `audiences` JSONB, makes it required, then removes the old singular `audience` column                                        | 0010's old `audience` is non-null, so every existing row is backfilled    |
 | 0012  | `0012_pretty_doomsday`     | Persisted Notifications, type/source checks, membership integrity and idempotency                                                                | Membership and User history exists                                        |
 | 0013  | `0013_wonderful_cable`     | Adds global application User lifecycle enum/column with `ACTIVE` default                                                                         | Existing User rows can receive the non-null default                       |
+| 0014  | `0014_canonical-user-email` | Adds the canonical, unique application User email projection after a read-only `auth.users` reconciliation                                       | Existing Users must have matching Auth UUIDs and usable unique emails     |
 
 Manual inspection confirmed enum creation precedes use, FK targets precede
 FKs, later migrations depend only on earlier committed objects, and no object
@@ -68,7 +69,7 @@ and contract in a later reviewed migration.
 
 ## 4. Schema and migration parity
 
-`drizzle-kit generate` reads the final `0013` snapshot and reports 39 tables
+`drizzle-kit generate` reads the final `0014` snapshot and reports 39 tables
 with no schema changes. The schema entrypoint deliberately excludes the
 Supabase-managed `authUsers` reference while exporting every application
 table. The committed migration chain and Drizzle schema therefore describe the

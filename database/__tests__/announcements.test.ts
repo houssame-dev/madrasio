@@ -34,8 +34,8 @@ async function createSchool(name: string) {
 
 async function createUser() {
   const id = randomUUID();
-  await db.insert(authUsers).values({ id });
-  await db.insert(schema.users).values({ id });
+  await db.insert(authUsers).values({ id, email: `${id}@test.example` });
+  await db.insert(schema.users).values({ id, email: `${id}@test.example` });
   return id;
 }
 

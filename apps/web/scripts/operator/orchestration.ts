@@ -8,9 +8,11 @@ import type {
   SeedConfig,
 } from './contracts';
 import { OperatorError } from './contracts';
+import { normalizeEmail } from '@/lib/auth/email';
 
 function exactUser(users: AuthIdentity[], email: string): AuthIdentity | null {
-  const matches = users.filter((user) => user.email.toLowerCase() === email.toLowerCase());
+  const normalized = normalizeEmail(email);
+  const matches = users.filter((user) => normalizeEmail(user.email) === normalized);
   if (matches.length > 1)
     throw new OperatorError(
       'AMBIGUOUS_AUTH_IDENTITY',
@@ -44,7 +46,7 @@ export async function runFirstTenantBootstrap(
 ): Promise<{ status: 'created' | 'already-complete'; schoolId: string; userId: string }> {
   const users = await deps.auth.listUsers();
   const existing = exactUser(users, config.BOOTSTRAP_ADMIN_EMAIL);
-  const state = await deps.store.inspect(existing?.id ?? null, {
+  const state = await deps.store.inspect(existing, {
     schoolName: config.BOOTSTRAP_SCHOOL_NAME,
     timezone: config.BOOTSTRAP_SCHOOL_TIMEZONE,
   });
@@ -69,9 +71,17 @@ export async function runFirstTenantBootstrap(
     email: config.BOOTSTRAP_ADMIN_EMAIL,
     password: config.BOOTSTRAP_ADMIN_PASSWORD,
   });
+  if (normalizeEmail(created.email) !== normalizeEmail(config.BOOTSTRAP_ADMIN_EMAIL)) {
+    await compensate(deps.auth, [created.id], deps.logger);
+    throw new OperatorError(
+      'AUTH_IDENTITY_EMAIL_MISMATCH',
+      'The created Auth identity did not return the expected canonical email.',
+    );
+  }
   try {
     const result = await deps.store.create({
       authUserId: created.id,
+      authUserEmail: normalizeEmail(created.email),
       schoolName: config.BOOTSTRAP_SCHOOL_NAME,
       timezone: config.BOOTSTRAP_SCHOOL_TIMEZONE,
     });
@@ -92,9 +102,9 @@ export async function runStagingDemoSeed(
   const teacher = exactUser(users, config.STAGING_TEACHER_EMAIL);
   const parent = exactUser(users, config.STAGING_PARENT_EMAIL);
   const state = await deps.store.inspect({
-    adminUserId: admin?.id ?? null,
-    teacherUserId: teacher?.id ?? null,
-    parentUserId: parent?.id ?? null,
+    adminUser: admin,
+    teacherUser: teacher,
+    parentUser: parent,
     schoolName: config.BOOTSTRAP_SCHOOL_NAME,
   });
 
@@ -105,9 +115,9 @@ export async function runStagingDemoSeed(
   if (state.kind === 'reconcilable' && admin && teacher && parent) {
     await deps.store.reconcileGradingFixture(state.schoolId);
     const verified = await deps.store.inspect({
-      adminUserId: admin.id,
-      teacherUserId: teacher.id,
-      parentUserId: parent.id,
+      adminUser: admin,
+      teacherUser: teacher,
+      parentUser: parent,
       schoolName: config.BOOTSTRAP_SCHOOL_NAME,
     });
     if (verified.kind !== 'complete') {
@@ -134,16 +144,29 @@ export async function runStagingDemoSeed(
       email: config.STAGING_TEACHER_EMAIL,
       password: config.STAGING_TEACHER_PASSWORD,
     });
+    if (normalizeEmail(createdTeacher.email) !== normalizeEmail(config.STAGING_TEACHER_EMAIL)) {
+      await compensate(deps.auth, [createdTeacher.id], deps.logger);
+      throw new OperatorError(
+        'AUTH_IDENTITY_EMAIL_MISMATCH',
+        'The created Teacher Auth identity did not return the expected canonical email.',
+      );
+    }
     createdIds.push(createdTeacher.id);
     const createdParent = await deps.auth.createUser({
       email: config.STAGING_PARENT_EMAIL,
       password: config.STAGING_PARENT_PASSWORD,
     });
     createdIds.push(createdParent.id);
+    if (normalizeEmail(createdParent.email) !== normalizeEmail(config.STAGING_PARENT_EMAIL)) {
+      throw new OperatorError(
+        'AUTH_IDENTITY_EMAIL_MISMATCH',
+        'The created Parent Auth identity did not return the expected canonical email.',
+      );
+    }
     await deps.store.create({
       schoolId: state.schoolId,
-      teacherUserId: createdTeacher.id,
-      parentUserId: createdParent.id,
+      teacherUser: { ...createdTeacher, email: normalizeEmail(createdTeacher.email) },
+      parentUser: { ...createdParent, email: normalizeEmail(createdParent.email) },
     });
     deps.logger.info('demo_seed_created', { schoolId: state.schoolId, fixtureSet: 'task-042-v1' });
     return { status: 'created', schoolId: state.schoolId };

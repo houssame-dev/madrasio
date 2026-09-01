@@ -61,7 +61,8 @@ export async function seedAuthUser(
   id: string = randomUUID(),
   email?: string,
 ): Promise<string> {
-  await seed.insert(authUsers).values({ id, ...(email ? { email } : {}) });
+  const canonicalEmail = (email ?? `${id}@test.example`).trim().toLowerCase();
+  await seed.insert(authUsers).values({ id, email: canonicalEmail });
   return id;
 }
 
@@ -72,8 +73,9 @@ export async function seedUser(
   email?: string,
   status: 'ACTIVE' | 'SUSPENDED' | 'DISABLED' = 'ACTIVE',
 ): Promise<string> {
-  const userId = await seedAuthUser(seed, id, email);
-  await seed.insert(schema.users).values({ id: userId, status });
+  const canonicalEmail = (email ?? `${id}@test.example`).trim().toLowerCase();
+  const userId = await seedAuthUser(seed, id, canonicalEmail);
+  await seed.insert(schema.users).values({ id: userId, email: canonicalEmail, status });
   return userId;
 }
 

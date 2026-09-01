@@ -234,6 +234,24 @@ describe('first-tenant bootstrap orchestration', () => {
     expect(serialized).not.toContain(adminPassword);
     expect(serialized).not.toContain(serviceSecret);
   });
+
+  it('persists the canonical email returned by Auth Admin', async () => {
+    const storePort = store();
+    const authPort = auth({
+      createUser: vi.fn().mockResolvedValue({ id: adminId, email: ' Admin@Staging.Example ' }),
+    });
+    await runFirstTenantBootstrap(config, {
+      auth: authPort,
+      store: storePort,
+      logger: logger(),
+    });
+    expect(storePort.create).toHaveBeenCalledWith({
+      authUserId: adminId,
+      authUserEmail: 'admin@staging.example',
+      schoolName: config.BOOTSTRAP_SCHOOL_NAME,
+      timezone: config.BOOTSTRAP_SCHOOL_TIMEZONE,
+    });
+  });
 });
 
 describe('staging demo seed orchestration', () => {
@@ -357,5 +375,22 @@ describe('staging demo seed orchestration', () => {
       }),
     ).rejects.toMatchObject({ code: 'DEMO_SEED_PARTIAL_STATE' });
     expect(authPort.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('passes canonical Auth-returned Teacher and Parent emails to the seed transaction', async () => {
+    const authPort = auth({
+      listUsers: vi.fn().mockResolvedValue([{ id: adminId, email: config.BOOTSTRAP_ADMIN_EMAIL }]),
+      createUser: vi
+        .fn()
+        .mockResolvedValueOnce({ id: teacherId, email: ' Teacher@Staging.Example ' })
+        .mockResolvedValueOnce({ id: parentId, email: ' Parent@Staging.Example ' }),
+    });
+    const storePort = seedStore();
+    await runStagingDemoSeed(config, { auth: authPort, store: storePort, logger: logger() });
+    expect(storePort.create).toHaveBeenCalledWith({
+      schoolId,
+      teacherUser: { id: teacherId, email: 'teacher@staging.example' },
+      parentUser: { id: parentId, email: 'parent@staging.example' },
+    });
   });
 });

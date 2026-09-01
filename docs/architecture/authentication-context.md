@@ -6,7 +6,7 @@
 This document describes the implemented server-side authentication / current
 context layer. It is an implementation companion to `CLAUDE.md` §5/§13–§16,
 `docs/architecture/overview.md` §15/§16, the accepted ADRs (ADR-005, ADR-007,
-ADR-017, ADR-018) and the domain rules BR-AUTH-001/002/004/005, BR-SCHOOL-002/003/
+ADR-017, ADR-018, ADR-019) and the domain rules BR-AUTH-001/002/004/005/006, BR-SCHOOL-002/003/
 004 and BR-ROLE-001/002.
 
 ---
@@ -23,6 +23,14 @@ Because ADR-018 states `public.users.id = auth.users.id`, there is NO identity
 mapping table. `lib/auth/server-auth.ts` (`getAuthenticatedUser` /
 `getAuthenticatedUserId`) resolves the auth User id; the same UUID is the
 application User primary key.
+
+ADR-019 adds `public.users.email` as a required, unique application lookup
+projection. Its canonical form is trim plus lowercase. Provisioning can look
+up this value and must then verify the exact UUID with Auth Admin and compare
+the normalized Auth email before reuse. A mismatch fails closed; normal
+SchoolAdmin provisioning does not synchronize it automatically. This storage
+does not change session resolution, does not authorize a User, and is not
+added to `/api/v1/me` or a broad User-directory API.
 
 ## 2. Canonical flow
 

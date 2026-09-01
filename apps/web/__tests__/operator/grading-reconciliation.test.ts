@@ -29,11 +29,14 @@ describe('legacy STAGING grading fixture reconciliation', () => {
     const parentUserId = randomUUID();
     const schoolId = randomUUID();
     await testDb.seed.insert(authUsers).values([
-      { id: adminUserId },
-      { id: teacherUserId },
-      { id: parentUserId },
+      { id: adminUserId, email: `${adminUserId}@test.example` },
+      { id: teacherUserId, email: `${teacherUserId}@test.example` },
+      { id: parentUserId, email: `${parentUserId}@test.example` },
     ]);
-    await testDb.seed.insert(schema.users).values({ id: adminUserId });
+    await testDb.seed.insert(schema.users).values({
+      id: adminUserId,
+      email: `${adminUserId}@test.example`,
+    });
     await testDb.seed.insert(schema.schools).values({ id: schoolId, name: 'STAGING School' });
     await testDb.seed.insert(schema.schoolMemberships).values({
       schoolId,
@@ -42,7 +45,11 @@ describe('legacy STAGING grading fixture reconciliation', () => {
       status: 'ACTIVE',
     });
     const store = new DemoSeedStore(testDb.seed as never);
-    await store.create({ schoolId, teacherUserId, parentUserId });
+    await store.create({
+      schoolId,
+      teacherUser: { id: teacherUserId, email: `${teacherUserId}@test.example` },
+      parentUser: { id: parentUserId, email: `${parentUserId}@test.example` },
+    });
     await testDb.seed
       .update(schema.gradingConfigurationVersions)
       .set({ rules: LEGACY_DEMO_GRADING_RULES })
@@ -60,9 +67,9 @@ describe('legacy STAGING grading fixture reconciliation', () => {
     });
 
     await expect(store.inspect({
-      adminUserId,
-      teacherUserId,
-      parentUserId,
+      adminUser: { id: adminUserId, email: `${adminUserId}@test.example` },
+      teacherUser: { id: teacherUserId, email: `${teacherUserId}@test.example` },
+      parentUser: { id: parentUserId, email: `${parentUserId}@test.example` },
       schoolName: 'STAGING School',
     })).resolves.toEqual({ kind: 'reconcilable', schoolId });
 
@@ -93,9 +100,9 @@ describe('legacy STAGING grading fixture reconciliation', () => {
       .where(eq(schema.gradebooks.id, historicalGradebookId));
     expect(gradebook.versionId).toBe(DEMO_IDS.gradingVersion);
     await expect(store.inspect({
-      adminUserId,
-      teacherUserId,
-      parentUserId,
+      adminUser: { id: adminUserId, email: `${adminUserId}@test.example` },
+      teacherUser: { id: teacherUserId, email: `${teacherUserId}@test.example` },
+      parentUser: { id: parentUserId, email: `${parentUserId}@test.example` },
       schoolName: 'STAGING School',
     })).resolves.toEqual({ kind: 'complete', schoolId });
   });

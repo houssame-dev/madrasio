@@ -60,14 +60,22 @@ user or `public.users` row was created.
 
 ## 4. Migration execution
 
-The canonical `pnpm db:migrate` command applied only the committed Drizzle
+During Task 041, the canonical `pnpm db:migrate` command applied only the committed Drizzle
 migrations `0000` through `0013`, using `MIGRATION_DATABASE_URL` through the
 Session Pooler. No `drizzle-kit push`, generated migration, migration rewrite,
 Dashboard SQL, or manual schema repair was used.
 
-The hosted journal contains exactly 14 entries. Every journal timestamp and
+At that Task 041 checkpoint, the hosted journal contained exactly 14 entries. Every journal timestamp and
 SHA-256 migration hash matches the committed `_journal.json` entry and SQL
 file, in order, with no gap, duplicate, or unknown migration.
+
+Task 045.1 subsequently applied the single reviewed
+`0014_canonical-user-email` migration through the same Session Pooler after a
+fail-closed identity preflight. The current hosted journal has 15 entries
+(`0000`–`0014`), still 39 application tables, and three reconciled application
+Users whose UUID and normalized email projections match their exact Auth
+identities. Migration 0014 reads `auth.users` for the one-time projection
+backfill but does not mutate or own any Supabase Auth object.
 
 ## 5. Hosted schema verification
 
