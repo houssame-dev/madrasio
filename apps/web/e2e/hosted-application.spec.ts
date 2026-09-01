@@ -51,7 +51,10 @@ test.describe('conditional STAGING application integration', () => {
     expect(versions.body.data).toEqual([
       expect.objectContaining({ id: demo.successorVersion, versionNumber: 2 }),
     ]);
-    expect(successorGradebooks.body.data).toHaveLength(2);
+    expect(successorGradebooks.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Task 043.1 French Term 1' }),
+      expect.objectContaining({ name: 'Task 043.1 Mathematics Term 2' }),
+    ]));
   });
 
   test('real Teacher session is assignment-scoped and denied Period management', async ({ page }) => {
@@ -91,7 +94,9 @@ test.describe('conditional STAGING application integration', () => {
     expect(me.body.data.currentSchool.role).toBe('PARENT');
     expect(profiles.status).toBe(200);
     expect(profiles.body.data).toHaveLength(1);
-    expect(profiles.body.data[0].children).toHaveLength(1);
+    expect(profiles.body.data[0].children).toEqual(expect.arrayContaining([
+      expect.objectContaining({ student: expect.objectContaining({ id: demo.student }) }),
+    ]));
     expect(publishedSubjectResults.body.data).toEqual([
       expect.objectContaining({
         publicationVersion: 2,

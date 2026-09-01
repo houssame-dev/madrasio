@@ -52,6 +52,10 @@ Permissions                        (lib/authorization)
 Academic/relationship scope when required   (on demand, lib/authorization)
 ```
 
+### Invitation activation surface
+
+Task 045 provisions Teacher/Parent access through a server-only Auth Admin invite after current-School authorization. The Invite User email template sends its token hash to `/auth/confirm?token_hash=...&type=invite`. That Route Handler accepts only the invite type, verifies the hash through the cookie-aware Supabase SSR client, and redirects without the hash to `/auth/set-password`. The password page requires that verified session and uses `auth.updateUser`; it never supplies role or School authority. Arbitrary external `next` redirects are not supported.
+
 ## 3. Server session resolution
 
 `lib/auth/server-auth.ts` owns identity only:

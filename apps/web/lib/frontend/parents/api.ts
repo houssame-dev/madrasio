@@ -10,6 +10,7 @@ export const parentsApi = {
   detail: (parentId: string) => data<ParentDto>(`/api/v1/parents/${parentId}`),
   create: (input: { firstName: string; lastName: string; parentCode?: string | null; userId?: string | null }) => data<ParentDto>('/api/v1/parents', body('POST', input)),
   patch: (parentId: string, input: Partial<Pick<ParentDto, 'firstName' | 'lastName' | 'parentCode' | 'userId' | 'status'>>) => data<ParentDto>(`/api/v1/parents/${parentId}`, body('PATCH', input)),
+  inviteAccount: (parentId: string, email: string) => data<{ profileId: string; userId: string; state: 'INVITED' | 'LINKED' | 'ALREADY_LINKED' }>(`/api/v1/parents/${parentId}/invite-account`, body('POST', { email })),
   relationships: (parentId: string, params: RelationshipListParams) => apiRequest<PageResponse<ParentRelationshipDto>>(query(`/api/v1/parents/${parentId}/students`, params)),
   createRelationship: (parentId: string, input: { studentId: string }) => data<ParentRelationshipDto>(`/api/v1/parents/${parentId}/students`, body('POST', input)),
   endRelationship: (relationshipId: string) => data<ParentRelationshipDto>(`/api/v1/parent-student-relationships/${relationshipId}/end`, body('POST', {})),

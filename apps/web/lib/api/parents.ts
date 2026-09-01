@@ -7,6 +7,7 @@ import * as service from '@/lib/modules/parents/application';
 import {
   endRelationshipSchema, parentCreateSchema, parentPatchSchema, relationshipCreateSchema,
 } from '@/lib/modules/parents/domain';
+import { inviteAccountSchema, provisionProfileAccount } from '@/lib/modules/user-provisioning';
 
 import { parseBody, toApiErrorResponse } from './errors';
 
@@ -80,6 +81,22 @@ export function parentPATCH(request: Request, context: Params) {
     const input = await parseBody(request, parentPatchSchema);
     const value = await actor();
     return one(await service.patchParent(value.db, value.actor, await id(context), input));
+  });
+}
+
+export function parentInviteAccountPOST(request: Request, context: Params) {
+  return run(async () => {
+    const { getAuthAdmin } = await import('@/lib/auth/admin');
+    const { getServerEnv } = await import('@/lib/config/env');
+    const input = await parseBody(request, inviteAccountSchema);
+    const value = await actor();
+    const appUrl = getServerEnv().APP_URL;
+    if (!appUrl) throw new Error('APP_URL is required for account invitations.');
+    return one(await provisionProfileAccount({
+      db: value.db,
+      authAdmin: getAuthAdmin(),
+      inviteRedirectTo: new URL('/auth/confirm', appUrl).toString(),
+    }, value.actor, 'PARENT', await id(context), input));
   });
 }
 

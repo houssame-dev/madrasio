@@ -10,7 +10,7 @@
 
 Teacher is a School-scoped profile containing identity, an optional Teacher code, lifecycle status, and optional application `userId`. It contains no Class, Subject, year, role, permission, or Assignment array. Creating a profile never creates an Assignment or login and never changes a SchoolMembership role.
 
-The committed API has no eligible-member discovery endpoint. The admin form therefore exposes the existing optional UUID contract with explicit copy that it is for an already known application User from an approved administrative process. The server verifies an ACTIVE User and ACTIVE same-School membership. Production UI never reads Supabase Auth, service-role data, auth metadata, or arbitrary users. Detail displays only a neutral linked/unlinked state, not the raw identifier or account internals.
+Normal profile forms do not expose a User UUID. An unlinked ACTIVE profile has a separate email-based `Invite account` action. The server normalizes the email, performs the ADR-019 deterministic application lookup, verifies exact Auth identity before reuse, and derives the TEACHER role and current School. Production UI never reads Supabase Auth, service-role data, auth metadata, or arbitrary users. Detail displays only a neutral linked/unlinked state, not the raw identifier or account internals.
 
 The lifecycle is `ACTIVE -> INACTIVE`, `INACTIVE -> ACTIVE/ARCHIVED`, with `ARCHIVED` terminal. Deactivate and archive require confirmation. Becoming INACTIVE immediately removes operational scope, but the UI does not claim or attempt to end/delete Assignment history.
 
@@ -30,6 +30,6 @@ Teacher query keys are current-School scoped and distinguish filtered lists, det
 
 ## Validation, errors, responsive UI, and deferred work
 
-Forms use React Hook Form and Zod with the committed UUID, identity, enum, date, and exact-body contracts. Stable Teacher feature codes map to safe messages; foreign-resource or database details are not shown. Tables use semantic headers and horizontal overflow, detail sections stack on narrow screens, and modal dialogs trap and restore focus. Status always includes visible text.
+Forms use React Hook Form and Zod with the committed identity, enum, date, email, and exact-body contracts. Stable Teacher/provisioning feature codes map to safe messages; foreign-resource, Auth-provider, or database details are not shown. Tables use semantic headers and horizontal overflow, detail sections stack on narrow screens, and modal dialogs trap and restore focus. Status always includes visible text.
 
-Eligible-account search, Teacher invitations/login creation, membership administration, bulk/CSV workflows, an atomic reassignment endpoint, Teacher dashboard, and operational Grade/Attendance/Homework screens are deferred. No backend, schema, or migration change is part of this frontend feature.
+Broad eligible-account search, invitation resend, membership administration, bulk/CSV workflows, and an atomic reassignment endpoint remain deferred. Account invitation and password activation are defined in `user-provisioning-invitations.md`.

@@ -5,7 +5,6 @@ import {
 
 export const teacherFormSchema = teacherCreateSchema.omit({ teacherCode: true, userId: true }).extend({
   teacherCode: z.string().trim().max(100).optional(),
-  userId: z.union([z.literal(''), z.string().uuid('Enter a valid User UUID.')]).optional(),
 });
 export const assignmentFormSchema = assignmentCreateSchema;
 export const endAssignmentFormSchema = endAssignmentSchema;

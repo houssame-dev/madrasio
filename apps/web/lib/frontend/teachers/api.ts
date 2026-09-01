@@ -24,6 +24,7 @@ export const teachersApi = {
   detail: (teacherId: string) => data<TeacherDto>(`/api/v1/teachers/${teacherId}`),
   create: (input: { firstName: string; lastName: string; teacherCode?: string | null; userId?: string | null }) => data<TeacherDto>('/api/v1/teachers', body('POST', input)),
   patch: (teacherId: string, input: Partial<Pick<TeacherDto, 'firstName' | 'lastName' | 'teacherCode' | 'userId' | 'status'>>) => data<TeacherDto>(`/api/v1/teachers/${teacherId}`, body('PATCH', input)),
+  inviteAccount: (teacherId: string, email: string) => data<{ profileId: string; userId: string; state: 'INVITED' | 'LINKED' | 'ALREADY_LINKED' }>(`/api/v1/teachers/${teacherId}/invite-account`, body('POST', { email })),
   assignments: (teacherId: string, params: AssignmentListParams) => apiRequest<PageResponse<TeacherAssignmentDto>>(query(`/api/v1/teachers/${teacherId}/assignments`, params)),
   createAssignment: (teacherId: string, input: { academicYearId: string; classId: string; subjectId: string; effectiveFrom: string }) => data<TeacherAssignmentDto>(`/api/v1/teachers/${teacherId}/assignments`, body('POST', input)),
   endAssignment: (assignmentId: string, input: { effectiveUntil: string }) => data<TeacherAssignmentDto>(`/api/v1/teacher-assignments/${assignmentId}/end`, body('POST', input)),

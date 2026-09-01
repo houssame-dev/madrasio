@@ -10,7 +10,7 @@
 
 Parent contains identity, optional code, optional application User link, and lifecycle status. ParentStudent is the only Parent-to-Student relationship source of truth. Neither side embeds children, enrollment, current Class, role, or relationship arrays.
 
-Profile creation and editing never create relationships, accounts, memberships, or roles. The committed API has no eligible-user lookup, so administrators may enter a known application User UUID from an approved process. The server validates an ACTIVE same-School User and membership. Detail displays only linked/unlinked state and no authentication internals.
+Profile creation and editing never create relationships, accounts, memberships, or roles. Normal forms do not expose a User UUID. An unlinked ACTIVE profile has a separate email-based `Invite account` action; the server verifies or creates the identity and derives the PARENT membership for the current School. Detail displays only linked/unlinked state and no authentication internals.
 
 The lifecycle is `ACTIVE -> INACTIVE`, `INACTIVE -> ACTIVE/ARCHIVED`, with `ARCHIVED` terminal. Deactivate and archive require confirmation. An INACTIVE profile contributes no current child access, but relationship rows are not automatically ended or deleted.
 
@@ -32,4 +32,4 @@ All requests omit School authority. Server authentication, active User, membersh
 
 React Hook Form and Zod validate exact profile and relationship payloads. Stable Parent feature codes map to safe messages without SQL or foreign-tenant details. Searchable selectors and tables are keyboard accessible, statuses are textual, dialogs trap/restore focus, tables scroll on narrow screens, and detail sections stack responsively.
 
-Parent account creation, membership role administration, invitations, bulk import, current-Class inference, a global Academic Year, and Parent portal Grades, Results, Attendance, Homework, Announcements, and Notifications remain deferred. No backend, schema, or migration change is part of this feature.
+Invitation resend, membership role administration, bulk import, current-Class inference, and a global Academic Year remain deferred. Account invitation/password activation is defined in `user-provisioning-invitations.md`; Parent portal operational views are documented separately.

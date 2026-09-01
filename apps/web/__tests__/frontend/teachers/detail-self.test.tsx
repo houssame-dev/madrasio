@@ -1,4 +1,5 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TeacherDetailWorkspace } from '@/components/teachers/teacher-detail';
 import type { TeacherAssignmentDto } from '@/lib/frontend/teachers/types';
@@ -28,6 +29,27 @@ describe('Teacher detail and self scope', () => {
     detailFetch(); renderTeachers(<TeacherDetailWorkspace teacherId={teacher.id} />);
     expect(await screen.findByRole('heading', { name: 'Leila Amrani' })).toBeInTheDocument(); expect(screen.getByText('Linked to an existing school User')).toBeInTheDocument(); expect(screen.queryByText(teacher.userId)).not.toBeInTheDocument();
     expect(await screen.findByText('Mathematics')).toBeInTheDocument(); expect(screen.getByText('1A')).toBeInTheDocument(); expect(screen.getByText('2026/2027')).toBeInTheDocument();
+  });
+
+  it('provisions an unlinked profile through email without client role or School authority', async () => {
+    const fetchMock = detailFetch();
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === `/api/v1/teachers/${teacher.id}`) return Response.json({ data: { ...teacher, userId: null } });
+      if (url.endsWith('/invite-account')) return Response.json({ data: { profileId: teacher.id, userId: crypto.randomUUID(), state: 'INVITED' } });
+      if (url.includes('/academic-years')) return Response.json(page([year], 1, 100));
+      if (url.includes('/classes')) return Response.json(page([klass], 1, 100));
+      if (url.includes('/subjects')) return Response.json(page([subject], 1, 100));
+      if (url.includes('/assignments')) return Response.json(page([]));
+      return Response.json(page([]));
+    });
+    renderTeachers(<TeacherDetailWorkspace teacherId={teacher.id} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Invite account' }));
+    await userEvent.type(screen.getByLabelText('Email'), 'new.teacher@example.com');
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Invite account' }));
+    await waitFor(() => expect(fetchMock.mock.calls.some((call) => String(call[0]).endsWith('/invite-account'))).toBe(true));
+    const call = fetchMock.mock.calls.find((entry) => String(entry[0]).endsWith('/invite-account'))!;
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({ email: 'new.teacher@example.com' });
   });
 
   it('keeps Teacher self detail and history read-only', async () => {

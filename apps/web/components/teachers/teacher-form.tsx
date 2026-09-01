@@ -15,11 +15,11 @@ export function TeacherForm({ initial, onCancel, onSaved }: { initial?: TeacherD
   const [error, setError] = useState<string>();
   const form = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherFormSchema),
-    defaultValues: { firstName: initial?.firstName ?? '', lastName: initial?.lastName ?? '', teacherCode: initial?.teacherCode ?? '', userId: initial?.userId ?? '' },
+    defaultValues: { firstName: initial?.firstName ?? '', lastName: initial?.lastName ?? '', teacherCode: initial?.teacherCode ?? '' },
   });
   const mutation = useMutation({
     mutationFn: (values: TeacherFormValues) => {
-      const input = { firstName: values.firstName, lastName: values.lastName, teacherCode: values.teacherCode?.trim() || null, userId: values.userId || null };
+      const input = { firstName: values.firstName, lastName: values.lastName, teacherCode: values.teacherCode?.trim() || null };
       return initial ? teachersApi.patch(initial.id, input) : teachersApi.create(input);
     },
     onSuccess: async (teacher) => { setError(undefined); await onSaved(teacher); },
@@ -32,8 +32,6 @@ export function TeacherForm({ initial, onCancel, onSaved }: { initial?: TeacherD
       <Field label={t.lastName} htmlFor="teacher-last-name" error={form.formState.errors.lastName?.message}><input id="teacher-last-name" className={inputClassName} aria-invalid={!!form.formState.errors.lastName} {...form.register('lastName')} /></Field>
     </div>
     <Field label={`${t.teacherCode} (${t.optional})`} htmlFor="teacher-code" error={form.formState.errors.teacherCode?.message}><input id="teacher-code" className={inputClassName} aria-invalid={!!form.formState.errors.teacherCode} {...form.register('teacherCode')} /></Field>
-    <Field label={`${t.userId} (${t.optional})`} htmlFor="teacher-user-id" error={form.formState.errors.userId?.message} hint={t.linkedLookupUnavailable}><input id="teacher-user-id" className={inputClassName} aria-invalid={!!form.formState.errors.userId} {...form.register('userId')} /></Field>
-    <p className="text-sm text-muted-foreground">{t.linkedHint}</p>
     <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={initial ? t.save : t.create} />
   </form>;
 }
