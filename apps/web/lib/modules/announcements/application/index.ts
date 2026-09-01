@@ -9,6 +9,13 @@ export {
   type PublishDueAnnouncementResult,
 } from './publish-announcement';
 export {
+  normalizeScheduledAnnouncementBatchLimit,
+  processDueAnnouncementPublicationsBatch,
+  SCHEDULED_ANNOUNCEMENT_BATCH_DEFAULT_LIMIT,
+  SCHEDULED_ANNOUNCEMENT_BATCH_MAX_LIMIT,
+  type ProcessDueAnnouncementPublicationsResult,
+} from './process-due-announcement-publications';
+export {
   createAnnouncement,
   listAnnouncements,
   getAnnouncement,

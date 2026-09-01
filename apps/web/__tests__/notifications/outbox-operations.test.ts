@@ -32,6 +32,7 @@ import { processNotificationEvent } from '@/lib/modules/notifications/applicatio
 import { OutboxOperationError } from '@/lib/modules/notifications/application/outbox-operations-errors';
 import { retryOutboxEvent } from '@/lib/modules/notifications/application/retry-outbox-event';
 import {
+  normalizeOutboxBatchLimit,
   processRetryableOutboxEvents,
   OUTBOX_BATCH_DEFAULT_LIMIT,
   OUTBOX_BATCH_MAX_LIMIT,
@@ -611,6 +612,31 @@ describe('bounded batch processing (Task 013 §31)', () => {
 
     expect(OUTBOX_BATCH_DEFAULT_LIMIT).toBe(25);
     expect(OUTBOX_BATCH_MAX_LIMIT).toBe(100);
+  });
+
+  it('18. concurrent batch invocations claim each event effectively once', async () => {
+    const { schoolId } = await seedAnnouncementBase();
+    const recipient = await seedUser(test.seed, schoolId, 'PARENT');
+    await seedAnnouncementPublicationAndEvent(schoolId, [recipient]);
+    await seedAnnouncementPublicationAndEvent(schoolId, [recipient]);
+    await seedAnnouncementPublicationAndEvent(schoolId, [recipient]);
+
+    await Promise.all([
+      processRetryableOutboxEvents(test.db, { limit: 3 }),
+      processRetryableOutboxEvents(test.db, { limit: 3 }),
+    ]);
+
+    expect(await loadNotifications()).toHaveLength(3);
+    const events = await test.seed.select().from(schema.outboxEvents);
+    expect(events.every((event) => event.status === 'PROCESSED')).toBe(true);
+    expect(events.every((event) => event.attemptCount === 1)).toBe(true);
+  });
+
+  it('19. normalizes caller limits to the conservative bounded range', () => {
+    expect(normalizeOutboxBatchLimit()).toBe(OUTBOX_BATCH_DEFAULT_LIMIT);
+    expect(normalizeOutboxBatchLimit(0)).toBe(1);
+    expect(normalizeOutboxBatchLimit(1_000)).toBe(OUTBOX_BATCH_MAX_LIMIT);
+    expect(normalizeOutboxBatchLimit(Number.POSITIVE_INFINITY)).toBe(OUTBOX_BATCH_DEFAULT_LIMIT);
   });
 });
 

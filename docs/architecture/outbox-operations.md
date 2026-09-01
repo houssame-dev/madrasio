@@ -1,7 +1,7 @@
 # Outbox Operations (Task 013)
 
 > Module: **Notifications / Infrastructure**
-> Status: **Implemented (Task 013)**
+> Status: **Operational (Task 044; foundation from Task 013)**
 > Related: ADR-012 (Transactional Outbox), ADR-013 (Persisted Notifications),
 > ADR-015 (Defer Redis/BullMQ), CLAUDE.md §30–§33, `docs/domain/business-rules.md`
 > §17/§21, `docs/architecture/overview.md` §33–§35.
@@ -24,7 +24,7 @@ The status model is preserved unchanged:
 | Status | Meaning | Retryable |
 |---|---|---|
 | `PENDING` | Waiting / retryable. Also the resting state after a transient (infrastructure) failure. | Yes |
-| `PROCESSING` | Reserved for a worker mid-flight. Nothing writes it today. | No (refused while in flight) |
+| `PROCESSING` | Transaction-scoped claim held by a worker while projection and completion run. | No (skipped while in flight) |
 | `PROCESSED` | Terminal success. Never processed again. | Idempotent no-op |
 | `FAILED` | Deterministic processing failure recorded with a readable `last_error`. | Yes — always, explicitly |
 
@@ -42,8 +42,10 @@ cleared so the terminal state carries no stale failure.
 - **Transient** (any other error): the event stays `PENDING`; it is NEVER
   converted to `FAILED`. `PENDING` means "retry without a domain repair".
 
-These semantics are owned by the existing processor (`processNotificationEvent`)
-and are reused unchanged by the operational layer.
+These semantics are owned by the processor (`processNotificationEvent`) and
+the bounded worker. A claim, projection writes, and the terminal status change
+share one database transaction. A transient failure rolls that transaction
+back, including the `PROCESSING` claim and attempt increment.
 
 ## 3. Specific retry — `retryOutboxEvent`
 
@@ -82,7 +84,13 @@ propagates for observability; the event has already been moved to `FAILED`.
   correctness.
 - **Transient handling**: a transient error is reported at the operational
   layer, the event stays `PENDING`, and the batch continues.
-- **Summary**: `{ attempted, processed, failed, pending, results[] }`. `pending`
+- **Claiming**: each candidate is selected again inside its own transaction
+  with `FOR UPDATE SKIP LOCKED`, then moved to `PROCESSING`. Separate serverless
+  invocations therefore do not work the same event concurrently.
+- **Attempt count**: a successful transactional claim increments
+  `attempt_count`. A transient rollback does not record a claim that never
+  committed.
+- **Summary**: `{ attempted, processed, failed, pending, remaining, results[] }`. `pending`
   counts events still `PENDING` after the run (transient failures). Each result
   carries `eventId`, `eventType`, `previousState`, `resultingState`,
   `notificationsCreated` and, on deterministic failure, a controlled
@@ -90,17 +98,18 @@ propagates for observability; the event has already been moved to `FAILED`.
 
 ## 5. Idempotency & concurrency
 
-No locks are introduced. Concurrency safety comes from the existing processor:
+Concurrency safety has two database-backed layers:
 
-- `PROCESSED` is short-circuited at load time.
-- Inserts use `UNIQUE(source_event_id, recipient_user_id)` +
-  `ON CONFLICT DO NOTHING`.
-- Each event's notification inserts + `PROCESSED` mark happen in one
-  transaction.
+- the worker claims one row with `FOR UPDATE SKIP LOCKED` inside the same
+  transaction used for projection and completion;
+- notification inserts use `UNIQUE(source_event_id, recipient_user_id)` plus
+  `ON CONFLICT DO NOTHING` as idempotency defense-in-depth.
 
-Two workers may therefore attempt the same `PENDING` event safely: duplicate
-delivery cannot create duplicate logical notifications (BR-NOTIFICATION-005,
-CLAUDE.md §32).
+`PROCESSED` is terminal and is never selected by the normal batch. Concurrent
+workers may discover the same candidate before either claims it, but only one
+can claim it; the other skips it. The transaction uses the normal runtime
+connection and does not depend on session state, advisory locks, or an
+in-memory mutex, so it is compatible with Supavisor Transaction Pooler mode.
 
 ## 6. Retry never mutates the source domain
 
@@ -132,18 +141,20 @@ can contain recipient IDs and academic context; they are never exposed through
 operational views (Task 013 §19). `attempt_count` is read-only; attempt-count
 metrics requiring schema changes are deferred (Task 013 §25).
 
-## 8. Security & API decision
+## 8. Security & internal job API
 
-**No public API is exposed.** The outbox is infrastructure with no tenant FK
+**No School-user API is exposed.** The outbox is infrastructure with no tenant FK
 (events from multiple Schools share the table). School admins must never inspect
 or retry another School's events, and tenant scope cannot be reliably derived
 for every outbox row without inventing tenant ownership. Therefore:
 
 - The operational entry points are **server-internal application helpers**
-  (`retryOutboxEvent`, `processRetryableOutboxEvents`) — callable only from
-  trusted server code (e.g. a future scheduled runner).
-- There is no Outbox route, no dashboard, no retry button, no admin UI
-  (Task 013 §36).
+  (`retryOutboxEvent`, `processRetryableOutboxEvents`).
+- `POST /api/internal/jobs/process-outbox` is the only HTTP runner. It requires
+  an exact server-only `Authorization: Bearer <CRON_SECRET>` credential and
+  returns aggregate counts only. Browser session cookies grant no authority.
+- `GET` returns `405` and never processes work. There is no dashboard, retry
+  button, or admin UI.
 - Client-facing access to Notifications remains unchanged: read/mark-read use
   the normal school-scoped authorization pipeline, and a notification never
   grants source access (BR-NOTIFICATION-008).
@@ -153,19 +164,19 @@ internal endpoint only if the Authorization Foundation grows a platform
 workflow; none exists today (permissions.ts defines only school-scoped
 permissions).
 
-## 9. Future runner boundary
+## 9. Hosted runner boundary
 
-A future scheduled runner may invoke `processRetryableOutboxEvents()` (and/or
-`retryOutboxEvent()`) periodically. No cron platform, no `next_retry_at`, no
-backoff scheduling, no queue-delay system is created now (Task 013 §26). The
-requirement satisfied here is that the entry points are SAFE to call
-repeatedly — idempotent, bounded, per-event isolated, and deterministic.
+Task 044 verified the internal endpoint manually through a local Next.js
+server connected to Supabase STAGING. Task 046 will register Supabase Cron only
+after a real Vercel Staging origin exists. Cron will invoke the HTTP route; it
+will not contain notification or recipient-resolution SQL. No `next_retry_at`,
+queue-delay platform, Redis, or worker service is introduced.
 
 ## 10. What was NOT added
 
 - No Redis / BullMQ / Kafka / RabbitMQ (ADR-015).
 - No second outbox, no dead-letter infrastructure, no distributed locks.
-- No retry counter management (the schema's `attempt_count` exists and is
-  exposed read-only; it is not incremented by this task).
+- No new retry/backoff schema. The existing `attempt_count` is incremented by
+  a transactional claim.
 - No migration. The committed `outbox_events` schema fully supports this
   operational layer.

@@ -24,7 +24,7 @@
  */
 
 import {
-  and, count, desc, eq, exists, gte, ilike, inArray, isNotNull, lte, or, sql,
+  and, asc, count, desc, eq, exists, gte, ilike, inArray, isNotNull, lte, or, sql,
   type SQL,
 } from 'drizzle-orm';
 import * as schema from '@school/database';
@@ -511,6 +511,41 @@ export async function findPublication(
     .limit(1);
 
   return row ? toPublicationRow(row) : null;
+}
+
+/** Bounded due-work discovery; publication itself is claimed by the CAS in `markPublicationPublished`. */
+export async function listDueScheduledPublicationIds(
+  db: AnnouncementsDb,
+  input: { dueAt: Date; limit: number },
+): Promise<string[]> {
+  if (input.limit <= 0) return [];
+  const rows = await db
+    .select({ id: schema.announcementPublications.id })
+    .from(schema.announcementPublications)
+    .where(and(
+      eq(schema.announcementPublications.status, 'SCHEDULED'),
+      lte(schema.announcementPublications.scheduledAt, input.dueAt),
+    ))
+    .orderBy(
+      asc(schema.announcementPublications.scheduledAt),
+      asc(schema.announcementPublications.id),
+    )
+    .limit(input.limit);
+  return rows.map((row) => row.id);
+}
+
+export async function countDueScheduledPublications(
+  db: AnnouncementsDb,
+  dueAt: Date,
+): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(schema.announcementPublications)
+    .where(and(
+      eq(schema.announcementPublications.status, 'SCHEDULED'),
+      lte(schema.announcementPublications.scheduledAt, dueAt),
+    ));
+  return Number(row?.value ?? 0);
 }
 
 export interface PublicationInsert {

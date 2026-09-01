@@ -172,7 +172,7 @@ export async function processNotificationEvent(
   }
 
   try {
-    return await processEvent(db, event);
+    return await db.transaction((tx) => processClaimedNotificationEvent(tx, event));
   } catch (error) {
     if (error instanceof NotificationProcessingError) {
       await repo.markOutboxEventFailed(db, event.id, error.message);
@@ -181,7 +181,7 @@ export async function processNotificationEvent(
   }
 }
 
-async function processEvent(
+export async function processClaimedNotificationEvent(
   db: NotificationsDb,
   event: repo.OutboxEventRow,
 ): Promise<ProcessNotificationEventResult> {
@@ -259,11 +259,8 @@ async function processAnnouncementPublished(
 
   // INSERT + PROCESSED mark in ONE transaction (Task 010 §19): a failure rolls
   // back both, leaving the event retryable with no partially-created batch.
-  const notificationsCreated = await db.transaction(async (tx) => {
-    const created = await repo.insertNotifications(tx, rows);
-    await repo.markOutboxEventProcessed(tx, event.id);
-    return created;
-  });
+  const notificationsCreated = await repo.insertNotifications(db, rows);
+  await repo.markOutboxEventProcessed(db, event.id);
 
   return {
     outboxEventId: event.id,
@@ -338,11 +335,8 @@ async function processResultPublished(
 
   // INSERT + PROCESSED mark in ONE transaction (Task 010 §19): a failure rolls
   // back both, leaving the event retryable with no partially-created batch.
-  const notificationsCreated = await db.transaction(async (tx) => {
-    const created = await repo.insertNotifications(tx, rows);
-    await repo.markOutboxEventProcessed(tx, event.id);
-    return created;
-  });
+  const notificationsCreated = await repo.insertNotifications(db, rows);
+  await repo.markOutboxEventProcessed(db, event.id);
 
   return {
     outboxEventId: event.id,

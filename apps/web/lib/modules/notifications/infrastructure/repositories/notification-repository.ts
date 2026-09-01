@@ -18,7 +18,7 @@
  * from another School can never resolve (CLAUDE.md §13/§26).
  */
 
-import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, lte } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import * as schema from '@school/database';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 
@@ -153,6 +153,63 @@ export async function listRetryableOutboxEvents(
     .where(inArray(schema.outboxEvents.status, [...input.statuses]))
     .orderBy(asc(schema.outboxEvents.createdAt), asc(schema.outboxEvents.id))
     .limit(input.limit);
+}
+
+/**
+ * Claims one selected event inside the caller's transaction.
+ *
+ * `FOR UPDATE SKIP LOCKED` is scoped to this transaction, so overlapping
+ * serverless invocations either own the row or skip it. PROCESSING is never a
+ * committed orphan: notification projection and the terminal transition occur
+ * before this same transaction commits; a crash/SQL failure rolls the claim
+ * back to the previous retryable status.
+ */
+export async function claimOutboxEvent(
+  tx: NotificationsDb,
+  input: { eventId: string; statuses: readonly OutboxEventStatus[] },
+): Promise<{ event: OutboxEventRow; previousStatus: OutboxEventStatus } | null> {
+  const [row] = await tx
+    .select()
+    .from(schema.outboxEvents)
+    .where(and(
+      eq(schema.outboxEvents.id, input.eventId),
+      inArray(schema.outboxEvents.status, [...input.statuses]),
+    ))
+    .for('update', { skipLocked: true })
+    .limit(1);
+  if (!row) return null;
+
+  await tx
+    .update(schema.outboxEvents)
+    .set({
+      status: 'PROCESSING',
+      attemptCount: sql`${schema.outboxEvents.attemptCount} + 1`,
+      processedAt: null,
+      lastError: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.outboxEvents.id, row.id));
+
+  return {
+    previousStatus: row.status,
+    event: {
+      id: row.id,
+      eventType: row.eventType,
+      payload: (row.payload ?? {}) as Record<string, unknown>,
+      status: 'PROCESSING',
+    },
+  };
+}
+
+export async function countOutboxEventsByStatuses(
+  db: NotificationsDb,
+  statuses: readonly OutboxEventStatus[],
+): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(schema.outboxEvents)
+    .where(inArray(schema.outboxEvents.status, [...statuses]));
+  return Number(row?.value ?? 0);
 }
 
 export async function findAnnouncementPublication(

@@ -28,6 +28,8 @@ const ServerEnvSchema = z.object({
   // Application
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   APP_URL: optionalString(z.string().url()),
+  // Dedicated machine credential for internal scheduler endpoints.
+  CRON_SECRET: optionalString(z.string().min(32)),
 
   // Cloudflare R2 (file storage)
   R2_ACCOUNT_ID: optionalString(z.string()),

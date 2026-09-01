@@ -25,10 +25,21 @@
 import { NotificationProcessingError } from './notification-errors';
 import type { NotificationsDb, OutboxEventStatus } from '../infrastructure/repositories/notification-repository';
 import * as repo from '../infrastructure/repositories/notification-repository';
-import { processNotificationEvent } from './process-notification-event';
+import { processClaimedNotificationEvent } from './process-notification-event';
 
 export const OUTBOX_BATCH_DEFAULT_LIMIT = 25;
 export const OUTBOX_BATCH_MAX_LIMIT = 100;
+
+export function normalizeOutboxBatchLimit(requested?: number): number {
+  const candidate = Math.floor(requested ?? OUTBOX_BATCH_DEFAULT_LIMIT);
+  return Math.max(
+    1,
+    Math.min(
+      Number.isFinite(candidate) ? candidate : OUTBOX_BATCH_DEFAULT_LIMIT,
+      OUTBOX_BATCH_MAX_LIMIT,
+    ),
+  );
+}
 
 export interface ProcessRetryableOutboxEventsInput {
   /** Maximum events to attempt in this run. Default 25, clamped to 100. */
@@ -52,6 +63,7 @@ export interface ProcessRetryableOutboxEventsResult {
   processed: number;
   failed: number;
   pending: number;
+  remaining: number;
   results: OutboxBatchEventOutcome[];
 }
 
@@ -59,8 +71,7 @@ export async function processRetryableOutboxEvents(
   db: NotificationsDb,
   input: ProcessRetryableOutboxEventsInput = {},
 ): Promise<ProcessRetryableOutboxEventsResult> {
-  const requested = Math.floor(input.limit ?? OUTBOX_BATCH_DEFAULT_LIMIT);
-  const limit = Math.max(1, Math.min(Number.isFinite(requested) ? requested : OUTBOX_BATCH_DEFAULT_LIMIT, OUTBOX_BATCH_MAX_LIMIT));
+  const limit = normalizeOutboxBatchLimit(input.limit);
   const statuses: readonly OutboxEventStatus[] = input.includeFailed ? ['PENDING', 'FAILED'] : ['PENDING'];
 
   const events = await repo.listRetryableOutboxEvents(db, { statuses, limit });
@@ -73,21 +84,36 @@ export async function processRetryableOutboxEvents(
   for (const event of events) {
     let outcome: OutboxBatchEventOutcome;
     try {
-      const result = await processNotificationEvent(db, { outboxEventId: event.id });
-      const current = await repo.findOutboxEventOperational(db, event.id);
-      outcome = {
-        eventId: event.id,
-        eventType: event.eventType,
-        previousState: event.status,
-        resultingState: current?.status ?? 'PROCESSED',
-        notificationsCreated: result.notificationsCreated,
-      };
+      const transactionOutcome = await db.transaction(async (tx) => {
+        const claim = await repo.claimOutboxEvent(tx, { eventId: event.id, statuses });
+        if (!claim) return null;
+        try {
+          const result = await processClaimedNotificationEvent(tx, claim.event);
+          return {
+            eventId: event.id,
+            eventType: event.eventType,
+            previousState: claim.previousStatus,
+            resultingState: 'PROCESSED' as const,
+            notificationsCreated: result.notificationsCreated,
+          };
+        } catch (error) {
+          if (!(error instanceof NotificationProcessingError)) throw error;
+          await repo.markOutboxEventFailed(tx, event.id, error.message);
+          return {
+            eventId: event.id,
+            eventType: event.eventType,
+            previousState: claim.previousStatus,
+            resultingState: 'FAILED' as const,
+            notificationsCreated: 0,
+            featureCode: error.featureCode,
+          };
+        }
+      });
+      if (!transactionOutcome) continue;
+      outcome = transactionOutcome;
     } catch (error) {
-      const current = await repo.findOutboxEventOperational(db, event.id);
-      const resultingState = current?.status ?? event.status;
+      const resultingState = event.status;
       if (error instanceof NotificationProcessingError) {
-        // Deterministic failure — the processor already recorded FAILED with a
-        // readable last_error. Counted as failed; the batch continues.
         outcome = {
           eventId: event.id,
           eventType: event.eventType,
@@ -119,11 +145,14 @@ export async function processRetryableOutboxEvents(
     results.push(outcome);
   }
 
+  const remaining = await repo.countOutboxEventsByStatuses(db, statuses);
+
   return {
-    attempted: events.length,
+    attempted: results.length,
     processed,
     failed,
     pending,
+    remaining,
     results,
   };
 }

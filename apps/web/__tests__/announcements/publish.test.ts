@@ -18,7 +18,14 @@ import * as schema from '@school/database';
 
 import { ForbiddenError, UnauthenticatedError } from '@/lib/errors';
 
-import { publishAnnouncement, publishDueAnnouncement } from '@/lib/modules/announcements/application';
+import {
+  normalizeScheduledAnnouncementBatchLimit,
+  processDueAnnouncementPublicationsBatch,
+  publishAnnouncement,
+  publishDueAnnouncement,
+  SCHEDULED_ANNOUNCEMENT_BATCH_DEFAULT_LIMIT,
+  SCHEDULED_ANNOUNCEMENT_BATCH_MAX_LIMIT,
+} from '@/lib/modules/announcements/application';
 import { processNotificationEvent } from '@/lib/modules/notifications/application/process-notification-event';
 
 import {
@@ -885,6 +892,55 @@ describe('scheduled publication recipient hardening (Task 011.1)', () => {
     // Snapshots were resolved from v1's PARENTS+SCHOOL target (2 parents), not
     // v2's PARENTS+CLASS target.
     expect(await loadSnapshots(scheduled.publicationId)).toHaveLength(2);
+  });
+});
+
+describe('bounded scheduled-publication job processing (Task 044)', () => {
+  it('ignores future work and processes a due publication exactly once under concurrency', async () => {
+    const school = await seedSchool(test.seed);
+    const { admin, parentA, parentB } = await seedSchoolAdminWithParents(school);
+    const announcement = await seedAnnouncement(test.seed, school.schoolId, admin);
+    await seedTarget(test.seed, school.schoolId, announcement.versionId, 'PARENTS', 'SCHOOL', school.yearId);
+    const scheduled = await publishAnnouncement(test.db, {
+      userId: admin,
+      schoolId: school.schoolId,
+      announcementId: announcement.announcementId,
+      announcementVersionId: announcement.versionId,
+      idempotencyKey: randomUUID(),
+      scheduledAt: new Date(Date.now() + 3_600_000).toISOString(),
+    });
+
+    const beforeDue = await processDueAnnouncementPublicationsBatch(test.db);
+    expect(beforeDue).toMatchObject({ attempted: 0, published: 0, failed: 0, remaining: 0 });
+    expect(await loadSnapshots(scheduled.publicationId)).toHaveLength(0);
+    expect(await loadOutboxEvents()).toHaveLength(0);
+
+    await test.seed
+      .update(schema.announcementPublications)
+      .set({ scheduledAt: new Date(Date.now() - 60_000) })
+      .where(eq(schema.announcementPublications.id, scheduled.publicationId));
+
+    const runs = await Promise.all([
+      processDueAnnouncementPublicationsBatch(test.db),
+      processDueAnnouncementPublicationsBatch(test.db),
+    ]);
+    expect(runs.reduce((total, run) => total + run.published, 0)).toBe(1);
+    expect(await loadSnapshots(scheduled.publicationId)).toHaveLength(2);
+    expect((await loadSnapshots(scheduled.publicationId)).map((row) => row.recipientUserId).sort()).toEqual([parentA, parentB].sort());
+    expect(await loadOutboxEvents()).toHaveLength(1);
+    expect(await test.seed.select().from(schema.notifications)).toHaveLength(0);
+
+    const again = await processDueAnnouncementPublicationsBatch(test.db);
+    expect(again).toMatchObject({ attempted: 0, published: 0, failed: 0, remaining: 0 });
+    expect(SCHEDULED_ANNOUNCEMENT_BATCH_DEFAULT_LIMIT).toBe(25);
+    expect(SCHEDULED_ANNOUNCEMENT_BATCH_MAX_LIMIT).toBe(100);
+  });
+
+  it('normalizes scheduled job limits to the conservative bounded range', () => {
+    expect(normalizeScheduledAnnouncementBatchLimit()).toBe(SCHEDULED_ANNOUNCEMENT_BATCH_DEFAULT_LIMIT);
+    expect(normalizeScheduledAnnouncementBatchLimit(0)).toBe(1);
+    expect(normalizeScheduledAnnouncementBatchLimit(1_000)).toBe(SCHEDULED_ANNOUNCEMENT_BATCH_MAX_LIMIT);
+    expect(normalizeScheduledAnnouncementBatchLimit(Number.NaN)).toBe(SCHEDULED_ANNOUNCEMENT_BATCH_DEFAULT_LIMIT);
   });
 });
 
