@@ -477,6 +477,16 @@ Production Readiness
 
 Each milestone must satisfy its Definition of Done before the next milestone begins.
 
+### STAGING release
+
+STAGING uses a dedicated Vercel project and Supabase project. GitHub Actions is
+the only deployment authority: it validates and builds the exact `main` commit,
+applies and verifies Drizzle migrations explicitly through the STAGING Session
+Pooler, then deploys the same prebuilt artifact and runs public smoke checks.
+Neither install, build, nor application startup runs migrations. See
+`docs/architecture/vercel-staging-and-cicd.md` for the environment matrix and
+operator contract.
+
 ---
 
 ## Contributing

@@ -47,8 +47,12 @@ The staging Auth settings endpoint reported:
 - email provider enabled;
 - automatic email confirmation enabled for operator-provisioned identities.
 
-The staging Site URL remains `http://localhost:3000` until Task 046 creates the
-Vercel staging deployment. Required localhost redirect URLs are configured.
+The staging Site URL remains `http://localhost:3000` until the Task 046 provider
+checkpoint creates and verifies the dedicated public Vercel STAGING origin.
+Required localhost redirect URLs are configured. The repository-side target,
+migration gate, Auth callback, and Cron contracts are documented in
+`vercel-staging-and-cicd.md`; the hosted Site URL must not change to a guessed or
+ephemeral deployment URL.
 These URL settings were operator-confirmed; no Dashboard configuration was
 changed by the migration run.
 

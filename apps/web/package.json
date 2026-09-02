@@ -13,7 +13,11 @@
     "test:e2e": "playwright test",
     "bootstrap:first-tenant": "tsx --env-file=.env.local scripts/operator/bootstrap-first-tenant.ts",
     "seed:staging-demo": "tsx --env-file=.env.local scripts/operator/seed-staging-demo.ts",
-    "verify:staging-user-provisioning": "tsx --env-file=.env.local scripts/operator/verify-staging-user-provisioning.ts"
+    "verify:staging-user-provisioning": "tsx --env-file=.env.local scripts/operator/verify-staging-user-provisioning.ts",
+    "verify:staging-migration": "tsx scripts/deployment/verify-staging-migration.ts",
+    "verify:staging-smoke": "tsx scripts/deployment/verify-staging-smoke.ts",
+    "configure:staging-cron": "tsx scripts/deployment/configure-staging-cron.ts",
+    "verify:staging-cron": "tsx scripts/deployment/verify-staging-cron.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

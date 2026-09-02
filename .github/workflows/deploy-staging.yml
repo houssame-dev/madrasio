@@ -1,0 +1,91 @@
+name: Deploy STAGING
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate, migrate, and deploy STAGING
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: staging
+    env:
+      DEPLOY_TARGET_ENV: staging
+      DEPLOY_EXPECTED_PROJECT_REF: cqeaxlttezunirsmkrxz
+      MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      STAGING_APP_ORIGIN: ${{ vars.STAGING_APP_ORIGIN }}
+
+    steps:
+      - name: Checkout exact release commit
+        uses: actions/checkout@v4
+
+      - name: Verify exact checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build application
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_ANON_KEY: placeholder-anon-key
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/postgres
+        run: pnpm build
+
+      - name: Pull dedicated Vercel STAGING configuration
+        run: pnpm dlx vercel@59.11.1 pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Build production-like Vercel artifact
+        run: pnpm dlx vercel@59.11.1 build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Apply explicit STAGING migrations
+        run: pnpm db:migrate
+
+      - name: Verify STAGING migrations and schema
+        run: pnpm verify:staging-migration
+
+      - name: Deploy the tested prebuilt artifact
+        id: deploy
+        shell: bash
+        run: |
+          deployment_url="$(pnpm dlx vercel@59.11.1 deploy --prebuilt --prod --archive=tgz --token="${{ secrets.VERCEL_TOKEN }}" --meta githubCommitSha="$GITHUB_SHA")"
+          echo "deployment_url=$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for deployment readiness
+        run: pnpm dlx vercel@59.11.1 inspect "${{ steps.deploy.outputs.deployment_url }}" --wait --timeout=5m --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Verify stable STAGING deployment
+        run: pnpm verify:staging-smoke

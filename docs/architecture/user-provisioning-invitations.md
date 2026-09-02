@@ -65,7 +65,7 @@ Task 045 does not provide resend. Re-inviting, delete/recreate, or exposing an A
 
 ## Deployment handoff
 
-Before hosted use, `APP_URL`, Supabase Auth Site URL, allowed redirects, and the invite template must name only the approved origin. Local STAGING acceptance uses `http://localhost:3000`. Task 046 must replace/add the real Vercel STAGING origin and callback without adding wildcard Internet origins. Production is not configured by this task.
+Before hosted use, `APP_URL`, Supabase Auth Site URL, allowed redirects, and the invite template must name only the approved origin. Local STAGING acceptance uses `http://localhost:3000`. Task 046 defines the dedicated `school-management-system-staging` Vercel project and its stable HTTPS callback contract in `vercel-staging-and-cicd.md`; provider acceptance must replace/add that exact origin without arbitrary wildcard Internet origins. Production is not configured by this task.
 
 No migration, RLS change, Data API change, public directory, generalized identity-provider table, or Student account path is introduced by Task 045.
 

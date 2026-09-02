@@ -167,8 +167,11 @@ normal application migration and never a placeholder URL.
 
 ## Limitations and handoff
 
-Actual Cron registration and hosted scheduled invocation are intentionally
-deferred to Task 046. Realtime delivery, exponential backoff, dead-letter
+Task 046 now represents this contract with guarded repository commands and the
+two stable job names documented in `vercel-staging-and-cicd.md`. Provider-side
+registration and hosted invocation remain acceptance steps and must not occur
+until the stable Vercel origin and matching server secret exist. Realtime
+delivery, exponential backoff, dead-letter
 queues, and broader observability are also outside this task. Durable database
 state and repeatable one-minute polling are sufficient for the current load.
 

@@ -17,6 +17,10 @@
     "test:e2e": "pnpm --filter @school/web test:e2e",
     "bootstrap:first-tenant": "pnpm --filter @school/web bootstrap:first-tenant",
     "seed:staging-demo": "pnpm --filter @school/web seed:staging-demo",
+    "verify:staging-migration": "pnpm --filter @school/web verify:staging-migration",
+    "verify:staging-smoke": "pnpm --filter @school/web verify:staging-smoke",
+    "configure:staging-cron": "pnpm --filter @school/web configure:staging-cron",
+    "verify:staging-cron": "pnpm --filter @school/web verify:staging-cron",
     "db:generate": "pnpm --filter @school/database generate",
     "db:migrate": "pnpm --filter @school/database migrate",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
