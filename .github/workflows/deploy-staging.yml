@@ -19,12 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: staging
+    permissions:
+      contents: write
     env:
       DEPLOY_TARGET_ENV: staging
       DEPLOY_EXPECTED_PROJECT_REF: cqeaxlttezunirsmkrxz
       MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      DEPLOY_EXPECTED_SHA: ${{ github.sha }}
       STAGING_APP_ORIGIN: ${{ vars.STAGING_APP_ORIGIN }}
 
     steps:
@@ -65,27 +66,45 @@ jobs:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/postgres
         run: pnpm build
 
-      - name: Pull dedicated Vercel STAGING configuration
-        run: pnpm exec vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
-
-      - name: Build production-like Vercel artifact
-        run: pnpm exec vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
-
       - name: Apply explicit STAGING migrations
         run: pnpm db:migrate
 
       - name: Verify STAGING migrations and schema
         run: pnpm verify:staging-migration
 
-      - name: Deploy the tested prebuilt artifact
-        id: deploy
-        shell: bash
-        run: |
-          deployment_url="$(pnpm exec vercel deploy --prebuilt --prod --archive=tgz --token="${{ secrets.VERCEL_TOKEN }}" --meta githubCommitSha="$GITHUB_SHA")"
-          echo "deployment_url=$deployment_url" >> "$GITHUB_OUTPUT"
+      - name: Promote exact tested SHA to staging-release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.ref !== 'refs/heads/main' || !/^[a-f0-9]{40}$/.test(context.sha)) {
+              throw new Error('Only an exact main commit may be promoted.');
+            }
+            const repo = context.repo;
+            const ref = 'heads/staging-release';
+            let exists = true;
+            try {
+              await github.rest.git.getRef({ ...repo, ref });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              exists = false;
+            }
+            if (exists) {
+              await github.rest.git.updateRef({ ...repo, ref, sha: context.sha, force: false });
+            } else {
+              await github.rest.git.createRef({ ...repo, ref: 'refs/heads/staging-release', sha: context.sha });
+            }
+            const promoted = await github.rest.git.getRef({ ...repo, ref });
+            if (promoted.data.object.sha !== context.sha) {
+              throw new Error('Release branch does not match the tested commit.');
+            }
 
-      - name: Wait for deployment readiness
-        run: pnpm exec vercel inspect "${{ steps.deploy.outputs.deployment_url }}" --wait --timeout=5m --token="${{ secrets.VERCEL_TOKEN }}"
+      - name: Trigger STAGING Deploy Hook
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: pnpm deploy:staging-hook
+
+      - name: Wait for exact deployed SHA
+        run: pnpm verify:staging-release
 
       - name: Verify stable STAGING deployment
         run: pnpm verify:staging-smoke

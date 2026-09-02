@@ -16,6 +16,8 @@
     "verify:staging-user-provisioning": "tsx --env-file=.env.local scripts/operator/verify-staging-user-provisioning.ts",
     "verify:staging-migration": "tsx scripts/deployment/verify-staging-migration.ts",
     "verify:staging-smoke": "tsx scripts/deployment/verify-staging-smoke.ts",
+    "deploy:staging-hook": "tsx scripts/deployment/trigger-staging-deploy.ts",
+    "verify:staging-release": "tsx scripts/deployment/wait-staging-deployment.ts",
     "configure:staging-cron": "tsx scripts/deployment/configure-staging-cron.ts",
     "verify:staging-cron": "tsx scripts/deployment/verify-staging-cron.ts"
   },

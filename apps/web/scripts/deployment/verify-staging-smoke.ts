@@ -1,4 +1,5 @@
-import { parseStagingOrigin, safeDeploymentError } from './contracts';
+import { safeDeploymentError } from './contracts';
+import { isExpectedDeployment, parseReleaseConfiguration } from './release-transport';
 
 async function request(origin: URL, path: string, init?: RequestInit): Promise<Response> {
   return fetch(new URL(path, origin), {
@@ -9,7 +10,10 @@ async function request(origin: URL, path: string, init?: RequestInit): Promise<R
 }
 
 async function main(): Promise<void> {
-  const origin = parseStagingOrigin(process.env.STAGING_APP_ORIGIN);
+  const { origin, expectedSha } = parseReleaseConfiguration(process.env);
+  if (!(await isExpectedDeployment(origin, expectedSha))) {
+    throw new Error('The stable origin is not serving the expected release.');
+  }
   const login = await request(origin, '/login');
   const loginHtml = (await login.text()).toLowerCase();
   if (login.status !== 200 || (!loginHtml.includes('sign in') && !loginHtml.includes('login'))) {
@@ -34,11 +38,15 @@ async function main(): Promise<void> {
     }
   }
 
+  if (!(await isExpectedDeployment(origin, expectedSha))) {
+    throw new Error('The stable origin changed during smoke verification.');
+  }
   console.info(
     JSON.stringify({
       event: 'staging_deployment_smoke_passed',
       origin: origin.origin,
-      checks: 8,
+      commitSha: expectedSha,
+      checks: 10,
     }),
   );
 }

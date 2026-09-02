@@ -482,7 +482,9 @@ Each milestone must satisfy its Definition of Done before the next milestone beg
 STAGING uses a dedicated Vercel project and Supabase project. GitHub Actions is
 the only deployment authority: it validates and builds the exact `main` commit,
 applies and verifies Drizzle migrations explicitly through the STAGING Session
-Pooler, then deploys the same prebuilt artifact and runs public smoke checks.
+Pooler, then promotes that exact commit to the machine-managed `staging-release`
+branch and invokes a secret Vercel Deploy Hook. Vercel builds the same verified
+commit independently; exact-SHA readiness and public smoke checks gate acceptance.
 Neither install, build, nor application startup runs migrations. See
 `docs/architecture/vercel-staging-and-cicd.md` for the environment matrix and
 operator contract.

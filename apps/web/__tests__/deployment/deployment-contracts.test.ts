@@ -102,10 +102,11 @@ describe('STAGING deployment contracts', () => {
       'pnpm typecheck',
       'pnpm test',
       'pnpm build',
-      'pnpm exec vercel build --prod',
       'pnpm db:migrate',
       'pnpm verify:staging-migration',
-      'pnpm exec vercel deploy --prebuilt --prod',
+      'Promote exact tested SHA to staging-release',
+      'pnpm deploy:staging-hook',
+      'pnpm verify:staging-release',
       'pnpm verify:staging-smoke',
     ];
     let previous = -1;
@@ -118,14 +119,34 @@ describe('STAGING deployment contracts', () => {
     expect(workflow).toContain('group: staging-deployment');
     expect(workflow).toContain('cancel-in-progress: false');
     expect(workflow).not.toContain('pull_request_target');
-    expect(workflow).not.toContain('pnpm dlx vercel');
+    for (const forbidden of [
+      'VERCEL_TOKEN',
+      'VERCEL_ORG_ID',
+      'VERCEL_PROJECT_ID',
+      'vercel pull',
+      'vercel build',
+      'vercel deploy',
+      'pnpm dlx',
+    ]) {
+      expect(workflow).not.toContain(forbidden);
+    }
+    expect(workflow).toContain("if: github.ref == 'refs/heads/main'");
+    expect(workflow).toContain('DEPLOY_EXPECTED_SHA: ${{ github.sha }}');
+    expect(workflow).toContain("ref: 'refs/heads/staging-release', sha: context.sha");
+    expect(workflow).toContain('sha: context.sha, force: false');
+    expect(workflow).toContain('promoted.data.object.sha !== context.sha');
+    expect(workflow).toContain('contents: write');
+    expect(workflow).toContain('VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}');
+    const ci = await readFile(`${repoRoot}/.github/workflows/ci.yml`, 'utf8');
+    expect(ci).toContain('contents: read');
+    expect(ci).not.toContain('contents: write');
   });
 
-  it('uses the exact repository-owned Vercel CLI version', async () => {
+  it('does not retain the unused Vercel CLI dependency', async () => {
     const rootPackage = JSON.parse(await readFile(`${repoRoot}/package.json`, 'utf8')) as {
       devDependencies: Record<string, string>;
     };
-    expect(rootPackage.devDependencies.vercel).toBe('59.11.1');
+    expect(rootPackage.devDependencies.vercel).toBeUndefined();
   });
 
   it('does not attach migrations to install, build, or application startup', async () => {
@@ -151,6 +172,7 @@ describe('STAGING deployment contracts', () => {
       regions: string[];
     };
     expect(config.git.deploymentEnabled).toBe(false);
+    expect(config).not.toHaveProperty('github');
     expect(config.regions).toEqual(['fra1']);
   });
 });

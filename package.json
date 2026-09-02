@@ -19,6 +19,8 @@
     "seed:staging-demo": "pnpm --filter @school/web seed:staging-demo",
     "verify:staging-migration": "pnpm --filter @school/web verify:staging-migration",
     "verify:staging-smoke": "pnpm --filter @school/web verify:staging-smoke",
+    "deploy:staging-hook": "pnpm --filter @school/web deploy:staging-hook",
+    "verify:staging-release": "pnpm --filter @school/web verify:staging-release",
     "configure:staging-cron": "pnpm --filter @school/web configure:staging-cron",
     "verify:staging-cron": "pnpm --filter @school/web verify:staging-cron",
     "db:generate": "pnpm --filter @school/database generate",
@@ -27,7 +29,6 @@
   },
   "devDependencies": {
     "prettier": "^3.3.3",
-    "typescript": "^5.6.3",
-    "vercel": "59.11.1"
+    "typescript": "^5.6.3"
   }
 }
