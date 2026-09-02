@@ -102,10 +102,10 @@ describe('STAGING deployment contracts', () => {
       'pnpm typecheck',
       'pnpm test',
       'pnpm build',
-      'vercel@59.11.1 build --prod',
+      'pnpm exec vercel build --prod',
       'pnpm db:migrate',
       'pnpm verify:staging-migration',
-      'vercel@59.11.1 deploy --prebuilt --prod',
+      'pnpm exec vercel deploy --prebuilt --prod',
       'pnpm verify:staging-smoke',
     ];
     let previous = -1;
@@ -118,6 +118,14 @@ describe('STAGING deployment contracts', () => {
     expect(workflow).toContain('group: staging-deployment');
     expect(workflow).toContain('cancel-in-progress: false');
     expect(workflow).not.toContain('pull_request_target');
+    expect(workflow).not.toContain('pnpm dlx vercel');
+  });
+
+  it('uses the exact repository-owned Vercel CLI version', async () => {
+    const rootPackage = JSON.parse(await readFile(`${repoRoot}/package.json`, 'utf8')) as {
+      devDependencies: Record<string, string>;
+    };
+    expect(rootPackage.devDependencies.vercel).toBe('59.11.1');
   });
 
   it('does not attach migrations to install, build, or application startup', async () => {

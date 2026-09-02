@@ -76,8 +76,13 @@ The exact order is:
 7. deploy that same `.vercel/output` with `vercel deploy --prebuilt --prod`;
 8. wait for readiness and smoke the stable origin.
 
-Vercel CLI is pinned to `59.11.1` in the workflow. Build, application startup,
-`postinstall`, and `prebuild` never run migrations. The first pipeline execution
+Vercel CLI is pinned exactly to `59.11.1` as a root workspace development
+dependency and invoked with `pnpm exec vercel`. This keeps the frozen lockfile
+authoritative. The Vercel dependency graph's pnpm release-age exclusions are
+reviewed and committed with that dependency, so frozen CI installs do not
+append `minimumReleaseAgeExclude` entries at runtime as the former `pnpm dlx`
+invocation did. Build, application startup, `postinstall`, and `prebuild` never
+run migrations. The first pipeline execution
 against current STAGING should be a migration no-op: the verifier requires the
 exact 15 committed timestamps through `0014_canonical-user-email`, 39 public
 application tables, `auth.users`, and the canonical `public.users.email`
@@ -160,6 +165,22 @@ committed dispatch workflow can deploy the exact change, the expected checkpoint
 is `REAL_CI_EXECUTION_PENDING_COMMIT`. After review, the first `main` run must
 prove the complete migration gate, deploy, smoke, Auth configuration, Cron
 registration, and scheduler invocation before Task 046 is marked complete.
+
+### Temporary Vercel token compatibility exception
+
+Vercel CLI `59.11.1` could not retrieve the dedicated STAGING project settings
+with either a project-scoped token or a team-scoped token in this environment.
+The failure persisted after the Vercel team and project identifiers were
+verified through an authenticated interactive provider session and re-saved in
+the GitHub `staging` environment. Task 046 therefore permits a temporary Full
+Account Vercel token strictly as a provider-compatibility workaround.
+
+The token is stored only as the GitHub `staging` environment secret
+`VERCEL_TOKEN`; it must never be committed, copied into Vercel runtime variables,
+printed, or exposed to pull-request workflows. It should use the shortest
+practical expiration that supports the STAGING pipeline. Task 047 must rotate
+or retire it, re-evaluate whether Vercel CLI scoped-token compatibility has been
+fixed, and reduce its scope as soon as provider support permits.
 
 ## Production separation, logs, and handoff
 
