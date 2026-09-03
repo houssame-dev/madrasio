@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { normalizeEmail } from '@/lib/auth/email';
+import { withSupabaseKeyCompatibility } from '@/lib/config/supabase-keys';
 
 export const STAGING_PROJECT_REF = 'cqeaxlttezunirsmkrxz';
 
@@ -132,7 +133,7 @@ function parse<T extends z.ZodTypeAny>(
   mode: 'bootstrap' | 'seed',
 ): z.output<T> {
   assertNoBrowserOperatorSecret(env);
-  const result = schema.safeParse(env);
+  const result = schema.safeParse(withSupabaseKeyCompatibility(env));
   if (!result.success) {
     const keys = [...new Set(result.error.issues.map((issue) => issue.path.join('.')))].join(', ');
     throw new OperatorError('INVALID_OPERATOR_INPUT', `Invalid operator configuration: ${keys}`);

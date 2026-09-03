@@ -489,6 +489,11 @@ Neither install, build, nor application startup runs migrations. See
 `docs/architecture/vercel-staging-and-cicd.md` for the environment matrix and
 operator contract.
 
+Task 047 security migration, TLS prerequisites, key rollover and SMTP operator
+checkpoints are documented in
+[`security-and-production-hardening.md`](docs/architecture/security-and-production-hardening.md).
+These changes require reviewed provider preparation before deployment.
+
 ---
 
 ## Contributing

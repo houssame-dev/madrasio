@@ -8,7 +8,7 @@ vi.mock('@/lib/supabase/server', () => ({
 import { GET } from '@/app/auth/confirm/route';
 
 describe('invite confirmation route', () => {
-  beforeEach(() => mocks.verifyOtp.mockReset());
+  beforeEach(() => { mocks.verifyOtp.mockReset(); });
 
   it('verifies only an invite token hash and removes it from the redirect URL', async () => {
     mocks.verifyOtp.mockResolvedValue({ data: { session: {} }, error: null });
@@ -17,6 +17,7 @@ describe('invite confirmation route', () => {
     expect(response.headers.get('location')).toBe('http://localhost:3000/auth/set-password');
     expect(response.headers.get('location')).not.toContain('secret-hash');
     expect(response.headers.get('location')).not.toContain('evil.example');
+    expect(response.headers.get('cache-control')).toContain('no-store');
   });
 
   it.each([
@@ -34,5 +35,11 @@ describe('invite confirmation route', () => {
     expect(response.headers.get('location')).toBe('http://localhost:3000/auth/set-password?error=invalid-invite');
     expect(response.headers.get('location')).not.toContain('provider');
   });
-});
 
+  it('maps thrown transport failures without exposing internals or caching the token redirect', async () => {
+    mocks.verifyOtp.mockRejectedValue(new Error('internal transport detail'));
+    const response = await GET(new Request('http://localhost:3000/auth/confirm?token_hash=test-only&type=invite'));
+    expect(response.headers.get('location')).toBe('http://localhost:3000/auth/set-password?error=invalid-invite');
+    expect(response.headers.get('cache-control')).toContain('no-store');
+  });
+});

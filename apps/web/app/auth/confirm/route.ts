@@ -10,12 +10,15 @@ export async function GET(request: Request) {
 
   if (!tokenHash || tokenHash.length > 2048 || type !== 'invite') {
     destination.searchParams.set('error', 'invalid-invite');
-    return NextResponse.redirect(destination);
+    return NextResponse.redirect(destination, { headers: { 'Cache-Control': 'private, no-store' } });
   }
 
-  const supabase = await getServerSupabase();
-  const result = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'invite' });
-  if (result.error) destination.searchParams.set('error', 'invalid-invite');
-  return NextResponse.redirect(destination);
+  try {
+    const supabase = await getServerSupabase();
+    const result = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'invite' });
+    if (result.error) destination.searchParams.set('error', 'invalid-invite');
+  } catch {
+    destination.searchParams.set('error', 'invalid-invite');
+  }
+  return NextResponse.redirect(destination, { headers: { 'Cache-Control': 'private, no-store' } });
 }
-

@@ -7,6 +7,13 @@
 
 ## Hosted acceptance — 2026-09-03
 
+Task 047 adds an unapplied `0015` security migration and certificate-verified DB
+connections. Before the first commit/push that triggers the release pipeline, stage and verify trusted CA configuration
+in Vercel and GitHub (`DATABASE_SSL_CA`, public certificate configuration), and
+follow [the security rollout](security-and-production-hardening.md). The future
+migration gate expects 16 entries and hardened grants/RLS; the Task 046 evidence
+below remains the historical 15-entry acceptance, not evidence that 0015 ran.
+
 Infrastructure classification:
 `TASK_046_INFRASTRUCTURE_ACCEPTED_WITH_TASK_047_AUTH_EMAIL_DEPENDENCY`.
 Overall status remains **NOT FULLY PASSED — TASK_047 SMTP/TEMPLATE DEPENDENCY RECORDED**;

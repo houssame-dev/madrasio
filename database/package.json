@@ -7,7 +7,9 @@
   "types": "./drizzle/schema/index.ts",
   "exports": {
     ".": "./drizzle/schema/index.ts",
-    "./schema": "./drizzle/schema/index.ts"
+    "./schema": "./drizzle/schema/index.ts",
+    "./security": "./security.ts",
+    "./connection": "./connection.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

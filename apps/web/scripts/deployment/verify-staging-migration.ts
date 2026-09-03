@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import { Pool } from 'pg';
+import { postgresConnectionConfig } from '@school/database/connection';
+import { applicationSecurityAuditSql, assertApplicationSecurity } from '@school/database/security';
 
 import {
   assertStagingMigrationTarget,
@@ -26,7 +28,7 @@ async function main(): Promise<void> {
     throw new Error('The repository migration journal is not the reviewed deployment chain.');
   }
 
-  const pool = new Pool({ connectionString: migrationUrl.toString(), max: 1 });
+  const pool = new Pool({ ...postgresConnectionConfig(migrationUrl.toString(), process.env.DATABASE_SSL_CA), max: 1 });
   try {
     const client = await pool.connect();
     try {
@@ -63,6 +65,8 @@ async function main(): Promise<void> {
       ) {
         throw new Error('The canonical public.users email schema is incomplete.');
       }
+      const security = await client.query<{ violation: string }>(applicationSecurityAuditSql);
+      assertApplicationSecurity(security.rows);
       await client.query('rollback');
     } finally {
       client.release();

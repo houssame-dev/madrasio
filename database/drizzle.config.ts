@@ -1,4 +1,10 @@
 import { defineConfig } from 'drizzle-kit';
+import { postgresMigrationCredentials } from './connection';
+
+const migrationConnection = process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL;
+const connection = migrationConnection
+  ? postgresMigrationCredentials(migrationConnection, process.env.DATABASE_SSL_CA)
+  : undefined;
 
 /**
  * Drizzle Kit configuration.
@@ -14,9 +20,7 @@ export default defineConfig({
   schema: './drizzle/schema/index.ts',
   out: './drizzle/migrations',
   dialect: 'postgresql',
-  dbCredentials: {
-    url: process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL || '',
-  },
+  dbCredentials: connection || { url: '' },
   verbose: true,
   strict: true,
 });

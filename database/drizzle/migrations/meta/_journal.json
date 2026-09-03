@@ -106,6 +106,13 @@
       "when": 1788263010006,
       "tag": "0014_canonical-user-email",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1788445882606,
+      "tag": "0015_data-api-grants-hardening",
+      "breakpoints": true
     }
   ]
 }

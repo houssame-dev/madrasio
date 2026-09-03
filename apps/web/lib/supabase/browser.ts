@@ -6,7 +6,7 @@ import { clientEnv } from '@/lib/config/env';
 /**
  * Browser Supabase client factory.
  *
- * Uses only the public anon key — never the service-role key. Intended for
+ * Uses the publishable key (legacy anon fallback during rollover), never an elevated key. Intended for
  * client components and client-only flows.
  */
 let cachedClient: SupabaseClient | undefined;

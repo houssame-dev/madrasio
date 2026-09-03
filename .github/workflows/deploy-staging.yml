@@ -25,6 +25,7 @@ jobs:
       DEPLOY_TARGET_ENV: staging
       DEPLOY_EXPECTED_PROJECT_REF: cqeaxlttezunirsmkrxz
       MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      DATABASE_SSL_CA: ${{ vars.DATABASE_SSL_CA }}
       DEPLOY_EXPECTED_SHA: ${{ github.sha }}
       STAGING_APP_ORIGIN: ${{ vars.STAGING_APP_ORIGIN }}
 
@@ -60,9 +61,8 @@ jobs:
       - name: Build application
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-publishable-key
           SUPABASE_URL: https://placeholder.supabase.co
-          SUPABASE_ANON_KEY: placeholder-anon-key
           DATABASE_URL: postgresql://postgres:password@localhost:5432/postgres
         run: pnpm build
 

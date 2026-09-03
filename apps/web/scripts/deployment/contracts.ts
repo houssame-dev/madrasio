@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const STAGING_PROJECT_REF = 'cqeaxlttezunirsmkrxz';
-export const EXPECTED_MIGRATION_COUNT = 15;
+export const EXPECTED_MIGRATION_COUNT = 16;
 export const EXPECTED_TABLE_COUNT = 39;
-export const EXPECTED_LATEST_MIGRATION = '0014_canonical-user-email';
+export const EXPECTED_LATEST_MIGRATION = '0015_data-api-grants-hardening';
 export const STAGING_VERCEL_PROJECT = 'school-management-system-staging';
 export const CRON_SCHEDULE = '* * * * *';
 
@@ -123,7 +123,7 @@ export function parseCronConfiguration(env: NodeJS.ProcessEnv): {
       'A strong server-only CRON_SECRET is required.',
     );
   }
-  if (secret === env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+  if (secret === env.SUPABASE_SERVICE_ROLE_KEY?.trim() || secret === env.SUPABASE_SECRET_KEY?.trim()) {
     throw new DeploymentError(
       'INVALID_DEPLOYMENT_CONFIG',
       'CRON_SECRET must be distinct from the Supabase service-role credential.',

@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { postgresConnectionConfig } from '@school/database/connection';
 
 import {
   assertStagingMigrationTarget,
@@ -11,7 +12,7 @@ import {
 
 async function main(): Promise<void> {
   const migrationUrl = assertStagingMigrationTarget(process.env);
-  const pool = new Pool({ connectionString: migrationUrl.toString(), max: 1 });
+  const pool = new Pool({ ...postgresConnectionConfig(migrationUrl.toString(), process.env.DATABASE_SSL_CA), max: 1 });
   let latestRuns: Array<{ jobname: string; status: string }> = [];
   try {
     const client = await pool.connect();

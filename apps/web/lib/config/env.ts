@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assertPublicSupabaseKey, withSupabaseKeyCompatibility } from './supabase-keys';
 
 /**
  * Optional environment string.
@@ -64,7 +65,7 @@ let cachedServerEnv: ServerEnv | undefined;
 
 export function getServerEnv(): ServerEnv {
   if (!cachedServerEnv) {
-    const parsed = ServerEnvSchema.safeParse(process.env);
+    const parsed = ServerEnvSchema.safeParse(withSupabaseKeyCompatibility(process.env));
     if (!parsed.success) {
       // Don't leak field values. Just list the failing keys.
       const issues = parsed.error.issues.map((issue) => issue.path.join('.'));
@@ -80,9 +81,12 @@ export function getServerEnv(): ServerEnv {
  * which Next.js inlines at build time.
  */
 export const clientEnv: ClientEnv = (() => {
+  assertPublicSupabaseKey(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
+    || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   const parsed = ClientEnvSchema.parse({
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
+      || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   });
   return parsed;

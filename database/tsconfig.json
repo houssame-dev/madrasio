@@ -1,9 +1,9 @@
 {
   "extends": "../packages/config/tsconfig/base.json",
-  "include": ["drizzle/schema/**/*", "drizzle.config.ts"],
+  "include": ["drizzle/schema/**/*", "drizzle.config.ts", "connection.ts", "security.ts"],
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "drizzle",
+    "rootDir": ".",
     "declaration": true
   }
 }

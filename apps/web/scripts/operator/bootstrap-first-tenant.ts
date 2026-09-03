@@ -9,7 +9,7 @@ async function main(): Promise<void> {
     consoleLogger.info('bootstrap_preflight_started', { target: 'staging' });
     await runtime.preflight();
     consoleLogger.info('bootstrap_preflight_passed', {
-      migrationCount: 15,
+      migrationCount: 16,
       applicationTableCount: 39,
     });
     const result = await runFirstTenantBootstrap(config, {

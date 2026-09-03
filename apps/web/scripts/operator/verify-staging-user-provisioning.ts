@@ -6,6 +6,7 @@ import * as schema from '@school/database';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { postgresConnectionConfig } from '@school/database/connection';
 
 import { normalizeEmail } from '@/lib/auth/email';
 import { provisionProfileAccount } from '@/lib/modules/user-provisioning';
@@ -81,7 +82,7 @@ async function main(): Promise<void> {
   assert(appUrl === 'http://localhost:3000', 'TASK_045_LOCAL_APP_REQUIRED');
 
   const operator = createOperatorRuntime(config);
-  const pool = new Pool({ connectionString: config.DATABASE_URL, max: 3 });
+  const pool = new Pool({ ...postgresConnectionConfig(config.DATABASE_URL, process.env.DATABASE_SSL_CA), max: 3 });
   const db = drizzle(pool, { schema });
   try {
     await operator.preflight();

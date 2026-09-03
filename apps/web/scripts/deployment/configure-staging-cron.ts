@@ -1,4 +1,5 @@
 import { Pool, type PoolClient } from 'pg';
+import { postgresConnectionConfig } from '@school/database/connection';
 
 import {
   buildCronCommand,
@@ -36,7 +37,7 @@ async function upsertVaultSecret(
 
 async function main(): Promise<void> {
   const config = parseCronConfiguration(process.env);
-  const pool = new Pool({ connectionString: config.migrationUrl.toString(), max: 1 });
+  const pool = new Pool({ ...postgresConnectionConfig(config.migrationUrl.toString(), process.env.DATABASE_SSL_CA), max: 1 });
   try {
     const client = await pool.connect();
     try {

@@ -1,7 +1,9 @@
+import 'server-only';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
 import * as schema from '@school/database';
+import { postgresConnectionConfig } from '@school/database/connection';
 
 import { getServerEnv } from '@/lib/config/env';
 
@@ -32,7 +34,7 @@ export function getDb(): Database {
     throw new Error('DATABASE_URL is not configured. See .env.example.');
   }
 
-  cachedPool = new Pool({ connectionString: env.DATABASE_URL });
+  cachedPool = new Pool(postgresConnectionConfig(env.DATABASE_URL, process.env.DATABASE_SSL_CA));
   cachedDb = drizzle(cachedPool, { schema });
   return cachedDb;
 }

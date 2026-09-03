@@ -5,6 +5,7 @@ import * as schema from '@school/database';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { postgresConnectionConfig } from '@school/database/connection';
 
 import { normalizeEmail } from '@/lib/auth/email';
 
@@ -883,7 +884,6 @@ export async function verifyHostedHttpPreflight(
     {
       headers: {
         ...headers,
-        Authorization: `Bearer ${config.SUPABASE_ANON_KEY}`,
       },
     },
   );
@@ -915,7 +915,7 @@ export async function runHostedPreflight(config: BootstrapConfig, db: Db): Promi
     !row ||
     row.database !== 'postgres' ||
     row.auth_users !== 'auth.users' ||
-    row.migration_count !== 15 ||
+    row.migration_count !== 16 ||
     row.public_table_count !== 39
   ) {
     throw new OperatorError(
@@ -928,7 +928,7 @@ export async function runHostedPreflight(config: BootstrapConfig, db: Db): Promi
 }
 
 export function createOperatorRuntime(config: BootstrapConfig) {
-  const pool = new Pool({ connectionString: config.MIGRATION_DATABASE_URL, max: 1 });
+  const pool = new Pool({ ...postgresConnectionConfig(config.MIGRATION_DATABASE_URL, process.env.DATABASE_SSL_CA), max: 1 });
   const db = drizzle(pool, { schema });
   return {
     auth: new SupabaseAuthAdmin(config.SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY),
