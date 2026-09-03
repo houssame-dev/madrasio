@@ -110,7 +110,7 @@ be checked after linking to confirm Root Directory, outside-root sources, Node
 | Vercel                       | Server config      | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `APP_URL`                                                       |
 | Vercel                       | Server secret      | `DATABASE_URL` (Transaction Pooler `:6543`), `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`              |
 | GitHub `staging` environment | Variable           | `STAGING_APP_ORIGIN`                                                                                 |
-| GitHub `staging` environment | Secret             | `VERCEL_DEPLOY_HOOK_URL`, `MIGRATION_DATABASE_URL` (Session Pooler `:5432`)                          |
+| GitHub `staging` environment | Secret             | `VERCEL_DEPLOY_HOOK_URL`, `MIGRATION_DATABASE_URL` (Session Pooler `:5432`), `DATABASE_SSL_CA`       |
 | GitHub Actions               | Built-in authority | `GITHUB_TOKEN` / GitHub Script token, `contents: write` for the deployment job only                  |
 | GitHub Actions               | Derived config     | `DEPLOY_EXPECTED_SHA` from `github.sha`; fixed `DEPLOY_TARGET_ENV` and `DEPLOY_EXPECTED_PROJECT_REF` |
 | Vercel                       | System metadata    | `VERCEL_GIT_COMMIT_SHA`, available to server build/runtime; not a manually entered SHA               |
@@ -120,6 +120,12 @@ be checked after linking to confirm Root Directory, outside-root sources, Node
 needed by GitHub's migration stage. `CRON_SECRET` is distinct from the Supabase
 service-role key and is never public. Values must not be written to workflows,
 logs, documentation, or `.vercel` state; `.vercel` remains ignored.
+
+`DATABASE_SSL_CA` is public certificate trust material rather than a
+credential. GitHub nevertheless stores it as an environment secret so its
+multiline PEM is masked instead of rendered in deployment logs. Vercel retains
+the same existing server-side variable. This classification-only remediation
+did not rotate the CA or change certificate/hostname verification behavior.
 
 The repository supports Node `>=20`; Vercel currently resolves that range to
 Node 24, so CI explicitly uses Node 24. pnpm is resolved from the committed

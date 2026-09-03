@@ -106,7 +106,7 @@ remain Supabase SDK clients. See [Supabase API keys](https://supabase.com/docs/g
 | SUPABASE_SECRET_KEY | Server secret; Auth Admin only |
 | CRON_SECRET | Server secret; Vercel and matching Vault secret |
 | MIGRATION_DATABASE_URL | CI/operator secret only; Session Pooler :5432 |
-| DATABASE_SSL_CA | Public certificate configuration; runtime and migration trust |
+| DATABASE_SSL_CA | Public CA trust material; masked as a GitHub environment secret and configured server-side in Vercel |
 | VERCEL_DEPLOY_HOOK_URL | GitHub staging release secret only |
 | STAGING_APP_ORIGIN | GitHub staging configuration |
 | R2 credentials | Optional server secrets; not browser data |
@@ -145,8 +145,10 @@ The pinned drizzle-kit URL path discards separate SSL settings, so migrations
 now use structured host/database/user/password/port/ssl credentials. Unsupported
 migration URL options fail rather than silently changing behavior. No URL or
 secret was rewritten. All repository runtime/operator/deployment Pool factories
-use the same helper. GitHub's staging variable `DATABASE_SSL_CA` supplies the
-public trust material when required.
+use the same helper. GitHub's masked staging secret `DATABASE_SSL_CA` supplies
+the public trust material when required. The certificate is not a credential;
+secret classification is used solely to prevent multiline PEM rendering in
+operational logs.
 
 **Do not deploy this change until trusted CA configuration is staged and verified
 in both Vercel runtime and GitHub migration environments.** Obtain the provider's
@@ -160,8 +162,9 @@ separately approved operation. No SSL enforcement setting changed here.
 The same variable name, `DATABASE_SSL_CA`, carries PEM trust material in both
 environments; real multiline PEM or literal `\\n` escapes are accepted. It is
 not a password. Do not include the certificate in reports. Runtime reads it
-directly in the server-only Pool factory. GitHub's `staging` environment variable
-is passed by `deploy-staging.yml` to the migration process and verifier.
+directly in the server-only Pool factory. GitHub's `staging` environment secret
+is passed by `deploy-staging.yml` to the migration process and verifier as the
+ordinary process environment variable `DATABASE_SSL_CA`.
 `database/drizzle.config.ts` reads it and uses structured credentials with
 `ssl.rejectUnauthorized=true`; no URL parsing can replace that SSL object.
 
@@ -169,8 +172,8 @@ After repository approval, the operator must obtain the approved STAGING
 database/pooler CA chain from Supabase and set it in:
 
 - dedicated Vercel STAGING project, Production-target server configuration;
-- GitHub `staging` environment **variable** `DATABASE_SSL_CA` (not a runtime DB
-  URL or a new secret alias).
+- GitHub `staging` environment **secret** `DATABASE_SSL_CA` (not because the CA
+  is confidential, but so GitHub masks its PEM in job logs).
 
 These are additive configuration changes compatible with the currently deployed
 code, which does not consume the variable. Setting configuration before push
@@ -194,8 +197,18 @@ is replaced with verified TLS, not accepted as encryption-only.
 Commit/push approval remains gated on that provider preparation/readback. The
 resulting order is CA setup → approved commit/push → validation/build → verified
 TLS migration → schema/security verification → release/deploy → verified TLS
-runtime acceptance. Merely changing docs or seeing the variable NAME is not
+runtime acceptance. Merely changing docs or seeing the secret NAME is not
 evidence of a valid CA chain. Provider settings were not changed in this review.
+
+### Stage 1 CA log-hygiene remediation
+
+The first successful 0015 deployment proved verified TLS on both STAGING
+poolers, but GitHub rendered the public CA PEM because it was stored as an
+unmasked environment variable. The same approved CA was moved, without
+rotation, to the same-named GitHub `staging` environment secret and the old
+variable was removed. The workflow now reads `secrets.DATABASE_SSL_CA`; the
+runner, Drizzle, verifier and Node connection contracts are otherwise
+unchanged. Vercel retains its existing server-side `DATABASE_SSL_CA` value.
 
 ## Auth, password and abuse controls
 

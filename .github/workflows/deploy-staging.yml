@@ -25,7 +25,7 @@ jobs:
       DEPLOY_TARGET_ENV: staging
       DEPLOY_EXPECTED_PROJECT_REF: cqeaxlttezunirsmkrxz
       MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
-      DATABASE_SSL_CA: ${{ vars.DATABASE_SSL_CA }}
+      DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}
       DEPLOY_EXPECTED_SHA: ${{ github.sha }}
       STAGING_APP_ORIGIN: ${{ vars.STAGING_APP_ORIGIN }}
 

@@ -132,6 +132,8 @@ describe('STAGING deployment contracts', () => {
     }
     expect(workflow).toContain("if: github.ref == 'refs/heads/main'");
     expect(workflow).toContain('DEPLOY_EXPECTED_SHA: ${{ github.sha }}');
+    expect(workflow).toContain('DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}');
+    expect(workflow).not.toContain('vars.DATABASE_SSL_CA');
     expect(workflow).toContain("ref: 'refs/heads/staging-release', sha: context.sha");
     expect(workflow).toContain('sha: context.sha, force: false');
     expect(workflow).toContain('promoted.data.object.sha !== context.sha');
