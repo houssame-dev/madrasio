@@ -5,13 +5,76 @@
 > the entire Vercel project is isolated for STAGING and must never contain
 > Production Supabase configuration.
 
+## Hosted acceptance — 2026-09-03
+
+Infrastructure classification:
+`TASK_046_INFRASTRUCTURE_ACCEPTED_WITH_TASK_047_AUTH_EMAIL_DEPENDENCY`.
+Overall status remains **NOT FULLY PASSED — TASK_047 SMTP/TEMPLATE DEPENDENCY RECORDED**;
+this is not complete Auth invitation production readiness.
+
+- GitHub deployment run `33680746243`, attempt 2, succeeded through validation,
+  explicit migration, migration verification, release-ref promotion, Deploy Hook,
+  exact-SHA readiness, and smoke. Main, `staging-release`, and the deployed health
+  endpoint matched `3593e6ba6da014bd2b59dc39167404bc2b57a99c`.
+- STAGING retained 15 migrations through `0014_canonical-user-email` and 39
+  application tables. The earlier real Admin, Teacher, Parent, and Parent inbox
+  smoke passed; the public ten-check smoke passed again after Cron activation.
+- Auth Site URL is `https://school-management-system-staging.vercel.app`.
+  The allowlist contains exactly that origin's `/auth/confirm` and
+  `http://localhost:3000/auth/confirm`, with no wildcards. Missing/unsupported
+  confirmation input redirects to the fixed internal invalid-invite page;
+  unauthenticated password setup exposes no password form. Public signup and
+  anonymous sign-in remain disabled, email authentication enabled, and
+  Student/Auth UUID matches zero.
+- **`TASK_047_CUSTOM_SMTP_EMAIL_TEMPLATE_DEPENDENCY`:** this newer Supabase
+  Free/default-SMTP project currently sends the default Invite User template
+  using `{{ .ConfirmationURL }}`. The Dashboard does not permit template editing
+  under the current plan/mailer configuration. No plan upgrade, Custom SMTP, or
+  Send Email hook was configured. Task 047 must configure SMTP, install the
+  token-hash template below, and verify actual delivered-email acceptance.
+  Provisioning already passes the complete `/auth/confirm` URL as `redirectTo`;
+  do not append that path a second time. This dependency does not block the
+  independent scheduler infrastructure acceptance.
+- The three obsolete named Task 046 PAT entries (`VERCEL_TOKEN` and two
+  `school-management-system-staging-github-actions` entries) were deleted in
+  Vercel, along with the remaining active Task 046 CLI credential. Browser
+  sessions were not revoked. GitHub `staging` now retains only the required
+  secrets `MIGRATION_DATABASE_URL`, `VERCEL_DEPLOY_HOOK_URL`, and the variable
+  `STAGING_APP_ORIGIN`; the three obsolete PAT-era secret names were removed.
+- The existing ignored-local job credential authenticated to the deployed
+  zero-work Outbox endpoint. No Vercel secret readback or rotation was needed.
+  The committed guarded configurator then enabled `pg_cron` and `pg_net`, wrote
+  the two approved Vault entries, and registered the two jobs below. A rerun
+  preserved exactly two active jobs and two named Vault entries.
+- Both jobs ran successfully at 02:21, 02:22, 02:23, and 02:24 UTC. All eight
+  corresponding `pg_net` responses were HTTP 200, without timeout/error, with
+  zero attempted work and zero failures. Vercel logs independently showed
+  `internal_job_completed` for both route names. Jobs remain enabled every minute;
+  these are an acceptance observation window, not lifetime run totals.
+- The preserved `2027-06-15T12:00:00.000Z` publication remained `SCHEDULED`,
+  with null `published_at`, zero recipient snapshots, zero related Outbox rows,
+  and zero Notifications. All eight historical Outbox rows remained `PROCESSED`
+  with `attempt_count = 1`: three `AnnouncementPublished`, four `ResultPublished`,
+  one `ResultRevisionPublished`. Notifications remained eight total, zero unread,
+  with zero duplicate event/recipient groups. Announcement publications remained
+  three published/one scheduled; Result publications five; Announcement recipient
+  snapshots three. No additional business fixtures were needed.
+- Inspected runtime job logs and network operational responses contained only
+  safe counts/IDs/statuses; no credentials or recipient payloads were exposed.
+  This is a bounded acceptance audit, not an exhaustive provider-log-retention
+  audit. Task 048 owns broader monitoring, alerts, retention, and redaction checks.
+- No application code, migrations, domain schema, Production infrastructure, or
+  Production data changed during this acceptance. This documentation update is
+  uncommitted for review; the deployed SHA remains the approved SHA above.
+
 ## Dedicated project and origin
 
 The approved project name is `school-management-system-staging`. A Vercel Custom
 Environment is not required; a dedicated project works on Hobby and gives STAGING
 its own stable production alias. The provider project exists and its stable
 origin is `https://school-management-system-staging.vercel.app`. Public deployment
-acceptance is still pending; project existence does not prove a working release.
+acceptance succeeded as recorded above; project existence alone is not evidence
+of a working release.
 
 The Vercel Root Directory is `apps/web`, the only deployable application. The
 project must keep **Include source files outside of the Root Directory in the
@@ -160,7 +223,8 @@ changes require an expand/contract release, not a reordered gate.
 After the stable origin exists, STAGING Auth must use it as Site URL. The exact
 HTTPS `/auth/confirm` flow must be allowlisted; intentional localhost callbacks
 may remain for local development, but no arbitrary Internet wildcard is allowed.
-The Invite User template remains:
+The required Invite User template contract is (current hosted-template dependency
+is recorded above):
 
 ```text
 {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=invite
@@ -197,7 +261,7 @@ state, not timing, orders scheduled publication before later Outbox projection.
 The preserved `2027-06-15T12:00:00.000Z` publication must remain `SCHEDULED`
 after multiple invocations.
 
-## Provider execution checkpoint
+## Original provider execution checkpoint (historical plan)
 
 Read-only preflight confirmed the existing dedicated STAGING project is not Git
 connected, Root Directory is `apps/web`, and access to system environment
@@ -223,11 +287,12 @@ new release run (a failed missing-hook run must not be bypassed):
    SHA, and smoke. Test ordinary push non-deployment with provider history.
    Keep Auth/Cron provider work as subsequent Task 046 checkpoints.
 
-Real Deploy Hook compatibility and disabled-auto-deploy behavior still require
-provider acceptance; repository tests cannot establish provider behavior. If
+At transport review, Deploy Hook compatibility and disabled-auto-deploy behavior
+still required provider acceptance; repository tests cannot establish provider behavior. If
 hooks are blocked, stop and review the narrowest configuration adjustment rather
 than enabling ordinary Git auto-deployments. Until committed, the new transport
-has `REAL_CI_EXECUTION_PENDING_COMMIT` status.
+had `REAL_CI_EXECUTION_PENDING_COMMIT` status. The subsequent real deployment and
+current acceptance evidence are recorded at the top of this document.
 
 ### Abandoned PAT/CLI transport
 
