@@ -76,9 +76,9 @@ describe('STAGING deployment contracts', () => {
       parseCronConfiguration({
         ...base,
         RUN_STAGING_CRON_CONFIGURATION: '1',
-        SUPABASE_SERVICE_ROLE_KEY: base.CRON_SECRET,
+        SUPABASE_SECRET_KEY: base.CRON_SECRET,
       }),
-    ).toThrow('distinct from the Supabase service-role');
+    ).toThrow('distinct from the Supabase Auth Admin');
   });
 
   it('builds two bounded Cron commands that reference Vault rather than secret values', () => {
@@ -132,6 +132,8 @@ describe('STAGING deployment contracts', () => {
     }
     expect(workflow).toContain("if: github.ref == 'refs/heads/main'");
     expect(workflow).toContain('DEPLOY_EXPECTED_SHA: ${{ github.sha }}');
+    expect(workflow).toContain('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-publishable-key');
+    expect(workflow).not.toMatch(/NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY/);
     expect(workflow).toContain('DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}');
     expect(workflow).not.toContain('vars.DATABASE_SSL_CA');
     expect(workflow).toContain("ref: 'refs/heads/staging-release', sha: context.sha");

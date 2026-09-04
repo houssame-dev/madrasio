@@ -41,16 +41,16 @@ Both commands require:
 
 - explicit target-environment designation;
 - exact expected Supabase project reference;
-- the environment's Auth URL and public/anon credential;
-- a server/operator-only `SUPABASE_SERVICE_ROLE_KEY`;
+- the environment's Auth URL and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`;
+- a server/operator-only `SUPABASE_SECRET_KEY`;
 - the reviewed runtime Transaction Pooler URL and operator Session Pooler URL;
 - first-admin email and strong password;
 - School name and timezone.
 
 The demo seed additionally requires separate ignored Teacher and Parent test
 emails and strong passwords. No operator credential may use a `NEXT_PUBLIC_`
-name. The service-role key remains optional for normal Next.js runtime and is
-used only by these explicit commands.
+name. The Auth Admin secret remains optional for normal Next.js reads and is
+used only by explicitly privileged Auth operations.
 
 ## Target and hosted preflight
 

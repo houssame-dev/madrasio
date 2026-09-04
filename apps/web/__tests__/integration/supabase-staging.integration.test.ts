@@ -46,7 +46,7 @@ describeStaging('Supabase staging integration', () => {
     const browserResult = await getBrowserSupabase().auth.getUser();
     expect(browserResult.data.user).toBeNull();
 
-    const serverClient = createServerClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+    const serverClient = createServerClient(env.SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
       cookies: {
         getAll: () => [],
         setAll: () => undefined,

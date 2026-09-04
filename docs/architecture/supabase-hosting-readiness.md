@@ -154,22 +154,21 @@ port before any migration and record the selected environment explicitly.
 
 ## 9. Environment-variable matrix
 
-| Variable                        | Class                        | Required by                        | Policy                                                                                      |
-| ------------------------------- | ---------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | PUBLIC/browser-safe          | Browser Auth client                | Environment-specific project URL                                                            |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | PUBLIC/browser-safe          | Browser Auth client                | Publishable/anon credential only; never an admin secret                                     |
-| `NEXT_PUBLIC_APP_URL`           | PUBLIC/browser-safe          | Optional UI origin                 | Exact environment origin                                                                    |
-| `SUPABASE_URL`                  | Server runtime configuration | SSR Auth client                    | Same environment's project URL                                                              |
-| `SUPABASE_ANON_KEY`             | Server runtime configuration | SSR Auth client                    | Publishable/anon credential; not administrative authority                                   |
-| `DATABASE_URL`                  | SERVER SECRET                | Next.js repositories               | Hosted transaction pooler; never migration execution                                        |
-| `MIGRATION_DATABASE_URL`        | MIGRATION SECRET             | Explicit Drizzle/CI operator job   | Direct DB or session pooler; never browser/runtime/transaction pooler                       |
-| `SUPABASE_SERVICE_ROLE_KEY`     | OPERATOR SECRET, future      | Later protected provisioning only  | Currently optional and unused; do not configure in browser or normal runtime until required |
-| future job/Cron secret          | OPERATOR/JOB SECRET, future  | Protected processors in later task | Not named, validated, or configured by Task 040                                             |
+| Variable                                | Class                        | Required by                      | Policy                                                               |
+| --------------------------------------- | ---------------------------- | -------------------------------- | -------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`              | PUBLIC/browser-safe          | Browser and SSR Auth clients     | Environment-specific project URL                                     |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`  | PUBLIC/browser-safe          | Browser and SSR Auth clients     | Modern low-privilege key; required with no legacy fallback            |
+| `NEXT_PUBLIC_APP_URL`                   | PUBLIC/browser-safe          | Optional UI origin               | Exact environment origin                                             |
+| `SUPABASE_URL`                          | Server runtime configuration | SSR/Auth Admin clients           | Same environment's project URL                                       |
+| `SUPABASE_SECRET_KEY`                   | SERVER SECRET                | Auth Admin client only           | Never browser/session configuration                                  |
+| `DATABASE_URL`                          | SERVER SECRET                | Next.js repositories             | Hosted transaction pooler; never migration execution                 |
+| `MIGRATION_DATABASE_URL`                | MIGRATION SECRET             | Explicit Drizzle/CI operator job | Direct DB or session pooler; never browser/runtime/transaction pooler |
+| `CRON_SECRET`                           | OPERATOR/JOB SECRET          | Protected processors             | Distinct from Auth Admin and database credentials                    |
 
-Migration-only and future operator variables are intentionally absent from
-the application's required Zod runtime schema. No secret uses a
-`NEXT_PUBLIC_` prefix. Local environment files are ignored and their values
-were not copied into this review.
+Migration-only variables are absent from the application's required Zod
+runtime schema. No secret uses a `NEXT_PUBLIC_` prefix. Local environment files
+are ignored and their values were not copied into this review. Production must
+be provisioned with the modern names only.
 
 ## 10. Supabase Auth readiness
 

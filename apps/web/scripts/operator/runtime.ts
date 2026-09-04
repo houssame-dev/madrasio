@@ -849,7 +849,7 @@ export async function verifyHostedHttpPreflight(
   config: BootstrapConfig,
   request: typeof fetch = fetch,
 ): Promise<void> {
-  const headers = { apikey: config.SUPABASE_ANON_KEY };
+  const headers = { apikey: config.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY };
   const authSettings = await request(`${config.SUPABASE_URL}/auth/v1/settings`, { headers });
   const authBody = await authSettings.text();
   if (responseSaysInvalidApiKey(authBody)) {
@@ -931,12 +931,12 @@ export function createOperatorRuntime(config: BootstrapConfig) {
   const pool = new Pool({ ...postgresConnectionConfig(config.MIGRATION_DATABASE_URL, process.env.DATABASE_SSL_CA), max: 1 });
   const db = drizzle(pool, { schema });
   return {
-    auth: new SupabaseAuthAdmin(config.SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY),
+    auth: new SupabaseAuthAdmin(config.SUPABASE_URL, config.SUPABASE_SECRET_KEY),
     bootstrapStore: new BootstrapStore(db),
     demoSeedStore: new DemoSeedStore(db),
     preflight: () => runHostedPreflight(config, db),
     verifyPasswordLogin: async (email: string, password: string, expectedUserId: string) => {
-      const client = createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+      const client = createClient(config.SUPABASE_URL, config.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
         auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
       });
       const result = await client.auth.signInWithPassword({ email, password });

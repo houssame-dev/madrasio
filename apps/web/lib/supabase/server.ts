@@ -12,14 +12,14 @@ import { getServerEnv } from '@/lib/config/env';
  * a request-scoped client. This is the only sanctioned way for Server
  * Components / Route Handlers to talk to Supabase.
  *
- * The service-role key is intentionally not used here. Server-side authorization
+ * The Auth Admin secret is intentionally not used here. Server-side authorization
  * is enforced by the application's own authorization pipeline.
  */
 export async function getServerSupabase(): Promise<SupabaseClient> {
   const env = getServerEnv();
   const cookieStore = await cookies();
 
-  return createServerClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+  return createServerClient(env.SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

@@ -123,10 +123,10 @@ export function parseCronConfiguration(env: NodeJS.ProcessEnv): {
       'A strong server-only CRON_SECRET is required.',
     );
   }
-  if (secret === env.SUPABASE_SERVICE_ROLE_KEY?.trim() || secret === env.SUPABASE_SECRET_KEY?.trim()) {
+  if (secret === env.SUPABASE_SECRET_KEY?.trim()) {
     throw new DeploymentError(
       'INVALID_DEPLOYMENT_CONFIG',
-      'CRON_SECRET must be distinct from the Supabase service-role credential.',
+      'CRON_SECRET must be distinct from the Supabase Auth Admin credential.',
     );
   }
   return { migrationUrl, origin, secret };

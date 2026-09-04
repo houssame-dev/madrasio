@@ -114,20 +114,22 @@ remain Supabase SDK clients. See [Supabase API keys](https://supabase.com/docs/g
 | Bootstrap/demo credentials | Ignored operator-only fixtures; never deployed runtime |
 | SMTP credentials | Future Supabase Auth configuration only, not application env |
 
-Explicit compatibility phase: new names win. If absent, the existing
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_ANON_KEY` and
-`SUPABASE_SERVICE_ROLE_KEY` remain supported. Existing internal env/operator DTO
-field names stay stable; the shared adapter supplies their values from modern
-keys. New-only configuration works without legacy variables. Provider rejection
-does not trigger a retry with an older key. Elevated opaque/JWT credentials are
-rejected as public/session configuration without echoing them. Auth Admin keeps
-`server-only`, no session persistence/refresh, and no business DB usage.
+Stage 2B completed the compatibility phase. STAGING deactivated the legacy
+JWT-based `anon` and `service_role` API keys after a modern-only redeployment
+and fresh browser, Auth Admin, role, database, Cron, and historical-state
+acceptance. The repository now requires
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for browser/session clients and
+`SUPABASE_SECRET_KEY` for Auth Admin; it does not map retired environment names
+into these fields. Production must never be provisioned with the retired key
+names. Elevated opaque/JWT credentials remain rejected as public/session
+configuration without echoing them. Auth Admin keeps `server-only`, no session
+persistence/refresh, and no business DB usage.
 
 The database and session-server modules also have server-only import guards.
 CI uses inert modern public-key placeholders and never needs hosted credentials
-for PR builds. No PAT/CLI release dependency is reintroduced. After accepted
-rollover, remove legacy provider variables and then remove compatibility code in
-a reviewed follow-up, not before the existing deployment can authenticate.
+for PR builds. No PAT/CLI release dependency is reintroduced. Ignored local
+operator environments must remove obsolete aliases and define the two modern
+key names before running bootstrap, seed, or hosted verification commands.
 
 ## TLS finding and deployment prerequisite
 

@@ -31,8 +31,8 @@ function validEnv(): NodeJS.ProcessEnv {
     BOOTSTRAP_TARGET_ENV: 'staging',
     BOOTSTRAP_EXPECTED_PROJECT_REF: 'cqeaxlttezunirsmkrxz',
     SUPABASE_URL: 'https://cqeaxlttezunirsmkrxz.supabase.co',
-    SUPABASE_ANON_KEY: 'anon-test-value',
-    SUPABASE_SERVICE_ROLE_KEY: serviceSecret,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'publishable-test-value',
+    SUPABASE_SECRET_KEY: serviceSecret,
     DATABASE_URL:
       'postgresql://postgres.cqeaxlttezunirsmkrxz:password@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
     MIGRATION_DATABASE_URL:
@@ -118,9 +118,20 @@ describe('Task 042 operator configuration guards', () => {
 
   it('rejects a browser-exposed operator credential', () => {
     const env = validEnv();
-    env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY = serviceSecret;
+    env.NEXT_PUBLIC_SUPABASE_SECRET_KEY = serviceSecret;
     expect(() => parseBootstrapConfig(env)).toThrowError(
       expect.objectContaining({ code: 'BROWSER_OPERATOR_SECRET_REJECTED' }),
+    );
+  });
+
+  it('does not accept retired API-key aliases without the modern keys', () => {
+    const env = validEnv();
+    delete env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    delete env.SUPABASE_SECRET_KEY;
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'retired-public-fixture';
+    env.SUPABASE_SERVICE_ROLE_KEY = 'retired-elevated-fixture';
+    expect(() => parseBootstrapConfig(env)).toThrowError(
+      expect.objectContaining({ code: 'INVALID_OPERATOR_INPUT' }),
     );
   });
 });

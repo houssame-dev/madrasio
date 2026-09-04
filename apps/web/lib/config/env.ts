@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { assertPublicSupabaseKey, withSupabaseKeyCompatibility } from './supabase-keys';
+import { assertPublicSupabaseKey } from './supabase-keys';
 
 /**
  * Optional environment string.
@@ -14,14 +14,14 @@ const optionalString = (schema: z.ZodString) =>
 /**
  * Server-side environment schema.
  *
- * Server-only secrets (Supabase service role, R2, etc.) MUST live here and
+ * Server-only secrets (Supabase Auth Admin, R2, etc.) MUST live here and
  * MUST NEVER be referenced from client modules.
  */
 const ServerEnvSchema = z.object({
   // Supabase server-side
   SUPABASE_URL: z.string().url(),
-  SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: optionalString(z.string().min(1)),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+  SUPABASE_SECRET_KEY: optionalString(z.string().min(1)),
 
   // Database (Postgres / Supabase connection string)
   DATABASE_URL: z.string().url(),
@@ -50,7 +50,7 @@ const ServerEnvSchema = z.object({
  */
 const ClientEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
   NEXT_PUBLIC_APP_URL: optionalString(z.string().url()),
 });
 
@@ -65,7 +65,7 @@ let cachedServerEnv: ServerEnv | undefined;
 
 export function getServerEnv(): ServerEnv {
   if (!cachedServerEnv) {
-    const parsed = ServerEnvSchema.safeParse(withSupabaseKeyCompatibility(process.env));
+    const parsed = ServerEnvSchema.safeParse(process.env);
     if (!parsed.success) {
       // Don't leak field values. Just list the failing keys.
       const issues = parsed.error.issues.map((issue) => issue.path.join('.'));
@@ -81,12 +81,11 @@ export function getServerEnv(): ServerEnv {
  * which Next.js inlines at build time.
  */
 export const clientEnv: ClientEnv = (() => {
-  assertPublicSupabaseKey(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
-    || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  assertPublicSupabaseKey(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim());
   const parsed = ClientEnvSchema.parse({
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
-      || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim(),
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   });
   return parsed;

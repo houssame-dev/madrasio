@@ -40,12 +40,11 @@ let cachedAdmin: AuthAdminPort | undefined;
 export function getAuthAdmin(): AuthAdminPort {
   if (cachedAdmin) return cachedAdmin;
   const env = getServerEnv();
-  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!env.SUPABASE_SECRET_KEY) {
     throw new Error('Supabase Auth Admin is not configured.');
   }
-  cachedAdmin = new SupabaseAuthAdmin(createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  cachedAdmin = new SupabaseAuthAdmin(createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }));
   return cachedAdmin;
 }
-

@@ -87,7 +87,7 @@ async function main(): Promise<void> {
   try {
     await operator.preflight();
 
-    const admin = createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+    const admin = createClient(config.SUPABASE_URL, config.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
     const adminLogin = await admin.auth.signInWithPassword({
@@ -107,7 +107,7 @@ async function main(): Promise<void> {
     assert(membership, 'TASK_045_ADMIN_MEMBERSHIP_MISSING');
 
     const adminCookies = cookieStore();
-    const adminSsr = createServerClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+    const adminSsr = createServerClient(config.SUPABASE_URL, config.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
       cookies: adminCookies.adapter,
     });
     const signedIn = await adminSsr.auth.signInWithPassword({
@@ -134,8 +134,8 @@ async function main(): Promise<void> {
     }
 
     const email = fixtureEmail(config.BOOTSTRAP_ADMIN_EMAIL);
-    const password = fixturePassword(config.SUPABASE_SERVICE_ROLE_KEY);
-    const authAdmin = createClient(config.SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY, {
+    const password = fixturePassword(config.SUPABASE_SECRET_KEY);
+    const authAdmin = createClient(config.SUPABASE_URL, config.SUPABASE_SECRET_KEY, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
     let inviteTokenHash: string | undefined;
@@ -186,7 +186,7 @@ async function main(): Promise<void> {
         headers: { cookie: invitedCookies.header() },
       });
       assert(setupPage.ok && (await setupPage.text()).includes('Set your password'), 'TASK_045_PASSWORD_PAGE_FAILED');
-      const invitedSsr = createServerClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+      const invitedSsr = createServerClient(config.SUPABASE_URL, config.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
         cookies: invitedCookies.adapter,
       });
       const updated = await invitedSsr.auth.updateUser({ password });
@@ -200,7 +200,7 @@ async function main(): Promise<void> {
     }
 
     const userCookies = cookieStore();
-    const userSsr = createServerClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+    const userSsr = createServerClient(config.SUPABASE_URL, config.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
       cookies: userCookies.adapter,
     });
     const passwordLogin = await userSsr.auth.signInWithPassword({ email, password });

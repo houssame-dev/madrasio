@@ -106,9 +106,9 @@ be checked after linking to confirm Root Directory, outside-root sources, Node
 
 | Location                     | Classification     | Names/purpose                                                                                        |
 | ---------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
-| Vercel                       | Public             | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_URL`                   |
-| Vercel                       | Server config      | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `APP_URL`                                                       |
-| Vercel                       | Server secret      | `DATABASE_URL` (Transaction Pooler `:6543`), `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`              |
+| Vercel                       | Public             | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_APP_URL`            |
+| Vercel                       | Server config      | `SUPABASE_URL`, `APP_URL`                                                                            |
+| Vercel                       | Server secret      | `DATABASE_URL` (Transaction Pooler `:6543`), `SUPABASE_SECRET_KEY`, `CRON_SECRET`                    |
 | GitHub `staging` environment | Variable           | `STAGING_APP_ORIGIN`                                                                                 |
 | GitHub `staging` environment | Secret             | `VERCEL_DEPLOY_HOOK_URL`, `MIGRATION_DATABASE_URL` (Session Pooler `:5432`), `DATABASE_SSL_CA`       |
 | GitHub Actions               | Built-in authority | `GITHUB_TOKEN` / GitHub Script token, `contents: write` for the deployment job only                  |
@@ -118,7 +118,7 @@ be checked after linking to confirm Root Directory, outside-root sources, Node
 
 `MIGRATION_DATABASE_URL` is not a Vercel runtime variable. `DATABASE_URL` is not
 needed by GitHub's migration stage. `CRON_SECRET` is distinct from the Supabase
-service-role key and is never public. Values must not be written to workflows,
+Auth Admin secret and is never public. Values must not be written to workflows,
 logs, documentation, or `.vercel` state; `.vercel` remains ignored.
 
 `DATABASE_SSL_CA` is public certificate trust material rather than a

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { normalizeEmail } from '@/lib/auth/email';
-import { withSupabaseKeyCompatibility } from '@/lib/config/supabase-keys';
+import { assertPublicSupabaseKey } from '@/lib/config/supabase-keys';
 
 export const STAGING_PROJECT_REF = 'cqeaxlttezunirsmkrxz';
 
@@ -27,8 +27,8 @@ const commonSchema = z.object({
   BOOTSTRAP_TARGET_ENV: z.enum(['staging', 'production']),
   BOOTSTRAP_EXPECTED_PROJECT_REF: required('BOOTSTRAP_EXPECTED_PROJECT_REF'),
   SUPABASE_URL: z.string().url(),
-  SUPABASE_ANON_KEY: required('SUPABASE_ANON_KEY'),
-  SUPABASE_SERVICE_ROLE_KEY: required('SUPABASE_SERVICE_ROLE_KEY'),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: required('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
+  SUPABASE_SECRET_KEY: required('SUPABASE_SECRET_KEY'),
   DATABASE_URL: z.string().url(),
   MIGRATION_DATABASE_URL: z.string().url(),
   BOOTSTRAP_ADMIN_EMAIL: z.string().trim().email(),
@@ -75,9 +75,7 @@ function dbTargetsProject(value: string, expectedRef: string): boolean {
 }
 
 function assertNoBrowserOperatorSecret(env: NodeJS.ProcessEnv): void {
-  const exposed = ['NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY', 'NEXT_PUBLIC_SUPABASE_SECRET_KEY'].some(
-    (name) => Boolean(env[name]?.trim()),
-  );
+  const exposed = Boolean(env.NEXT_PUBLIC_SUPABASE_SECRET_KEY?.trim());
   if (exposed) {
     throw new OperatorError(
       'BROWSER_OPERATOR_SECRET_REJECTED',
@@ -133,7 +131,8 @@ function parse<T extends z.ZodTypeAny>(
   mode: 'bootstrap' | 'seed',
 ): z.output<T> {
   assertNoBrowserOperatorSecret(env);
-  const result = schema.safeParse(withSupabaseKeyCompatibility(env));
+  assertPublicSupabaseKey(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim());
+  const result = schema.safeParse(env);
   if (!result.success) {
     const keys = [...new Set(result.error.issues.map((issue) => issue.path.join('.')))].join(', ');
     throw new OperatorError('INVALID_OPERATOR_INPUT', `Invalid operator configuration: ${keys}`);

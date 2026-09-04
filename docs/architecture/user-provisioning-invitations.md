@@ -43,7 +43,7 @@ Controlled feature codes are `PROFILE_NOT_FOUND`, `PROFILE_NOT_ACTIVE`, `PROFILE
 
 ## Secret boundary
 
-`SUPABASE_SERVICE_ROLE_KEY` is read only in `lib/auth/admin.ts`, a `server-only` module. Its client disables session persistence, token refresh, and URL-session detection. It is used only for Auth Admin identity operations, never for browser configuration or ordinary application database queries. Drizzle continues to use `DATABASE_URL`. No `NEXT_PUBLIC_*` variable contains Auth Admin authority.
+`SUPABASE_SECRET_KEY` is read only in `lib/auth/admin.ts`, a `server-only` module. Its client disables session persistence, token refresh, and URL-session detection. It is used only for Auth Admin identity operations, never for browser configuration or ordinary application database queries. Drizzle continues to use `DATABASE_URL`. No `NEXT_PUBLIC_*` variable contains Auth Admin authority, and no retired key alias is accepted.
 
 ## Invitation confirmation and password setup
 
