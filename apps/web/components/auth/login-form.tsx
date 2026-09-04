@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Building2, LoaderCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@school/ui';
@@ -17,8 +17,13 @@ import { getBrowserSupabase } from '@/lib/supabase/browser';
 export function LoginForm() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const [isHydrated, setIsHydrated] = useState(false);
   const [formError, setFormError] = useState<string>();
   const form = useForm<LoginValues>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } });
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   async function submit(values: LoginValues) {
     setFormError(undefined);
@@ -49,19 +54,21 @@ export function LoginForm() {
             <p className="mt-1 text-sm text-muted-foreground">{t.loginDescription}</p>
           </div>
         </div>
-        <form className="space-y-4" noValidate onSubmit={form.handleSubmit(submit)}>
-          {formError ? <InlineFeedback kind="error">{formError}</InlineFeedback> : null}
-          <Field label={t.email} htmlFor="login-email" error={form.formState.errors.email?.message}>
-            <input id="login-email" type="email" autoComplete="email" autoCapitalize="none" className={inputClassName} aria-invalid={!!form.formState.errors.email} aria-describedby={form.formState.errors.email ? 'login-email-error' : undefined} {...form.register('email')} />
-          </Field>
-          <Field label={t.password} htmlFor="login-password" error={form.formState.errors.password?.message}>
-            <input id="login-password" type="password" autoComplete="current-password" className={inputClassName} aria-invalid={!!form.formState.errors.password} aria-describedby={form.formState.errors.password ? 'login-password-error' : undefined} {...form.register('password')} />
-          </Field>
-          <Button className="w-full" type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}
-            {form.formState.isSubmitting ? t.submitting : t.submit}
-          </Button>
-          {form.formState.isSubmitting ? <span className="sr-only" role="status">{t.submitting}</span> : null}
+        <form method="post" noValidate onSubmit={form.handleSubmit(submit)}>
+          <fieldset className="space-y-4" disabled={!isHydrated}>
+            {formError ? <InlineFeedback kind="error">{formError}</InlineFeedback> : null}
+            <Field label={t.email} htmlFor="login-email" error={form.formState.errors.email?.message}>
+              <input id="login-email" type="email" autoComplete="email" autoCapitalize="none" className={inputClassName} aria-invalid={!!form.formState.errors.email} aria-describedby={form.formState.errors.email ? 'login-email-error' : undefined} {...form.register('email')} />
+            </Field>
+            <Field label={t.password} htmlFor="login-password" error={form.formState.errors.password?.message}>
+              <input id="login-password" type="password" autoComplete="current-password" className={inputClassName} aria-invalid={!!form.formState.errors.password} aria-describedby={form.formState.errors.password ? 'login-password-error' : undefined} {...form.register('password')} />
+            </Field>
+            <Button className="w-full" type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}
+              {form.formState.isSubmitting ? t.submitting : t.submit}
+            </Button>
+            {form.formState.isSubmitting ? <span className="sr-only" role="status">{t.submitting}</span> : null}
+          </fieldset>
         </form>
       </section>
     </main>

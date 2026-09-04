@@ -25,6 +25,14 @@ email/current-password autocomplete metadata, prevents repeated submission,
 and maps provider failures to controlled copy rather than rendering raw
 Supabase text.
 
+The server-rendered form uses `method="post"` as defense in depth and keeps its
+credential controls disabled until React hydration installs the canonical
+`signInWithPassword` handler. This prevents every pre-hydration native form
+submission from carrying credentials, whether by GET, POST, query string, or
+navigation. A JavaScript-disabled browser regression test seeds recognizable
+dummy values, attempts submission, and verifies that no credential-bearing
+request or navigation occurs.
+
 A successful sign-in clears the complete TanStack Query cache, replaces the
 route with `/dashboard`, and refreshes the App Router. The `/me` bootstrap then
 selects the correct UX state: app shell, School selection, no membership,

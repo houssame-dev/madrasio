@@ -39,3 +39,47 @@ test('expired protected bootstrap redirects to the public login without exposing
   await expect(page.getByLabel('Password')).toHaveAttribute('autocomplete', 'current-password');
   await expect(page.getByText('Your school workspace')).not.toBeVisible();
 });
+
+test('server-rendered login cannot submit credentials before hydration', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  const dummyEmail = 'pre-hydration@example.invalid';
+  const dummyPassword = 'dummy-pre-hydration-password';
+  const credentialBearingRequests: string[] = [];
+
+  page.on('request', (request) => {
+    const body = request.postData() ?? '';
+    if (
+      request.url().includes(dummyEmail)
+      || request.url().includes(dummyPassword)
+      || body.includes(dummyEmail)
+      || body.includes(dummyPassword)
+    ) {
+      credentialBearingRequests.push(request.method());
+    }
+  });
+
+  try {
+    await page.goto('/login');
+
+    await expect(page.locator('form')).toHaveAttribute('method', 'post');
+    await expect(page.getByLabel('Email address')).toBeDisabled();
+    await expect(page.getByLabel('Password')).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Sign in' })).toBeDisabled();
+
+    await page.getByLabel('Email address').evaluate((element, value) => {
+      (element as HTMLInputElement).value = value;
+    }, dummyEmail);
+    await page.getByLabel('Password').evaluate((element, value) => {
+      (element as HTMLInputElement).value = value;
+    }, dummyPassword);
+    await page.getByRole('button', { name: 'Sign in' }).click({ force: true });
+    await page.waitForTimeout(100);
+
+    expect(page.url()).not.toContain(dummyEmail);
+    expect(page.url()).not.toContain(dummyPassword);
+    expect(credentialBearingRequests).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
