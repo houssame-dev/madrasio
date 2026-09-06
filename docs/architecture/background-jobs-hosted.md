@@ -89,6 +89,12 @@ recipients, notification content, tokens, or stack traces. Structured server
 logs contain the job name, correlation identifier, aggregate counts, and
 duration only.
 
+Task 048 makes that log contract explicit: each completion also includes
+`success` and `zeroWork`, nonzero processor failures log as warnings, and an
+invocation exception is classified as `background_job_failure` without its
+message/payload. The aggregate operator status and incident thresholds are in
+`observability-and-operational-readiness.md`.
+
 `.env.example` names the variable without a value. Real credentials belong in
 ignored local environment files and, after deployment, secure environment and
 Vault configuration.

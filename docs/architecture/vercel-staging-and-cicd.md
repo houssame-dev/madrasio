@@ -7,17 +7,17 @@
 
 ## Hosted acceptance — 2026-09-03
 
-Task 047 adds an unapplied `0015` security migration and certificate-verified DB
-connections. Before the first commit/push that triggers the release pipeline, stage and verify trusted CA configuration
-in Vercel and GitHub (`DATABASE_SSL_CA`, public certificate configuration), and
-follow [the security rollout](security-and-production-hardening.md). The future
-migration gate expects 16 entries and hardened grants/RLS; the Task 046 evidence
-below remains the historical 15-entry acceptance, not evidence that 0015 ran.
+The Task 046 evidence below is historical. Task 047 subsequently applied and
+verified `0015_data-api-grants-hardening`; the current STAGING journal has 16
+entries, 39 tables, certificate-verified runtime/migration connections, and
+database SSL enforcement. The accepted current state is documented in
+[security-and-production-hardening.md](security-and-production-hardening.md).
 
 Infrastructure classification:
 `TASK_046_INFRASTRUCTURE_ACCEPTED_WITH_TASK_047_AUTH_EMAIL_DEPENDENCY`.
-Overall status remains **NOT FULLY PASSED — TASK_047 SMTP/TEMPLATE DEPENDENCY RECORDED**;
-this is not complete Auth invitation production readiness.
+The earlier Task 047 SMTP/template dependency is resolved: Brevo Custom SMTP and
+a real delivered deployed invitation were accepted. The bullets below retain the
+Task 046 checkpoint as historical evidence.
 
 - GitHub deployment run `33680746243`, attempt 2, succeeded through validation,
   explicit migration, migration verification, release-ref promotion, Deploy Hook,
@@ -246,7 +246,7 @@ is recorded above):
 Vercel `APP_URL` and `NEXT_PUBLIC_APP_URL` must be the same stable origin, so
 Teacher/Parent invitations produce the deployed callback. A public callback
 reachability/token-verification smoke is required after provider configuration.
-Custom SMTP remains Task 047.
+Custom SMTP was completed and accepted in Task 047.
 
 ## Supabase Cron deployment contract
 

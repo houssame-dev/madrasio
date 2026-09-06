@@ -59,9 +59,9 @@ The password page requires the cookie-backed invite session. React Hook Form and
 
 ## Signup, delivery, and resend policy
 
-Public signup and anonymous sign-in remain disabled. The trusted Auth Admin invite is the only new-identity production path. Built-in Supabase mail delivery is sufficient for application semantics but can be rate-limited or restricted to approved addresses. Custom SMTP is Task 047.
+Public signup and anonymous sign-in remain disabled. The trusted Auth Admin invite is the only new-identity production path. STAGING now uses accepted Brevo Custom SMTP with the token-hash template; provider delivery/bounce visibility and credential custody remain operational concerns.
 
-Task 045 does not provide resend. Re-inviting, delete/recreate, or exposing an Auth action link is unsafe as a generic retry policy. A controlled resend design using the later mail-delivery infrastructure is deferred to Task 047. A guarded `generateLink({ type: "invite" })` may be used only by explicit STAGING acceptance tooling when built-in delivery blocks testing; it is never returned by these application APIs.
+Task 045 does not provide resend. Re-inviting, delete/recreate, or exposing an Auth action link is unsafe as a generic retry policy. Custom SMTP does not change that contract; a future resend flow still requires an explicit idempotent product/operations design.
 
 ## Deployment handoff
 
@@ -73,6 +73,10 @@ No migration, RLS change, Data API change, public directory, generalized identit
 
 The guarded Task 045 operator verifier reruns the standard hosted preflight before doing any work: the exact STAGING project, runtime and operator pool modes, 15-entry migration journal, 39-table schema, disabled public/anonymous signup, and unavailable application-table Data API must all pass. It then uses a separate Task 045 Parent profile and account; the original Task 042 Admin, Teacher, and Parent fixtures are not changed.
 
-The application flow was verified through the real STAGING Auth and PostgreSQL services: canonical profile creation, application authorization, one Auth/public identity, one endpoint-derived PARENT membership, exact profile linkage, a no-op provisioning retry, token-hash verification by the server confirmation route, cookie-backed password setup, dashboard access, logout, password sign-in, `/me` School/role resolution, self Parent-profile scope, and staff-route denial. The resulting safe aggregate state is four application Users and four memberships (one SchoolAdmin, one Teacher, and two Parents); Student/Auth identity matches remain zero.
+The application flow was verified through real STAGING Auth and PostgreSQL. Task 047 added one separate real delivered Teacher invitation and acceptance, bringing the accepted safe aggregate state to five Auth/application Users and five memberships. Student/Auth identity matches remain zero.
 
-No operator inbox was available to inspect a delivered message without exposing account data, so acceptance used the explicitly guarded STAGING-only `generateLink({ type: "invite" })` adapter. The token stayed in process memory, was never logged or returned by an application route, and exercised the same `verifyOtp` confirmation and password/session path. Production SchoolAdmin routes always use `inviteUserByEmail`; `generateLink` is not part of their runtime dependency. Built-in delivery and resend remain the Task 047 SMTP boundary.
+The earlier Task 045 acceptance used a guarded STAGING-only `generateLink`
+fallback. Task 047 superseded that limitation with real Brevo delivery through
+the production SchoolAdmin `inviteUserByEmail` path. Neither flow exposed links,
+token hashes, credentials, or passwords; `generateLink` is not a runtime product
+dependency.

@@ -81,6 +81,15 @@ Users whose UUID and normalized email projections match their exact Auth
 identities. Migration 0014 reads `auth.users` for the one-time projection
 backfill but does not mutate or own any Supabase Auth object.
 
+Task 047 subsequently applied and verified
+`0015_data-api-grants-hardening` through the gated release. The current hosted
+journal has **16 entries** (`0000`–`0015`) and still exactly 39 application
+tables. API-role application-table grants/defaults are hardened, RLS remains
+enabled on all tables with zero application policies, verified TLS and database
+SSL enforcement are active, and five application/Auth Users retain exact UUID
+and canonical-email invariants. The earlier Task 041/045 counts in this document
+are historical checkpoints.
+
 ## 5. Hosted schema verification
 
 The final `public` application schema contains exactly the expected 39 tables,

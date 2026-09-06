@@ -10,6 +10,11 @@ import { NextResponse } from 'next/server';
 import type { output, ZodTypeAny } from 'zod';
 
 import { AppError, ValidationError } from '@/lib/errors';
+import {
+  classifyOperationalError,
+  logServerEvent,
+  type OperationalErrorCategory,
+} from '@/lib/observability/logger';
 
 /** Parses a JSON body against a Zod schema, throwing ValidationError on failure. */
 export async function parseBody<S extends ZodTypeAny>(request: Request, schema: S): Promise<output<S>> {
@@ -48,7 +53,24 @@ function isFeatureScopedError(error: unknown): error is AppError & { featureCode
  * Feature-scoped errors surface both the generic `code` and the module
  * `featureCode`; unexpected errors never leak internals.
  */
-export function toApiErrorResponse(error: unknown): NextResponse {
+export interface ApiErrorContext {
+  operation?: string;
+  failureCategory?: OperationalErrorCategory;
+}
+
+export function toApiErrorResponse(error: unknown, context: ApiErrorContext = {}): NextResponse {
+  const status = error instanceof AppError ? error.status : 500;
+  const code = error instanceof AppError ? error.code : 'INTERNAL_ERROR';
+  const featureCode = isFeatureScopedError(error) ? error.featureCode : undefined;
+  logServerEvent(status >= 500 ? 'error' : 'warn', 'api_request_failed', {
+    operation: context.operation ?? 'api_request',
+    category: classifyOperationalError(error, context.failureCategory),
+    status,
+    code,
+    ...(featureCode ? { featureCode } : {}),
+    error,
+  });
+
   if (isFeatureScopedError(error)) {
     return NextResponse.json(
       {

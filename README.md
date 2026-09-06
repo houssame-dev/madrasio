@@ -489,10 +489,11 @@ Neither install, build, nor application startup runs migrations. See
 `docs/architecture/vercel-staging-and-cicd.md` for the environment matrix and
 operator contract.
 
-Task 047 security migration, TLS prerequisites, key rollover and SMTP operator
-checkpoints are documented in
-[`security-and-production-hardening.md`](docs/architecture/security-and-production-hardening.md).
-These changes require reviewed provider preparation before deployment.
+Task 047 security hardening is accepted: migration 0015, verified TLS/SSL
+enforcement, modern Supabase keys, password alignment, and Custom SMTP are live
+in STAGING. Task 048 operational health, backup limitations, alerting, and
+recovery contracts are documented in
+[`observability-and-operational-readiness.md`](docs/architecture/observability-and-operational-readiness.md).
 
 ---
 

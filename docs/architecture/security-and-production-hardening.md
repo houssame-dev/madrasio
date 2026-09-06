@@ -2,16 +2,18 @@
 
 ## Task 047 scope and status
 
-Repository implementation and read-only STAGING audit. Starting commit:
-`ae41bbd0ace6c02b213a9e007caa82d0655325b6` (`main`). No provider settings,
-hosted migrations, deployments, credentials, Cron jobs or business rows are
-changed in this pass. Production remains out of scope.
+Task 047 is accepted (`TASK_047_SECURITY_HARDENING_ACCEPTED`,
+`TASK_047_COMPLETE`) at commit `defb6566c920eba205a15451fb9bba412b93f096`.
+The current hosted baseline is 16 migrations through
+`0015_data-api-grants-hardening`, 39 tables, verified TLS plus database SSL
+enforcement, modern Supabase keys only, password minimum 8, and accepted Brevo
+Custom SMTP/real delivered Teacher invitation. STAGING project
+`cqeaxlttezunirsmkrxz` and its dedicated Vercel origin remain isolated from
+Production.
 
-The hosted baseline is still Task 046: 15 migrations through `0014`, 39 tables,
-STAGING project `cqeaxlttezunirsmkrxz`, and the dedicated Vercel STAGING origin
-`https://school-management-system-staging.vercel.app`. Migration `0015` is
-**local and unapplied**. Do not run the updated deployment gate against the old
-schema expecting a pass.
+Sections describing pre-rollout grants, TLS, legacy keys, password policy, or
+SMTP checkpoints are retained as historical decision evidence and are labeled
+accordingly; they are not the current hosted state.
 
 ## Threat boundaries
 
@@ -25,7 +27,7 @@ policies. RLS is not the server authorization system: the current direct DB
 owner bypasses it. Never expose that connection or an elevated Auth client to
 the browser. No browser-direct REST/GraphQL application repository is added.
 
-## Read-only privilege findings
+## Historical pre-0015 privilege findings
 
 The inspected session and application object owner were `postgres`. It is not a
 superuser, but has BYPASSRLS. All 39 public application tables were owned by it.
@@ -131,7 +133,7 @@ for PR builds. No PAT/CLI release dependency is reintroduced. Ignored local
 operator environments must remove obsolete aliases and define the two modern
 key names before running bootstrap, seed, or hosted verification commands.
 
-## TLS finding and deployment prerequisite
+## Historical TLS finding and deployment prerequisite
 
 The inspected legacy migration connection was **not encrypted** (`pg_stat_ssl`
 false); configured runtime/migration URLs had no sslmode. A read-only verified
@@ -152,7 +154,7 @@ the public trust material when required. The certificate is not a credential;
 secret classification is used solely to prevent multiline PEM rendering in
 operational logs.
 
-**Do not deploy this change until trusted CA configuration is staged and verified
+**Historical gate (completed): do not deploy this change until trusted CA configuration is staged and verified
 in both Vercel runtime and GitHub migration environments.** Obtain the provider's
 trusted CA via its approved channel; do not trust a certificate merely because
 an unverified endpoint presented it. Verify encrypted sessions, hostname checks
@@ -214,12 +216,10 @@ unchanged. Vercel retains its existing server-side `DATABASE_SSL_CA` value.
 
 ## Auth, password and abuse controls
 
-Read-only Dashboard audit: email provider enabled, public signup disabled,
-anonymous sign-in disabled. Minimum password length is **6**, while application
-set-password validation is **8–128** with confirmation. Provider policy is the
-authoritative enforcement for SDK password updates; client validation alone is
-not sufficient. Align the provider minimum to at least 8 after review before
-claiming acceptance. No policy was changed in this pass.
+Hosted acceptance aligned the provider minimum password length to **8**, matching
+the application set-password validation of **8–128** with confirmation. Email
+Auth remains enabled; public signup and anonymous sign-in remain disabled.
+Provider enforcement remains authoritative for SDK password updates.
 
 Secure email change is enabled. Secure password change/recent-auth and current-
 password requirements are disabled. Review those separately: blindly enabling
@@ -233,14 +233,14 @@ OTP length 8. Exact project rate-limit values were not successfully captured in
 this pass; operator readback is still required. No limits were raised, CAPTCHA
 introduced, or abuse controls disabled. See [Supabase password security](https://supabase.com/docs/guides/auth/password-security).
 
-## SMTP/operator checkpoint and invitation acceptance
+## SMTP and invitation acceptance
 
-`TASK_047_SMTP_PROVIDER_OPERATOR_CHECKPOINT`: no approved SMTP provider/sending
-domain is documented. Required operator decisions: provider, host/port and TLS
-mode, dedicated Auth sender address/display name, domain ownership/verification,
-SPF, DKIM, DMARC policy/status, and credential custody. Supply username/password
-only directly to Supabase's secure configuration, never in chat/source/Vercel.
-Do not invent a domain, purchase service, upgrade a plan or claim DNS validation.
+STAGING Custom SMTP uses the approved Brevo relay with a verified sender/domain,
+healthy DKIM/domain authentication, and DMARC. Credentials exist only in provider
+configuration. A real delivered Teacher invitation completed the deployed
+confirmation, password setup, logout/password-login, `/me`, School, role, and
+scope path. No SMTP credential, invitation URL, token hash, or password was
+recorded in source or documentation.
 
 The reviewable template is `docs/operations/auth-invite-template.html`. Its link
 is `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=invite` (HTML escapes the
@@ -249,12 +249,9 @@ append it again; do not interpolate user metadata or retain ConfirmationURL as
 the final template. Hosted default-template limitation remains until approved
 SMTP/template configuration.
 
-After approved SMTP setup, verify actual external delivery from one canonical
-SchoolAdmin invite to a safe unlinked Teacher/Parent fixture. Follow the received
-HTTPS link → server verifyOtp(invite) → fixed set-password page → update password
-→ logout → password login → exact /me School/role/profile scope. Do not expose
-tokens, passwords or cookies. Do not substitute generateLink-only evidence for
-real SMTP delivery acceptance or create duplicate permanent identities.
+This accepted flow supersedes the earlier generateLink-only STAGING fallback.
+Resend remains a separate controlled operational design; provisioning must not
+delete/recreate identities merely to resend.
 
 ## HTTP/API and cache boundary
 
@@ -320,7 +317,7 @@ credential/private-key patterns. This is not a complete historical forensic
 scan. Ignore local env, private PEM and .vercel state. Repeat source and compiled
 client-asset scans before acceptance; never print matching values.
 
-## Provider rollout after review — no writes authorized by this document
+## Historical provider rollout plan — completed in Task 047
 
 1. Review migration scope, tests, TLS prerequisites and this checkpoint register.
 2. Obtain/validate provider CA; stage trust configuration in Vercel and GitHub.
@@ -360,7 +357,13 @@ identity redesign, RLS policy framework, or production provisioning.
 
 ## Verification record
 
-Local verification completed on 2026-09-03:
+The final Task 047 acceptance completed on commit
+`defb6566c920eba205a15451fb9bba412b93f096`: canonical local verification,
+deployed exact-SHA checks, modern-key browser/Auth Admin acceptance, verified TLS
+and SSL enforcement, hardened grants/RLS posture, real SMTP delivery/invitation,
+both Cron jobs, and privacy/secret scans passed. Production was untouched.
+
+The following is retained as the historical pre-hosted review from 2026-09-03:
 
 - Frozen install, lint, workspace typecheck and production build passed.
 - Full `pnpm test` passed (web: 909 passed / 3 opt-in hosted tests skipped;
@@ -378,29 +381,22 @@ Local verification completed on 2026-09-03:
 - Production dependency audit remains nonzero: 4 High, 2 Moderate, 0 Critical,
   with reachability assessment above; no dependency or lockfile upgrade.
 
-Hosted application/SMTP/key-rollover acceptance is deliberately pending explicit
-provider approval. No hosted mutation suites, credential changes, provider
-configuration writes, Production operations or commits were performed.
+At that historical checkpoint hosted application/SMTP/key-rollover acceptance
+was pending explicit provider approval; the final acceptance above supersedes it.
 
-### Open findings / readiness
+### Current open findings / readiness
 
 | Severity | Finding | Remaining action |
 | --- | --- | --- |
-| Critical | None observed in this scoped audit | Not a blanket security certification |
-| High | Legacy inspected migration session unencrypted; verified TLS trust probe failed | Trusted CA rollout and verified runtime/migration sessions before deploying |
-| High | Hosted minimum password length 6 vs application minimum 8 | Reviewed provider alignment and acceptance tests |
-| Medium | Broad hosted API/default ACLs still present | Review/apply 0015 through the gated release; verify catalogs |
-| Medium | Custom SMTP/template and real delivered invite unverified | Operator provider/domain decisions, secure config, delivery acceptance |
-| Medium | Legacy key transition not performed | New-key acceptance before legacy retirement |
-| Medium | Exact hosted Auth rate limits not captured | Read back/review without increasing limits for tests |
-| Low | Full nonce CSP, leaked-password paid feature, history scan and operational monitoring limitations | Explicit future security/Task 048 review; no implied plan purchase |
+| Critical | None observed in the accepted scope | Not a blanket security certification |
+| High | None operationally reachable | Registry advisories retain their published severity and trigger conditions below |
+| Medium | Supabase Free-plan backup limitation | Documented by Task 048; Production backup configuration is a Task 049 gate |
+| Low | Full nonce CSP, leaked-password paid feature, and complete history scan remain deferred | No implied plan purchase; reassess with changed risk/input scope |
 
 Dependency advisory severities remain High/Moderate as reported by the registry;
 the application reachability assessment does not relabel or erase them.
-Repository corrections are ready for review, but **NOT READY FOR COMMIT/PUSH**
-until the required provider CA preparation and both-endpoint trust verification
-are confirmed. Task 047 hosted acceptance also remains incomplete until the
-other provider checkpoints above pass.
+Task 047 is complete. Task 048 owns the operational monitoring, backup, alerting,
+and recovery contracts described in `observability-and-operational-readiness.md`.
 
 ### Narrow repository-review follow-up
 

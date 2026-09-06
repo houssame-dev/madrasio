@@ -1,6 +1,9 @@
 # `lib/observability`
 
-Logging and error monitoring boundary.
+Logging and operational-observability boundary.
 
-Sentry integration will be added when a deployment target is finalized. For now
-the folder ships a thin logger interface.
+V1 uses structured server logs captured by Vercel rather than adding an APM
+dependency. `logger.ts` emits bounded JSON, redacts secret/credential/PII-shaped
+metadata, and provides stable operational error categories. Logs are diagnostic;
+database state remains authoritative for Outbox, publication, and Notification
+workflows.

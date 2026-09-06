@@ -141,6 +141,12 @@ describe('STAGING deployment contracts', () => {
     expect(workflow).toContain('promoted.data.object.sha !== context.sha');
     expect(workflow).toContain('contents: write');
     expect(workflow).toContain('VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}');
+    const smoke = await readFile(
+      `${repoRoot}/apps/web/scripts/deployment/verify-staging-smoke.ts`,
+      'utf8',
+    );
+    expect(smoke).toContain("request(origin, '/api/health/ready')");
+    expect(smoke).toContain("readinessBody.status !== 'ready'");
     const ci = await readFile(`${repoRoot}/.github/workflows/ci.yml`, 'utf8');
     expect(ci).toContain('contents: read');
     expect(ci).not.toContain('contents: write');

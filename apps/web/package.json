@@ -19,7 +19,8 @@
     "deploy:staging-hook": "tsx scripts/deployment/trigger-staging-deploy.ts",
     "verify:staging-release": "tsx scripts/deployment/wait-staging-deployment.ts",
     "configure:staging-cron": "tsx scripts/deployment/configure-staging-cron.ts",
-    "verify:staging-cron": "tsx scripts/deployment/verify-staging-cron.ts"
+    "verify:staging-cron": "tsx scripts/deployment/verify-staging-cron.ts",
+    "operational-status:staging": "tsx --env-file=.env.local scripts/operations/report-staging-status.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

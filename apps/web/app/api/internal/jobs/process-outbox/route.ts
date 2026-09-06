@@ -28,6 +28,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     logJobResult('process-outbox', invocation, safe);
     return NextResponse.json({ data: safe });
   } catch (error) {
-    return toApiErrorResponse(error);
+    return toApiErrorResponse(error, {
+      operation: 'process-outbox',
+      failureCategory: 'background_job_failure',
+    });
   }
 }

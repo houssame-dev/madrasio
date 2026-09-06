@@ -14,6 +14,17 @@ async function main(): Promise<void> {
   if (!(await isExpectedDeployment(origin, expectedSha))) {
     throw new Error('The stable origin is not serving the expected release.');
   }
+  const readiness = await request(origin, '/api/health/ready');
+  const readinessBody: unknown = await readiness.json().catch(() => null);
+  if (
+    readiness.status !== 200 ||
+    typeof readinessBody !== 'object' ||
+    readinessBody === null ||
+    !('status' in readinessBody) ||
+    readinessBody.status !== 'ready'
+  ) {
+    throw new Error('The deployed application is not database-ready.');
+  }
   const login = await request(origin, '/login');
   const loginHtml = (await login.text()).toLowerCase();
   if (login.status !== 200 || (!loginHtml.includes('sign in') && !loginHtml.includes('login'))) {
@@ -46,7 +57,7 @@ async function main(): Promise<void> {
       event: 'staging_deployment_smoke_passed',
       origin: origin.origin,
       commitSha: expectedSha,
-      checks: 10,
+      checks: 11,
     }),
   );
 }

@@ -44,6 +44,8 @@ beforeEach(() => {
     results: [{ publicationId: 'private', published: true }],
   });
   vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 
 afterEach(() => {
@@ -92,5 +94,20 @@ describe('protected internal job routes', () => {
     expect(outbox.headers.get('allow')).toBe('POST');
     expect(mocks.processOutbox).not.toHaveBeenCalled();
     expect(mocks.processScheduled).not.toHaveBeenCalled();
+  });
+
+  it('returns a generic error and emits a classified safe job failure log', async () => {
+    mocks.processOutbox.mockRejectedValueOnce(new Error('private database host and password'));
+    const response = await outboxPOST(
+      request('/api/internal/jobs/process-outbox', `Bearer ${secret}`),
+    );
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: { code: 'INTERNAL_ERROR', message: 'Internal server error' },
+    });
+    const line = String(vi.mocked(console.error).mock.calls[0]?.[0]);
+    expect(line).toContain('background_job_failure');
+    expect(line).not.toContain('private database host');
+    expect(line).not.toContain('password');
   });
 });

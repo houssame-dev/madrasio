@@ -141,6 +141,12 @@ can contain recipient IDs and academic context; they are never exposed through
 operational views (Task 013 §19). `attempt_count` is read-only; attempt-count
 metrics requiring schema changes are deferred (Task 013 §25).
 
+Task 048 adds an aggregate-only STAGING status command. It reports counts by
+state, oldest retryable age, repeat-attempt count, and most recent processed
+time without selecting or printing payloads. `FAILED` remains retryable—not a
+new permanent/dead-letter state. Initial operational alerting treats any
+`FAILED` event or retryable work older than five minutes as actionable.
+
 ## 8. Security & internal job API
 
 **No School-user API is exposed.** The outbox is infrastructure with no tenant FK

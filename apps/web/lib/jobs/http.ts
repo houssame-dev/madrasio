@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 
 import { authorizeInternalJob } from './auth';
+import { logServerEvent } from '@/lib/observability/logger';
 
 export function requireInternalJob(request: Request): NextResponse | null {
   const authorization = authorizeInternalJob(request);
@@ -34,11 +35,14 @@ export function logJobResult(
   invocation: { correlationId: string; startedAt: number },
   result: Record<string, number>,
 ): void {
-  console.info(JSON.stringify({
-    event: 'internal_job_completed',
+  const failed = result.failed ?? 0;
+  const attempted = result.attempted ?? 0;
+  logServerEvent(failed > 0 ? 'warn' : 'info', 'internal_job_completed', {
     job,
     correlationId: invocation.correlationId,
     durationMs: Date.now() - invocation.startedAt,
+    success: failed === 0,
+    zeroWork: attempted === 0,
     ...result,
-  }));
+  });
 }

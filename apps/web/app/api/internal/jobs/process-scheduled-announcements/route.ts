@@ -27,6 +27,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     logJobResult('process-scheduled-announcements', invocation, safe);
     return NextResponse.json({ data: safe });
   } catch (error) {
-    return toApiErrorResponse(error);
+    return toApiErrorResponse(error, {
+      operation: 'process-scheduled-announcements',
+      failureCategory: 'background_job_failure',
+    });
   }
 }

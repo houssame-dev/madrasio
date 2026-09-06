@@ -23,6 +23,7 @@
     "verify:staging-release": "pnpm --filter @school/web verify:staging-release",
     "configure:staging-cron": "pnpm --filter @school/web configure:staging-cron",
     "verify:staging-cron": "pnpm --filter @school/web verify:staging-cron",
+    "operational-status:staging": "pnpm --filter @school/web operational-status:staging",
     "db:generate": "pnpm --filter @school/database generate",
     "db:migrate": "pnpm --filter @school/database migrate",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
