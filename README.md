@@ -495,6 +495,11 @@ in STAGING. Task 048 operational health, backup limitations, alerting, and
 recovery contracts are documented in
 [`observability-and-operational-readiness.md`](docs/architecture/observability-and-operational-readiness.md).
 
+Task 049 Production provisioning is repository-gated and manual. The pre-client
+Free Release Candidate may contain no real School/customer data; backup capability
+and an isolated restore rehearsal are hard gates before onboarding. See
+[`production-release-candidate.md`](docs/architecture/production-release-candidate.md).
+
 ---
 
 ## Contributing

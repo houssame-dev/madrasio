@@ -20,7 +20,15 @@
     "verify:staging-release": "tsx scripts/deployment/wait-staging-deployment.ts",
     "configure:staging-cron": "tsx scripts/deployment/configure-staging-cron.ts",
     "verify:staging-cron": "tsx scripts/deployment/verify-staging-cron.ts",
-    "operational-status:staging": "tsx --env-file=.env.local scripts/operations/report-staging-status.ts"
+    "operational-status:staging": "tsx --env-file=.env.local scripts/operations/report-staging-status.ts",
+    "verify:production-target": "tsx scripts/deployment/verify-production-target.ts",
+    "verify:production-migration": "tsx scripts/deployment/verify-production-migration.ts",
+    "verify:production-smoke": "tsx scripts/deployment/verify-production-smoke.ts",
+    "deploy:production-hook": "tsx scripts/deployment/trigger-production-deploy.ts",
+    "verify:production-release": "tsx scripts/deployment/wait-production-deployment.ts",
+    "configure:production-cron": "tsx scripts/deployment/configure-production-cron.ts",
+    "verify:production-cron": "tsx scripts/deployment/verify-production-cron.ts",
+    "bootstrap:first-tenant:production": "tsx --env-file=.env.local scripts/operator/bootstrap-production-first-tenant.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

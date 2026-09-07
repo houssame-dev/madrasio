@@ -37,6 +37,16 @@ const commonSchema = z.object({
   BOOTSTRAP_SCHOOL_TIMEZONE: required('BOOTSTRAP_SCHOOL_TIMEZONE').default('Africa/Casablanca'),
 });
 
+export const PRODUCTION_BOOTSTRAP_CONFIRMATION = 'BOOTSTRAP_PRODUCTION';
+export const PRODUCTION_BACKUP_GATE_CONFIRMATION = 'BACKUP_AND_RESTORE_ACCEPTED';
+
+const productionBootstrapSchema = commonSchema.extend({
+  BOOTSTRAP_TARGET_ENV: z.literal('production'),
+  PRODUCTION_EXPECTED_PROJECT_REF: required('PRODUCTION_EXPECTED_PROJECT_REF'),
+  BOOTSTRAP_PRODUCTION_CONFIRMATION: z.literal(PRODUCTION_BOOTSTRAP_CONFIRMATION),
+  PRODUCTION_CUSTOMER_DATA_BACKUP_CONFIRMED: z.literal(PRODUCTION_BACKUP_GATE_CONFIRMATION),
+});
+
 const seedSchema = commonSchema
   .extend({
     STAGING_TEACHER_EMAIL: z.string().trim().email(),
@@ -60,6 +70,7 @@ const seedSchema = commonSchema
   });
 
 export type BootstrapConfig = z.infer<typeof commonSchema>;
+export type ProductionBootstrapConfig = z.infer<typeof productionBootstrapSchema>;
 export type SeedConfig = z.infer<typeof seedSchema>;
 
 function projectRefFromAuthUrl(value: string): string | null {
@@ -71,6 +82,14 @@ function dbTargetsProject(value: string, expectedRef: string): boolean {
   const url = new URL(value);
   return (
     url.hostname.includes(expectedRef) || decodeURIComponent(url.username).includes(expectedRef)
+  );
+}
+
+function productionDbTargetsProject(value: string, expectedRef: string): boolean {
+  const url = new URL(value);
+  return (
+    url.hostname === `db.${expectedRef}.supabase.co` ||
+    decodeURIComponent(url.username) === `postgres.${expectedRef}`
   );
 }
 
@@ -151,6 +170,68 @@ function parse<T extends z.ZodTypeAny>(
 
 export function parseBootstrapConfig(env: NodeJS.ProcessEnv): BootstrapConfig {
   return parse(commonSchema, env, 'bootstrap');
+}
+
+export function parseProductionBootstrapConfig(env: NodeJS.ProcessEnv): ProductionBootstrapConfig {
+  assertNoBrowserOperatorSecret(env);
+  assertPublicSupabaseKey(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim());
+  const result = productionBootstrapSchema.safeParse(env);
+  if (!result.success) {
+    const keys = [...new Set(result.error.issues.map((issue) => issue.path.join('.')))].join(', ');
+    throw new OperatorError('INVALID_OPERATOR_INPUT', `Invalid operator configuration: ${keys}`);
+  }
+  const config = result.data;
+  const expectedRef = config.PRODUCTION_EXPECTED_PROJECT_REF;
+  if (
+    !/^[a-z0-9]{20}$/.test(expectedRef) ||
+    expectedRef === STAGING_PROJECT_REF ||
+    config.BOOTSTRAP_EXPECTED_PROJECT_REF !== expectedRef ||
+    projectRefFromAuthUrl(config.SUPABASE_URL) !== expectedRef
+  ) {
+    throw new OperatorError(
+      'PRODUCTION_TARGET_NOT_CONFIRMED',
+      'The exact distinct Production Supabase project is not confirmed.',
+    );
+  }
+  const runtime = new URL(config.DATABASE_URL);
+  const migration = new URL(config.MIGRATION_DATABASE_URL);
+  const runtimePooler = /^aws-\d+-eu-central-1\.pooler\.supabase\.com$/.test(runtime.hostname);
+  const migrationHost =
+    migration.hostname === `db.${expectedRef}.supabase.co` ||
+    /^aws-\d+-eu-central-1\.pooler\.supabase\.com$/.test(migration.hostname);
+  if (
+    !productionDbTargetsProject(config.DATABASE_URL, expectedRef) ||
+    runtime.port !== '6543' ||
+    !runtimePooler ||
+    !productionDbTargetsProject(config.MIGRATION_DATABASE_URL, expectedRef) ||
+    migration.port !== '5432' ||
+    !migrationHost
+  ) {
+    throw new OperatorError(
+      'PRODUCTION_TARGET_NOT_CONFIRMED',
+      'Production runtime and migration connections must target the exact eu-central-1 project.',
+    );
+  }
+  const ca = env.DATABASE_SSL_CA?.replace(/\\n/g, '\n').trim();
+  if (
+    !ca ||
+    !ca.startsWith('-----BEGIN CERTIFICATE-----') ||
+    !ca.endsWith('-----END CERTIFICATE-----')
+  ) {
+    throw new OperatorError(
+      'PRODUCTION_TLS_NOT_CONFIRMED',
+      'Production bootstrap requires the approved trusted CA.',
+    );
+  }
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: config.BOOTSTRAP_SCHOOL_TIMEZONE });
+  } catch {
+    throw new OperatorError(
+      'INVALID_OPERATOR_INPUT',
+      'Invalid operator configuration: BOOTSTRAP_SCHOOL_TIMEZONE',
+    );
+  }
+  return config;
 }
 
 export function parseSeedConfig(env: NodeJS.ProcessEnv): SeedConfig {

@@ -1,0 +1,152 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact 40-character commit SHA already accepted by CI
+        required: true
+        type: string
+      confirmation:
+        description: Type DEPLOY_PRODUCTION exactly
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate, migrate, and deploy Production
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: Production
+    permissions:
+      contents: write
+      actions: read
+    env:
+      DEPLOY_TARGET_ENV: production
+      DEPLOY_EXPECTED_PROJECT_REF: ${{ vars.PRODUCTION_EXPECTED_PROJECT_REF }}
+      PRODUCTION_EXPECTED_PROJECT_REF: ${{ vars.PRODUCTION_EXPECTED_PROJECT_REF }}
+      PRODUCTION_DEPLOY_CONFIRMATION: ${{ inputs.confirmation }}
+      DEPLOY_EXPECTED_SHA: ${{ inputs.candidate_sha }}
+      PRODUCTION_APP_ORIGIN: ${{ vars.PRODUCTION_APP_ORIGIN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}
+
+    steps:
+      - name: Validate manual Production request
+        shell: bash
+        run: |
+          test "$PRODUCTION_DEPLOY_CONFIRMATION" = "DEPLOY_PRODUCTION"
+          [[ "$DEPLOY_EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test -n "$PRODUCTION_EXPECTED_PROJECT_REF"
+
+      - name: Checkout exact candidate commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          fetch-depth: 0
+
+      - name: Verify exact trusted candidate
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$DEPLOY_EXPECTED_SHA"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$DEPLOY_EXPECTED_SHA" origin/main
+
+      - name: Require successful CI for exact SHA
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = process.env.DEPLOY_EXPECTED_SHA;
+            const runs = await github.rest.actions.listWorkflowRuns({
+              ...context.repo,
+              workflow_id: 'ci.yml',
+              head_sha: sha,
+              status: 'completed',
+              per_page: 20,
+            });
+            if (!runs.data.workflow_runs.some((run) => run.conclusion === 'success')) {
+              core.setFailed('The exact Production candidate SHA has no successful CI run.');
+            }
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build application
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-publishable-key
+          SUPABASE_URL: https://placeholder.supabase.co
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/postgres
+        run: pnpm build
+
+      - name: Verify exact Production target and TLS connectivity
+        run: pnpm verify:production-target
+
+      - name: Apply explicit Production migrations through verified TLS
+        run: pnpm db:migrate
+
+      - name: Verify Production migrations and security
+        run: pnpm verify:production-migration
+
+      - name: Promote exact candidate SHA to production-release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = process.env.DEPLOY_EXPECTED_SHA;
+            if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Invalid candidate SHA.');
+            const repo = context.repo;
+            const ref = 'heads/production-release';
+            let exists = true;
+            try {
+              await github.rest.git.getRef({ ...repo, ref });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              exists = false;
+            }
+            if (exists) {
+              await github.rest.git.updateRef({ ...repo, ref, sha, force: false });
+            } else {
+              await github.rest.git.createRef({ ...repo, ref: 'refs/heads/production-release', sha });
+            }
+            const promoted = await github.rest.git.getRef({ ...repo, ref });
+            if (promoted.data.object.sha !== sha) throw new Error('Production release ref mismatch.');
+
+      - name: Trigger Production Deploy Hook
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: pnpm deploy:production-hook
+
+      - name: Wait for exact deployed SHA
+        run: pnpm verify:production-release
+
+      - name: Verify Production infrastructure smoke
+        run: pnpm verify:production-smoke
