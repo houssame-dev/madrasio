@@ -396,7 +396,12 @@ describe('Production workflow and cross-target repository gates', () => {
     expect(workflow).toContain('environment: Production');
     expect(workflow).toContain('group: production-deployment');
     expect(workflow).toContain('cancel-in-progress: false');
-    expect(workflow).toContain('PRODUCTION_RELEASE_MARKER_FILE: ${{ runner.temp }}');
+    expect(workflow).not.toContain('PRODUCTION_RELEASE_MARKER_FILE: ${{ runner.temp }}');
+    expect(workflow).toContain('marker_path="$RUNNER_TEMP/production-release-marker.json"');
+    expect(workflow).toContain(
+      '"PRODUCTION_RELEASE_MARKER_FILE=$marker_path" >> "$GITHUB_ENV"',
+    );
+    expect(workflow).not.toMatch(/PRODUCTION_RELEASE_MARKER_FILE=.*(?:secret|token|password)/i);
     expect(workflow).not.toMatch(/VERCEL_TOKEN|VERCEL_ORG_ID|VERCEL_PROJECT_ID/);
     const ordered = [
       'pnpm install --frozen-lockfile',
@@ -408,6 +413,7 @@ describe('Production workflow and cross-target repository gates', () => {
       'pnpm db:migrate',
       'pnpm verify:production-migration',
       'Promote exact candidate SHA to production-release',
+      'Initialize runner-local Production release marker',
       'pnpm deploy:production-hook',
       'Wait for current deployment instance and exact SHA',
       'pnpm verify:production-release',

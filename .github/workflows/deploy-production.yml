@@ -41,7 +41,6 @@ jobs:
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
       DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}
-      PRODUCTION_RELEASE_MARKER_FILE: ${{ runner.temp }}/production-release-marker.json
 
     steps:
       - name: Validate manual Production request
@@ -140,6 +139,12 @@ jobs:
             }
             const promoted = await github.rest.git.getRef({ ...repo, ref });
             if (promoted.data.object.sha !== sha) throw new Error('Production release ref mismatch.');
+
+      - name: Initialize runner-local Production release marker
+        shell: bash
+        run: |
+          marker_path="$RUNNER_TEMP/production-release-marker.json"
+          printf '%s\n' "PRODUCTION_RELEASE_MARKER_FILE=$marker_path" >> "$GITHUB_ENV"
 
       - name: Trigger Production Deploy Hook
         env:
