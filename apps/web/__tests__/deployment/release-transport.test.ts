@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { GET, dynamic } from '@/app/api/health/deployment/route';
@@ -148,8 +149,17 @@ describe('public deployment metadata', () => {
     vi.stubEnv('VERCEL_GIT_COMMIT_SHA', sha);
     vi.stubEnv('CRON_SECRET', 'test-secret-must-not-be-exposed');
     vi.stubEnv('DATABASE_URL', 'test-database-must-not-be-exposed');
-    const response = GET();
-    expect(await response.json()).toEqual({ status: 'ok', commitSha: sha });
+    vi.stubEnv('VERCEL_URL', 'school-app-instance.vercel.app');
+    const response = GET(
+      new NextRequest('https://school.example/api/health/deployment', {
+        headers: { 'x-vercel-deployment-url': 'school-app-instance.vercel.app' },
+      }),
+    );
+    expect(await response.json()).toEqual({
+      status: 'ok',
+      commitSha: sha,
+      deploymentUrl: 'school-app-instance.vercel.app',
+    });
     expect(response.headers.get('cache-control')).toContain('no-store');
     expect(dynamic).toBe('force-dynamic');
   });
@@ -158,7 +168,35 @@ describe('public deployment metadata', () => {
     'fails closed for unavailable/invalid provider SHA',
     async (value) => {
       vi.stubEnv('VERCEL_GIT_COMMIT_SHA', value);
-      expect(await GET().json()).toEqual({ status: 'ok', commitSha: null });
+      vi.stubEnv('VERCEL_URL', 'school-app-instance.vercel.app');
+      expect(
+        await GET(
+          new NextRequest('https://school.example/api/health/deployment', {
+            headers: { 'x-vercel-deployment-url': 'school-app-instance.vercel.app' },
+          }),
+        ).json(),
+      ).toEqual({
+        status: 'ok',
+        commitSha: null,
+        deploymentUrl: 'school-app-instance.vercel.app',
+      });
     },
   );
+
+  it('fails closed when provider deployment identity is absent or inconsistent', async () => {
+    vi.stubEnv('VERCEL_GIT_COMMIT_SHA', sha);
+    vi.stubEnv('VERCEL_URL', 'school-app-instance.vercel.app');
+    for (const header of [undefined, 'different-instance.vercel.app', 'not-vercel.example']) {
+      const response = GET(
+        new NextRequest('https://school.example/api/health/deployment', {
+          ...(header ? { headers: { 'x-vercel-deployment-url': header } } : {}),
+        }),
+      );
+      expect(await response.json()).toEqual({
+        status: 'ok',
+        commitSha: sha,
+        deploymentUrl: null,
+      });
+    }
+  });
 });

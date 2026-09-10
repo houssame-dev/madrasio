@@ -58,9 +58,11 @@ job failures.
 | --- | --- | --- | --- |
 | `GET /api/health` | liveness | none | service/status/version/time |
 | `GET /api/health/ready` | runtime readiness | one read-only `select 1` through the normal verified-TLS runtime pool | only `ready` (200) or `unavailable` (503) |
-| `GET /api/health/deployment` | release identity | none | only status and validated 40-character deployed SHA |
+| `GET /api/health/deployment` | release identity | none | status, validated 40-character deployed SHA, and validated Vercel deployment URL |
 
-All are uncached. Readiness does not expose a host, URL, schema, table, error,
+All are uncached. The deployment URL is non-secret instance metadata and is
+returned only when Vercel's routed-deployment header matches its deployment
+system environment. Readiness does not expose a host, URL, schema, table, error,
 key, or connection detail and never mutates state. A deployment can be live but
 not ready; operators must not conflate those conditions.
 
@@ -184,14 +186,18 @@ Never paste credentials or payloads into tickets/logs.
 
 ### Vercel deployment failure
 
-- Symptoms: gated workflow or exact-SHA/smoke failure; old SHA remains live.
-- Diagnose: GitHub run, release ref, Vercel build/runtime logs, deployment
-  metadata and readiness.
+- Symptoms: gated workflow, deployment-instance/exact-SHA/smoke failure, or the
+  stable alias remaining on its pre-hook deployment instance.
+- Diagnose: GitHub run, runner-local release marker classification, release
+  ref, Vercel build/runtime logs, unique deployment URL, deployment metadata,
+  stable-alias activation, and readiness.
 - Contain/recover: keep prior healthy release; fix forward and rerun the same
   gated workflow. If migration already ran, prove old/new code compatibility.
 - Do not: invoke the Deploy Hook manually, enable auto-deploy, or assume a code
   rollback can reverse schema.
-- Verify: exact SHA, liveness, readiness, role smokes, machine routes.
+- Verify: current-release deployment instance at the stable alias, exact SHA,
+  liveness, readiness, role smokes, and machine routes. SHA equality by itself
+  is insufficient for a same-SHA environment-only redeployment.
 
 ### Database unavailable or TLS/certificate failure
 

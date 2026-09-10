@@ -41,6 +41,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
       DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}
+      PRODUCTION_RELEASE_MARKER_FILE: ${{ runner.temp }}/production-release-marker.json
 
     steps:
       - name: Validate manual Production request
@@ -145,7 +146,7 @@ jobs:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: pnpm deploy:production-hook
 
-      - name: Wait for exact deployed SHA
+      - name: Wait for current deployment instance and exact SHA
         run: pnpm verify:production-release
 
       - name: Verify Production infrastructure smoke

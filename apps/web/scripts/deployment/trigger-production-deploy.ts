@@ -1,8 +1,20 @@
 import { safeDeploymentError } from './contracts';
-import { triggerProductionDeployHook } from './production-release-transport';
+import {
+  saveProductionReleaseMarker,
+  triggerProductionDeployHook,
+} from './production-release-transport';
 
 triggerProductionDeployHook(process.env)
-  .then(() => console.info(JSON.stringify({ event: 'production_deploy_hook_accepted' })))
+  .then(async (marker) => {
+    await saveProductionReleaseMarker(process.env, marker);
+    console.info(
+      JSON.stringify({
+        event: 'production_deploy_hook_accepted',
+        hookJobId: marker.hookJobId,
+        hookCreatedAt: marker.hookCreatedAt,
+      }),
+    );
+  })
   .catch((error) => {
     console.error(
       JSON.stringify({ event: 'production_deploy_hook_failed', ...safeDeploymentError(error) }),

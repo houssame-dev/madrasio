@@ -84,10 +84,39 @@ The future gated sequence is:
 5. explicit forward migrations;
 6. read-only journal/schema/grants/RLS/function/default-privilege verification;
 7. non-force promotion to machine-managed `production-release`;
-8. one Production-only secret Deploy Hook invocation;
-9. bounded polling until the stable origin serves the exact SHA;
+8. capture the active stable-alias deployment instance and make one
+   Production-only secret Deploy Hook invocation;
+9. preserve the accepted hook job metadata in a runner-local marker, then use
+   bounded polling until the stable origin serves a different deployment
+   instance with the exact SHA;
 10. liveness, database readiness, unauthenticated API, machine-route, and Data
-    API-negative smoke.
+    API-negative smoke, while confirming the stable alias still serves that
+    accepted deployment instance.
+
+Git SHA equality alone is not sufficient evidence of a new deployment when an
+environment-only change redeploys the same SHA. The release boundary therefore
+combines three independent facts:
+
+- the hook response is a valid current invocation marker;
+- `/api/health/deployment` exposes a deployment URL only when Vercel's
+  `x-vercel-deployment-url` request header matches the deployment's own
+  `VERCEL_URL`; comparing that value with the pre-hook observation proves the
+  stable alias moved to a different instance;
+- `/api/health/deployment` proves that newly activated instance runs the exact
+  approved Git SHA.
+
+The marker is bounded non-secret provider metadata stored only in the GitHub
+runner temporary directory. It is updated with the activated deployment URL so
+the following smoke step also fails if the stable alias changes. Missing or
+malformed baseline, hook, marker, deployment-instance, or SHA evidence fails
+closed. An ambiguous hook response never causes an automatic second trigger.
+This uses the standard Deploy Hook response and Vercel's documented deployment
+request/system metadata, so no Vercel API token or other long-lived provider
+credential is required. During the first rollout of this contract, the
+currently active legacy endpoint may omit deployment identity; that omission is
+recorded only as the pre-hook baseline and can never satisfy post-hook
+acceptance. Every deployment built with the new contract must provide a valid
+instance identity or fail closed.
 
 The dedicated Vercel Production project must use `production-release` as its
 only deployable branch/Deploy Hook source. Direct Git auto-deployment from

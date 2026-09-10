@@ -14,9 +14,12 @@ test('deployment metadata is minimal and cannot be cached', async ({ request }) 
   const response = await request.get('/api/health/deployment');
   expect(response.status()).toBe(200);
   const body = await response.json();
-  expect(Object.keys(body).sort()).toEqual(['commitSha', 'status']);
+  expect(Object.keys(body).sort()).toEqual(['commitSha', 'deploymentUrl', 'status']);
   expect(body.status).toBe('ok');
   expect(body.commitSha === null || /^[a-f0-9]{40}$/.test(body.commitSha)).toBe(true);
+  expect(
+    body.deploymentUrl === null || /^[a-z0-9.-]+\.vercel\.app$/.test(body.deploymentUrl),
+  ).toBe(true);
   expect(response.headers()['cache-control']).toContain('no-store');
 });
 

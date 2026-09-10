@@ -1,5 +1,9 @@
 import { safeDeploymentError } from './contracts';
-import { parseProductionReleaseConfiguration } from './production-release-transport';
+import {
+  isActivatedProductionDeployment,
+  loadProductionReleaseMarker,
+  parseProductionReleaseConfiguration,
+} from './production-release-transport';
 import { isExpectedDeployment } from './release-transport';
 
 async function request(origin: URL, path: string, init?: RequestInit): Promise<Response> {
@@ -29,7 +33,14 @@ async function verifyDataApiUnavailable(): Promise<void> {
 
 async function main(): Promise<void> {
   const { origin, expectedSha } = parseProductionReleaseConfiguration(process.env);
-  if (!(await isExpectedDeployment(origin, expectedSha))) {
+  const releaseMarker = process.env.PRODUCTION_RELEASE_MARKER_FILE
+    ? await loadProductionReleaseMarker(process.env)
+    : null;
+  if (
+    releaseMarker
+      ? !(await isActivatedProductionDeployment(process.env, releaseMarker))
+      : !(await isExpectedDeployment(origin, expectedSha))
+  ) {
     throw new Error('The Production origin is not serving the approved release.');
   }
   const liveness = await request(origin, '/api/health');
@@ -64,7 +75,11 @@ async function main(): Promise<void> {
     }
   }
   await verifyDataApiUnavailable();
-  if (!(await isExpectedDeployment(origin, expectedSha))) {
+  if (
+    releaseMarker
+      ? !(await isActivatedProductionDeployment(process.env, releaseMarker))
+      : !(await isExpectedDeployment(origin, expectedSha))
+  ) {
     throw new Error('The Production origin changed during smoke verification.');
   }
   console.info(
