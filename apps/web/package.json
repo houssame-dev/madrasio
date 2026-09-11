@@ -28,7 +28,10 @@
     "verify:production-release": "tsx scripts/deployment/wait-production-deployment.ts",
     "configure:production-cron": "tsx scripts/deployment/configure-production-cron.ts",
     "verify:production-cron": "tsx scripts/deployment/verify-production-cron.ts",
-    "bootstrap:first-tenant:production": "tsx --env-file=.env.local scripts/operator/bootstrap-production-first-tenant.ts"
+    "bootstrap:first-tenant:production": "tsx --env-file=.env.local scripts/operator/bootstrap-production-first-tenant.ts",
+    "recovery:backup:production": "tsx scripts/recovery/create-production-backup.ts",
+    "recovery:restore:local": "tsx scripts/recovery/restore-local.ts",
+    "test:recovery": "vitest run __tests__/recovery"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
