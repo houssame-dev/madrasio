@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 
 import { postgresConnectionConfig } from '@school/database/connection';
 
@@ -19,6 +19,9 @@ export type CommandRunner = (
   options?: { env?: CommandEnvironment },
 ) => Promise<{ stdout: string }>;
 
+export const PINNED_POSTGRES_CONTAINER =
+  'postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3';
+
 export const runCommand: CommandRunner = (command, args, options = {}) =>
   new Promise((resolve, reject) => {
     const inherited = Object.fromEntries(
@@ -31,7 +34,36 @@ export const runCommand: CommandRunner = (command, args, options = {}) =>
       ...inherited,
       ...options.env,
     } as NodeJS.ProcessEnv;
-    const child = spawn(command, args, {
+    const configuredImage = process.env.RECOVERY_POSTGRES_CONTAINER_IMAGE?.trim();
+    const useContainer = configuredImage && ['pg_dump', 'pg_restore'].includes(command);
+    if (configuredImage && configuredImage !== PINNED_POSTGRES_CONTAINER) {
+      reject(new Error('The PostgreSQL recovery container is not the reviewed immutable image.'));
+      return;
+    }
+    const actualCommand = useContainer ? 'docker' : command;
+    const actualArguments = useContainer
+      ? [
+          'run',
+          '--rm',
+          '--network',
+          'host',
+          '--volume',
+          '/tmp:/tmp:rw',
+          ...[
+            'PGHOST',
+            'PGPORT',
+            'PGDATABASE',
+            'PGUSER',
+            'PGPASSWORD',
+            'PGSSLMODE',
+            'PGSSLROOTCERT',
+          ].flatMap((name) => ['--env', name]),
+          configuredImage,
+          command,
+          ...args,
+        ]
+      : args;
+    const child = spawn(actualCommand, actualArguments, {
       env: childEnvironment,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
@@ -59,8 +91,9 @@ export async function assertToolVersions(runner: CommandRunner = runCommand): Pr
   const age = await runner('age', ['--version']);
   const pgMajor = Number(/(\d+)(?:\.\d+)?/.exec(dump.stdout)?.[1]);
   if (
-    pgMajor < PRODUCTION_POSTGRES_MAJOR ||
-    !restore.stdout.includes(`${PRODUCTION_POSTGRES_MAJOR}.`)
+    pgMajor !== PRODUCTION_POSTGRES_MAJOR ||
+    !dump.stdout.includes(PINNED_TOOLS.postgres) ||
+    !restore.stdout.includes(PINNED_TOOLS.postgres)
   ) {
     throw new RecoveryError(
       'BACKUP_APPLICATION_EXPORT_FAILED',
@@ -106,6 +139,32 @@ export async function postgresToolEnvironment(databaseUrl: string, ca: string | 
     },
     cleanupDirectory: directory,
   };
+}
+
+export async function cleanupPostgresToolEnvironment(directory: string): Promise<void> {
+  const target = resolve(directory);
+  const root = resolve(tmpdir());
+  const child = relative(root, target);
+  if (
+    !isAbsolute(target) ||
+    child.startsWith('..') ||
+    child === '' ||
+    !target.split(/[\\/]/).at(-1)?.startsWith('madrasio-pgssl-')
+  ) {
+    throw new RecoveryError(
+      'BACKUP_PLAINTEXT_CLEANUP_FAILED',
+      'Refused cleanup outside a generated database TLS directory.',
+    );
+  }
+  try {
+    await rm(target, { recursive: true, force: false, maxRetries: 2 });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw new RecoveryError(
+      'BACKUP_PLAINTEXT_CLEANUP_FAILED',
+      'Temporary database TLS material could not be removed.',
+    );
+  }
 }
 
 export function pgDumpArguments(output: string, snapshot: string): string[] {

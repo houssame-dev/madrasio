@@ -34,6 +34,7 @@ import { withExportedSnapshot, withSnapshotConsumer } from '@/scripts/recovery/s
 import {
   assertArchiveInventory,
   assertToolVersions,
+  cleanupPostgresToolEnvironment,
   pgDumpArguments,
   validateAgeRecipient,
 } from '@/scripts/recovery/tools';
@@ -305,33 +306,70 @@ describe('manifest, reconciliation, cleanup and future transport boundary', () =
     expect(() => assertRecoveryWorkDirectory(resolve(tmpdir()))).toThrow('Refused cleanup');
   });
 
-  it('signals heartbeat success only after immutable upload readback matches', async () => {
+  it('surfaces an operating-system plaintext cleanup failure', async () => {
+    const directory = await createRecoveryWorkDirectory();
+    const denied = vi.fn(async () => {
+      throw Object.assign(new Error('private operating-system detail'), { code: 'EPERM' });
+    }) as unknown as typeof rm;
+    try {
+      await expect(cleanupRecoveryWorkDirectory(directory, denied)).rejects.toMatchObject({
+        code: 'BACKUP_PLAINTEXT_CLEANUP_FAILED',
+      });
+    } finally {
+      await cleanupRecoveryWorkDirectory(directory);
+    }
+  });
+
+  it('only deletes generated database TLS directories', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'madrasio-pgssl-'));
+    await cleanupPostgresToolEnvironment(directory);
+    await expect(cleanupPostgresToolEnvironment(resolve(tmpdir()))).rejects.toMatchObject({
+      code: 'BACKUP_PLAINTEXT_CLEANUP_FAILED',
+    });
+  });
+
+  it('requires independent immutable upload readback before verification', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'recovery-upload-test-'));
+    const bodyPath = join(directory, 'cipher.age');
+    const readbackPath = join(directory, 'readback.age');
+    await writeFile(bodyPath, 'abc');
     const store = {
       putImmutable: vi.fn(async () => undefined),
       head: vi.fn(async () => ({ key: 'x', bytes: 3, sha256: 'abc' })),
+      download: vi.fn(async (_key: string, destination: string) => writeFile(destination, 'abc')),
     };
-    const heartbeat = {
-      success: vi.fn(async () => undefined),
-      failure: vi.fn(async () => undefined),
-    };
-    await uploadAndVerify(store, heartbeat, {
-      key: 'x',
-      bodyPath: 'unused',
-      bytes: 3,
-      sha256: 'abc',
-      backupId: 'id',
-    });
-    expect(heartbeat.success).toHaveBeenCalledOnce();
-    store.head.mockResolvedValueOnce({ key: 'x', bytes: 4, sha256: 'bad' });
-    await expect(
-      uploadAndVerify(store, heartbeat, {
+    try {
+      await expect(
+        uploadAndVerify(
+          store,
+          {
+            key: 'x',
+            bodyPath,
+            bytes: 3,
+            sha256: 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+          },
+          readbackPath,
+        ),
+      ).rejects.toThrow('remote verification');
+      store.head.mockResolvedValueOnce({
         key: 'x',
-        bodyPath: 'unused',
         bytes: 3,
-        sha256: 'abc',
-        backupId: 'id',
-      }),
-    ).rejects.toThrow('remote verification');
-    expect(heartbeat.failure).toHaveBeenCalledOnce();
+        sha256: 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+      });
+      await expect(
+        uploadAndVerify(
+          store,
+          {
+            key: 'x',
+            bodyPath,
+            bytes: 3,
+            sha256: 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+          },
+          readbackPath,
+        ),
+      ).resolves.toMatchObject({ key: 'x', bytes: 3 });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });

@@ -1,5 +1,6 @@
-import { rm, stat, writeFile } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { postgresConnectionConfig } from '@school/database/connection';
 import { Pool } from 'pg';
@@ -7,6 +8,7 @@ import { Pool } from 'pg';
 import { writeRecoveryBundle } from './bundle';
 import { parseProductionOrigin } from '../deployment/production-contracts';
 import {
+  APPLICATION_TABLES,
   RECOVERY_TABLES,
   RecoveryError,
   assertProductionBackupTarget,
@@ -32,6 +34,7 @@ import { withExportedSnapshot } from './snapshot';
 import {
   assertArchiveInventory,
   assertToolVersions,
+  cleanupPostgresToolEnvironment,
   encryptBundle,
   pgDumpArguments,
   postgresToolEnvironment,
@@ -39,32 +42,41 @@ import {
   validateAgeRecipient,
 } from './tools';
 
-async function main(): Promise<void> {
-  const url = assertProductionBackupTarget(process.env);
-  const appOrigin = parseProductionOrigin(process.env.PRODUCTION_APP_ORIGIN).origin;
-  const gitSha = process.env.RECOVERY_GIT_SHA?.trim() ?? '';
+export type ProductionRecoveryBundle = {
+  backupId: string;
+  snapshotAt: string;
+  outputPath: string;
+  bytes: number;
+  ciphertextSha256: string;
+  applicationTableCount: number;
+  authUserCount: number;
+};
+
+export async function createProductionRecoveryBundle(
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<ProductionRecoveryBundle> {
+  const url = assertProductionBackupTarget(env);
+  const appOrigin = parseProductionOrigin(env.PRODUCTION_APP_ORIGIN).origin;
+  const gitSha = env.RECOVERY_GIT_SHA?.trim() ?? '';
   if (!/^[a-f0-9]{40}$/.test(gitSha))
     throw new RecoveryError('BACKUP_MANIFEST_FAILED', 'Exact repository Git SHA is required.');
-  const output = resolve(process.env.RECOVERY_OUTPUT_PATH ?? '');
-  if (
-    !process.env.RECOVERY_OUTPUT_PATH ||
-    !output.endsWith('.age') ||
-    output.startsWith(resolve('.'))
-  )
+  const output = resolve(env.RECOVERY_OUTPUT_PATH ?? '');
+  if (!env.RECOVERY_OUTPUT_PATH || !output.endsWith('.age') || output.startsWith(resolve('.')))
     throw new RecoveryError(
       'BACKUP_ENCRYPTION_FAILED',
       'Encrypted output must be outside the repository.',
     );
-  const recipient = validateAgeRecipient(process.env.BACKUP_AGE_RECIPIENT);
+  const recipient = validateAgeRecipient(env.BACKUP_AGE_RECIPIENT);
   await assertToolVersions();
   const work = await createRecoveryWorkDirectory();
   const dump = resolve(work, 'recovery-data.dump');
   const manifestPath = resolve(work, 'manifest.json');
   const bundle = resolve(work, 'recovery.bundle');
   let toolCleanup: string | undefined;
-  const pool = new Pool(postgresConnectionConfig(url.toString(), process.env.DATABASE_SSL_CA));
+  const pool = new Pool(postgresConnectionConfig(url.toString(), env.DATABASE_SSL_CA));
+  let result: ProductionRecoveryBundle | undefined;
   try {
-    const tool = await postgresToolEnvironment(url.toString(), process.env.DATABASE_SSL_CA);
+    const tool = await postgresToolEnvironment(url.toString(), env.DATABASE_SSL_CA);
     toolCleanup = tool.cleanupDirectory;
     await withExportedSnapshot(pool, async ({ snapshot, timestamp, coordinator }) => {
       await assertRecoveryInventory(coordinator);
@@ -88,7 +100,7 @@ async function main(): Promise<void> {
         snapshotAt: timestamp,
         source: {
           environment: 'production',
-          projectRef: process.env.PRODUCTION_EXPECTED_PROJECT_REF,
+          projectRef: env.PRODUCTION_EXPECTED_PROJECT_REF,
           region: 'eu-central-1',
         },
         gitSha,
@@ -122,18 +134,41 @@ async function main(): Promise<void> {
       await writeRecoveryBundle(bundle, [manifestPath, dump]);
       await encryptBundle(bundle, output, recipient);
       const encrypted = await stat(output);
-      process.stdout.write(
-        `${JSON.stringify({ event: 'recovery_bundle_created', backupId, bytes: encrypted.size, ciphertextSha256: hashBuffer(await import('node:fs/promises').then(({ readFile }) => readFile(output))) })}\n`,
-      );
+      result = {
+        backupId,
+        snapshotAt: timestamp,
+        outputPath: output,
+        bytes: encrypted.size,
+        ciphertextSha256: hashBuffer(await readFile(output)),
+        applicationTableCount: APPLICATION_TABLES.length,
+        authUserCount:
+          fingerprints.find((fingerprint) => fingerprint.table === 'auth.users')?.rowCount ?? 0,
+      };
     });
   } finally {
     await pool.end().catch(() => undefined);
-    if (toolCleanup) await rm(toolCleanup, { recursive: true, force: true }).catch(() => undefined);
+    if (toolCleanup) await cleanupPostgresToolEnvironment(toolCleanup);
     await cleanupRecoveryWorkDirectory(work);
   }
+  if (!result) {
+    throw new RecoveryError(
+      'BACKUP_ENCRYPTION_FAILED',
+      'Encrypted recovery bundle was not created.',
+    );
+  }
+  return result;
 }
 
-main().catch((error) => {
-  process.stderr.write(`${JSON.stringify(safeRecoveryError(error))}\n`);
-  process.exitCode = 1;
-});
+async function main(): Promise<void> {
+  const result = await createProductionRecoveryBundle();
+  process.stdout.write(
+    `${JSON.stringify({ event: 'recovery_bundle_created', backupId: result.backupId, bytes: result.bytes, ciphertextSha256: result.ciphertextSha256 })}\n`,
+  );
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    process.stderr.write(`${JSON.stringify(safeRecoveryError(error))}\n`);
+    process.exitCode = 1;
+  });
+}

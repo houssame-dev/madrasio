@@ -30,11 +30,14 @@ export function assertRecoveryWorkDirectory(directory: string): string {
   return target;
 }
 
-export async function cleanupRecoveryWorkDirectory(directory: string): Promise<void> {
+export async function cleanupRecoveryWorkDirectory(
+  directory: string,
+  remove: typeof rm = rm,
+): Promise<void> {
   const target = assertRecoveryWorkDirectory(directory);
   try {
     await stat(target);
-    await rm(target, { recursive: true, force: false, maxRetries: 2 });
+    await remove(target, { recursive: true, force: false, maxRetries: 2 });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
     throw new RecoveryError(

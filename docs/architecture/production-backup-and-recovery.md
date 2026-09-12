@@ -1,6 +1,6 @@
 # Production backup and recovery
 
-Status: Task 050 Stage 2 repository contract. The implementation is precommit and has not produced a Production recovery point. Customer onboarding remains blocked by the backup gate.
+Status: Task 050 Stage 4.1 repository implementation. Provider infrastructure is provisioned, but the automation remains disabled and no real Production recovery point has been created. Customer onboarding remains blocked by the backup gate.
 
 ## Recovery objective and authority
 
@@ -80,17 +80,38 @@ Restore is deliberately fail-closed and ordered:
 
 No SMTP, invite, hook, job, or other network side effect is part of restore. Any failure stops later phases. The disposable target may then be destroyed; the tool does not attempt risky automatic repair or continue from ambiguous partial state. FK cycles are rejected for review rather than worked around by disabling constraints.
 
-## Operations interfaces deferred from Stage 2
+## Provisioned provider infrastructure
 
-`RecoveryObjectStore` defines immutable ciphertext upload and metadata readback. `RecoveryHeartbeat` defines bounded success/failure reporting. Heartbeat success is emitted only after upload and independent remote size/SHA-256 verification. There is no Cloudflare R2 client, credential, bucket, GitHub scheduled workflow, or Healthchecks.io configuration in Stage 2.
+Task 050 Stage 3 provisioned the private, EU-jurisdiction `madrasio-production-backups` R2 bucket. Public development access and custom domains are disabled. Objects under `frequent/` have matching eight-day Bucket Lock and lifecycle rules; objects under `weekly/` have matching 92-day rules. The backup writer is limited to Object Read & Write on this bucket. A distinct recovery credential is limited to Object Read on the same bucket and is not available to CI.
 
-Stage 3 must provision a private R2 bucket, retention/immutability controls appropriate to the plan, scoped write/read credentials, an age recipient whose private identity is held offline, and heartbeat monitoring. The scheduled workflow must use the repository tooling without acquiring the private decryption identity. It must not report success until remote verification passes.
+The Production age recipient is public CI configuration. Its private identity has two independently controlled operator copies and is absent from GitHub, Cloudflare, Vercel, Supabase, and the repository. A non-database encrypted fixture proved conditional creation, remote readback, byte and SHA-256 equality, read-only recovery scope, and offline decryption. The retained fixture expires normally under the `frequent/` policy.
+
+Cronitor replaces the originally proposed Healthchecks.io integration because operator authentication to Healthchecks.io was unreliable. The `madrasio-production-backup` heartbeat monitor expects one verified recovery point every four hours with one hour of grace, in its Production environment. Its telemetry URL is the GitHub Production secret `BACKUP_HEARTBEAT_URL`. Two healthy Stage 3 fixture events are retained as audit evidence: the browser-reported first request appeared locally blocked but reached Cronitor, and the explicit verification request produced the second event. Neither event represents a real Production backup.
+
+## Production backup automation
+
+`.github/workflows/backup-production.yml` is the sole Production backup workflow. It supports explicit manual dispatch and two future schedules:
+
+- frequent recovery attempts at minute 23 every four hours;
+- an additional weekly recovery point at 02:47 UTC each Sunday.
+
+Scheduled events are fail-closed behind the Production environment variable `PRODUCTION_BACKUP_AUTOMATION_ENABLED`. Missing, blank, or any value other than exact `true` produces only a safe disabled notice; it does not check out code or receive database, R2, encryption, or heartbeat inputs. Stage 4.1 does not create or enable this variable. Manual Stage 4.2 acceptance instead requires exact `BACKUP_PRODUCTION`, an explicit `frequent` or `weekly` retention class, and a lowercase 40-character SHA that is both an ancestor of `main` and has a successful exact-SHA CI run.
+
+The workflow uses `contents: read` and `actions: read`, the existing GitHub `Production` environment, the non-cancelling `production-backup` concurrency group, and a bounded 60-minute backup job. It checks out the requested SHA so the recovery implementation and migration contract come from the same revision recorded in the encrypted manifest.
+
+PostgreSQL tools run from the immutable Docker Official Image `postgres:17.6-bookworm` pinned by digest. Only `/tmp` is mounted, and `PG*` values are passed as container environment variables rather than command arguments. The official age 1.3.1 Linux archive is pinned to its reviewed SHA-256 before extraction. CI receives only the public age recipient; decryption keys never enter the workflow.
+
+The R2 adapter uses built-in Node cryptography to create AWS Signature Version 4 requests, so no transport dependency was added. It requires the reviewed HTTPS R2 endpoint and private bucket name, uploads a collision-resistant key beneath the selected retention prefix with `If-None-Match: *`, and refuses overwrite/collision responses. Credentials remain step-local GitHub secrets and are never placed in command arguments, artifacts, summaries, or logs.
+
+After upload, the adapter first validates remote length and the stored ciphertext checksum metadata, then downloads the complete ciphertext to a separate runner-local path. Success requires the downloaded byte count and independently calculated SHA-256 to equal the local ciphertext. Only then is `PRODUCTION_BACKUP_RECOVERY_POINT_VERIFIED` established and a Production Cronitor SUCCESS heartbeat sent. A heartbeat failure is reported separately and does not invalidate or delete the already verified R2 object. Earlier failures may emit a best-effort failure event, but reporting errors never replace the original backup error.
+
+The safe job summary contains only the backup ID, retention class, source SHA, snapshot time, table/Auth counts, ciphertext size and SHA-256, immutable object key, and verification classification. Internal work directories, plaintext dump, manifest, bundle, encrypted upload copy, R2 readback, and temporary TLS files are removed through finally/`always()` cleanup. Cleanup is best effort on an ephemeral runner and is never described as secure physical erasure.
 
 ## Local test contract and limitations
 
 Unit tests cover exact-target rejection, allowlist drift, custom archive inventory, format/checksum rejection, deterministic canonical JSON, snapshot SQL ordering, restore ordering/cycle rejection, fail-closed phases, cleanup path safety, version/age validation, reconciliation, and upload-before-heartbeat behavior. A real PostgreSQL snapshot-sharing test is opt-in through `RECOVERY_TEST_DATABASE_URL`; it proves that a consumer importing an exported snapshot observes the original row set after another connection commits a write.
 
-This workstation currently has no PostgreSQL 17 client, age, Docker, Supabase CLI, or disposable PostgreSQL server. Consequently, native archive/encryption and real PostgreSQL/Supabase restore rehearsal are implemented but not empirically passed here. They remain explicit proof requirements. A local Supabase harness must be pinned to a reviewed CLI/container version and must provide the managed Auth foundation before a rehearsal; application migrations must never create or own `auth.users`.
+Native archive/encryption and real PostgreSQL/Supabase restore rehearsal remain explicit Stage 4.2 proof requirements. Stage 4.1 tests use only deterministic fakes and local non-secret fixtures and perform no database, R2, Cronitor, Supabase, Vercel, or GitHub configuration access. A local Supabase harness must be pinned to a reviewed CLI/container version and must provide the managed Auth foundation before a rehearsal; application migrations must never create or own `auth.users`.
 
 ## Failure classifications
 
@@ -98,4 +119,4 @@ Recovery errors are bounded and redact provider/tool details. The main classific
 
 ## Gate status
 
-Stage 2 does not clear `PRODUCTION_CUSTOMER_DATA_ONBOARDING_BLOCKED_BY_BACKUP`. Commit readiness requires repository verification, but onboarding readiness additionally requires a real encrypted Production recovery point in R2, independent readback, alerting/heartbeat, and a successful timed isolated restore rehearsal demonstrating the recovery point, identity invariants, relational invariants, security invariants, RPO, and RTO.
+Stage 4.1 does not clear `PRODUCTION_CUSTOMER_DATA_ONBOARDING_BLOCKED_BY_BACKUP`. The workflow is intentionally inactive until the separately authorized Stage 4.2 manual backup succeeds. Onboarding readiness additionally requires a real encrypted Production recovery point in R2, independent readback, its corresponding Cronitor heartbeat, and a successful timed isolated restore rehearsal demonstrating the recovery point, identity invariants, relational invariants, security invariants, RPO, and RTO.

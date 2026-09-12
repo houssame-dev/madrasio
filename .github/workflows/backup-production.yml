@@ -1,0 +1,177 @@
+name: Backup Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact lowercase 40-character main commit SHA accepted by CI
+        required: true
+        type: string
+      confirmation:
+        description: Type BACKUP_PRODUCTION exactly
+        required: true
+        type: string
+      retention_class:
+        description: Retention class for the manual recovery point
+        required: true
+        default: frequent
+        type: choice
+        options:
+          - frequent
+          - weekly
+  schedule:
+    - cron: '23 1,5,9,13,17,21 * * *'
+    - cron: '47 2 * * 0'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-backup
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Evaluate Production backup activation gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: Production
+    outputs:
+      should-run: ${{ steps.activation.outputs.should-run }}
+    steps:
+      - name: Evaluate schedule activation without privileged access
+        id: activation
+        shell: bash
+        env:
+          AUTOMATION_ENABLED: ${{ vars.PRODUCTION_BACKUP_AUTOMATION_ENABLED }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == 'schedule' && "$AUTOMATION_ENABLED" != 'true' ]]; then
+            echo 'should-run=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::Production backup automation is disabled; no recovery point was attempted.'
+          else
+            echo 'should-run=true' >> "$GITHUB_OUTPUT"
+          fi
+
+  backup:
+    name: Create and verify encrypted Production recovery point
+    needs: gate
+    if: needs.gate.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: Production
+    env:
+      RECOVERY_CANDIDATE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_sha || github.sha }}
+      RECOVERY_RETENTION_CLASS: ${{ github.event_name == 'workflow_dispatch' && inputs.retention_class || github.event.schedule == '47 2 * * 0' && 'weekly' || 'frequent' }}
+      RECOVERY_POSTGRES_CONTAINER_IMAGE: postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3
+
+    steps:
+      - name: Validate backup request before privileged access
+        shell: bash
+        env:
+          MANUAL_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          [[ "$RECOVERY_CANDIDATE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$RECOVERY_RETENTION_CLASS" =~ ^(frequent|weekly)$ ]]
+          if [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]; then
+            test "$MANUAL_CONFIRMATION" = 'BACKUP_PRODUCTION'
+          fi
+
+      - name: Checkout exact recovery-contract commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RECOVERY_CANDIDATE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify exact main candidate
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$RECOVERY_CANDIDATE_SHA"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$RECOVERY_CANDIDATE_SHA" origin/main
+
+      - name: Require successful CI for exact SHA
+        uses: actions/github-script@v7
+        env:
+          RECOVERY_GIT_SHA: ${{ env.RECOVERY_CANDIDATE_SHA }}
+        with:
+          script: |
+            const sha = process.env.RECOVERY_GIT_SHA;
+            if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Invalid recovery SHA.');
+            const runs = await github.rest.actions.listWorkflowRuns({
+              ...context.repo,
+              workflow_id: 'ci.yml',
+              head_sha: sha,
+              status: 'completed',
+              per_page: 20,
+            });
+            if (!runs.data.workflow_runs.some((run) => run.conclusion === 'success')) {
+              core.setFailed('The exact recovery SHA has no successful CI run.');
+            }
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install verified age 1.3.1
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/age-v1.3.1-linux-amd64.tar.gz"
+          directory="$RUNNER_TEMP/age-v1.3.1"
+          curl --fail --silent --show-error --location \
+            'https://github.com/FiloSottile/age/releases/download/v1.3.1/age-v1.3.1-linux-amd64.tar.gz' \
+            --output "$archive"
+          echo 'bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377  '"$archive" | sha256sum --check --status
+          mkdir --mode=700 "$directory"
+          tar --extract --gzip --file "$archive" --directory "$directory" --strip-components=1
+          test "$("$directory/age" --version)" = '1.3.1'
+          echo "$directory" >> "$GITHUB_PATH"
+
+      - name: Pull reviewed PostgreSQL 17.6 client image
+        run: docker pull "$RECOVERY_POSTGRES_CONTAINER_IMAGE"
+
+      - name: Create, upload, read back, and verify recovery point
+        env:
+          DEPLOY_TARGET_ENV: production
+          DEPLOY_EXPECTED_PROJECT_REF: ${{ vars.PRODUCTION_EXPECTED_PROJECT_REF }}
+          PRODUCTION_EXPECTED_PROJECT_REF: ${{ vars.PRODUCTION_EXPECTED_PROJECT_REF }}
+          PRODUCTION_APP_ORIGIN: ${{ vars.PRODUCTION_APP_ORIGIN }}
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+          DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}
+          BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          BACKUP_HEARTBEAT_URL: ${{ secrets.BACKUP_HEARTBEAT_URL }}
+          RECOVERY_GIT_SHA: ${{ env.RECOVERY_CANDIDATE_SHA }}
+        run: pnpm recovery:backup:production
+
+      - name: Verify temporary recovery cleanup
+        if: always()
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = path.resolve(process.env.RUNNER_TEMP);
+          const prefixes = ['madrasio-recovery-', 'madrasio-pgssl-'];
+          for (const name of fs.readdirSync(root)) {
+            if (!prefixes.some((prefix) => name.startsWith(prefix))) continue;
+            const target = path.resolve(root, name);
+            if (path.dirname(target) !== root) throw new Error('Unsafe cleanup target.');
+            fs.rmSync(target, { recursive: true, force: true });
+          }
+          const remaining = fs.readdirSync(root).filter((name) =>
+            prefixes.some((prefix) => name.startsWith(prefix)),
+          );
+          if (remaining.length) throw new Error('Temporary recovery cleanup failed.');
+          NODE
