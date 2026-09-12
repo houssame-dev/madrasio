@@ -12,6 +12,7 @@ export const PINNED_TOOLS = {
   age: '1.3.1',
   supabaseCli: '2.111.0',
 } as const;
+export const AGE_RUNTIME_VERSION = `v${PINNED_TOOLS.age}`;
 
 /** One authoritative durable application-data allowlist (migration 0015 parity). */
 export const APPLICATION_TABLES = [

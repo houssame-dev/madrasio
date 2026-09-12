@@ -222,16 +222,26 @@ describe('recovery archive and tools', () => {
     expect(args.join(' ')).not.toMatch(/password|database-url|session|refresh_tokens/);
   });
 
-  it('requires pinned PostgreSQL 17 and age 1.3.1', async () => {
+  it('requires pinned PostgreSQL 17 and the exact official age v1.3.1 runtime string', async () => {
     const runner = vi.fn(async (command: string) => ({
-      stdout: command === 'age' ? '1.3.1' : 'pg tool (PostgreSQL) 17.6',
+      stdout: command === 'age' ? 'v1.3.1\n' : 'pg tool (PostgreSQL) 17.6',
     }));
     await expect(assertToolVersions(runner)).resolves.toBeUndefined();
     runner.mockImplementation(async (command: string) => ({
-      stdout: command === 'age' ? '1.3.1' : 'pg tool (PostgreSQL) 16.9',
+      stdout: command === 'age' ? 'v1.3.1\n' : 'pg tool (PostgreSQL) 16.9',
     }));
     await expect(assertToolVersions(runner)).rejects.toThrow('PostgreSQL 17');
   });
+
+  it.each(['1.3.1', 'v1.3.0', 'v1.3.2', 'prefix-v1.3.1', 'v1.3.1-suffix'])(
+    'rejects non-exact age runtime output %s',
+    async (ageVersion) => {
+      const runner = vi.fn(async (command: string) => ({
+        stdout: command === 'age' ? ageVersion : 'pg tool (PostgreSQL) 17.6',
+      }));
+      await expect(assertToolVersions(runner)).rejects.toThrow('pinned age tool version');
+    },
+  );
 
   it('validates age recipients and archive inventory', () => {
     expect(() => validateAgeRecipient('not-a-recipient')).toThrow('valid age');

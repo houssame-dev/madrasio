@@ -6,6 +6,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path';
 import { postgresConnectionConfig } from '@school/database/connection';
 
 import {
+  AGE_RUNTIME_VERSION,
   PINNED_TOOLS,
   PRODUCTION_POSTGRES_MAJOR,
   RECOVERY_TABLES,
@@ -100,7 +101,7 @@ export async function assertToolVersions(runner: CommandRunner = runCommand): Pr
       'PostgreSQL 17 client tools are required.',
     );
   }
-  if (!age.stdout.includes(PINNED_TOOLS.age)) {
+  if (age.stdout.trim() !== AGE_RUNTIME_VERSION) {
     throw new RecoveryError('BACKUP_ENCRYPTION_FAILED', 'The pinned age tool version is required.');
   }
 }

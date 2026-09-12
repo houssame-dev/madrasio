@@ -77,8 +77,25 @@ describe('Production backup workflow contract', () => {
 
   it('pins verified tools and always performs bounded temporary cleanup', async () => {
     const workflow = await workflowText();
-    expect(workflow).toContain('age-v1.3.1-linux-amd64.tar.gz');
-    expect(workflow).toContain('bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377');
+    const checksum =
+      'bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377';
+    const checksumIndex = workflow.indexOf(checksum);
+    const extractionIndex = workflow.indexOf('tar --extract');
+    const runtimeVersionIndex = workflow.indexOf(
+      'test "$("$directory/age" --version)" = "$age_runtime_version"',
+    );
+    const databaseIndex = workflow.indexOf('Pull reviewed PostgreSQL 17.6 client image');
+    const recoveryIndex = workflow.indexOf('Create, upload, read back, and verify recovery point');
+
+    expect(workflow).toContain("age_release_version='1.3.1'");
+    expect(workflow).toContain("age_runtime_version='v1.3.1'");
+    expect(workflow).toContain('age-v${age_release_version}-linux-amd64.tar.gz');
+    expect(workflow).toContain(checksum);
+    expect(checksumIndex).toBeLessThan(extractionIndex);
+    expect(extractionIndex).toBeLessThan(runtimeVersionIndex);
+    expect(runtimeVersionIndex).toBeLessThan(databaseIndex);
+    expect(runtimeVersionIndex).toBeLessThan(recoveryIndex);
+    expect(runtimeVersionIndex).toBeLessThan(workflow.indexOf('BACKUP_HEARTBEAT_URL'));
     expect(workflow).toContain(PINNED_POSTGRES_CONTAINER);
     expect(workflow).not.toMatch(/AGE_SECRET|AGE_PRIVATE|AGE_IDENTITY/);
     expect(workflow).toContain('if: always()');
