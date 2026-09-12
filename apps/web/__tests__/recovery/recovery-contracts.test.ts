@@ -7,10 +7,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { readRecoveryBundle, writeRecoveryBundle } from '@/scripts/recovery/bundle';
 import {
   APPLICATION_TABLES,
+  AUTH_RECOVERY_CLASS,
   RECOVERY_TABLES,
   RESTORE_CONFIRMATION,
   assertIsolatedRestoreTarget,
   assertProductionBackupTarget,
+  classifyAuthTable,
 } from '@/scripts/recovery/contracts';
 import {
   assertRecoveryWorkDirectory,
@@ -108,6 +110,25 @@ describe('recovery archive and tools', () => {
     expect(new Set(RECOVERY_TABLES).size).toBe(41);
     expect(RECOVERY_TABLES).toContain('auth.users');
     expect(RECOVERY_TABLES).not.toContain('auth.sessions');
+    expect(RECOVERY_TABLES).not.toContain('auth.oauth_client_states');
+    expect(RECOVERY_TABLES).not.toContain('auth.saml_relay_states');
+  });
+
+  it('classifies durable, transient, unsupported, platform and unknown Auth tables explicitly', () => {
+    expect(classifyAuthTable('users')).toBe(AUTH_RECOVERY_CLASS.DURABLE_INCLUDED);
+    expect(classifyAuthTable('oauth_client_states')).toBe(
+      AUTH_RECOVERY_CLASS.KNOWN_TRANSIENT_EXCLUDED,
+    );
+    expect(classifyAuthTable('saml_relay_states')).toBe(
+      AUTH_RECOVERY_CLASS.KNOWN_TRANSIENT_EXCLUDED,
+    );
+    expect(classifyAuthTable('mfa_factors')).toBe(
+      AUTH_RECOVERY_CLASS.KNOWN_DURABLE_UNSUPPORTED,
+    );
+    expect(classifyAuthTable('schema_migrations')).toBe(
+      AUTH_RECOVERY_CLASS.PLATFORM_MANAGED_EXCLUDED,
+    );
+    expect(classifyAuthTable('future_unknown_table')).toBe(AUTH_RECOVERY_CLASS.UNKNOWN);
   });
 
   it('fails closed when schema inventory drifts', async () => {
@@ -135,6 +156,61 @@ describe('recovery archive and tools', () => {
       'outside the reviewed email/password',
     );
     expect(query.mock.calls[1]?.[0]).toBe('select count(*)::int as count from auth."mfa_factors"');
+  });
+
+  it.each(['oauth_client_states', 'saml_relay_states'])(
+    'accepts empty known transient Auth table %s without inspecting its rows',
+    async (table) => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ table_name: table }] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] });
+      await expect(assertSupportedAuthState({ query } as never)).resolves.toBeUndefined();
+      expect(query).toHaveBeenCalledTimes(3);
+      expect(query.mock.calls.flat().join(' ')).not.toContain(`auth.${table}`);
+    },
+  );
+
+  it.each(['oauth_client_states', 'saml_relay_states'])(
+    'accepts non-empty known transient Auth table %s without reading or logging its payload',
+    async (table) => {
+      const query = vi.fn(async (sql: string) => {
+        if (sql.includes('information_schema.tables')) return { rows: [{ table_name: table }] };
+        if (sql.includes('auth.identities')) return { rows: [{ count: 0 }] };
+        if (sql.includes('information_schema.columns')) return { rows: [] };
+        throw new Error(`transient payload query attempted for ${table}`);
+      });
+      await expect(assertSupportedAuthState({ query } as never)).resolves.toBeUndefined();
+      expect(query).toHaveBeenCalledTimes(3);
+    },
+  );
+
+  it.each([0, 1])('rejects an unknown Auth table even when its row count would be %i', async () => {
+    const query = vi.fn().mockResolvedValueOnce({
+      rows: [{ table_name: 'future_unknown_table' }],
+    });
+    await expect(assertSupportedAuthState({ query } as never)).rejects.toMatchObject({
+      code: 'BACKUP_AUTH_FEATURE_STATE_UNSUPPORTED',
+    });
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts the Production incident schema with both transient tables present', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          { table_name: 'identities' },
+          { table_name: 'oauth_client_states' },
+          { table_name: 'saml_relay_states' },
+          { table_name: 'users' },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    await expect(assertSupportedAuthState({ query } as never)).resolves.toBeUndefined();
+    expect(query).toHaveBeenCalledTimes(3);
   });
 
   it('builds a bounded explicit data-only custom pg_dump contract', () => {
@@ -169,6 +245,11 @@ describe('recovery archive and tools', () => {
     expect(() => assertArchiveInventory(`${list}\n99; 0 0 TABLE public surprise postgres`)).toThrow(
       'inventory',
     );
+    for (const transient of ['oauth_client_states', 'saml_relay_states']) {
+      expect(() =>
+        assertArchiveInventory(`${list}\n99; 0 0 TABLE DATA auth ${transient} postgres`),
+      ).toThrow('inventory');
+    }
   });
 
   it('writes and verifies the repository-owned bundle container', async () => {

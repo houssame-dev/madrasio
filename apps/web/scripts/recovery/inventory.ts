@@ -3,11 +3,11 @@ import { createHash } from 'node:crypto';
 import type { QueryClient } from './snapshot';
 import {
   APPLICATION_TABLES,
-  AUTH_FOUNDATION_TABLES,
+  AUTH_RECOVERY_CLASS,
   AUTH_TABLES,
-  EXCLUDED_AUTH_TABLES,
   RecoveryError,
   UNSUPPORTED_DURABLE_AUTH_TABLES,
+  classifyAuthTable,
 } from './contracts';
 
 export type QualifiedTable = `auth.${string}` | `public.${string}`;
@@ -84,20 +84,19 @@ export async function assertSupportedAuthState(client: QueryClient): Promise<voi
     `select table_name from information_schema.tables
      where table_schema='auth' and table_type='BASE TABLE' order by table_name`,
   );
-  const classified = new Set<string>([
-    ...AUTH_TABLES,
-    ...AUTH_FOUNDATION_TABLES,
-    ...EXCLUDED_AUTH_TABLES,
-    ...UNSUPPORTED_DURABLE_AUTH_TABLES,
-  ]);
-  if (discovered.rows.some((row) => !classified.has(row.table_name))) {
+  if (
+    discovered.rows.some(
+      (row) => classifyAuthTable(row.table_name) === AUTH_RECOVERY_CLASS.UNKNOWN,
+    )
+  ) {
     throw new RecoveryError(
       'BACKUP_AUTH_FEATURE_STATE_UNSUPPORTED',
-      'Auth contains an unclassified durable table.',
+      'Auth contains an unclassified table.',
     );
   }
-  const present = discovered.rows.filter((row) =>
-    (UNSUPPORTED_DURABLE_AUTH_TABLES as readonly string[]).includes(row.table_name),
+  const present = discovered.rows.filter(
+    (row) =>
+      classifyAuthTable(row.table_name) === AUTH_RECOVERY_CLASS.KNOWN_DURABLE_UNSUPPORTED,
   );
   for (const row of present) {
     if (!UNSUPPORTED_DURABLE_AUTH_TABLES.includes(row.table_name as never)) {

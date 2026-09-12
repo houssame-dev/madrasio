@@ -56,25 +56,32 @@ export const APPLICATION_TABLES = [
   'users',
 ] as const;
 
+/** Durable Auth identity state included in the recovery archive. */
 export const AUTH_TABLES = ['users', 'identities'] as const;
 export const RECOVERY_TABLES = [
   ...AUTH_TABLES.map((table) => `auth.${table}`),
   ...APPLICATION_TABLES.map((table) => `public.${table}`),
 ] as const;
 
-export const EXCLUDED_AUTH_TABLES = [
-  'audit_log_entries',
+/** Known in-flight/session Auth state that is intentionally not disaster-recovered. */
+export const TRANSIENT_AUTH_TABLES = [
   'flow_state',
   'mfa_amr_claims',
   'mfa_challenges',
+  'oauth_client_states',
   'one_time_tokens',
   'refresh_tokens',
+  'saml_relay_states',
   'sessions',
   'webauthn_challenges',
 ] as const;
 
-/** Supabase-owned empty/version foundation, recreated by the target platform. */
-export const AUTH_FOUNDATION_TABLES = ['instances', 'schema_migrations'] as const;
+/** Supabase-owned foundation/version/audit metadata outside application recovery authority. */
+export const PLATFORM_MANAGED_AUTH_TABLES = [
+  'audit_log_entries',
+  'instances',
+  'schema_migrations',
+] as const;
 
 /** Non-empty state here requires a reviewed extension of the recovery format. */
 export const UNSUPPORTED_DURABLE_AUTH_TABLES = [
@@ -90,6 +97,28 @@ export const UNSUPPORTED_DURABLE_AUTH_TABLES = [
   'sso_providers',
   'webauthn_credentials',
 ] as const;
+
+export const AUTH_RECOVERY_CLASS = {
+  DURABLE_INCLUDED: 'DURABLE_INCLUDED',
+  KNOWN_TRANSIENT_EXCLUDED: 'KNOWN_TRANSIENT_EXCLUDED',
+  KNOWN_DURABLE_UNSUPPORTED: 'KNOWN_DURABLE_UNSUPPORTED',
+  PLATFORM_MANAGED_EXCLUDED: 'PLATFORM_MANAGED_EXCLUDED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type AuthRecoveryClass = (typeof AUTH_RECOVERY_CLASS)[keyof typeof AUTH_RECOVERY_CLASS];
+
+export function classifyAuthTable(table: string): AuthRecoveryClass {
+  if ((AUTH_TABLES as readonly string[]).includes(table))
+    return AUTH_RECOVERY_CLASS.DURABLE_INCLUDED;
+  if ((TRANSIENT_AUTH_TABLES as readonly string[]).includes(table))
+    return AUTH_RECOVERY_CLASS.KNOWN_TRANSIENT_EXCLUDED;
+  if ((UNSUPPORTED_DURABLE_AUTH_TABLES as readonly string[]).includes(table))
+    return AUTH_RECOVERY_CLASS.KNOWN_DURABLE_UNSUPPORTED;
+  if ((PLATFORM_MANAGED_AUTH_TABLES as readonly string[]).includes(table))
+    return AUTH_RECOVERY_CLASS.PLATFORM_MANAGED_EXCLUDED;
+  return AUTH_RECOVERY_CLASS.UNKNOWN;
+}
 
 export type RecoveryFailureCode =
   | 'BACKUP_TARGET_VERIFICATION_FAILED'

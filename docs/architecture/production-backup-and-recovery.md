@@ -26,7 +26,9 @@ Recovery uses hybrid Model B:
 
 The whole bundle is encrypted with age. The final transport object is ciphertext only. The manifest is intentionally encrypted because counts and hashes are still operational metadata. A ciphertext SHA-256 is calculated independently of object-store ETags.
 
-The authoritative data allowlist is centralized in `apps/web/scripts/recovery/contracts.ts`: all 39 `public` application tables plus `auth.users` and `auth.identities`. The tool rejects application inventory drift and archive entries outside this set. It also rejects non-email identities, phone/anonymous users, and non-empty durable MFA, SSO, OAuth, or WebAuthn tables covered by the discovery contract. Auth sessions, refresh tokens, one-time tokens, flow state, challenges, and audit logs are deliberately excluded.
+The authoritative data allowlist is centralized in `apps/web/scripts/recovery/contracts.ts`: all 39 `public` application tables plus `auth.users` and `auth.identities`. The resulting archive remains exactly 41 data tables. The tool rejects application inventory drift and archive entries outside this set. Auth schema discovery uses an explicit recovery taxonomy: durable included identity data, known transient excluded state, known durable unsupported features, platform-managed excluded metadata, and unknown tables. Unknown tables fail closed even when empty; known durable unsupported MFA, SSO, OAuth, SAML, or WebAuthn feature state blocks backup when non-empty.
+
+Known transient state is permitted even when non-empty but never queried for payload content, dumped, fingerprinted, included in the manifest, or restored. This includes sessions, refresh and one-time tokens, flow/challenge state, `oauth_client_states` used by in-flight OAuth PKCE callbacks, and `saml_relay_states` used by in-flight SAML requests. Disaster recovery intentionally does not preserve active authentication transactions: affected users start authentication again after recovery. These transient tables must not be confused with durable OAuth client registrations, SAML/SSO provider configuration, MFA enrollment, or WebAuthn credentials, which retain the fail-closed durable-feature guard. Supabase platform migration, instance, and Auth audit metadata are also recognized but excluded from application recovery authority.
 
 ## Backup safety and consistency
 
@@ -67,7 +69,7 @@ The offline private identity must remain outside the repository, CI, Vercel, Git
 
 The operator must also confirm `RECOVERY_EXPECTED_SOURCE_PROJECT_REF` and `RECOVERY_REPOSITORY_GIT_SHA`; both must exactly match the encrypted manifest. The disposable target must have empty `auth.users`/`auth.identities`, no application tables, and no Drizzle journal before restore begins.
 
-Restore is deliberately fail-closed and ordered:
+Restore is deliberately fail-closed and ordered. The presence of recognized transient OAuth/SAML flow tables in the source or target Auth schema does not affect durable `users`/`identities` compatibility, and restore never inserts their historical rows:
 
 1. verify the isolated foundation and exact captured Auth column/type/nullability contract;
 2. apply repository migrations and compare the migration contract;
