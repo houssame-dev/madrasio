@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { readFile, readdir, stat } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { basename, dirname, join, resolve } from 'node:path';
 
 import { z } from 'zod';
 
@@ -10,9 +11,11 @@ import {
   RECOVERY_FORMAT,
   RECOVERY_TABLES,
   RecoveryError,
+  postgresDiagnostic,
 } from './contracts';
 import type { TableFingerprint } from './inventory';
 import type { AuthColumnContract } from './inventory';
+import type { QueryClient } from './snapshot';
 
 const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
 const artifactSchema = z.object({
@@ -103,6 +106,23 @@ export const recoveryManifestSchema = z
 export type RecoveryManifest = z.infer<typeof recoveryManifestSchema>;
 export type { AuthColumnContract };
 
+export function resolveRecoveryMigrationsDirectory(start = process.cwd()): string {
+  let directory = resolve(start);
+  for (;;) {
+    const candidate = join(directory, 'database', 'drizzle', 'migrations');
+    if (existsSync(join(candidate, 'meta', '_journal.json'))) return candidate;
+    const parent = dirname(directory);
+    if (parent === directory) {
+      throw new RecoveryError(
+        'BACKUP_MIGRATION_METADATA_FAILED',
+        'The repository migration contract could not be located.',
+        { phase: 'manifest_metadata', timeout: false },
+      );
+    }
+    directory = parent;
+  }
+}
+
 export function hashBuffer(value: Buffer | string): string {
   return createHash('sha256').update(value).digest('hex');
 }
@@ -119,8 +139,62 @@ export function canonicalJson(value: unknown): string {
 }
 
 export function createBackupId(snapshotAt: string, gitSha: string): string {
-  const timestamp = new Date(snapshotAt).toISOString().replace(/[-:]/g, '').replace('.000', '');
-  return `${timestamp}-${gitSha.slice(0, 12)}-${randomBytes(8).toString('hex')}`;
+  try {
+    const timestamp = new Date(snapshotAt)
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}Z$/, 'Z');
+    return `${timestamp}-${gitSha.slice(0, 12)}-${randomBytes(8).toString('hex')}`;
+  } catch {
+    throw new RecoveryError(
+      'BACKUP_MANIFEST_VALIDATION_FAILED',
+      'The recovery snapshot timestamp is invalid.',
+      { phase: 'manifest_validation', timeout: false },
+    );
+  }
+}
+
+export function validateRecoveryManifest(value: unknown): RecoveryManifest {
+  const parsed = recoveryManifestSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new RecoveryError(
+      'BACKUP_MANIFEST_VALIDATION_FAILED',
+      'The recovery manifest does not satisfy the reviewed contract.',
+      { phase: 'manifest_validation', timeout: false },
+    );
+  }
+  return parsed.data;
+}
+
+export async function loadServerVersion(client: QueryClient): Promise<string> {
+  try {
+    const result = await client.query<{ version: string }>('show server_version');
+    const version = result.rows[0]?.version?.trim();
+    if (!version) throw new Error('Server version unavailable.');
+    return version;
+  } catch (error) {
+    if (error instanceof RecoveryError) throw error;
+    throw new RecoveryError(
+      'BACKUP_SERVER_METADATA_FAILED',
+      'PostgreSQL server metadata could not be normalized.',
+      postgresDiagnostic(error, 'server_metadata'),
+    );
+  }
+}
+
+export async function writeRecoveryManifest(
+  output: string,
+  manifest: RecoveryManifest,
+): Promise<void> {
+  try {
+    await writeFile(output, `${canonicalJson(manifest)}\n`, { mode: 0o600 });
+  } catch {
+    throw new RecoveryError(
+      'BACKUP_MANIFEST_WRITE_FAILED',
+      'The recovery manifest could not be serialized or written.',
+      { phase: 'manifest_write', timeout: false },
+    );
+  }
 }
 
 export function parseRecoveryManifest(value: unknown): RecoveryManifest {
@@ -141,44 +215,56 @@ export function parseRecoveryManifest(value: unknown): RecoveryManifest {
 }
 
 export async function loadMigrationMetadata(migrationsDirectory: string) {
-  const journal = JSON.parse(
-    await readFile(join(migrationsDirectory, 'meta', '_journal.json'), 'utf8'),
-  ) as { entries?: Array<{ tag: string; when: number }> };
-  const ordered = journal.entries?.map((entry) => entry.tag) ?? [];
-  const createdAt = journal.entries?.map((entry) => entry.when) ?? [];
-  if (!ordered.length)
-    throw new RecoveryError('BACKUP_MANIFEST_FAILED', 'Migration journal is empty.');
-  const files = (await readdir(migrationsDirectory))
-    .filter((name) => /^\d{4}_.+\.sql$/.test(name))
-    .sort();
-  const fileSha256: Record<string, string> = {};
-  for (const file of files)
-    fileSha256[basename(file)] = hashBuffer(await readFile(join(migrationsDirectory, file)));
-  if (
-    files.length !== ordered.length ||
-    files.some((file, index) => file !== `${ordered[index]}.sql`)
-  ) {
+  try {
+    const journal = JSON.parse(
+      await readFile(join(migrationsDirectory, 'meta', '_journal.json'), 'utf8'),
+    ) as { entries?: Array<{ tag: string; when: number }> };
+    const ordered = journal.entries?.map((entry) => entry.tag) ?? [];
+    const createdAt = journal.entries?.map((entry) => entry.when) ?? [];
+    if (!ordered.length) throw new Error('Migration journal is empty.');
+    const files = (await readdir(migrationsDirectory))
+      .filter((name) => /^\d{4}_.+\.sql$/.test(name))
+      .sort();
+    const fileSha256: Record<string, string> = {};
+    for (const file of files)
+      fileSha256[basename(file)] = hashBuffer(await readFile(join(migrationsDirectory, file)));
+    if (
+      files.length !== ordered.length ||
+      files.some((file, index) => file !== `${ordered[index]}.sql`)
+    ) {
+      throw new Error('Migration files do not match the ordered journal.');
+    }
+    return {
+      count: ordered.length,
+      latest: ordered.at(-1)!,
+      ordered,
+      createdAt,
+      fileSha256,
+    };
+  } catch {
     throw new RecoveryError(
-      'BACKUP_MANIFEST_FAILED',
-      'Migration files do not match the ordered journal.',
+      'BACKUP_MIGRATION_METADATA_FAILED',
+      'The repository migration contract could not be loaded.',
+      { phase: 'manifest_metadata', timeout: false },
     );
   }
-  return {
-    count: ordered.length,
-    latest: ordered.at(-1)!,
-    ordered,
-    createdAt,
-    fileSha256,
-  };
 }
 
 export async function artifactMetadata(path: string) {
-  const details = await stat(path);
-  return {
-    filename: basename(path),
-    bytes: details.size,
-    sha256: hashBuffer(await readFile(path)),
-  };
+  try {
+    const details = await stat(path);
+    return {
+      filename: basename(path),
+      bytes: details.size,
+      sha256: hashBuffer(await readFile(path)),
+    };
+  } catch {
+    throw new RecoveryError(
+      'BACKUP_BUNDLE_CHECKSUM_FAILED',
+      'Recovery artifact metadata could not be calculated.',
+      { phase: 'bundle_checksum', timeout: false },
+    );
+  }
 }
 
 export function compareFingerprints(

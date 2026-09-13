@@ -13,23 +13,46 @@ export async function writeRecoveryBundle(output: string, files: string[]): Prom
     new Set(names).size !== names.length ||
     names.some((name) => !/^[a-z0-9][a-z0-9._-]*$/.test(name))
   ) {
+    throw new RecoveryError('BACKUP_BUNDLE_WRITE_FAILED', 'Recovery bundle entries are invalid.', {
+      phase: 'bundle_write',
+      timeout: false,
+    });
+  }
+  let bodies: Buffer[];
+  let entries: Entry[];
+  try {
+    bodies = await Promise.all(files.map((file) => readFile(file)));
+    let offset = 0;
+    entries = names.map((name, index) => {
+      const entry = {
+        name,
+        offset,
+        bytes: bodies[index].length,
+        sha256: hashBuffer(bodies[index]),
+      };
+      offset += entry.bytes;
+      return entry;
+    });
+  } catch {
     throw new RecoveryError(
-      'BACKUP_MANIFEST_FAILED',
-      'Recovery bundle contains unsafe or duplicate names.',
+      'BACKUP_BUNDLE_CHECKSUM_FAILED',
+      'Recovery bundle entry checksums could not be calculated.',
+      { phase: 'bundle_checksum', timeout: false },
     );
   }
-  const bodies = await Promise.all(files.map((file) => readFile(file)));
-  let offset = 0;
-  const entries = names.map((name, index) => {
-    const entry = { name, offset, bytes: bodies[index].length, sha256: hashBuffer(bodies[index]) };
-    offset += entry.bytes;
-    return entry;
-  });
-  const index = Buffer.from(canonicalJson({ entries }), 'utf8');
-  const length = Buffer.alloc(4);
-  length.writeUInt32BE(index.length);
-  await writeFile(output, Buffer.concat([MAGIC, length, index, ...bodies]), { mode: 0o600 });
-  return entries;
+  try {
+    const index = Buffer.from(canonicalJson({ entries }), 'utf8');
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(index.length);
+    await writeFile(output, Buffer.concat([MAGIC, length, index, ...bodies]), { mode: 0o600 });
+    return entries;
+  } catch {
+    throw new RecoveryError(
+      'BACKUP_BUNDLE_WRITE_FAILED',
+      'The recovery bundle could not be serialized or written.',
+      { phase: 'bundle_write', timeout: false },
+    );
+  }
 }
 
 export async function readRecoveryBundle(path: string): Promise<Map<string, Buffer>> {

@@ -137,6 +137,12 @@ export type RecoveryFailureCode =
   | 'BACKUP_PG_DUMP_SNAPSHOT_FAILED'
   | 'BACKUP_ARCHIVE_CREATION_FAILED'
   | 'BACKUP_ARCHIVE_INSPECTION_FAILED'
+  | 'BACKUP_MIGRATION_METADATA_FAILED'
+  | 'BACKUP_SERVER_METADATA_FAILED'
+  | 'BACKUP_MANIFEST_VALIDATION_FAILED'
+  | 'BACKUP_MANIFEST_WRITE_FAILED'
+  | 'BACKUP_BUNDLE_CHECKSUM_FAILED'
+  | 'BACKUP_BUNDLE_WRITE_FAILED'
   | 'BACKUP_OPERATION_TIMEOUT'
   | 'BACKUP_APPLICATION_EXPORT_FAILED'
   | 'BACKUP_AUTH_EXPORT_FAILED'
@@ -177,7 +183,12 @@ export const RECOVERY_PHASES = [
   'archive_creation',
   'archive_inspection',
   'archive_inventory',
-  'manifest_bundle',
+  'manifest_metadata',
+  'server_metadata',
+  'manifest_validation',
+  'manifest_write',
+  'bundle_checksum',
+  'bundle_write',
   'encryption',
   'r2_upload',
   'r2_readback',

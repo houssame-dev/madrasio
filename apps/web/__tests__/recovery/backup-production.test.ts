@@ -194,6 +194,12 @@ describe('verified backup orchestration', () => {
     'BACKUP_AUTH_FEATURE_STATE_UNSUPPORTED',
     'BACKUP_INVENTORY_VALIDATION_FAILED',
     'BACKUP_MANIFEST_FAILED',
+    'BACKUP_MIGRATION_METADATA_FAILED',
+    'BACKUP_SERVER_METADATA_FAILED',
+    'BACKUP_MANIFEST_VALIDATION_FAILED',
+    'BACKUP_MANIFEST_WRITE_FAILED',
+    'BACKUP_BUNDLE_CHECKSUM_FAILED',
+    'BACKUP_BUNDLE_WRITE_FAILED',
     'BACKUP_ENCRYPTION_FAILED',
   ] as const)('stops before upload after %s', async (code) => {
     const item = await fixture();

@@ -1,4 +1,4 @@
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,11 +25,13 @@ import {
 } from './inventory';
 import {
   artifactMetadata,
-  canonicalJson,
   createBackupId,
   hashBuffer,
   loadMigrationMetadata,
-  recoveryManifestSchema,
+  loadServerVersion,
+  resolveRecoveryMigrationsDirectory,
+  validateRecoveryManifest,
+  writeRecoveryManifest,
 } from './manifest';
 import { withExportedSnapshot } from './snapshot';
 import {
@@ -111,58 +113,47 @@ export async function createProductionRecoveryBundle(
       const fingerprints = fingerprintsOutcome.value;
       const listing = await inspectPgDumpArchive(dump);
       assertArchiveInventory(listing);
-      let backupId: string;
-      try {
-        const migrationDirectory = resolve(process.cwd(), '../../database/drizzle/migrations');
-        const migrations = await loadMigrationMetadata(migrationDirectory);
-        const server = await coordinator.query<{ version: string }>('show server_version');
-        backupId = createBackupId(timestamp, gitSha);
-        const manifest = recoveryManifestSchema.parse({
-          format: 'madrasio-recovery-v1',
-          backupId,
-          snapshotAt: timestamp,
-          source: {
-            environment: 'production',
-            projectRef: env.PRODUCTION_EXPECTED_PROJECT_REF,
-            region: 'eu-central-1',
-          },
-          gitSha,
-          postgres: { serverVersion: server.rows[0]?.version, clientVersion: '17.6' },
-          migrations,
-          authSchema: await loadAuthSchemaContract(coordinator),
-          fingerprints,
-          lifecycleAggregates: await loadStatusAggregates(coordinator),
-          artifacts: [await artifactMetadata(dump)],
-          encryption: {
-            format: 'age',
-            toolVersion: '1.3.1',
-            recipientFingerprint: hashBuffer(recipient),
-          },
-          providerContract: {
-            version: 1,
-            region: 'eu-central-1',
-            appOrigin,
-            dataApi: 'disabled',
-            sslEnforcement: 'required',
-            callbackPath: '/auth/confirm',
-            passwordMinimum: 8,
-            publicSignup: false,
-            anonymousSignin: false,
-            expectedCronJobs: 2,
-            expectedVaultNames: ['sms_production_app_origin', 'sms_production_cron_secret'],
-            vercel: { rootDirectory: 'apps/web', framework: 'nextjs', region: 'fra1' },
-          },
-        });
-        await writeFile(manifestPath, `${canonicalJson(manifest)}\n`, { mode: 0o600 });
-        await writeRecoveryBundle(bundle, [manifestPath, dump]);
-      } catch (error) {
-        if (error instanceof RecoveryError) throw error;
-        throw new RecoveryError(
-          'BACKUP_MANIFEST_FAILED',
-          'The recovery manifest or bundle could not be created.',
-          { phase: 'manifest_bundle', timeout: false },
-        );
-      }
+      const migrations = await loadMigrationMetadata(resolveRecoveryMigrationsDirectory());
+      const serverVersion = await loadServerVersion(coordinator);
+      const backupId = createBackupId(timestamp, gitSha);
+      const manifest = validateRecoveryManifest({
+        format: 'madrasio-recovery-v1',
+        backupId,
+        snapshotAt: timestamp,
+        source: {
+          environment: 'production',
+          projectRef: env.PRODUCTION_EXPECTED_PROJECT_REF,
+          region: 'eu-central-1',
+        },
+        gitSha,
+        postgres: { serverVersion, clientVersion: '17.6' },
+        migrations,
+        authSchema: await loadAuthSchemaContract(coordinator),
+        fingerprints,
+        lifecycleAggregates: await loadStatusAggregates(coordinator),
+        artifacts: [await artifactMetadata(dump)],
+        encryption: {
+          format: 'age',
+          toolVersion: '1.3.1',
+          recipientFingerprint: hashBuffer(recipient),
+        },
+        providerContract: {
+          version: 1,
+          region: 'eu-central-1',
+          appOrigin,
+          dataApi: 'disabled',
+          sslEnforcement: 'required',
+          callbackPath: '/auth/confirm',
+          passwordMinimum: 8,
+          publicSignup: false,
+          anonymousSignin: false,
+          expectedCronJobs: 2,
+          expectedVaultNames: ['sms_production_app_origin', 'sms_production_cron_secret'],
+          vercel: { rootDirectory: 'apps/web', framework: 'nextjs', region: 'fra1' },
+        },
+      });
+      await writeRecoveryManifest(manifestPath, manifest);
+      await writeRecoveryBundle(bundle, [manifestPath, dump]);
       await encryptBundle(bundle, output, recipient);
       const encrypted = await stat(output);
       result = {

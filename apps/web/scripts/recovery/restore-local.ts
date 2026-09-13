@@ -19,6 +19,7 @@ import {
   hashBuffer,
   loadMigrationMetadata,
   parseRecoveryManifest,
+  resolveRecoveryMigrationsDirectory,
 } from './manifest';
 import {
   assertAuthSchemaCompatible,
@@ -96,7 +97,7 @@ async function main(): Promise<void> {
       );
     }
     const repositoryMigrations = await loadMigrationMetadata(
-      resolve(process.cwd(), '../../database/drizzle/migrations'),
+      resolveRecoveryMigrationsDirectory(),
     );
     if (canonicalJson(repositoryMigrations) !== canonicalJson(manifest.migrations)) {
       throw new RecoveryError(
