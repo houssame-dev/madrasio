@@ -31,6 +31,9 @@ async function manifestFixture(rowCount: number) {
   await writeFile(dump, rowCount ? 'synthetic-non-empty-archive' : 'empty-production-archive');
   const migrationsDirectory = resolveRecoveryMigrationsDirectory();
   const migrations = await loadMigrationMetadata(migrationsDirectory);
+  const serverVersion = await loadServerVersion({
+    query: vi.fn(async () => ({ rows: [{ server_version: '17.6' }] })),
+  } as never);
   const backupId = createBackupId('2026-09-13T15:09:01.123Z', gitSha);
   const manifest = validateRecoveryManifest({
     format: 'madrasio-recovery-v1',
@@ -42,7 +45,7 @@ async function manifestFixture(rowCount: number) {
       region: 'eu-central-1',
     },
     gitSha,
-    postgres: { serverVersion: '17.6', clientVersion: '17.6' },
+    postgres: { serverVersion, clientVersion: '17.6' },
     migrations,
     authSchema: [
       {
@@ -169,10 +172,67 @@ describe('Production manifest and bundle construction', () => {
     });
   });
 
-  it('normalizes server metadata and classifies failures without returning server details', async () => {
+  it('reads and trims the native SHOW server_version driver field', async () => {
     await expect(
-      loadServerVersion({ query: vi.fn(async () => ({ rows: [{ version: ' 17.6 ' }] })) } as never),
+      loadServerVersion({
+        query: vi.fn(async () => ({ rows: [{ server_version: '17.6' }] })),
+      } as never),
     ).resolves.toBe('17.6');
+    await expect(
+      loadServerVersion({
+        query: vi.fn(async () => ({ rows: [{ server_version: ' 17.6 \n' }] })),
+      } as never),
+    ).resolves.toBe('17.6');
+  });
+
+  it.each([
+    ['legacy property', [{ version: '17.6' }]],
+    ['missing row', []],
+    ['empty value', [{ server_version: '' }]],
+    ['whitespace value', [{ server_version: ' \n ' }]],
+    ['null value', [{ server_version: null }]],
+    ['number value', [{ server_version: 17.6 }]],
+    ['object value', [{ server_version: { value: '17.6' } }]],
+    ['array value', [{ server_version: ['17.6'] }]],
+  ] as const)('rejects the %s server metadata shape safely', async (_name, rows) => {
+    await expect(
+      loadServerVersion({ query: vi.fn(async () => ({ rows })) } as never),
+    ).rejects.toMatchObject({
+      code: 'BACKUP_SERVER_METADATA_FAILED',
+      diagnostic: { phase: 'server_metadata', timeout: false },
+    });
+  });
+
+  it('does not expose a rejected server row or unrelated secret-shaped fields', async () => {
+    const secrets = [
+      'postgresql://private:password@host/db',
+      'customer@example.test',
+      'https://cronitor.link/p/private/key',
+    ];
+    let error: unknown;
+    try {
+      await loadServerVersion({
+        query: vi.fn(async () => ({
+          rows: [
+            {
+              server_version: null,
+              databaseUrl: secrets[0],
+              email: secrets[1],
+              heartbeat: secrets[2],
+            },
+          ],
+        })),
+      } as never);
+    } catch (caught) {
+      error = caught;
+    }
+    const safe = JSON.stringify(safeRecoveryError(error));
+    expect(safe).toContain('BACKUP_SERVER_METADATA_FAILED');
+    expect(safe).toContain('server_metadata');
+    for (const secret of secrets) expect(safe).not.toContain(secret);
+  });
+
+  it('classifies server query failures without returning server details', async () => {
     await expect(
       loadServerVersion({
         query: vi.fn().mockRejectedValue(Object.assign(new Error('private host'), { code: '42501' })),

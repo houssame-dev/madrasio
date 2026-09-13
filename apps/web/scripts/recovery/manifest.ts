@@ -168,8 +168,10 @@ export function validateRecoveryManifest(value: unknown): RecoveryManifest {
 
 export async function loadServerVersion(client: QueryClient): Promise<string> {
   try {
-    const result = await client.query<{ version: string }>('show server_version');
-    const version = result.rows[0]?.version?.trim();
+    const result = await client.query<{ server_version: unknown }>('show server_version');
+    const rawVersion = result.rows[0]?.server_version;
+    if (typeof rawVersion !== 'string') throw new Error('Server version unavailable.');
+    const version = rawVersion.trim();
     if (!version) throw new Error('Server version unavailable.');
     return version;
   } catch (error) {
