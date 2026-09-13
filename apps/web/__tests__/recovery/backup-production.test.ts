@@ -4,11 +4,16 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  appendSafeBackupFailureSummary,
   appendSafeBackupSummary,
   createRecoveryObjectKey,
   executeVerifiedBackup,
 } from '@/scripts/recovery/automation';
-import { RecoveryError, safeRecoveryError } from '@/scripts/recovery/contracts';
+import {
+  RecoveryError,
+  preservePrimaryWithCleanupFailure,
+  safeRecoveryError,
+} from '@/scripts/recovery/contracts';
 import type { ProductionRecoveryBundle } from '@/scripts/recovery/create-production-backup';
 import {
   cleanupRecoveryWorkDirectory,
@@ -182,7 +187,9 @@ describe('verified backup orchestration', () => {
   });
 
   it.each([
-    'BACKUP_SNAPSHOT_FAILED',
+    'BACKUP_DB_CONNECTION_FAILED',
+    'BACKUP_SNAPSHOT_EXPORT_FAILED',
+    'BACKUP_PG_DUMP_SNAPSHOT_FAILED',
     'BACKUP_APPLICATION_EXPORT_FAILED',
     'BACKUP_AUTH_FEATURE_STATE_UNSUPPORTED',
     'BACKUP_INVENTORY_VALIDATION_FAILED',
@@ -206,6 +213,31 @@ describe('verified backup orchestration', () => {
       expect(item.store.putImmutable).not.toHaveBeenCalled();
       expect(item.heartbeat.success).not.toHaveBeenCalled();
       expect(item.heartbeat.failure).toHaveBeenCalledOnce();
+    } finally {
+      await cleanupRecoveryWorkDirectory(item.directory);
+    }
+  });
+
+  it('emits at most one terminal failure heartbeat and never success for one attempt', async () => {
+    const item = await fixture();
+    try {
+      await expect(
+        executeVerifiedBackup({
+          retentionClass: 'frequent',
+          outputPath: item.outputPath,
+          readbackPath: item.readbackPath,
+          createBundle: async () => {
+            throw new RecoveryError('BACKUP_FINGERPRINT_FAILED', 'safe', {
+              phase: 'fingerprint',
+              timeout: false,
+            });
+          },
+          store: item.store,
+          heartbeat: item.heartbeat,
+        }),
+      ).rejects.toMatchObject({ code: 'BACKUP_FINGERPRINT_FAILED' });
+      expect(item.heartbeat.failure).toHaveBeenCalledOnce();
+      expect(item.heartbeat.success).not.toHaveBeenCalled();
     } finally {
       await cleanupRecoveryWorkDirectory(item.directory);
     }
@@ -374,7 +406,10 @@ describe('transport and log safety', () => {
       'r2-secret-secret',
       'https://cronitor.link/p/private/key',
       'BEGIN CERTIFICATE private material',
+      `age1${'q'.repeat(58)}`,
       'auth-password-hash',
+      'synthetic.customer@example.test',
+      'private-customer-row',
     ];
     try {
       await appendSafeBackupSummary(summary, 'b'.repeat(40), {
@@ -383,10 +418,67 @@ describe('transport and log safety', () => {
         retentionClass: 'frequent',
         classification: 'PRODUCTION_BACKUP_RECOVERY_POINT_VERIFIED',
       });
-      const output = `${JSON.stringify(safeRecoveryError(new Error(secrets.join(' '))))}\n${await readFile(summary, 'utf8')}`;
+      const failure = new RecoveryError(
+        'BACKUP_PG_DUMP_CONNECTION_FAILED',
+        'The PostgreSQL archive could not be created.',
+        {
+          phase: 'pg_dump_connection',
+          sqlState: '08001',
+          exitCode: 1,
+          timeout: false,
+          dbAccessBegan: true,
+          r2UploadBegan: false,
+          heartbeatSuccessSent: false,
+        },
+      );
+      await appendSafeBackupFailureSummary(summary, 'c'.repeat(40), failure);
+      const output = `${JSON.stringify(safeRecoveryError(new Error(secrets.join(' '))))}\n${JSON.stringify(safeRecoveryError(failure))}\n${await readFile(summary, 'utf8')}`;
       for (const secret of secrets) expect(output).not.toContain(secret);
+      expect(output).toContain('BACKUP_PG_DUMP_CONNECTION_FAILED');
+      expect(output).toContain('pg_dump_connection');
+      expect(output).toContain('08001');
+      const maliciousRecoveryError = JSON.stringify(
+        safeRecoveryError(
+          new RecoveryError('BACKUP_FINGERPRINT_FAILED', secrets.join(' '), {
+            phase: 'fingerprint',
+            timeout: false,
+          }),
+        ),
+      );
+      for (const secret of secrets) expect(maliciousRecoveryError).not.toContain(secret);
+      const maliciousDiagnostic = JSON.stringify(
+        safeRecoveryError(
+          new RecoveryError('BACKUP_FINGERPRINT_FAILED', 'safe', {
+            phase: 'fingerprint',
+            sqlState: secrets[0],
+            signal: secrets[1],
+            exitCode: 999_999,
+            timeout: false,
+          }),
+        ),
+      );
+      for (const secret of secrets) expect(maliciousDiagnostic).not.toContain(secret);
     } finally {
       await cleanupRecoveryWorkDirectory(directory);
     }
+  });
+
+  it('retains the primary classification when cleanup also fails', () => {
+    const combined = preservePrimaryWithCleanupFailure(
+      new RecoveryError('BACKUP_SNAPSHOT_EXPORT_FAILED', 'snapshot failed', {
+        phase: 'snapshot_export',
+        sqlState: '0A000',
+        timeout: false,
+      }),
+      new RecoveryError('BACKUP_PLAINTEXT_CLEANUP_FAILED', 'cleanup failed', {
+        phase: 'cleanup',
+        timeout: false,
+      }),
+    );
+    expect(safeRecoveryError(combined)).toMatchObject({
+      code: 'BACKUP_SNAPSHOT_EXPORT_FAILED',
+      phase: 'snapshot_export',
+      cleanupWarning: 'BACKUP_PLAINTEXT_CLEANUP_FAILED',
+    });
   });
 });

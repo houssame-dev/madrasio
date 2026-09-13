@@ -19,7 +19,10 @@ function parseHeartbeatUrl(value: string | undefined): URL {
     url.search ||
     url.hash
   ) {
-    throw new RecoveryError('BACKUP_HEARTBEAT_FAILED', 'The backup heartbeat target is invalid.');
+    throw new RecoveryError('BACKUP_HEARTBEAT_FAILED', 'The backup heartbeat target is invalid.', {
+      phase: 'heartbeat',
+      timeout: false,
+    });
   }
   return url;
 }
@@ -40,7 +43,10 @@ export class CronitorRecoveryHeartbeat implements RecoveryHeartbeat {
     if (state) target.searchParams.set('state', state);
     const response = await this.fetchImpl(target, { method: 'POST', redirect: 'error' });
     if (!response.ok) {
-      throw new RecoveryError('BACKUP_HEARTBEAT_FAILED', 'Backup monitoring telemetry failed.');
+      throw new RecoveryError('BACKUP_HEARTBEAT_FAILED', 'Backup monitoring telemetry failed.', {
+        phase: 'heartbeat',
+        timeout: false,
+      });
     }
   }
 

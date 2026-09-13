@@ -25,6 +25,7 @@ export function assertRecoveryWorkDirectory(directory: string): string {
     throw new RecoveryError(
       'BACKUP_PLAINTEXT_CLEANUP_FAILED',
       'Refused cleanup outside a generated recovery work directory.',
+      { phase: 'cleanup', timeout: false },
     );
   }
   return target;
@@ -43,6 +44,7 @@ export async function cleanupRecoveryWorkDirectory(
     throw new RecoveryError(
       'BACKUP_PLAINTEXT_CLEANUP_FAILED',
       'Temporary plaintext recovery material could not be removed.',
+      { phase: 'cleanup', timeout: false },
     );
   }
 }

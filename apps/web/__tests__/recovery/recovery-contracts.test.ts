@@ -22,6 +22,7 @@ import {
 import {
   assertRecoveryInventory,
   assertSupportedAuthState,
+  fingerprintTable,
   topologicalRestoreOrder,
 } from '@/scripts/recovery/inventory';
 import {
@@ -37,7 +38,12 @@ import {
   assertArchiveInventory,
   assertToolVersions,
   cleanupPostgresToolEnvironment,
+  classifyToolFailure,
+  createPgDumpArchive,
+  ExternalToolError,
+  inspectPgDumpArchive,
   pgDumpArguments,
+  postgresContainerInvocation,
   validateAgeRecipient,
 } from '@/scripts/recovery/tools';
 
@@ -147,6 +153,32 @@ describe('recovery archive and tools', () => {
     await expect(assertRecoveryInventory({ query } as never)).rejects.toThrow('inventory differs');
   });
 
+  it('separates application and Auth inventory query failures', async () => {
+    const application = { query: vi.fn().mockRejectedValue(Object.assign(new Error('private'), { code: '42501' })) };
+    await expect(assertRecoveryInventory(application as never)).rejects.toMatchObject({
+      code: 'BACKUP_APPLICATION_INVENTORY_FAILED',
+      diagnostic: { phase: 'application_inventory', sqlState: '42501' },
+    });
+    const auth = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: APPLICATION_TABLES.map((table) => ({ table_name: table })) })
+        .mockRejectedValueOnce(Object.assign(new Error('private'), { code: '42501' })),
+    };
+    await expect(assertRecoveryInventory(auth as never)).rejects.toMatchObject({
+      code: 'BACKUP_AUTH_INVENTORY_FAILED',
+      diagnostic: { phase: 'auth_inventory', sqlState: '42501' },
+    });
+  });
+
+  it('classifies fingerprint query failures without returning row values', async () => {
+    const query = vi.fn().mockRejectedValue(Object.assign(new Error('customer@example.test'), { code: '42501' }));
+    await expect(fingerprintTable({ query } as never, 'public.users')).rejects.toMatchObject({
+      code: 'BACKUP_FINGERPRINT_FAILED',
+      diagnostic: { phase: 'fingerprint', sqlState: '42501' },
+    });
+  });
+
   it('rejects unsupported durable Auth feature state without returning its rows', async () => {
     const query = vi
       .fn()
@@ -220,6 +252,30 @@ describe('recovery archive and tools', () => {
     expect(args).toContain('--snapshot=00000003-1');
     expect(args.filter((item) => item === '--table')).toHaveLength(41);
     expect(args.join(' ')).not.toMatch(/password|database-url|session|refresh_tokens/);
+  });
+
+  it('passes PostgreSQL TLS and connection inputs to the pinned container by env name only', () => {
+    const invocation = postgresContainerInvocation(
+      'pg_dump',
+      pgDumpArguments('/tmp/archive.dump', '00000003-1'),
+      'postgres:17.6-bookworm@sha256:reviewed',
+    );
+    expect(invocation).toEqual(
+      expect.arrayContaining([
+        '--network',
+        'host',
+        '--volume',
+        '/tmp:/tmp:rw',
+        'PGHOST',
+        'PGPORT',
+        'PGDATABASE',
+        'PGUSER',
+        'PGPASSWORD',
+        'PGSSLMODE',
+        'PGSSLROOTCERT',
+      ]),
+    );
+    expect(invocation.join(' ')).not.toMatch(/postgresql:\/\/|secret|BEGIN CERTIFICATE/);
   });
 
   it('requires pinned PostgreSQL 17 and the exact official age v1.3.1 runtime string', async () => {
@@ -309,6 +365,113 @@ describe('snapshot and restore orchestration', () => {
     const fake = fakePool();
     await withSnapshotConsumer(fake.pool as never, '00000003-0000001B-1', async () => undefined);
     expect(fake.query.mock.calls[1]?.[0]).toBe("SET TRANSACTION SNAPSHOT '00000003-0000001B-1'");
+  });
+
+  it('classifies coordinator connection, transaction and export failures separately', async () => {
+    await expect(
+      withExportedSnapshot(
+        { connect: vi.fn().mockRejectedValue(Object.assign(new Error('private'), { code: '08001' })) } as never,
+        async () => undefined,
+      ),
+    ).rejects.toMatchObject({ code: 'BACKUP_DB_CONNECTION_FAILED', diagnostic: { phase: 'coordinator_connection', sqlState: '08001' } });
+
+    const transaction = fakePool();
+    transaction.query.mockRejectedValueOnce(Object.assign(new Error('private'), { code: '25006' }));
+    await expect(withExportedSnapshot(transaction.pool as never, async () => undefined)).rejects.toMatchObject({
+      code: 'BACKUP_READ_ONLY_TRANSACTION_FAILED',
+      diagnostic: { phase: 'read_only_transaction', sqlState: '25006' },
+    });
+
+    const exported = fakePool();
+    exported.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('pg_export_snapshot')) throw Object.assign(new Error('private'), { code: '0A000' });
+      return { rows: [] };
+    });
+    await expect(withExportedSnapshot(exported.pool as never, async () => undefined)).rejects.toMatchObject({
+      code: 'BACKUP_SNAPSHOT_EXPORT_FAILED',
+      diagnostic: { phase: 'snapshot_export', sqlState: '0A000' },
+    });
+  });
+
+  it('classifies snapshot import, consumer query and coordinator loss separately', async () => {
+    const imported = fakePool();
+    imported.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('SET TRANSACTION SNAPSHOT')) throw Object.assign(new Error('private'), { code: '22023' });
+      return { rows: [] };
+    });
+    await expect(
+      withSnapshotConsumer(imported.pool as never, '00000003-0000001B-1', async () => undefined),
+    ).rejects.toMatchObject({ code: 'BACKUP_SNAPSHOT_IMPORT_FAILED', diagnostic: { phase: 'snapshot_import', sqlState: '22023' } });
+
+    const consumer = fakePool();
+    await expect(
+      withSnapshotConsumer(consumer.pool as never, '00000003-0000001B-1', async () => {
+        throw new Error('private customer row');
+      }),
+    ).rejects.toMatchObject({ code: 'BACKUP_SNAPSHOT_CONSUMER_FAILED', diagnostic: { phase: 'snapshot_consumer_query' } });
+
+    const lost = fakePool();
+    lost.query.mockImplementation(async (sql: string) => {
+      if (sql === 'COMMIT') throw Object.assign(new Error('private host'), { code: '08006' });
+      if (sql.includes('pg_export_snapshot')) return { rows: [{ snapshot: '00000003-0000001B-1', timestamp: '2026-09-11T00:00:00Z' }] };
+      return { rows: [] };
+    });
+    await expect(withExportedSnapshot(lost.pool as never, async () => undefined)).rejects.toMatchObject({
+      code: 'BACKUP_SNAPSHOT_COORDINATOR_LOST',
+      diagnostic: { phase: 'coordinator_commit', sqlState: '08006' },
+    });
+  });
+
+  it.each([
+    ['spawn', 'BACKUP_PG_DUMP_START_FAILED', 'pg_dump_start'],
+    ['connection', 'BACKUP_PG_DUMP_CONNECTION_FAILED', 'pg_dump_connection'],
+    ['snapshot', 'BACKUP_PG_DUMP_SNAPSHOT_FAILED', 'pg_dump_snapshot'],
+    ['operation', 'BACKUP_ARCHIVE_CREATION_FAILED', 'archive_creation'],
+  ] as const)('maps pg_dump %s failures to %s', async (kind, code, phase) => {
+    const runner = vi.fn().mockRejectedValue(new ExternalToolError(kind, 1, undefined, false));
+    await expect(createPgDumpArchive([], {}, runner)).rejects.toMatchObject({
+      code,
+      diagnostic: { phase, exitCode: 1, timeout: false },
+    });
+  });
+
+  it('separates pg_dump and archive-inspection timeouts', async () => {
+    const timeout = vi.fn().mockRejectedValue(new ExternalToolError('operation', undefined, 'SIGTERM', true));
+    await expect(createPgDumpArchive([], {}, timeout)).rejects.toMatchObject({
+      code: 'BACKUP_OPERATION_TIMEOUT',
+      diagnostic: { phase: 'archive_creation', signal: 'SIGTERM', timeout: true },
+    });
+    await expect(inspectPgDumpArchive('x.dump', timeout)).rejects.toMatchObject({
+      code: 'BACKUP_OPERATION_TIMEOUT',
+      diagnostic: { phase: 'archive_inspection', timeout: true },
+    });
+  });
+
+  it('uses pg_dump stderr only for bounded classification and never returns its contents', () => {
+    const secret =
+      'postgresql://private-user:private-password@private-host/postgres BEGIN CERTIFICATE customer@example.test';
+    const cases = [
+      [`pg_dump: error: connection to server at "private-host" failed: ${secret}`, 'connection'],
+      [`pg_dump: error: could not import the requested snapshot: ${secret}`, 'snapshot'],
+      [`pg_dump: error: unrelated archive failure ${secret}`, 'operation'],
+    ] as const;
+    for (const [stderr, expected] of cases) {
+      const classification = classifyToolFailure('pg_dump', stderr, 1);
+      expect(classification).toBe(expected);
+      expect(classification).not.toContain('private');
+      expect(JSON.stringify(classification)).not.toContain(secret);
+    }
+  });
+
+  it('classifies archive inspection independently from inventory mismatch', async () => {
+    const runner = vi.fn().mockRejectedValue(new ExternalToolError('operation', 2, undefined, false));
+    await expect(inspectPgDumpArchive('x.dump', runner)).rejects.toMatchObject({
+      code: 'BACKUP_ARCHIVE_INSPECTION_FAILED',
+      diagnostic: { phase: 'archive_inspection', exitCode: 2 },
+    });
+    expect(() => assertArchiveInventory('1; 0 0 TABLE DATA public unexpected postgres')).toThrowError(
+      expect.objectContaining({ code: 'BACKUP_INVENTORY_VALIDATION_FAILED', diagnostic: { phase: 'archive_inventory', timeout: false } }),
+    );
   });
 
   it('orders referenced tables before dependants and rejects cycles', () => {

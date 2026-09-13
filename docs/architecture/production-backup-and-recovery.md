@@ -117,7 +117,15 @@ Native archive/encryption and real PostgreSQL/Supabase restore rehearsal remain 
 
 ## Failure classifications
 
-Recovery errors are bounded and redact provider/tool details. The main classifications cover target verification, snapshot, application/Auth export, unsupported Auth state, inventory/fingerprint/manifest, encryption, upload/remote verification, plaintext cleanup, stale recovery point, restore target/manifest/decryption/Auth compatibility/data/reconciliation/security. External process errors report only exit status and withheld-output byte counts; commands, URLs, passwords, row bodies, tokens, and Auth content are not logged.
+Recovery errors are bounded and redact provider/tool details. Backup diagnostics identify the safe phase and classification rather than collapsing every consistent-snapshot consumer into one error. The phase taxonomy separates target/tool verification, coordinator connection, read-only transaction setup, snapshot export, snapshot-consumer connection/import/query, coordinator lifetime, application/Auth inventory, fingerprints, `pg_dump` startup/connection/snapshot/archive creation, archive inspection/inventory, manifest/bundle, encryption, R2 upload/readback, heartbeat, and cleanup.
+
+Operator-visible failures may contain only the candidate SHA, bounded classification and phase, an allowlisted five-character SQLSTATE, external-process exit code/signal, timeout boolean, and booleans stating whether database access, R2 upload, or heartbeat success began. Raw PostgreSQL messages, SQL parameters, connection URLs, usernames, passwords, CA contents, row values, emails, Auth metadata/password hashes, command lines, tool stderr, R2 credentials, age recipients, and heartbeat URLs are suppressed. `pg_dump` stderr is consumed only for a small internal classification allowlist—process startup, connection, snapshot import, or other archive failure—and is never emitted or stored in the workflow summary.
+
+External operations are bounded. Tool verification and archive inspection use short timeouts; `pg_dump` uses a bounded fifteen-minute timeout within the workflow's sixty-minute job limit. There is no automatic retry for snapshot export/import, archive creation, R2 transport, or monitoring. One workflow attempt sends at most one terminal failure heartbeat, and success/failure telemetry are mutually exclusive. Failure telemetry contains no raw exception text.
+
+Cleanup remains unconditional and path-validated. A cleanup failure is reported as `BACKUP_PLAINTEXT_CLEANUP_FAILED`; when another phase already failed, the primary classification is preserved and the cleanup problem is included only as a bounded warning. Production diagnostics never retain plaintext temporary artifacts for investigation.
+
+The first live snapshot attempt, GitHub Actions run `34713293257` at source SHA `614c5b139c1b4cd8d4fd523ddaaeda96330f9c4d`, failed safely before archive completion, encryption, R2 upload, remote verification, or a success heartbeat. It created no recovery object and cleanup passed. The historical top-level `BACKUP_SNAPSHOT_FAILED` did not establish a root cause; no cause is inferred from that run. After any live failure, operators inspect the bounded phase evidence, review a concrete remediation, and obtain fresh authorization before another manual Production attempt.
 
 ## Gate status
 

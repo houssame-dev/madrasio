@@ -1,6 +1,6 @@
 import { appendFile } from 'node:fs/promises';
 
-import { RecoveryError } from './contracts';
+import { RecoveryError, safeRecoveryError, withRecoveryOperationState } from './contracts';
 import type { ProductionRecoveryBundle } from './create-production-backup';
 import type { RecoveryHeartbeat, RecoveryObjectStore } from './operations';
 import { uploadAndVerify } from './operations';
@@ -42,9 +42,13 @@ export async function executeVerifiedBackup(input: {
 }): Promise<VerifiedRecoveryPoint> {
   const now = input.now ?? (() => new Date());
   let recoveryPointVerified = false;
+  let r2UploadBegan = false;
+  let heartbeatSuccessSent = false;
+  let failureHeartbeatSent = false;
   try {
     const bundle = await input.createBundle();
     const objectKey = createRecoveryObjectKey(input.retentionClass, bundle);
+    r2UploadBegan = true;
     await uploadAndVerify(
       input.store,
       {
@@ -62,6 +66,7 @@ export async function executeVerifiedBackup(input: {
         ciphertextSha256: bundle.ciphertextSha256,
         completedAt: now().toISOString(),
       });
+      heartbeatSuccessSent = true;
     } catch {
       throw new RecoveryError(
         'BACKUP_HEARTBEAT_FAILED',
@@ -75,12 +80,49 @@ export async function executeVerifiedBackup(input: {
       classification: 'PRODUCTION_BACKUP_RECOVERY_POINT_VERIFIED',
     };
   } catch (error) {
+    const safe = safeRecoveryError(error);
+    const enriched = withRecoveryOperationState(error, {
+      dbAccessBegan:
+        safe.dbAccessBegan ??
+        (!!safe.phase && !['target_verification', 'tool_verification'].includes(safe.phase)),
+      r2UploadBegan,
+      heartbeatSuccessSent,
+    });
     if (!recoveryPointVerified) {
-      const code = error instanceof RecoveryError ? error.code : 'RECOVERY_OPERATION_FAILED';
-      await input.heartbeat.failure({ code, failedAt: now().toISOString() }).catch(() => undefined);
+      const code = enriched.code;
+      if (!failureHeartbeatSent) {
+        failureHeartbeatSent = true;
+        await input.heartbeat.failure({ code, failedAt: now().toISOString() }).catch(() => undefined);
+      }
     }
-    throw error;
+    throw enriched;
   }
+}
+
+export async function appendSafeBackupFailureSummary(
+  path: string | undefined,
+  gitSha: string,
+  error: unknown,
+): Promise<void> {
+  if (!path) return;
+  const safe = safeRecoveryError(error);
+  const lines = [
+    '## Failed Production recovery attempt',
+    '',
+    `- Candidate SHA: \`${/^[a-f0-9]{40}$/.test(gitSha) ? gitSha : '<invalid>'}\``,
+    `- Classification: \`${safe.code}\``,
+    `- Phase: \`${safe.phase ?? 'unknown'}\``,
+    ...(safe.sqlState ? [`- SQLSTATE: \`${safe.sqlState}\``] : []),
+    ...(safe.exitCode !== undefined ? [`- Exit code: \`${safe.exitCode}\``] : []),
+    ...(safe.signal ? [`- Signal: \`${safe.signal}\``] : []),
+    `- Timeout: \`${safe.timeout ?? false}\``,
+    `- Database access began: \`${safe.dbAccessBegan ?? false}\``,
+    `- R2 upload began: \`${safe.r2UploadBegan ?? false}\``,
+    `- Heartbeat success sent: \`${safe.heartbeatSuccessSent ?? false}\``,
+    ...(safe.cleanupWarning ? [`- Cleanup warning: \`${safe.cleanupWarning}\``] : []),
+    '',
+  ];
+  await appendFile(path, lines.join('\n'), { encoding: 'utf8' });
 }
 
 export async function appendSafeBackupSummary(

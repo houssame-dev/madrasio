@@ -11,17 +11,80 @@ import {
   PRODUCTION_POSTGRES_MAJOR,
   RECOVERY_TABLES,
   RecoveryError,
+  type RecoveryDiagnostic,
 } from './contracts';
 
 export type CommandEnvironment = Record<string, string | undefined>;
+export type ExternalToolFailureKind = 'spawn' | 'connection' | 'snapshot' | 'operation';
+export class ExternalToolError extends Error {
+  constructor(
+    public readonly kind: ExternalToolFailureKind,
+    public readonly exitCode: number | undefined,
+    public readonly signal: string | undefined,
+    public readonly timeout: boolean,
+  ) {
+    super('External recovery tool failed; output withheld.');
+    this.name = 'ExternalToolError';
+  }
+}
 export type CommandRunner = (
   command: string,
   args: string[],
-  options?: { env?: CommandEnvironment },
+  options?: { env?: CommandEnvironment; timeoutMs?: number },
 ) => Promise<{ stdout: string }>;
+
+export function classifyToolFailure(
+  command: string,
+  stderr: string,
+  exitCode?: number,
+): ExternalToolFailureKind {
+  if (exitCode !== undefined && [125, 126, 127].includes(exitCode)) return 'spawn';
+  if (command !== 'pg_dump') return 'operation';
+  const normalized = stderr.toLowerCase();
+  if (
+    /could not import the requested snapshot|invalid snapshot identifier|snapshot .* does not exist|set transaction snapshot/.test(
+      normalized,
+    )
+  )
+    return 'snapshot';
+  if (
+    /connection to server .* failed|could not connect to server|could not translate host name|password authentication failed|no pg_hba\.conf entry|server closed the connection unexpectedly/.test(
+      normalized,
+    )
+  )
+    return 'connection';
+  return 'operation';
+}
 
 export const PINNED_POSTGRES_CONTAINER =
   'postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3';
+
+export function postgresContainerInvocation(
+  command: 'pg_dump' | 'pg_restore',
+  args: string[],
+  image: string,
+): string[] {
+  return [
+    'run',
+    '--rm',
+    '--network',
+    'host',
+    '--volume',
+    '/tmp:/tmp:rw',
+    ...[
+      'PGHOST',
+      'PGPORT',
+      'PGDATABASE',
+      'PGUSER',
+      'PGPASSWORD',
+      'PGSSLMODE',
+      'PGSSLROOTCERT',
+    ].flatMap((name) => ['--env', name]),
+    image,
+    command,
+    ...args,
+  ];
+}
 
 export const runCommand: CommandRunner = (command, args, options = {}) =>
   new Promise((resolve, reject) => {
@@ -43,53 +106,127 @@ export const runCommand: CommandRunner = (command, args, options = {}) =>
     }
     const actualCommand = useContainer ? 'docker' : command;
     const actualArguments = useContainer
-      ? [
-          'run',
-          '--rm',
-          '--network',
-          'host',
-          '--volume',
-          '/tmp:/tmp:rw',
-          ...[
-            'PGHOST',
-            'PGPORT',
-            'PGDATABASE',
-            'PGUSER',
-            'PGPASSWORD',
-            'PGSSLMODE',
-            'PGSSLROOTCERT',
-          ].flatMap((name) => ['--env', name]),
-          configuredImage,
-          command,
-          ...args,
-        ]
+      ? postgresContainerInvocation(command as 'pg_dump' | 'pg_restore', args, configuredImage)
       : args;
     const child = spawn(actualCommand, actualArguments, {
       env: childEnvironment,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     });
+    const timeoutMs = options.timeoutMs ?? (command === 'pg_dump' ? 15 * 60_000 : 2 * 60_000);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGTERM');
+    }, timeoutMs);
+    timer.unref();
     child.stdin.end();
     let stdout = '';
     let stderr = '';
     child.stdout.setEncoding('utf8').on('data', (chunk) => (stdout += chunk));
     child.stderr.setEncoding('utf8').on('data', (chunk) => (stderr += chunk));
-    child.on('error', reject);
-    child.on('close', (code) => {
+    child.on('error', () => {
+      clearTimeout(timer);
+      reject(new ExternalToolError('spawn', undefined, undefined, false));
+    });
+    child.on('close', (code, signal) => {
+      clearTimeout(timer);
       if (code === 0) resolve({ stdout });
       else
         reject(
-          new Error(
-            `External recovery tool failed (${code}); output withheld (${stderr.length} bytes).`,
+          new ExternalToolError(
+            timedOut ? 'operation' : classifyToolFailure(command, stderr, code ?? undefined),
+            code ?? undefined,
+            signal ?? undefined,
+            timedOut,
           ),
         );
     });
   });
 
+function toolDiagnostic(
+  error: ExternalToolError,
+  phase: RecoveryDiagnostic['phase'],
+): RecoveryDiagnostic {
+  return {
+    phase,
+    ...(error.exitCode !== undefined ? { exitCode: error.exitCode } : {}),
+    ...(error.signal ? { signal: error.signal } : {}),
+    timeout: error.timeout,
+  };
+}
+
+export async function createPgDumpArchive(
+  args: string[],
+  env: CommandEnvironment,
+  runner: CommandRunner = runCommand,
+): Promise<void> {
+  try {
+    await runner('pg_dump', args, { env, timeoutMs: 15 * 60_000 });
+  } catch (error) {
+    const failure =
+      error instanceof ExternalToolError
+        ? error
+        : new ExternalToolError('spawn', undefined, undefined, false);
+    if (failure.timeout)
+      throw new RecoveryError(
+        'BACKUP_OPERATION_TIMEOUT',
+        'The PostgreSQL archive operation timed out.',
+        toolDiagnostic(failure, 'archive_creation'),
+      );
+    const mapping = {
+      spawn: ['BACKUP_PG_DUMP_START_FAILED', 'pg_dump_start'],
+      connection: ['BACKUP_PG_DUMP_CONNECTION_FAILED', 'pg_dump_connection'],
+      snapshot: ['BACKUP_PG_DUMP_SNAPSHOT_FAILED', 'pg_dump_snapshot'],
+      operation: ['BACKUP_ARCHIVE_CREATION_FAILED', 'archive_creation'],
+    } as const;
+    const [code, phase] = mapping[failure.kind];
+    throw new RecoveryError(code, 'The PostgreSQL archive could not be created.', toolDiagnostic(failure, phase));
+  }
+}
+
+export async function inspectPgDumpArchive(
+  dump: string,
+  runner: CommandRunner = runCommand,
+): Promise<string> {
+  try {
+    return (await runner('pg_restore', ['--list', dump], { timeoutMs: 2 * 60_000 })).stdout;
+  } catch (error) {
+    const failure =
+      error instanceof ExternalToolError
+        ? error
+        : new ExternalToolError('spawn', undefined, undefined, false);
+    throw new RecoveryError(
+      failure.timeout ? 'BACKUP_OPERATION_TIMEOUT' : 'BACKUP_ARCHIVE_INSPECTION_FAILED',
+      failure.timeout
+        ? 'The PostgreSQL archive inspection timed out.'
+        : 'The PostgreSQL archive could not be inspected.',
+      toolDiagnostic(failure, 'archive_inspection'),
+    );
+  }
+}
+
 export async function assertToolVersions(runner: CommandRunner = runCommand): Promise<void> {
-  const dump = await runner('pg_dump', ['--version']);
-  const restore = await runner('pg_restore', ['--version']);
-  const age = await runner('age', ['--version']);
+  let dump: { stdout: string };
+  let restore: { stdout: string };
+  let age: { stdout: string };
+  try {
+    dump = await runner('pg_dump', ['--version'], { timeoutMs: 30_000 });
+    restore = await runner('pg_restore', ['--version'], { timeoutMs: 30_000 });
+    age = await runner('age', ['--version'], { timeoutMs: 30_000 });
+  } catch (error) {
+    const failure =
+      error instanceof ExternalToolError
+        ? error
+        : new ExternalToolError('spawn', undefined, undefined, false);
+    throw new RecoveryError(
+      failure.timeout ? 'BACKUP_OPERATION_TIMEOUT' : 'BACKUP_APPLICATION_EXPORT_FAILED',
+      failure.timeout
+        ? 'Recovery tool verification timed out.'
+        : 'Required recovery tools could not be verified.',
+      toolDiagnostic(failure, 'tool_verification'),
+    );
+  }
   const pgMajor = Number(/(\d+)(?:\.\d+)?/.exec(dump.stdout)?.[1]);
   if (
     pgMajor !== PRODUCTION_POSTGRES_MAJOR ||
@@ -99,10 +236,14 @@ export async function assertToolVersions(runner: CommandRunner = runCommand): Pr
     throw new RecoveryError(
       'BACKUP_APPLICATION_EXPORT_FAILED',
       'PostgreSQL 17 client tools are required.',
+      { phase: 'tool_verification', timeout: false },
     );
   }
   if (age.stdout.trim() !== AGE_RUNTIME_VERSION) {
-    throw new RecoveryError('BACKUP_ENCRYPTION_FAILED', 'The pinned age tool version is required.');
+    throw new RecoveryError('BACKUP_ENCRYPTION_FAILED', 'The pinned age tool version is required.', {
+      phase: 'tool_verification',
+      timeout: false,
+    });
   }
 }
 
@@ -155,6 +296,7 @@ export async function cleanupPostgresToolEnvironment(directory: string): Promise
     throw new RecoveryError(
       'BACKUP_PLAINTEXT_CLEANUP_FAILED',
       'Refused cleanup outside a generated database TLS directory.',
+      { phase: 'cleanup', timeout: false },
     );
   }
   try {
@@ -164,6 +306,7 @@ export async function cleanupPostgresToolEnvironment(directory: string): Promise
     throw new RecoveryError(
       'BACKUP_PLAINTEXT_CLEANUP_FAILED',
       'Temporary database TLS material could not be removed.',
+      { phase: 'cleanup', timeout: false },
     );
   }
 }
@@ -206,6 +349,7 @@ export function assertArchiveInventory(value: string): void {
     throw new RecoveryError(
       'BACKUP_INVENTORY_VALIDATION_FAILED',
       'Archive inventory differs from the recovery allowlist.',
+      { phase: 'archive_inventory', timeout: false },
     );
   }
 }
@@ -226,7 +370,10 @@ export async function encryptBundle(
       input,
     ]);
   } catch {
-    throw new RecoveryError('BACKUP_ENCRYPTION_FAILED', 'Recovery bundle encryption failed.');
+    throw new RecoveryError('BACKUP_ENCRYPTION_FAILED', 'Recovery bundle encryption failed.', {
+      phase: 'encryption',
+      timeout: false,
+    });
   }
 }
 

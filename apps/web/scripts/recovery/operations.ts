@@ -30,13 +30,17 @@ export async function uploadAndVerify(
   try {
     await store.putImmutable(object);
   } catch {
-    throw new RecoveryError('BACKUP_UPLOAD_FAILED', 'Encrypted recovery upload failed.');
+    throw new RecoveryError('BACKUP_UPLOAD_FAILED', 'Encrypted recovery upload failed.', {
+      phase: 'r2_upload',
+      timeout: false,
+    });
   }
   const remote = await store.head(object.key);
   if (!remote || remote.bytes !== object.bytes || remote.sha256 !== object.sha256) {
     throw new RecoveryError(
       'BACKUP_REMOTE_VERIFICATION_FAILED',
       'Encrypted recovery object failed remote verification.',
+      { phase: 'r2_readback', timeout: false },
     );
   }
   try {
@@ -56,6 +60,7 @@ export async function uploadAndVerify(
     throw new RecoveryError(
       'BACKUP_REMOTE_VERIFICATION_FAILED',
       'Encrypted recovery readback failed independent size or checksum verification.',
+      { phase: 'r2_readback', timeout: false },
     );
   }
   return remote;

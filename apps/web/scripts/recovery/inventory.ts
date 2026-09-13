@@ -8,6 +8,9 @@ import {
   RecoveryError,
   UNSUPPORTED_DURABLE_AUTH_TABLES,
   classifyAuthTable,
+  isPostgresConnectionLoss,
+  isPostgresTimeout,
+  postgresDiagnostic,
 } from './contracts';
 
 export type QualifiedTable = `auth.${string}` | `public.${string}`;
@@ -36,6 +39,32 @@ export type AuthColumnContract = {
 const IDENTIFIER = /^[a-z_][a-z0-9_]*$/;
 const PAGE_SIZE = 1_000;
 
+async function inventoryQuery<T>(
+  phase: 'application_inventory' | 'auth_inventory' | 'fingerprint',
+  client: QueryClient,
+  sql: string,
+  values: unknown[] = [],
+) {
+  try {
+    return await client.query<T & import('pg').QueryResultRow>(sql, values);
+  } catch (error) {
+    if (error instanceof RecoveryError) throw error;
+    throw new RecoveryError(
+      isPostgresTimeout(error)
+        ? 'BACKUP_OPERATION_TIMEOUT'
+        : isPostgresConnectionLoss(error)
+        ? 'BACKUP_SNAPSHOT_COORDINATOR_LOST'
+        : phase === 'application_inventory'
+          ? 'BACKUP_APPLICATION_INVENTORY_FAILED'
+          : phase === 'auth_inventory'
+            ? 'BACKUP_AUTH_INVENTORY_FAILED'
+            : 'BACKUP_FINGERPRINT_FAILED',
+      'Recovery inventory metadata could not be read.',
+      postgresDiagnostic(error, phase),
+    );
+  }
+}
+
 function quoteIdentifier(value: string): string {
   if (!IDENTIFIER.test(value)) {
     throw new RecoveryError('BACKUP_FINGERPRINT_FAILED', 'Unsafe database identifier.');
@@ -52,7 +81,9 @@ function frame(hash: ReturnType<typeof createHash>, value: string): void {
 }
 
 export async function assertRecoveryInventory(client: QueryClient): Promise<void> {
-  const publicRows = await client.query<{ table_name: string }>(
+  const publicRows = await inventoryQuery<{ table_name: string }>(
+    'application_inventory',
+    client,
     `select table_name from information_schema.tables
      where table_schema='public' and table_type='BASE TABLE' order by table_name`,
   );
@@ -61,9 +92,12 @@ export async function assertRecoveryInventory(client: QueryClient): Promise<void
     throw new RecoveryError(
       'BACKUP_INVENTORY_VALIDATION_FAILED',
       'Application table inventory differs from the reviewed recovery allowlist.',
+      { phase: 'application_inventory', timeout: false },
     );
   }
-  const authRows = await client.query<{ table_name: string }>(
+  const authRows = await inventoryQuery<{ table_name: string }>(
+    'auth_inventory',
+    client,
     `select table_name from information_schema.tables
      where table_schema='auth' and table_name=any($1::text[]) order by table_name`,
     [[...AUTH_TABLES]],
@@ -75,15 +109,29 @@ export async function assertRecoveryInventory(client: QueryClient): Promise<void
     throw new RecoveryError(
       'BACKUP_INVENTORY_VALIDATION_FAILED',
       'Required Auth tables are missing.',
+      { phase: 'auth_inventory', timeout: false },
     );
   }
 }
 
 export async function assertSupportedAuthState(client: QueryClient): Promise<void> {
-  const discovered = await client.query<{ table_name: string }>(
-    `select table_name from information_schema.tables
-     where table_schema='auth' and table_type='BASE TABLE' order by table_name`,
-  );
+  let discovered;
+  try {
+    discovered = await client.query<{ table_name: string }>(
+      `select table_name from information_schema.tables
+       where table_schema='auth' and table_type='BASE TABLE' order by table_name`,
+    );
+  } catch (error) {
+    throw new RecoveryError(
+      isPostgresTimeout(error)
+        ? 'BACKUP_OPERATION_TIMEOUT'
+        : isPostgresConnectionLoss(error)
+        ? 'BACKUP_SNAPSHOT_COORDINATOR_LOST'
+        : 'BACKUP_AUTH_INVENTORY_FAILED',
+      'Auth recovery inventory could not be read.',
+      postgresDiagnostic(error, 'auth_inventory'),
+    );
+  }
   if (
     discovered.rows.some(
       (row) => classifyAuthTable(row.table_name) === AUTH_RECOVERY_CLASS.UNKNOWN,
@@ -102,7 +150,9 @@ export async function assertSupportedAuthState(client: QueryClient): Promise<voi
     if (!UNSUPPORTED_DURABLE_AUTH_TABLES.includes(row.table_name as never)) {
       throw new RecoveryError('BACKUP_AUTH_FEATURE_STATE_UNSUPPORTED', 'Unexpected Auth state.');
     }
-    const count = await client.query<{ count: number }>(
+    const count = await inventoryQuery<{ count: number }>(
+      'auth_inventory',
+      client,
       `select count(*)::int as count from auth.${quoteIdentifier(row.table_name)}`,
     );
     if ((count.rows[0]?.count ?? 0) > 0) {
@@ -112,16 +162,22 @@ export async function assertSupportedAuthState(client: QueryClient): Promise<voi
       );
     }
   }
-  const identityProviders = await client.query<{ count: number }>(
+  const identityProviders = await inventoryQuery<{ count: number }>(
+    'auth_inventory',
+    client,
     "select count(*)::int as count from auth.identities where provider <> 'email'",
   );
-  const userColumns = await client.query<{ column_name: string }>(
+  const userColumns = await inventoryQuery<{ column_name: string }>(
+    'auth_inventory',
+    client,
     `select column_name from information_schema.columns
      where table_schema='auth' and table_name='users' and column_name in ('phone','is_anonymous')`,
   );
   const columns = new Set(userColumns.rows.map((row) => row.column_name));
   const unsupportedUsers = columns.size
-    ? await client.query<{ count: number }>(
+    ? await inventoryQuery<{ count: number }>(
+        'auth_inventory',
+        client,
         `select count(*)::int as count from auth.users where ${[
           columns.has('phone') ? 'phone is not null' : undefined,
           columns.has('is_anonymous') ? 'coalesce(is_anonymous, false)' : undefined,
@@ -213,35 +269,48 @@ export async function fingerprintTable(
   client: QueryClient,
   table: QualifiedTable,
 ): Promise<TableFingerprint> {
-  const [schema, name] = table.split('.');
-  const columns = await loadPrimaryKeyColumns(client, table);
-  const qualified = `${quoteIdentifier(schema)}.${quoteIdentifier(name)}`;
-  const pkExpression = columns.map((column) => `t.${quoteIdentifier(column)}`).join(', ');
-  const order = columns.map((column) => `t.${quoteIdentifier(column)}`).join(', ');
-  const pkHash = createHash('sha256');
-  const contentHash = createHash('sha256');
-  let rowCount = 0;
-  for (let offset = 0; ; offset += PAGE_SIZE) {
-    const page = await client.query<{ pk: string; content: string }>(
-      `select jsonb_build_array(${pkExpression})::text as pk,
-              to_jsonb(t)::text as content
-       from ${qualified} t order by ${order} limit $1 offset $2`,
-      [PAGE_SIZE, offset],
-    );
-    for (const row of page.rows) {
-      frame(pkHash, row.pk);
-      frame(contentHash, row.content);
-      rowCount += 1;
+  try {
+    const [schema, name] = table.split('.');
+    const columns = await loadPrimaryKeyColumns(client, table);
+    const qualified = `${quoteIdentifier(schema)}.${quoteIdentifier(name)}`;
+    const pkExpression = columns.map((column) => `t.${quoteIdentifier(column)}`).join(', ');
+    const order = columns.map((column) => `t.${quoteIdentifier(column)}`).join(', ');
+    const pkHash = createHash('sha256');
+    const contentHash = createHash('sha256');
+    let rowCount = 0;
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+      const page = await client.query<{ pk: string; content: string }>(
+        `select jsonb_build_array(${pkExpression})::text as pk,
+                to_jsonb(t)::text as content
+         from ${qualified} t order by ${order} limit $1 offset $2`,
+        [PAGE_SIZE, offset],
+      );
+      for (const row of page.rows) {
+        frame(pkHash, row.pk);
+        frame(contentHash, row.content);
+        rowCount += 1;
+      }
+      if (page.rows.length < PAGE_SIZE) break;
     }
-    if (page.rows.length < PAGE_SIZE) break;
+    return {
+      table,
+      rowCount,
+      primaryKeySha256: pkHash.digest('hex'),
+      contentSha256: contentHash.digest('hex'),
+      primaryKeyColumns: columns,
+    };
+  } catch (error) {
+    if (error instanceof RecoveryError) throw error;
+    throw new RecoveryError(
+      isPostgresTimeout(error)
+        ? 'BACKUP_OPERATION_TIMEOUT'
+        : isPostgresConnectionLoss(error)
+        ? 'BACKUP_SNAPSHOT_COORDINATOR_LOST'
+        : 'BACKUP_FINGERPRINT_FAILED',
+      `Recovery table fingerprint failed for ${table}.`,
+      postgresDiagnostic(error, 'fingerprint'),
+    );
   }
-  return {
-    table,
-    rowCount,
-    primaryKeySha256: pkHash.digest('hex'),
-    contentSha256: contentHash.digest('hex'),
-    primaryKeyColumns: columns,
-  };
 }
 
 export async function loadForeignKeys(client: QueryClient): Promise<ForeignKey[]> {

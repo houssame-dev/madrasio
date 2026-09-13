@@ -12,6 +12,7 @@ import {
   RECOVERY_TABLES,
   RecoveryError,
   assertProductionBackupTarget,
+  preservePrimaryWithCleanupFailure,
   safeRecoveryError,
 } from './contracts';
 import { cleanupRecoveryWorkDirectory, createRecoveryWorkDirectory } from './filesystem';
@@ -35,10 +36,11 @@ import {
   assertArchiveInventory,
   assertToolVersions,
   cleanupPostgresToolEnvironment,
+  createPgDumpArchive,
   encryptBundle,
+  inspectPgDumpArchive,
   pgDumpArguments,
   postgresToolEnvironment,
-  runCommand,
   validateAgeRecipient,
 } from './tools';
 
@@ -59,12 +61,17 @@ export async function createProductionRecoveryBundle(
   const appOrigin = parseProductionOrigin(env.PRODUCTION_APP_ORIGIN).origin;
   const gitSha = env.RECOVERY_GIT_SHA?.trim() ?? '';
   if (!/^[a-f0-9]{40}$/.test(gitSha))
-    throw new RecoveryError('BACKUP_MANIFEST_FAILED', 'Exact repository Git SHA is required.');
+    throw new RecoveryError('BACKUP_MANIFEST_FAILED', 'Exact repository Git SHA is required.', {
+      phase: 'target_verification',
+      timeout: false,
+      dbAccessBegan: false,
+    });
   const output = resolve(env.RECOVERY_OUTPUT_PATH ?? '');
   if (!env.RECOVERY_OUTPUT_PATH || !output.endsWith('.age') || output.startsWith(resolve('.')))
     throw new RecoveryError(
       'BACKUP_ENCRYPTION_FAILED',
       'Encrypted output must be outside the repository.',
+      { phase: 'target_verification', timeout: false, dbAccessBegan: false },
     );
   const recipient = validateAgeRecipient(env.BACKUP_AGE_RECIPIENT);
   await assertToolVersions();
@@ -73,65 +80,89 @@ export async function createProductionRecoveryBundle(
   const manifestPath = resolve(work, 'manifest.json');
   const bundle = resolve(work, 'recovery.bundle');
   let toolCleanup: string | undefined;
-  const pool = new Pool(postgresConnectionConfig(url.toString(), env.DATABASE_SSL_CA));
+  const pool = new Pool({
+    ...postgresConnectionConfig(url.toString(), env.DATABASE_SSL_CA),
+    connectionTimeoutMillis: 30_000,
+    query_timeout: 2 * 60_000,
+  });
   let result: ProductionRecoveryBundle | undefined;
+  let primaryError: unknown;
   try {
     const tool = await postgresToolEnvironment(url.toString(), env.DATABASE_SSL_CA);
     toolCleanup = tool.cleanupDirectory;
     await withExportedSnapshot(pool, async ({ snapshot, timestamp, coordinator }) => {
       await assertRecoveryInventory(coordinator);
       await assertSupportedAuthState(coordinator);
-      const dumpPromise = runCommand('pg_dump', pgDumpArguments(dump, snapshot), { env: tool.env });
-      const fingerprints = [];
-      for (const table of RECOVERY_TABLES)
-        fingerprints.push(
-          await fingerprintTable(coordinator, table as `auth.${string}` | `public.${string}`),
+      const dumpPromise = createPgDumpArchive(pgDumpArguments(dump, snapshot), tool.env);
+      const fingerprintsPromise = (async () => {
+        const values = [];
+        for (const table of RECOVERY_TABLES)
+          values.push(
+            await fingerprintTable(coordinator, table as `auth.${string}` | `public.${string}`),
+          );
+        return values;
+      })();
+      const [dumpOutcome, fingerprintsOutcome] = await Promise.allSettled([
+        dumpPromise,
+        fingerprintsPromise,
+      ]);
+      if (dumpOutcome.status === 'rejected') throw dumpOutcome.reason;
+      if (fingerprintsOutcome.status === 'rejected') throw fingerprintsOutcome.reason;
+      const fingerprints = fingerprintsOutcome.value;
+      const listing = await inspectPgDumpArchive(dump);
+      assertArchiveInventory(listing);
+      let backupId: string;
+      try {
+        const migrationDirectory = resolve(process.cwd(), '../../database/drizzle/migrations');
+        const migrations = await loadMigrationMetadata(migrationDirectory);
+        const server = await coordinator.query<{ version: string }>('show server_version');
+        backupId = createBackupId(timestamp, gitSha);
+        const manifest = recoveryManifestSchema.parse({
+          format: 'madrasio-recovery-v1',
+          backupId,
+          snapshotAt: timestamp,
+          source: {
+            environment: 'production',
+            projectRef: env.PRODUCTION_EXPECTED_PROJECT_REF,
+            region: 'eu-central-1',
+          },
+          gitSha,
+          postgres: { serverVersion: server.rows[0]?.version, clientVersion: '17.6' },
+          migrations,
+          authSchema: await loadAuthSchemaContract(coordinator),
+          fingerprints,
+          lifecycleAggregates: await loadStatusAggregates(coordinator),
+          artifacts: [await artifactMetadata(dump)],
+          encryption: {
+            format: 'age',
+            toolVersion: '1.3.1',
+            recipientFingerprint: hashBuffer(recipient),
+          },
+          providerContract: {
+            version: 1,
+            region: 'eu-central-1',
+            appOrigin,
+            dataApi: 'disabled',
+            sslEnforcement: 'required',
+            callbackPath: '/auth/confirm',
+            passwordMinimum: 8,
+            publicSignup: false,
+            anonymousSignin: false,
+            expectedCronJobs: 2,
+            expectedVaultNames: ['sms_production_app_origin', 'sms_production_cron_secret'],
+            vercel: { rootDirectory: 'apps/web', framework: 'nextjs', region: 'fra1' },
+          },
+        });
+        await writeFile(manifestPath, `${canonicalJson(manifest)}\n`, { mode: 0o600 });
+        await writeRecoveryBundle(bundle, [manifestPath, dump]);
+      } catch (error) {
+        if (error instanceof RecoveryError) throw error;
+        throw new RecoveryError(
+          'BACKUP_MANIFEST_FAILED',
+          'The recovery manifest or bundle could not be created.',
+          { phase: 'manifest_bundle', timeout: false },
         );
-      await dumpPromise;
-      const listing = await runCommand('pg_restore', ['--list', dump]);
-      assertArchiveInventory(listing.stdout);
-      const migrationDirectory = resolve(process.cwd(), '../../database/drizzle/migrations');
-      const migrations = await loadMigrationMetadata(migrationDirectory);
-      const server = await coordinator.query<{ version: string }>('show server_version');
-      const backupId = createBackupId(timestamp, gitSha);
-      const manifest = recoveryManifestSchema.parse({
-        format: 'madrasio-recovery-v1',
-        backupId,
-        snapshotAt: timestamp,
-        source: {
-          environment: 'production',
-          projectRef: env.PRODUCTION_EXPECTED_PROJECT_REF,
-          region: 'eu-central-1',
-        },
-        gitSha,
-        postgres: { serverVersion: server.rows[0]?.version, clientVersion: '17.6' },
-        migrations,
-        authSchema: await loadAuthSchemaContract(coordinator),
-        fingerprints,
-        lifecycleAggregates: await loadStatusAggregates(coordinator),
-        artifacts: [await artifactMetadata(dump)],
-        encryption: {
-          format: 'age',
-          toolVersion: '1.3.1',
-          recipientFingerprint: hashBuffer(recipient),
-        },
-        providerContract: {
-          version: 1,
-          region: 'eu-central-1',
-          appOrigin,
-          dataApi: 'disabled',
-          sslEnforcement: 'required',
-          callbackPath: '/auth/confirm',
-          passwordMinimum: 8,
-          publicSignup: false,
-          anonymousSignin: false,
-          expectedCronJobs: 2,
-          expectedVaultNames: ['sms_production_app_origin', 'sms_production_cron_secret'],
-          vercel: { rootDirectory: 'apps/web', framework: 'nextjs', region: 'fra1' },
-        },
-      });
-      await writeFile(manifestPath, `${canonicalJson(manifest)}\n`, { mode: 0o600 });
-      await writeRecoveryBundle(bundle, [manifestPath, dump]);
+      }
       await encryptBundle(bundle, output, recipient);
       const encrypted = await stat(output);
       result = {
@@ -145,11 +176,28 @@ export async function createProductionRecoveryBundle(
           fingerprints.find((fingerprint) => fingerprint.table === 'auth.users')?.rowCount ?? 0,
       };
     });
+  } catch (error) {
+    primaryError = error;
   } finally {
     await pool.end().catch(() => undefined);
-    if (toolCleanup) await cleanupPostgresToolEnvironment(toolCleanup);
-    await cleanupRecoveryWorkDirectory(work);
+    let cleanupFailure: unknown;
+    try {
+      if (toolCleanup) await cleanupPostgresToolEnvironment(toolCleanup);
+    } catch (cleanupError) {
+      cleanupFailure = cleanupError;
+    }
+    try {
+      await cleanupRecoveryWorkDirectory(work);
+    } catch (cleanupError) {
+      cleanupFailure ??= cleanupError;
+    }
+    if (cleanupFailure) {
+      primaryError = primaryError
+        ? preservePrimaryWithCleanupFailure(primaryError, cleanupFailure)
+        : cleanupFailure;
+    }
   }
+  if (primaryError) throw primaryError;
   if (!result) {
     throw new RecoveryError(
       'BACKUP_ENCRYPTION_FAILED',
