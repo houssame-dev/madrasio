@@ -4,7 +4,13 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { decryptBundle, encryptBundle, runCommand } from '@/scripts/recovery/tools';
+import { AGE_RUNTIME_VERSION } from '@/scripts/recovery/contracts';
+import {
+  decryptBundle,
+  encryptBundle,
+  runCommand,
+  validateAgeRecipient,
+} from '@/scripts/recovery/tools';
 
 const enabled = process.env.RECOVERY_TEST_AGE === '1';
 
@@ -16,11 +22,13 @@ describe.skipIf(!enabled)('age recovery encryption (real binary opt-in)', () => 
       const plaintext = join(directory, 'plain.bundle');
       const encrypted = join(directory, 'plain.bundle.age');
       const decrypted = join(directory, 'decrypted.bundle');
-      const generated = await runCommand('age-keygen', ['--output', identity]);
-      const recipient = /Public key: (age1\S+)/.exec(generated.stdout)?.[1];
-      expect(recipient).toBeTruthy();
+      const version = await runCommand('age', ['--version']);
+      expect(version.stdout.trim()).toBe(AGE_RUNTIME_VERSION);
+      await runCommand('age-keygen', ['--output', identity]);
+      const derived = await runCommand('age-keygen', ['-y', identity]);
+      const recipient = validateAgeRecipient(derived.stdout);
       await writeFile(plaintext, 'local fixture only');
-      await encryptBundle(plaintext, encrypted, recipient!);
+      await encryptBundle(plaintext, encrypted, recipient);
       await decryptBundle(encrypted, decrypted, identity);
       expect(await readFile(decrypted, 'utf8')).toBe('local fixture only');
     } finally {
