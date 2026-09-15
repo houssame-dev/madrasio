@@ -97,6 +97,10 @@ describe('recovery target safety', () => {
     for (const target of [
       'postgresql://x:x@db.example.com:5432/x',
       `postgresql://x:x@db.${productionRef}.supabase.co:5432/x`,
+      'postgresql://x:x@db.cqeaxlttezunirsmkrxz.supabase.co:5432/x',
+      'postgresql://x:x@aws-0-eu-central-1.pooler.supabase.com:5432/x',
+      'postgresql://x:x@aws-0-eu-central-1.pooler.supabase.com:6543/x',
+      'postgresql://x:x@192.168.1.50:5432/x',
     ]) {
       expect(() =>
         assertIsolatedRestoreTarget({

@@ -82,6 +82,16 @@ Restore is deliberately fail-closed and ordered. The presence of recognized tran
 
 No SMTP, invite, hook, job, or other network side effect is part of restore. Any failure stops later phases. The disposable target may then be destroyed; the tool does not attempt risky automatic repair or continue from ambiguous partial state. FK cycles are rejected for review rather than worked around by disabling constraints.
 
+### Deterministic local recovery target
+
+On the reviewed Windows recovery workstation, Supabase CLI 2.111.0 was observed to publish its local Kong and PostgreSQL ports on `0.0.0.0` and `[::]` even when the selected Docker bridge network set `com.docker.network.bridge.host_binding_ipv4=127.0.0.1`. That CLI-created target was rejected. This is a record of the observed CLI/workstation behavior, not a claim about every Supabase CLI installation.
+
+Stage 5 recovery targets therefore use the repository-owned `recovery:target:local` helper and Docker directly; `supabase start` is not the recovery-target provisioner. The minimal stack pins the reviewed Supabase PostgreSQL 17.6.1.156 and GoTrue 2.194.0 images by immutable digest. PostgreSQL provides the Supabase database foundation and GoTrue applies and serves the provider-managed Auth schema. PostgREST, Kong, Studio, Realtime, Storage, Analytics, Edge Runtime, and mail services are intentionally absent because database/Auth restoration does not require them.
+
+Each invocation creates a fresh random target identifier, dedicated bridge network, labeled database volume, synthetic local database/JWT credentials, and temporary state outside the repository. PostgreSQL and the local Auth health endpoint are each published with explicit `127.0.0.1:<port>:<container-port>` syntax; the Auth port exists only so the provisioner can verify the real GoTrue health endpoint. The bridge network's loopback default is defense in depth, not the source of authority. Startup fails closed unless Docker inspect and the operating-system socket table both show only IPv4 loopback bindings; a supplementary connection attempt through non-loopback local interfaces must also fail when such an interface is available. Firewall-only mitigation, daemon-wide Docker binding changes, and IPv6 wildcard publication are not accepted.
+
+The helper labels every owned Docker object and cleanup validates that label before removing the exact containers, volume, network, and generated temporary state. Startup failure invokes the same bounded cleanup path. Disposable credentials are written only to the target's temporary state with restrictive file permissions where supported and are never committed or printed. The target uses no hosted Supabase settings, SMTP, callbacks, provider credentials, Production/STAGING JWT material, or public Internet service after the pinned images are available.
+
 ## Provisioned provider infrastructure
 
 Task 050 Stage 3 provisioned the private, EU-jurisdiction `madrasio-production-backups` R2 bucket. Public development access and custom domains are disabled. Objects under `frequent/` have matching eight-day Bucket Lock and lifecycle rules; objects under `weekly/` have matching 92-day rules. The backup writer is limited to Object Read & Write on this bucket. A distinct recovery credential is limited to Object Read on the same bucket and is not available to CI.

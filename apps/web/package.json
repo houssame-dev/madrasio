@@ -31,6 +31,7 @@
     "bootstrap:first-tenant:production": "tsx --env-file=.env.local scripts/operator/bootstrap-production-first-tenant.ts",
     "recovery:backup:production": "tsx scripts/recovery/run-production-backup.ts",
     "recovery:restore:local": "tsx scripts/recovery/restore-local.ts",
+    "recovery:target:local": "tsx scripts/recovery/local-target.ts",
     "test:recovery": "vitest run __tests__/recovery"
   },
   "dependencies": {
