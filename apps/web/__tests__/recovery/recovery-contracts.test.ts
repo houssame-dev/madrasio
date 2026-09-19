@@ -130,6 +130,40 @@ describe('recovery archive and tools', () => {
     });
   });
 
+  it('accepts a native POSIX pnpm launcher independently of the test host', () => {
+    expect(
+      resolvePnpmInvocation(['--filter', '@school/database', 'migrate'], {
+        platform: 'linux',
+        execPath: '/opt/node/bin/node',
+        npmExecPath: '/opt/pnpm/pnpm.mjs',
+      }),
+    ).toEqual({
+      command: '/opt/node/bin/node',
+      args: ['/opt/pnpm/pnpm.mjs', '--filter', '@school/database', 'migrate'],
+    });
+  });
+
+  it.each([
+    ['win32', 'C:\\Program Files\\pnpm\\not-pnpm.cjs'],
+    ['win32', 'pnpm.cjs'],
+    ['linux', '/opt/pnpm/not-pnpm.js'],
+    ['linux', 'pnpm.mjs'],
+    ['linux', '/opt/pnpm/pnpm.cmjs'],
+  ] as const)('rejects invalid %s launcher metadata %s', (platform, npmExecPath) => {
+    expect(() =>
+      resolvePnpmInvocation(['migrate'], {
+        platform,
+        execPath: platform === 'win32' ? 'C:\\Program Files\\nodejs\\node.exe' : '/usr/bin/node',
+        npmExecPath,
+      }),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED',
+        diagnostic: { phase: 'migration_launch', timeout: false },
+      }),
+    );
+  });
+
   it('uses a shell-free Linux fallback when npm_execpath is unavailable', () => {
     expect(
       resolvePnpmInvocation(['--filter', '@school/database', 'migrate'], {
@@ -143,21 +177,19 @@ describe('recovery archive and tools', () => {
     });
   });
 
-  it('fails with a bounded classification when the Windows pnpm launcher is unavailable or invalid', () => {
-    for (const npmExecPath of ['', 'C:\\Program Files\\pnpm\\not-pnpm.cjs']) {
-      expect(() =>
-        resolvePnpmInvocation(['migrate'], {
-          platform: 'win32',
-          execPath: 'C:\\Program Files\\nodejs\\node.exe',
-          npmExecPath,
-        }),
-      ).toThrowError(
-        expect.objectContaining({
-          code: 'RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED',
-          diagnostic: { phase: 'migration_launch', timeout: false },
-        }),
-      );
-    }
+  it('fails with a bounded classification when the Windows pnpm launcher is unavailable', () => {
+    expect(() =>
+      resolvePnpmInvocation(['migrate'], {
+        platform: 'win32',
+        execPath: 'C:\\Program Files\\nodejs\\node.exe',
+        npmExecPath: '',
+      }),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED',
+        diagnostic: { phase: 'migration_launch', timeout: false },
+      }),
+    );
   });
 
   it('uses one complete 39-table application allowlist plus durable Auth', () => {

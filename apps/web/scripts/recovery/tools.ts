@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, isAbsolute, join, relative, resolve } from 'node:path';
+import { isAbsolute, join, posix, relative, resolve, win32 } from 'node:path';
 
 import { postgresConnectionConfig } from '@school/database/connection';
 
@@ -49,9 +49,10 @@ export function resolvePnpmInvocation(
   const normalizedLauncher = npmExecPath?.trim();
 
   if (normalizedLauncher) {
+    const launcherPath = platform === 'win32' ? win32 : posix;
     if (
-      !isAbsolute(normalizedLauncher) ||
-      !/^pnpm(?:\.c?m?js)?$/i.test(basename(normalizedLauncher))
+      !launcherPath.isAbsolute(normalizedLauncher) ||
+      !/^pnpm(?:\.(?:js|cjs|mjs))?$/i.test(launcherPath.basename(normalizedLauncher))
     ) {
       throw new RecoveryError(
         'RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED',
