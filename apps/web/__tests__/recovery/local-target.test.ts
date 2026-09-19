@@ -3,6 +3,7 @@ import { createServer } from 'node:net';
 import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it } from 'vitest';
+import { Pool } from 'pg';
 
 import {
   assertLoopbackBindings,
@@ -11,7 +12,10 @@ import {
   createLocalRecoveryTarget,
   parseWindowsListeningSockets,
   runLocalTargetRehearsal,
+  verifyLocalRecoveryTarget,
 } from '../../scripts/recovery/local-target';
+import { assertEmptyRestoreFoundation } from '../../scripts/recovery/restore';
+import { runCommand } from '../../scripts/recovery/tools';
 
 const execFileAsync = promisify(execFile);
 const live = process.env.RECOVERY_TEST_LOCAL_TARGET === '1';
@@ -68,6 +72,36 @@ describe('local recovery target network contract', () => {
 });
 
 describe.skipIf(!live)('live local recovery target', () => {
+  it('runs the exact restore migration command through the cross-platform launcher', async () => {
+    const state = await createLocalRecoveryTarget();
+    statePath = state.statePath;
+    const databaseUrl =
+      `postgresql://postgres:${encodeURIComponent(state.databasePassword)}` +
+      `@127.0.0.1:${state.databasePort}/postgres`;
+    const pool = new Pool({ connectionString: databaseUrl, ssl: false });
+    try {
+      await expect(assertEmptyRestoreFoundation(pool)).resolves.toBeUndefined();
+    } finally {
+      await pool.end();
+    }
+
+    await expect(
+      runCommand('pnpm', ['--filter', '@school/database', 'migrate'], {
+        env: { MIGRATION_DATABASE_URL: databaseUrl },
+      }),
+    ).resolves.toMatchObject({ stdout: expect.any(String) });
+
+    await expect(
+      verifyLocalRecoveryTarget(state.statePath, { expectMigrated: true }),
+    ).resolves.toMatchObject({
+      applicationTables: 39,
+      migrations: 16,
+      rlsTables: 39,
+      applicationPolicies: 0,
+      security: 'accepted',
+    });
+  }, 300_000);
+
   it('cleans up owned Docker resources when startup fails', async () => {
     const occupiedPort = 55439;
     const server = createServer();

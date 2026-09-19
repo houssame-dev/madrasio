@@ -12,6 +12,7 @@ import { Pool } from 'pg';
 import { APPLICATION_TABLES, RecoveryError, assertIsolatedRestoreTarget } from './contracts';
 import { loadAuthSchemaContract } from './inventory';
 import { assertEmptyRestoreFoundation } from './restore';
+import { resolvePnpmInvocation } from './tools';
 
 export const LOCAL_TARGET_IMAGES = {
   database:
@@ -116,14 +117,8 @@ async function runProcess(
 }
 
 async function runPnpm(args: string[], options: ProcessOptions): Promise<ProcessResult> {
-  const npmExecPath = process.env.npm_execpath;
-  if (npmExecPath && /pnpm(?:\.c?m?js)?$/i.test(npmExecPath))
-    return runProcess(process.execPath, [npmExecPath, ...args], options);
-  if (process.platform === 'win32') {
-    const command = ['pnpm', ...args].join(' ');
-    return runProcess(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', command], options);
-  }
-  return runProcess('pnpm', args, options);
+  const invocation = resolvePnpmInvocation(args);
+  return runProcess(invocation.command, invocation.args, options);
 }
 
 function dockerBinary(): string {

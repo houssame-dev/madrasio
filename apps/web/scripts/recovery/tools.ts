@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 
 import { postgresConnectionConfig } from '@school/database/connection';
 
@@ -32,6 +32,46 @@ export type CommandRunner = (
   args: string[],
   options?: { env?: CommandEnvironment; timeoutMs?: number },
 ) => Promise<{ stdout: string }>;
+
+export type PnpmInvocation = { command: string; args: string[] };
+
+export function resolvePnpmInvocation(
+  args: string[],
+  context: {
+    platform?: NodeJS.Platform;
+    execPath?: string;
+    npmExecPath?: string;
+  } = {},
+): PnpmInvocation {
+  const platform = context.platform ?? process.platform;
+  const execPath = context.execPath ?? process.execPath;
+  const npmExecPath = context.npmExecPath ?? process.env.npm_execpath;
+  const normalizedLauncher = npmExecPath?.trim();
+
+  if (normalizedLauncher) {
+    if (
+      !isAbsolute(normalizedLauncher) ||
+      !/^pnpm(?:\.c?m?js)?$/i.test(basename(normalizedLauncher))
+    ) {
+      throw new RecoveryError(
+        'RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED',
+        'The recovery package-manager launcher is invalid.',
+        { phase: 'migration_launch', timeout: false },
+      );
+    }
+    return { command: execPath, args: [normalizedLauncher, ...args] };
+  }
+
+  if (platform === 'win32') {
+    throw new RecoveryError(
+      'RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED',
+      'The recovery package-manager launcher is unavailable.',
+      { phase: 'migration_launch', timeout: false },
+    );
+  }
+
+  return { command: 'pnpm', args: [...args] };
+}
 
 export function classifyToolFailure(
   command: string,
@@ -104,10 +144,28 @@ export const runCommand: CommandRunner = (command, args, options = {}) =>
       reject(new Error('The PostgreSQL recovery container is not the reviewed immutable image.'));
       return;
     }
-    const actualCommand = useContainer ? 'docker' : command;
-    const actualArguments = useContainer
-      ? postgresContainerInvocation(command as 'pg_dump' | 'pg_restore', args, configuredImage)
-      : args;
+    let actualCommand: string;
+    let actualArguments: string[];
+    try {
+      if (useContainer) {
+        actualCommand = 'docker';
+        actualArguments = postgresContainerInvocation(
+          command as 'pg_dump' | 'pg_restore',
+          args,
+          configuredImage,
+        );
+      } else if (command === 'pnpm') {
+        const invocation = resolvePnpmInvocation(args);
+        actualCommand = invocation.command;
+        actualArguments = invocation.args;
+      } else {
+        actualCommand = command;
+        actualArguments = args;
+      }
+    } catch (error) {
+      reject(error);
+      return;
+    }
     const child = spawn(actualCommand, actualArguments, {
       env: childEnvironment,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -181,7 +239,11 @@ export async function createPgDumpArchive(
       operation: ['BACKUP_ARCHIVE_CREATION_FAILED', 'archive_creation'],
     } as const;
     const [code, phase] = mapping[failure.kind];
-    throw new RecoveryError(code, 'The PostgreSQL archive could not be created.', toolDiagnostic(failure, phase));
+    throw new RecoveryError(
+      code,
+      'The PostgreSQL archive could not be created.',
+      toolDiagnostic(failure, phase),
+    );
   }
 }
 
@@ -240,10 +302,14 @@ export async function assertToolVersions(runner: CommandRunner = runCommand): Pr
     );
   }
   if (age.stdout.trim() !== AGE_RUNTIME_VERSION) {
-    throw new RecoveryError('BACKUP_ENCRYPTION_FAILED', 'The pinned age tool version is required.', {
-      phase: 'tool_verification',
-      timeout: false,
-    });
+    throw new RecoveryError(
+      'BACKUP_ENCRYPTION_FAILED',
+      'The pinned age tool version is required.',
+      {
+        phase: 'tool_verification',
+        timeout: false,
+      },
+    );
   }
 }
 

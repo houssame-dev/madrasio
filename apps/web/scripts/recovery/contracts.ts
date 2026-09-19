@@ -160,6 +160,7 @@ export type RecoveryFailureCode =
   | 'RESTORE_MANIFEST_INVALID'
   | 'RESTORE_DECRYPTION_FAILED'
   | 'RESTORE_AUTH_SCHEMA_INCOMPATIBLE'
+  | 'RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED'
   | 'RESTORE_DATA_FAILED'
   | 'RESTORE_RECONCILIATION_FAILED'
   | 'RESTORE_SECURITY_VERIFICATION_FAILED'
@@ -184,6 +185,7 @@ export const RECOVERY_PHASES = [
   'archive_creation',
   'archive_inspection',
   'archive_inventory',
+  'migration_launch',
   'manifest_metadata',
   'server_metadata',
   'manifest_validation',
@@ -235,7 +237,8 @@ export function isPostgresTimeout(error: unknown): boolean {
   return (
     candidate?.code === '57014' ||
     candidate?.name === 'QueryReadTimeoutError' ||
-    (typeof candidate?.message === 'string' && /(?:connection|query|statement).*timed? ?out/i.test(candidate.message))
+    (typeof candidate?.message === 'string' &&
+      /(?:connection|query|statement).*timed? ?out/i.test(candidate.message))
   );
 }
 
@@ -251,11 +254,10 @@ export function preservePrimaryWithCleanupFailure(
   if (!(primary instanceof RecoveryError)) {
     return cleanup instanceof RecoveryError
       ? cleanup
-      : new RecoveryError(
-          'BACKUP_PLAINTEXT_CLEANUP_FAILED',
-          'Temporary recovery cleanup failed.',
-          { phase: 'cleanup', timeout: false },
-        );
+      : new RecoveryError('BACKUP_PLAINTEXT_CLEANUP_FAILED', 'Temporary recovery cleanup failed.', {
+          phase: 'cleanup',
+          timeout: false,
+        });
   }
   return new RecoveryError(primary.code, primary.message, {
     phase: primary.diagnostic?.phase ?? 'cleanup',
@@ -366,9 +368,7 @@ export function safeRecoveryError(error: unknown): {
             ...(exitCode !== undefined ? { exitCode } : {}),
             ...(signal ? { signal } : {}),
             timeout: diagnostic.timeout ?? false,
-            ...(diagnostic.cleanupWarning
-              ? { cleanupWarning: diagnostic.cleanupWarning }
-              : {}),
+            ...(diagnostic.cleanupWarning ? { cleanupWarning: diagnostic.cleanupWarning } : {}),
             ...(diagnostic.dbAccessBegan !== undefined
               ? { dbAccessBegan: diagnostic.dbAccessBegan }
               : {}),
