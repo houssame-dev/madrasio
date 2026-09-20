@@ -36,15 +36,19 @@ import { runFailClosedRestore } from '@/scripts/recovery/restore';
 import { withExportedSnapshot, withSnapshotConsumer } from '@/scripts/recovery/snapshot';
 import {
   assertArchiveInventory,
+  assertPostgresContainerArchiveReadable,
   assertToolVersions,
   cleanupPostgresToolEnvironment,
   classifyToolFailure,
   createPgDumpArchive,
   ExternalToolError,
   inspectPgDumpArchive,
+  pgRestoreTableSelection,
   pgDumpArguments,
   postgresContainerInvocation,
   resolvePnpmInvocation,
+  resolveRecoveryArchiveMount,
+  validateRecoveryArchiveMount,
   validateAgeRecipient,
 } from '@/scripts/recovery/tools';
 
@@ -359,6 +363,144 @@ describe('recovery archive and tools', () => {
       ]),
     );
     expect(invocation.join(' ')).not.toMatch(/postgresql:\/\/|secret|BEGIN CERTIFICATE/);
+  });
+
+  it('maps a Windows recovery archive to a fixed read-only container path', () => {
+    const hostWorkspace = 'C:\\Users\\Example User\\AppData\\Local\\Temp\\madrasio-recovery-a1b2c3';
+    const hostArchive = `${hostWorkspace}\\recovery-data.dump`;
+    const mount = resolveRecoveryArchiveMount(
+      { hostArchive, hostWorkspace },
+      { platform: 'win32' },
+    );
+    const invocation = postgresContainerInvocation(
+      'pg_restore',
+      ['--data-only', '--table', 'auth.users', hostArchive],
+      'postgres:17.6-bookworm@sha256:reviewed',
+      mount,
+    );
+    expect(invocation).toContain(
+      `type=bind,source=${hostWorkspace},target=/madrasio-recovery,readonly`,
+    );
+    expect(invocation.at(-1)).toBe('/madrasio-recovery/recovery-data.dump');
+    expect(invocation.slice(invocation.indexOf('pg_restore') + 1)).not.toContain(hostArchive);
+  });
+
+  it('maps a POSIX recovery archive through the same scoped container contract', () => {
+    const hostWorkspace = '/tmp/madrasio-recovery-a1b2c3';
+    const hostArchive = `${hostWorkspace}/recovery-data.dump`;
+    const mount = resolveRecoveryArchiveMount(
+      { hostArchive, hostWorkspace },
+      { platform: 'linux' },
+    );
+    const invocation = postgresContainerInvocation(
+      'pg_restore',
+      ['--list', hostArchive],
+      'postgres:17.6-bookworm@sha256:reviewed',
+      mount,
+    );
+    expect(invocation.at(-1)).toBe('/madrasio-recovery/recovery-data.dump');
+    expect(invocation).toContain(
+      'type=bind,source=/tmp/madrasio-recovery-a1b2c3,target=/madrasio-recovery,readonly',
+    );
+  });
+
+  it('keeps a spaced host workspace in one narrowly scoped read-only mount argument', () => {
+    const hostWorkspace = 'C:\\Recovery Tests\\madrasio-recovery-path with spaces';
+    const hostArchive = `${hostWorkspace}\\recovery-data.dump`;
+    const mount = resolveRecoveryArchiveMount(
+      { hostArchive, hostWorkspace },
+      { platform: 'win32' },
+    );
+    const invocation = postgresContainerInvocation(
+      'pg_restore',
+      [hostArchive],
+      'postgres:17.6-bookworm@sha256:reviewed',
+      mount,
+    );
+    expect(invocation.filter((item) => item.startsWith('type=bind,'))).toEqual([
+      `type=bind,source=${hostWorkspace},target=/madrasio-recovery,readonly`,
+    ]);
+    expect(invocation.join('\n')).not.toContain('source=C:\\Recovery Tests,target=');
+  });
+
+  it('rejects archive traversal and pg_restore without a validated mount', () => {
+    expect(() =>
+      resolveRecoveryArchiveMount(
+        {
+          hostWorkspace: '/tmp/madrasio-recovery-a1b2c3',
+          hostArchive: '/tmp/other/recovery-data.dump',
+        },
+        { platform: 'linux' },
+      ),
+    ).toThrow('workspace is invalid');
+    expect(() =>
+      postgresContainerInvocation(
+        'pg_restore',
+        ['--list', '/tmp/recovery-data.dump'],
+        'postgres:17.6-bookworm@sha256:reviewed',
+      ),
+    ).toThrow('validated recovery archive mount');
+  });
+
+  it('selects restored data by explicit schema and unqualified table name', () => {
+    expect(pgRestoreTableSelection('auth.users')).toEqual([
+      '--schema',
+      'auth',
+      '--table',
+      'users',
+    ]);
+    expect(pgRestoreTableSelection('public.school_memberships')).toEqual([
+      '--schema',
+      'public',
+      '--table',
+      'school_memberships',
+    ]);
+    expect(() => pgRestoreTableSelection('auth.users;drop table users')).toThrow(
+      'selection is invalid',
+    );
+  });
+
+  it('rejects a missing recovery archive before Docker launch', async () => {
+    const directory = await createRecoveryWorkDirectory();
+    try {
+      await expect(
+        validateRecoveryArchiveMount({
+          hostArchive: join(directory, 'recovery-data.dump'),
+          hostWorkspace: directory,
+        }),
+      ).rejects.toThrow('missing or invalid');
+    } finally {
+      await cleanupRecoveryWorkDirectory(directory);
+    }
+  });
+
+  it('classifies a container-inaccessible archive without exposing Docker output', async () => {
+    const directory = await createRecoveryWorkDirectory();
+    const archive = join(directory, 'recovery-data.dump');
+    await writeFile(archive, 'synthetic archive');
+    const runner = vi.fn().mockRejectedValue(new Error('sensitive docker detail'));
+    try {
+      await expect(
+        assertPostgresContainerArchiveReadable(
+          { hostArchive: archive, hostWorkspace: directory },
+          'postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3',
+          runner,
+        ),
+      ).rejects.toMatchObject({ code: 'RESTORE_DATA_FAILED' });
+      expect(runner).toHaveBeenCalledWith(
+        'docker',
+        expect.arrayContaining([
+          '--mount',
+          expect.stringContaining('target=/madrasio-recovery,readonly'),
+          'test',
+          '-r',
+          '/madrasio-recovery/recovery-data.dump',
+        ]),
+        { timeoutMs: 30_000 },
+      );
+    } finally {
+      await cleanupRecoveryWorkDirectory(directory);
+    }
   });
 
   it('requires pinned PostgreSQL 17 and the exact official age v1.3.1 runtime string', async () => {

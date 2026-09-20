@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { isAbsolute, join, posix, relative, resolve, win32 } from 'node:path';
+import { dirname, isAbsolute, join, posix, relative, resolve, win32 } from 'node:path';
 
 import { postgresConnectionConfig } from '@school/database/connection';
 
@@ -13,8 +13,21 @@ import {
   RecoveryError,
   type RecoveryDiagnostic,
 } from './contracts';
+import { assertRecoveryWorkDirectory } from './filesystem';
 
 export type CommandEnvironment = Record<string, string | undefined>;
+export type RecoveryArchiveMount = { hostArchive: string; hostWorkspace: string };
+export type ResolvedRecoveryArchiveMount = {
+  containerArchive: string;
+  containerWorkspace: string;
+  hostArchive: string;
+  hostWorkspace: string;
+};
+export type CommandOptions = {
+  env?: CommandEnvironment;
+  recoveryArchiveMount?: RecoveryArchiveMount;
+  timeoutMs?: number;
+};
 export type ExternalToolFailureKind = 'spawn' | 'connection' | 'snapshot' | 'operation';
 export class ExternalToolError extends Error {
   constructor(
@@ -30,7 +43,7 @@ export class ExternalToolError extends Error {
 export type CommandRunner = (
   command: string,
   args: string[],
-  options?: { env?: CommandEnvironment; timeoutMs?: number },
+  options?: CommandOptions,
 ) => Promise<{ stdout: string }>;
 
 export type PnpmInvocation = { command: string; args: string[] };
@@ -99,19 +112,108 @@ export function classifyToolFailure(
 
 export const PINNED_POSTGRES_CONTAINER =
   'postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3';
+export const RECOVERY_ARCHIVE_CONTAINER_WORKSPACE = '/madrasio-recovery';
+
+export function pgRestoreTableSelection(table: string): string[] {
+  const match = /^(auth|public)\.([a-z][a-z0-9_]*)$/.exec(table);
+  if (!match) {
+    throw new RecoveryError('RESTORE_DATA_FAILED', 'The recovery table selection is invalid.');
+  }
+  return ['--schema', match[1]!, '--table', match[2]!];
+}
+
+export function resolveRecoveryArchiveMount(
+  input: RecoveryArchiveMount,
+  context: { platform?: NodeJS.Platform } = {},
+): ResolvedRecoveryArchiveMount {
+  const path = (context.platform ?? process.platform) === 'win32' ? win32 : posix;
+  const hostWorkspace = path.resolve(input.hostWorkspace);
+  const hostArchive = path.resolve(input.hostArchive);
+  const archiveRelative = path.relative(hostWorkspace, hostArchive);
+  if (
+    !path.basename(hostWorkspace).startsWith('madrasio-recovery-') ||
+    !archiveRelative ||
+    archiveRelative.startsWith('..') ||
+    path.isAbsolute(archiveRelative) ||
+    path.basename(hostArchive) !== 'recovery-data.dump'
+  ) {
+    throw new RecoveryError(
+      'RESTORE_DATA_FAILED',
+      'The recovery archive workspace is invalid.',
+    );
+  }
+  return {
+    hostWorkspace,
+    hostArchive,
+    containerWorkspace: RECOVERY_ARCHIVE_CONTAINER_WORKSPACE,
+    containerArchive: posix.join(
+      RECOVERY_ARCHIVE_CONTAINER_WORKSPACE,
+      ...archiveRelative.split(path.sep),
+    ),
+  };
+}
+
+export async function validateRecoveryArchiveMount(
+  input: RecoveryArchiveMount,
+): Promise<ResolvedRecoveryArchiveMount> {
+  const hostWorkspace = assertRecoveryWorkDirectory(input.hostWorkspace);
+  const resolved = resolveRecoveryArchiveMount({ ...input, hostWorkspace });
+  let workspaceReal: string;
+  let archiveReal: string;
+  try {
+    workspaceReal = await realpath(resolved.hostWorkspace);
+    const archiveStats = await stat(resolved.hostArchive);
+    if (!archiveStats.isFile()) throw new Error('not a file');
+    archiveReal = await realpath(resolved.hostArchive);
+  } catch {
+    throw new RecoveryError('RESTORE_DATA_FAILED', 'The recovery archive is missing or invalid.');
+  }
+  const archiveRelative = relative(workspaceReal, archiveReal);
+  if (!archiveRelative || archiveRelative.startsWith('..') || isAbsolute(archiveRelative)) {
+    throw new RecoveryError(
+      'RESTORE_DATA_FAILED',
+      'The recovery archive escapes its generated workspace.',
+    );
+  }
+  return resolveRecoveryArchiveMount({ hostWorkspace: workspaceReal, hostArchive: archiveReal });
+}
 
 export function postgresContainerInvocation(
   command: 'pg_dump' | 'pg_restore',
   args: string[],
   image: string,
+  archiveMount?: ResolvedRecoveryArchiveMount,
 ): string[] {
+  if (command === 'pg_restore' && !archiveMount && args.join(' ') !== '--version') {
+    throw new RecoveryError(
+      'RESTORE_DATA_FAILED',
+      'Containerized pg_restore requires a validated recovery archive mount.',
+    );
+  }
+  const commandArguments = archiveMount
+    ? args.map((argument) =>
+        argument === archiveMount.hostArchive ? archiveMount.containerArchive : argument,
+      )
+    : args;
+  if (archiveMount && !commandArguments.includes(archiveMount.containerArchive)) {
+    throw new RecoveryError(
+      'RESTORE_DATA_FAILED',
+      'The validated recovery archive was not selected for pg_restore.',
+    );
+  }
   return [
     'run',
     '--rm',
     '--network',
     'host',
-    '--volume',
-    '/tmp:/tmp:rw',
+    ...(archiveMount
+      ? [
+          '--mount',
+          `type=bind,source=${archiveMount.hostWorkspace},target=${archiveMount.containerWorkspace},readonly`,
+        ]
+      : command === 'pg_dump'
+        ? ['--volume', '/tmp:/tmp:rw']
+        : []),
     ...[
       'PGHOST',
       'PGPORT',
@@ -123,12 +225,15 @@ export function postgresContainerInvocation(
     ].flatMap((name) => ['--env', name]),
     image,
     command,
-    ...args,
+    ...commandArguments,
   ];
 }
 
-export const runCommand: CommandRunner = (command, args, options = {}) =>
-  new Promise((resolve, reject) => {
+export const runCommand: CommandRunner = async (command, args, options = {}) => {
+  const archiveMount = options.recoveryArchiveMount
+    ? await validateRecoveryArchiveMount(options.recoveryArchiveMount)
+    : undefined;
+  return new Promise((resolve, reject) => {
     const inherited = Object.fromEntries(
       ['PATH', 'Path', 'PATHEXT', 'SYSTEMROOT', 'SystemRoot', 'COMSPEC', 'TEMP', 'TMP', 'HOME'].map(
         (key) => [key, process.env[key]],
@@ -154,6 +259,7 @@ export const runCommand: CommandRunner = (command, args, options = {}) =>
           command as 'pg_dump' | 'pg_restore',
           args,
           configuredImage,
+          archiveMount,
         );
       } else if (command === 'pnpm') {
         const invocation = resolvePnpmInvocation(args);
@@ -202,6 +308,43 @@ export const runCommand: CommandRunner = (command, args, options = {}) =>
         );
     });
   });
+};
+
+export async function assertPostgresContainerArchiveReadable(
+  input: RecoveryArchiveMount,
+  image: string,
+  runner: CommandRunner = runCommand,
+): Promise<ResolvedRecoveryArchiveMount> {
+  if (image !== PINNED_POSTGRES_CONTAINER) {
+    throw new RecoveryError(
+      'RESTORE_DATA_FAILED',
+      'The PostgreSQL recovery container is not the reviewed immutable image.',
+    );
+  }
+  const mount = await validateRecoveryArchiveMount(input);
+  try {
+    await runner(
+      'docker',
+      [
+        'run',
+        '--rm',
+        '--mount',
+        `type=bind,source=${mount.hostWorkspace},target=${mount.containerWorkspace},readonly`,
+        image,
+        'test',
+        '-r',
+        mount.containerArchive,
+      ],
+      { timeoutMs: 30_000 },
+    );
+  } catch {
+    throw new RecoveryError(
+      'RESTORE_DATA_FAILED',
+      'The recovery archive is inaccessible inside the PostgreSQL container.',
+    );
+  }
+  return mount;
+}
 
 function toolDiagnostic(
   error: ExternalToolError,
@@ -253,7 +396,12 @@ export async function inspectPgDumpArchive(
   runner: CommandRunner = runCommand,
 ): Promise<string> {
   try {
-    return (await runner('pg_restore', ['--list', dump], { timeoutMs: 2 * 60_000 })).stdout;
+    return (
+      await runner('pg_restore', ['--list', dump], {
+        recoveryArchiveMount: { hostArchive: dump, hostWorkspace: dirname(dump) },
+        timeoutMs: 2 * 60_000,
+      })
+    ).stdout;
   } catch (error) {
     const failure =
       error instanceof ExternalToolError

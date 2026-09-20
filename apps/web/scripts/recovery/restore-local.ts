@@ -30,7 +30,12 @@ import {
   reconcileRestoredData,
   runFailClosedRestore,
 } from './restore';
-import { decryptBundle, runCommand } from './tools';
+import {
+  assertPostgresContainerArchiveReadable,
+  decryptBundle,
+  pgRestoreTableSelection,
+  runCommand,
+} from './tools';
 
 function localPgEnvironment(url: URL): Record<string, string> {
   return {
@@ -106,6 +111,10 @@ async function main(): Promise<void> {
       );
     }
     await writeFile(dump, dumpBytes, { mode: 0o600 });
+    await assertPostgresContainerArchiveReadable(
+      { hostArchive: dump, hostWorkspace: work },
+      process.env.RECOVERY_POSTGRES_CONTAINER_IMAGE ?? '',
+    );
     const env = localPgEnvironment(url);
     await runFailClosedRestore({
       foundation: async () => {
@@ -132,13 +141,15 @@ async function main(): Promise<void> {
               '--data-only',
               '--no-owner',
               '--no-privileges',
-              '--table',
-              table,
+              ...pgRestoreTableSelection(table),
               '--dbname',
               env.PGDATABASE!,
               dump,
             ],
-            { env },
+            {
+              env,
+              recoveryArchiveMount: { hostArchive: dump, hostWorkspace: work },
+            },
           );
       },
       application: async () => {
@@ -157,13 +168,15 @@ async function main(): Promise<void> {
                 '--data-only',
                 '--no-owner',
                 '--no-privileges',
-                '--table',
-                table,
+                ...pgRestoreTableSelection(table),
                 '--dbname',
                 env.PGDATABASE!,
                 dump,
               ],
-              { env },
+              {
+                env,
+                recoveryArchiveMount: { hostArchive: dump, hostWorkspace: work },
+              },
             );
         } finally {
           client.release();
