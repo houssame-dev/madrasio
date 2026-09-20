@@ -239,6 +239,15 @@ describe('recovery archive and tools', () => {
       AUTH_RECOVERY_CLASS.KNOWN_TRANSIENT_EXCLUDED,
     );
     expect(classifyAuthTable('mfa_factors')).toBe(AUTH_RECOVERY_CLASS.KNOWN_DURABLE_UNSUPPORTED);
+    for (const table of [
+      'mfa_recovery_code_sets',
+      'mfa_recovery_codes',
+      'scim_tokens',
+      'scim_users',
+    ]) {
+      expect(classifyAuthTable(table)).toBe(AUTH_RECOVERY_CLASS.KNOWN_DURABLE_UNSUPPORTED);
+      expect(RECOVERY_TABLES).not.toContain(`auth.${table}`);
+    }
     expect(classifyAuthTable('schema_migrations')).toBe(
       AUTH_RECOVERY_CLASS.PLATFORM_MANAGED_EXCLUDED,
     );
@@ -302,6 +311,58 @@ describe('recovery archive and tools', () => {
     expect(query.mock.calls[1]?.[0]).toBe('select count(*)::int as count from auth."mfa_factors"');
   });
 
+  it.each([
+    'mfa_recovery_code_sets',
+    'mfa_recovery_codes',
+    'scim_tokens',
+    'scim_users',
+  ])('accepts empty reviewed durable unsupported Auth table %s', async (table) => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ table_name: table }] })
+      .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+      .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    await expect(assertSupportedAuthState({ query } as never)).resolves.toBeUndefined();
+    expect(query.mock.calls[1]?.[0]).toBe(`select count(*)::int as count from auth."${table}"`);
+  });
+
+  it('accepts the current provider schema when all four reviewed tables are empty', async () => {
+    const reviewed = [
+      'mfa_recovery_code_sets',
+      'mfa_recovery_codes',
+      'scim_tokens',
+      'scim_users',
+    ];
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: reviewed.map((table_name) => ({ table_name })) })
+      .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+      .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+      .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+      .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+      .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+      .mockResolvedValueOnce({ rows: [] });
+    await expect(assertSupportedAuthState({ query } as never)).resolves.toBeUndefined();
+    expect(query).toHaveBeenCalledTimes(7);
+  });
+
+  it.each([
+    'mfa_recovery_code_sets',
+    'mfa_recovery_codes',
+    'scim_tokens',
+    'scim_users',
+  ])('fails closed for non-empty reviewed durable unsupported Auth table %s', async (table) => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ table_name: table }] })
+      .mockResolvedValueOnce({ rows: [{ count: 1 }] });
+    await expect(assertSupportedAuthState({ query } as never)).rejects.toMatchObject({
+      code: 'BACKUP_AUTH_FEATURE_STATE_UNSUPPORTED',
+    });
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
   it.each(['oauth_client_states', 'saml_relay_states'])(
     'accepts empty known transient Auth table %s without inspecting its rows',
     async (table) => {
@@ -332,7 +393,7 @@ describe('recovery archive and tools', () => {
 
   it.each([0, 1])('rejects an unknown Auth table even when its row count would be %i', async () => {
     const query = vi.fn().mockResolvedValueOnce({
-      rows: [{ table_name: 'future_unknown_table' }],
+      rows: [{ table_name: 'future_provider_feature' }],
     });
     await expect(assertSupportedAuthState({ query } as never)).rejects.toMatchObject({
       code: 'BACKUP_AUTH_FEATURE_STATE_UNSUPPORTED',
