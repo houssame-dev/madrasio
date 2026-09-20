@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
 import { assertProductionMigrationTarget } from '../deployment/production-contracts';
-import { DeploymentError, STAGING_PROJECT_REF } from '../deployment/contracts';
+import {
+  DeploymentError,
+  STAGING_PROJECT_REF,
+  assertStagingMigrationTarget,
+} from '../deployment/contracts';
 
 export const RECOVERY_FORMAT = 'madrasio-recovery-v1' as const;
 export const PROVIDER_CONTRACT_VERSION = 1 as const;
@@ -289,6 +293,28 @@ export function assertProductionBackupTarget(env: NodeJS.ProcessEnv): URL {
       'BACKUP_TARGET_VERIFICATION_FAILED',
       'The exact verified-TLS Production Session Pooler target is required.',
       { phase: 'target_verification', timeout: false },
+    );
+  }
+}
+
+export function assertStagingRecoveryTarget(env: NodeJS.ProcessEnv): URL {
+  try {
+    if (
+      env.DEPLOY_TARGET_ENV !== 'staging' ||
+      env.STAGING_EXPECTED_PROJECT_REF !== STAGING_PROJECT_REF ||
+      !env.DATABASE_SSL_CA?.trim()
+    ) {
+      throw new Error('STAGING recovery target is not confirmed.');
+    }
+    return assertStagingMigrationTarget({
+      ...env,
+      DEPLOY_EXPECTED_PROJECT_REF: env.STAGING_EXPECTED_PROJECT_REF,
+    });
+  } catch {
+    throw new RecoveryError(
+      'BACKUP_TARGET_VERIFICATION_FAILED',
+      'The exact verified-TLS STAGING Session Pooler target is required.',
+      { phase: 'target_verification', timeout: false, dbAccessBegan: false },
     );
   }
 }

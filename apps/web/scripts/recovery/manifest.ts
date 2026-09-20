@@ -37,7 +37,7 @@ export const recoveryManifestSchema = z
     backupId: z.string().regex(/^\d{8}T\d{6}Z-[a-f0-9]{7,40}-[a-f0-9]{16}$/),
     snapshotAt: z.string().datetime({ offset: true }),
     source: z.object({
-      environment: z.literal('production'),
+      environment: z.enum(['production', 'staging']),
       projectRef: z.string().regex(/^[a-z0-9]{20}$/),
       region: z.literal('eu-central-1'),
     }),

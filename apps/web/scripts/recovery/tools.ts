@@ -16,12 +16,17 @@ import {
 import { assertRecoveryWorkDirectory } from './filesystem';
 
 export type CommandEnvironment = Record<string, string | undefined>;
-export type RecoveryArchiveMount = { hostArchive: string; hostWorkspace: string };
+export type RecoveryArchiveMount = {
+  hostArchive: string;
+  hostWorkspace: string;
+  writable?: boolean;
+};
 export type ResolvedRecoveryArchiveMount = {
   containerArchive: string;
   containerWorkspace: string;
   hostArchive: string;
   hostWorkspace: string;
+  writable?: boolean;
 };
 export type CommandOptions = {
   env?: CommandEnvironment;
@@ -137,14 +142,12 @@ export function resolveRecoveryArchiveMount(
     path.isAbsolute(archiveRelative) ||
     path.basename(hostArchive) !== 'recovery-data.dump'
   ) {
-    throw new RecoveryError(
-      'RESTORE_DATA_FAILED',
-      'The recovery archive workspace is invalid.',
-    );
+    throw new RecoveryError('RESTORE_DATA_FAILED', 'The recovery archive workspace is invalid.');
   }
   return {
     hostWorkspace,
     hostArchive,
+    ...(input.writable ? { writable: true } : {}),
     containerWorkspace: RECOVERY_ARCHIVE_CONTAINER_WORKSPACE,
     containerArchive: posix.join(
       RECOVERY_ARCHIVE_CONTAINER_WORKSPACE,
@@ -175,7 +178,11 @@ export async function validateRecoveryArchiveMount(
       'The recovery archive escapes its generated workspace.',
     );
   }
-  return resolveRecoveryArchiveMount({ hostWorkspace: workspaceReal, hostArchive: archiveReal });
+  return resolveRecoveryArchiveMount({
+    hostWorkspace: workspaceReal,
+    hostArchive: archiveReal,
+    writable: input.writable,
+  });
 }
 
 export function postgresContainerInvocation(
@@ -190,15 +197,32 @@ export function postgresContainerInvocation(
       'Containerized pg_restore requires a validated recovery archive mount.',
     );
   }
+  if (command === 'pg_restore' && archiveMount?.writable) {
+    throw new RecoveryError('RESTORE_DATA_FAILED', 'Restore archive mounts must be read-only.');
+  }
+  if (command === 'pg_dump' && archiveMount && !archiveMount.writable) {
+    throw new RecoveryError(
+      'BACKUP_ARCHIVE_CREATION_FAILED',
+      'Backup archive mounts must be explicitly writable.',
+    );
+  }
   const commandArguments = archiveMount
     ? args.map((argument) =>
-        argument === archiveMount.hostArchive ? archiveMount.containerArchive : argument,
+        argument === archiveMount.hostArchive
+          ? archiveMount.containerArchive
+          : argument === `--file=${archiveMount.hostArchive}`
+            ? `--file=${archiveMount.containerArchive}`
+            : argument,
       )
     : args;
-  if (archiveMount && !commandArguments.includes(archiveMount.containerArchive)) {
+  if (
+    archiveMount &&
+    !commandArguments.includes(archiveMount.containerArchive) &&
+    !commandArguments.includes(`--file=${archiveMount.containerArchive}`)
+  ) {
     throw new RecoveryError(
       'RESTORE_DATA_FAILED',
-      'The validated recovery archive was not selected for pg_restore.',
+      'The validated recovery archive was not selected by the PostgreSQL tool.',
     );
   }
   return [
@@ -209,7 +233,7 @@ export function postgresContainerInvocation(
     ...(archiveMount
       ? [
           '--mount',
-          `type=bind,source=${archiveMount.hostWorkspace},target=${archiveMount.containerWorkspace},readonly`,
+          `type=bind,source=${archiveMount.hostWorkspace},target=${archiveMount.containerWorkspace}${archiveMount.writable ? '' : ',readonly'}`,
         ]
       : command === 'pg_dump'
         ? ['--volume', '/tmp:/tmp:rw']
@@ -362,9 +386,14 @@ export async function createPgDumpArchive(
   args: string[],
   env: CommandEnvironment,
   runner: CommandRunner = runCommand,
+  archiveMount?: RecoveryArchiveMount,
 ): Promise<void> {
   try {
-    await runner('pg_dump', args, { env, timeoutMs: 15 * 60_000 });
+    await runner('pg_dump', args, {
+      env,
+      timeoutMs: 15 * 60_000,
+      ...(archiveMount ? { recoveryArchiveMount: archiveMount } : {}),
+    });
   } catch (error) {
     const failure =
       error instanceof ExternalToolError
@@ -476,13 +505,27 @@ export function validateAgeRecipient(value: string | undefined): string {
 export async function postgresToolEnvironment(databaseUrl: string, ca: string | undefined) {
   const config = postgresConnectionConfig(databaseUrl, ca);
   const url = new URL(config.connectionString!);
-  const directory = await mkdtemp(join(tmpdir(), 'madrasio-pgssl-'));
-  const caPath = join(directory, 'root.crt');
+  const localHosts = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+  if (!ca?.trim() && localHosts.has(url.hostname)) {
+    return {
+      env: {
+        PGHOST: url.hostname,
+        PGPORT: url.port || '5432',
+        PGDATABASE: decodeURIComponent(url.pathname.slice(1)),
+        PGUSER: decodeURIComponent(url.username),
+        PGPASSWORD: decodeURIComponent(url.password),
+        PGSSLMODE: 'disable',
+      },
+      cleanupDirectory: undefined,
+    };
+  }
   if (!ca?.trim())
     throw new RecoveryError(
       'BACKUP_TARGET_VERIFICATION_FAILED',
       'Trusted database CA is required.',
     );
+  const directory = await mkdtemp(join(tmpdir(), 'madrasio-pgssl-'));
+  const caPath = join(directory, 'root.crt');
   await writeFile(caPath, ca.replace(/\\n/g, '\n'), { mode: 0o600 });
   return {
     env: {

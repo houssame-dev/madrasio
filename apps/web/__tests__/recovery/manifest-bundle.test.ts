@@ -5,10 +5,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { readRecoveryBundle, writeRecoveryBundle } from '@/scripts/recovery/bundle';
-import {
-  RECOVERY_TABLES,
-  safeRecoveryError,
-} from '@/scripts/recovery/contracts';
+import { RECOVERY_TABLES, safeRecoveryError } from '@/scripts/recovery/contracts';
 import {
   artifactMetadata,
   createBackupId,
@@ -98,6 +95,23 @@ async function manifestFixture(rowCount: number) {
 }
 
 describe('Production manifest and bundle construction', () => {
+  it('retains one V1 format for guarded Production and STAGING source labels', async () => {
+    const fixture = await manifestFixture(0);
+    try {
+      expect(
+        validateRecoveryManifest({
+          ...fixture.manifest,
+          source: {
+            ...fixture.manifest.source,
+            environment: 'staging',
+            projectRef: 'cqeaxlttezunirsmkrxz',
+          },
+        }).format,
+      ).toBe('madrasio-recovery-v1');
+    } finally {
+      await rm(fixture.directory, { recursive: true, force: true });
+    }
+  });
   it('normalizes non-zero snapshot milliseconds into the established V1 backup ID', () => {
     const historicalTimestamp = new Date('2026-09-13T15:09:01.123Z')
       .toISOString()
@@ -131,10 +145,7 @@ describe('Production manifest and bundle construction', () => {
         fixture.manifestPath,
         fixture.dump,
       ]);
-      expect(entries.map((entry) => entry.name)).toEqual([
-        'manifest.json',
-        'recovery-data.dump',
-      ]);
+      expect(entries.map((entry) => entry.name)).toEqual(['manifest.json', 'recovery-data.dump']);
       expect(entries[0]?.offset).toBe(0);
       expect(entries[1]?.offset).toBe(entries[0]?.bytes);
       const contents = await readRecoveryBundle(fixture.bundlePath);
@@ -166,10 +177,12 @@ describe('Production manifest and bundle construction', () => {
       count: 16,
       latest: '0015_data-api-grants-hardening',
     });
-    await expect(loadMigrationMetadata(join(tmpdir(), 'missing-migrations'))).rejects.toMatchObject({
-      code: 'BACKUP_MIGRATION_METADATA_FAILED',
-      diagnostic: { phase: 'manifest_metadata', timeout: false },
-    });
+    await expect(loadMigrationMetadata(join(tmpdir(), 'missing-migrations'))).rejects.toMatchObject(
+      {
+        code: 'BACKUP_MIGRATION_METADATA_FAILED',
+        diagnostic: { phase: 'manifest_metadata', timeout: false },
+      },
+    );
   });
 
   it('reads and trims the native SHOW server_version driver field', async () => {
@@ -235,7 +248,9 @@ describe('Production manifest and bundle construction', () => {
   it('classifies server query failures without returning server details', async () => {
     await expect(
       loadServerVersion({
-        query: vi.fn().mockRejectedValue(Object.assign(new Error('private host'), { code: '42501' })),
+        query: vi
+          .fn()
+          .mockRejectedValue(Object.assign(new Error('private host'), { code: '42501' })),
       } as never),
     ).rejects.toMatchObject({
       code: 'BACKUP_SERVER_METADATA_FAILED',
@@ -252,7 +267,15 @@ describe('Production manifest and bundle construction', () => {
       'https://cronitor.link/p/private/key',
       '-----BEGIN CERTIFICATE-----private',
     ];
-    for (const value of [...secrets, 1n, new Date(), undefined, Number.POSITIVE_INFINITY, Buffer.from('private'), null]) {
+    for (const value of [
+      ...secrets,
+      1n,
+      new Date(),
+      undefined,
+      Number.POSITIVE_INFINITY,
+      Buffer.from('private'),
+      null,
+    ]) {
       let error: unknown;
       try {
         validateRecoveryManifest({ format: 'madrasio-recovery-v1', gitSha: value });
@@ -269,12 +292,17 @@ describe('Production manifest and bundle construction', () => {
   it('separates artifact checksums, manifest writes, bundle checksums and bundle writes', async () => {
     const fixture = await manifestFixture(0);
     try {
-      await expect(artifactMetadata(join(fixture.directory, 'missing.dump'))).rejects.toMatchObject({
-        code: 'BACKUP_BUNDLE_CHECKSUM_FAILED',
-        diagnostic: { phase: 'bundle_checksum' },
-      });
+      await expect(artifactMetadata(join(fixture.directory, 'missing.dump'))).rejects.toMatchObject(
+        {
+          code: 'BACKUP_BUNDLE_CHECKSUM_FAILED',
+          diagnostic: { phase: 'bundle_checksum' },
+        },
+      );
       await expect(
-        writeRecoveryManifest(join(fixture.directory, 'missing', 'manifest.json'), fixture.manifest),
+        writeRecoveryManifest(
+          join(fixture.directory, 'missing', 'manifest.json'),
+          fixture.manifest,
+        ),
       ).rejects.toMatchObject({
         code: 'BACKUP_MANIFEST_WRITE_FAILED',
         diagnostic: { phase: 'manifest_write' },

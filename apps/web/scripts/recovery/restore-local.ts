@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { postgresConnectionConfig } from '@school/database/connection';
 import { applicationSecurityAuditSql, assertApplicationSecurity } from '@school/database/security';
@@ -47,15 +48,17 @@ function localPgEnvironment(url: URL): Record<string, string> {
   };
 }
 
-async function main(): Promise<void> {
-  const url = assertIsolatedRestoreTarget(process.env);
-  const encrypted = resolve(process.env.RECOVERY_BUNDLE_PATH ?? '');
-  const identity = resolve(process.env.RECOVERY_AGE_IDENTITY_PATH ?? '');
+export async function restoreLocalRecoveryBundle(
+  runtimeEnv: NodeJS.ProcessEnv = process.env,
+): Promise<{ backupId: string; tables: number }> {
+  const url = assertIsolatedRestoreTarget(runtimeEnv);
+  const encrypted = resolve(runtimeEnv.RECOVERY_BUNDLE_PATH ?? '');
+  const identity = resolve(runtimeEnv.RECOVERY_AGE_IDENTITY_PATH ?? '');
   const repository = resolve(process.cwd(), '../..');
   const identityRelative = relative(repository, identity);
   if (
-    !process.env.RECOVERY_BUNDLE_PATH ||
-    !process.env.RECOVERY_AGE_IDENTITY_PATH ||
+    !runtimeEnv.RECOVERY_BUNDLE_PATH ||
+    !runtimeEnv.RECOVERY_AGE_IDENTITY_PATH ||
     !isAbsolute(identity) ||
     (!identityRelative.startsWith('..') && !isAbsolute(identityRelative))
   ) {
@@ -80,8 +83,8 @@ async function main(): Promise<void> {
       );
     const manifest = parseRecoveryManifest(JSON.parse(manifestBytes.toString('utf8')));
     if (
-      process.env.RECOVERY_EXPECTED_SOURCE_PROJECT_REF !== manifest.source.projectRef ||
-      process.env.RECOVERY_REPOSITORY_GIT_SHA !== manifest.gitSha
+      runtimeEnv.RECOVERY_EXPECTED_SOURCE_PROJECT_REF !== manifest.source.projectRef ||
+      runtimeEnv.RECOVERY_REPOSITORY_GIT_SHA !== manifest.gitSha
     ) {
       throw new RecoveryError(
         'RESTORE_MANIFEST_INVALID',
@@ -101,9 +104,7 @@ async function main(): Promise<void> {
         'Recovery artifact does not match its manifest.',
       );
     }
-    const repositoryMigrations = await loadMigrationMetadata(
-      resolveRecoveryMigrationsDirectory(),
-    );
+    const repositoryMigrations = await loadMigrationMetadata(resolveRecoveryMigrationsDirectory());
     if (canonicalJson(repositoryMigrations) !== canonicalJson(manifest.migrations)) {
       throw new RecoveryError(
         'RESTORE_MANIFEST_INVALID',
@@ -113,7 +114,7 @@ async function main(): Promise<void> {
     await writeFile(dump, dumpBytes, { mode: 0o600 });
     await assertPostgresContainerArchiveReadable(
       { hostArchive: dump, hostWorkspace: work },
-      process.env.RECOVERY_POSTGRES_CONTAINER_IMAGE ?? '',
+      runtimeEnv.RECOVERY_POSTGRES_CONTAINER_IMAGE ?? '',
     );
     const env = localPgEnvironment(url);
     await runFailClosedRestore({
@@ -203,16 +204,21 @@ async function main(): Promise<void> {
         }
       },
     });
-    process.stdout.write(
-      `${JSON.stringify({ event: 'isolated_restore_verified', backupId: manifest.backupId, tables: manifest.fingerprints.length })}\n`,
-    );
+    return { backupId: manifest.backupId, tables: manifest.fingerprints.length };
   } finally {
     await pool.end().catch(() => undefined);
     await cleanupRecoveryWorkDirectory(work);
   }
 }
 
-main().catch((error) => {
-  process.stderr.write(`${JSON.stringify(safeRecoveryError(error))}\n`);
-  process.exitCode = 1;
-});
+async function main(): Promise<void> {
+  const result = await restoreLocalRecoveryBundle();
+  process.stdout.write(`${JSON.stringify({ event: 'isolated_restore_verified', ...result })}\n`);
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    process.stderr.write(`${JSON.stringify(safeRecoveryError(error))}\n`);
+    process.exitCode = 1;
+  });
+}

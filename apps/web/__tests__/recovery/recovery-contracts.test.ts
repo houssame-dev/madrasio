@@ -12,6 +12,7 @@ import {
   RESTORE_CONFIRMATION,
   assertIsolatedRestoreTarget,
   assertProductionBackupTarget,
+  assertStagingRecoveryTarget,
   classifyAuthTable,
 } from '@/scripts/recovery/contracts';
 import {
@@ -45,6 +46,7 @@ import {
   inspectPgDumpArchive,
   pgRestoreTableSelection,
   pgDumpArguments,
+  postgresToolEnvironment,
   postgresContainerInvocation,
   resolvePnpmInvocation,
   resolveRecoveryArchiveMount,
@@ -88,6 +90,29 @@ describe('recovery target safety', () => {
     expect(() =>
       assertProductionBackupTarget(productionEnv({ DATABASE_SSL_CA: undefined })),
     ).toThrow('exact verified-TLS');
+  });
+
+  it('accepts only the exact STAGING Session Pooler with a trusted CA', () => {
+    const staging: NodeJS.ProcessEnv = {
+      NODE_ENV: 'test',
+      DEPLOY_TARGET_ENV: 'staging',
+      STAGING_EXPECTED_PROJECT_REF: 'cqeaxlttezunirsmkrxz',
+      DATABASE_SSL_CA: ca,
+      MIGRATION_DATABASE_URL:
+        'postgresql://postgres.cqeaxlttezunirsmkrxz:secret@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
+    };
+    expect(assertStagingRecoveryTarget(staging).port).toBe('5432');
+    for (const changed of [
+      { STAGING_EXPECTED_PROJECT_REF: productionRef },
+      { DEPLOY_TARGET_ENV: 'production' },
+      { DATABASE_SSL_CA: undefined },
+      { MIGRATION_DATABASE_URL: staging.MIGRATION_DATABASE_URL!.replace(':5432', ':6543') },
+      { MIGRATION_DATABASE_URL: productionEnv().MIGRATION_DATABASE_URL },
+    ]) {
+      expect(() => assertStagingRecoveryTarget({ ...staging, ...changed })).toThrow(
+        'exact verified-TLS STAGING',
+      );
+    }
   });
 
   it('permits restore only on explicitly confirmed loopback PostgreSQL', () => {
@@ -365,6 +390,18 @@ describe('recovery archive and tools', () => {
     expect(invocation.join(' ')).not.toMatch(/postgresql:\/\/|secret|BEGIN CERTIFICATE/);
   });
 
+  it('permits TLS-free tool access only for the disposable loopback integration target', async () => {
+    await expect(
+      postgresToolEnvironment('postgresql://local:local@127.0.0.1:55432/postgres', undefined),
+    ).resolves.toMatchObject({
+      env: { PGHOST: '127.0.0.1', PGPORT: '55432', PGSSLMODE: 'disable' },
+      cleanupDirectory: undefined,
+    });
+    await expect(
+      postgresToolEnvironment('postgresql://user:secret@db.example.com:5432/postgres', undefined),
+    ).rejects.toMatchObject({ code: 'BACKUP_TARGET_VERIFICATION_FAILED' });
+  });
+
   it('maps a Windows recovery archive to a fixed read-only container path', () => {
     const hostWorkspace = 'C:\\Users\\Example User\\AppData\\Local\\Temp\\madrasio-recovery-a1b2c3';
     const hostArchive = `${hostWorkspace}\\recovery-data.dump`;
@@ -402,6 +439,26 @@ describe('recovery archive and tools', () => {
     expect(invocation).toContain(
       'type=bind,source=/tmp/madrasio-recovery-a1b2c3,target=/madrasio-recovery,readonly',
     );
+  });
+
+  it('maps pg_dump output through one generated writable workspace mount', () => {
+    const hostWorkspace = 'C:\\Recovery Tests\\madrasio-recovery-backup';
+    const hostArchive = `${hostWorkspace}\\recovery-data.dump`;
+    const mount = resolveRecoveryArchiveMount(
+      { hostArchive, hostWorkspace, writable: true },
+      { platform: 'win32' },
+    );
+    const invocation = postgresContainerInvocation(
+      'pg_dump',
+      ['--format=custom', `--file=${hostArchive}`],
+      'postgres:17.6-bookworm@sha256:reviewed',
+      mount,
+    );
+    expect(invocation).toContain(`type=bind,source=${hostWorkspace},target=/madrasio-recovery`);
+    expect(invocation).not.toContain(
+      `type=bind,source=${hostWorkspace},target=/madrasio-recovery,readonly`,
+    );
+    expect(invocation.at(-1)).toBe('--file=/madrasio-recovery/recovery-data.dump');
   });
 
   it('keeps a spaced host workspace in one narrowly scoped read-only mount argument', () => {
@@ -443,12 +500,7 @@ describe('recovery archive and tools', () => {
   });
 
   it('selects restored data by explicit schema and unqualified table name', () => {
-    expect(pgRestoreTableSelection('auth.users')).toEqual([
-      '--schema',
-      'auth',
-      '--table',
-      'users',
-    ]);
+    expect(pgRestoreTableSelection('auth.users')).toEqual(['--schema', 'auth', '--table', 'users']);
     expect(pgRestoreTableSelection('public.school_memberships')).toEqual([
       '--schema',
       'public',
