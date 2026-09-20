@@ -2,7 +2,7 @@ import type { Role } from '@/lib/authorization/roles';
 
 /** English catalogue; components consume keys so locale catalogues can replace it centrally. */
 export const copy = {
-  productName: 'School Management System',
+  productName: 'Madrasio',
   dashboard: 'Dashboard',
   academic: 'Academic Structure',
   students: 'Students',

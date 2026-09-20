@@ -1,8 +1,8 @@
-# School Management System — Claude Code Project Rules
+# Madrasio — Claude Code Project Rules
 
 ## 1. Project Identity
 
-Project name: School Management System
+Project name: Madrasio
 
 Project type:
 Multi-tenant School Management SaaS

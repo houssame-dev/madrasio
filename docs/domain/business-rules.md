@@ -1,5 +1,5 @@
 # Business Rules
-## School Management System — V1
+## Madrasio — V1
 
 This document defines the approved business rules for V1.
 

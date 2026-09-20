@@ -5,7 +5,7 @@
 
 ## Context
 
-The School Management System is being developed by a solo developer as an early-stage SaaS MVP.
+The Madrasio is being developed by a solo developer as an early-stage SaaS MVP.
 
 The product contains multiple domains:
 

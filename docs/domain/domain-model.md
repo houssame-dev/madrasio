@@ -1,7 +1,7 @@
 # Domain Model
-## School Management System — V1
+## Madrasio — V1
 
-This document defines the approved domain model for V1 of the School Management System.
+This document defines the approved domain model for V1 of the Madrasio.
 
 It describes:
 

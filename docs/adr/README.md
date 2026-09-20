@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-This directory contains the architectural decisions that define the School Management System.
+This directory contains the architectural decisions that define the Madrasio.
 
 An ADR records:
 

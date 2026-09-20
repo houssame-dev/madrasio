@@ -1,6 +1,6 @@
 import { DeploymentError, parseStagingOrigin, STAGING_PROJECT_REF } from './contracts';
 
-export const STAGING_ORIGIN = 'https://school-management-system-staging.vercel.app';
+export const STAGING_ORIGIN = 'https://madrasio-staging.vercel.app';
 export const RELEASE_POLL_ATTEMPTS = 60;
 export const RELEASE_POLL_INTERVAL_MS = 10_000;
 export const RELEASE_REQUEST_TIMEOUT_MS = 5_000;

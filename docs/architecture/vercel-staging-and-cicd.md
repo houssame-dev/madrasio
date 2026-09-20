@@ -26,7 +26,7 @@ Task 046 checkpoint as historical evidence.
 - STAGING retained 15 migrations through `0014_canonical-user-email` and 39
   application tables. The earlier real Admin, Teacher, Parent, and Parent inbox
   smoke passed; the public ten-check smoke passed again after Cron activation.
-- Auth Site URL is `https://school-management-system-staging.vercel.app`.
+- Auth Site URL is `https://madrasio-staging.vercel.app`.
   The allowlist contains exactly that origin's `/auth/confirm` and
   `http://localhost:3000/auth/confirm`, with no wildcards. Missing/unsupported
   confirmation input redirects to the fixed internal invalid-invite page;
@@ -43,7 +43,7 @@ Task 046 checkpoint as historical evidence.
   do not append that path a second time. This dependency does not block the
   independent scheduler infrastructure acceptance.
 - The three obsolete named Task 046 PAT entries (`VERCEL_TOKEN` and two
-  `school-management-system-staging-github-actions` entries) were deleted in
+  `madrasio-staging-github-actions` entries) were deleted in
   Vercel, along with the remaining active Task 046 CLI credential. Browser
   sessions were not revoked. GitHub `staging` now retains only the required
   secrets `MIGRATION_DATABASE_URL`, `VERCEL_DEPLOY_HOOK_URL`, and the variable
@@ -76,10 +76,10 @@ Task 046 checkpoint as historical evidence.
 
 ## Dedicated project and origin
 
-The approved project name is `school-management-system-staging`. A Vercel Custom
+The approved project name is `madrasio-staging`. A Vercel Custom
 Environment is not required; a dedicated project works on Hobby and gives STAGING
 its own stable production alias. The provider project exists and its stable
-origin is `https://school-management-system-staging.vercel.app`. Public deployment
+origin is `https://madrasio-staging.vercel.app`. Public deployment
 acceptance succeeded as recorded above; project existence alone is not evidence
 of a working release.
 
@@ -286,8 +286,8 @@ new release run (a failed missing-hook run must not be bypassed):
    or let the gated workflow create it after migration verification. Do not
    point it to unverified feature code. Apply available machine-only push rules.
 2. Confirm `git.deploymentEnabled: false` is committed on main and the release
-   ref. Connect only `houssame-dev/school_management_system` to the dedicated
-   `school-management-system-staging` Vercel project, not a Production project.
+   ref. Connect only `houssame-dev/madrasio` to the dedicated
+   `madrasio-staging` Vercel project, not a Production project.
    Verify connection itself and ordinary main/release pushes create no deployment.
 3. Set the Vercel Production Branch to `staging-release`. Keep Root Directory
    `apps/web`, outside-root sources enabled, and existing STAGING-only env values.

@@ -34,7 +34,7 @@ function stagingEnv(overrides: Partial<NodeJS.ProcessEnv> = {}): NodeJS.ProcessE
     STAGING_EXPECTED_PROJECT_REF: STAGING_PROJECT_REF,
     MIGRATION_DATABASE_URL: `postgresql://postgres.${STAGING_PROJECT_REF}:secret@aws-0-eu-central-1.pooler.supabase.com:5432/postgres`,
     DATABASE_SSL_CA: ca,
-    STAGING_APP_ORIGIN: 'https://school-management-system-staging.vercel.app',
+    STAGING_APP_ORIGIN: 'https://madrasio-staging.vercel.app',
     RECOVERY_GIT_SHA: gitSha,
     BACKUP_AGE_RECIPIENT: recipient,
     ...overrides,
@@ -82,7 +82,7 @@ describe('guarded recovery bundle wrappers', () => {
       expect(create.mock.calls[0]![0]).toMatchObject({
         source: { environment: 'staging', projectRef: STAGING_PROJECT_REF },
         providerContract: {
-          appOrigin: 'https://school-management-system-staging.vercel.app',
+          appOrigin: 'https://madrasio-staging.vercel.app',
           expectedVaultNames: ['sms_staging_app_origin', 'sms_staging_cron_secret'],
         },
       });

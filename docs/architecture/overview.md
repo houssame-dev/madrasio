@@ -1,7 +1,7 @@
 # Architecture Overview
-## School Management System — V1
+## Madrasio — V1
 
-This document defines the approved high-level architecture of the School Management System.
+This document defines the approved high-level architecture of the Madrasio.
 It is the architectural reference for the V1 implementation.
 
 It must be read together with:
@@ -1090,7 +1090,7 @@ Free-tier limits must always be checked before depending on a service for a prod
 The approved high-level structure is:
 
 ```text
-school_management_system/
+madrasio/
 │
 ├── apps/
 │   └── web/

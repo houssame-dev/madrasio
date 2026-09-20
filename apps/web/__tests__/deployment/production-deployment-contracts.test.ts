@@ -138,7 +138,7 @@ describe('Production deployment target contracts', () => {
     );
     expect(() => parseProductionOrigin('http://localhost:3000')).toThrow('distinct');
     expect(() =>
-      parseProductionOrigin('https://school-management-system-staging.vercel.app'),
+      parseProductionOrigin('https://madrasio-staging.vercel.app'),
     ).toThrow('distinct');
   });
 

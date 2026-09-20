@@ -50,11 +50,11 @@ describe('STAGING deployment contracts', () => {
   });
 
   it('requires a stable credential-free HTTPS application origin', () => {
-    expect(parseStagingOrigin('https://school-management-system-staging.vercel.app').origin).toBe(
-      'https://school-management-system-staging.vercel.app',
+    expect(parseStagingOrigin('https://madrasio-staging.vercel.app').origin).toBe(
+      'https://madrasio-staging.vercel.app',
     );
     for (const value of [
-      'http://school-management-system-staging.vercel.app',
+      'http://madrasio-staging.vercel.app',
       'http://localhost:3000',
       'https://user:secret@example.com',
       'https://example.com/a-path',
@@ -65,13 +65,13 @@ describe('STAGING deployment contracts', () => {
 
   it('requires explicit Cron configuration opt-in and a strong distinct secret', () => {
     const base = migrationEnv({
-      STAGING_APP_ORIGIN: 'https://school-management-system-staging.vercel.app',
+      STAGING_APP_ORIGIN: 'https://madrasio-staging.vercel.app',
       CRON_SECRET: 'a-dedicated-cron-secret-with-more-than-32-characters',
     });
     expect(() => parseCronConfiguration(base)).toThrow('RUN_STAGING_CRON_CONFIGURATION=1');
     expect(
       parseCronConfiguration({ ...base, RUN_STAGING_CRON_CONFIGURATION: '1' }).origin.origin,
-    ).toBe('https://school-management-system-staging.vercel.app');
+    ).toBe('https://madrasio-staging.vercel.app');
     expect(() =>
       parseCronConfiguration({
         ...base,

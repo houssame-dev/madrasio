@@ -6,7 +6,7 @@ test('GET /api/health returns ok', async ({ request }) => {
   const body = await response.json();
   expect(body).toMatchObject({
     status: 'ok',
-    service: 'school-management-system',
+    service: 'madrasio',
   });
 });
 

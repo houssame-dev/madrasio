@@ -4,7 +4,7 @@ export const STAGING_PROJECT_REF = 'cqeaxlttezunirsmkrxz';
 export const EXPECTED_MIGRATION_COUNT = 16;
 export const EXPECTED_TABLE_COUNT = 39;
 export const EXPECTED_LATEST_MIGRATION = '0015_data-api-grants-hardening';
-export const STAGING_VERCEL_PROJECT = 'school-management-system-staging';
+export const STAGING_VERCEL_PROJECT = 'madrasio-staging';
 export const CRON_SCHEDULE = '* * * * *';
 
 export const CRON_JOBS = [

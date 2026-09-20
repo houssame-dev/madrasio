@@ -142,7 +142,7 @@ export function parseProductionOrigin(value: string | undefined): URL {
     url.pathname !== '/' ||
     url.search ||
     url.hash ||
-    ['localhost', '127.0.0.1', '::1', 'school-management-system-staging.vercel.app'].includes(
+    ['localhost', '127.0.0.1', '::1', 'madrasio-staging.vercel.app'].includes(
       url.hostname,
     )
   ) {

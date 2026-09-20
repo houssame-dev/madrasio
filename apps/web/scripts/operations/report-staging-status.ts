@@ -11,7 +11,7 @@ import {
 import { collectOperationalStatus, operationalFindings } from './operational-status';
 
 let stage = 'target_validation';
-const STAGING_ORIGIN = new URL('https://school-management-system-staging.vercel.app');
+const STAGING_ORIGIN = new URL('https://madrasio-staging.vercel.app');
 
 function deploymentEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return {

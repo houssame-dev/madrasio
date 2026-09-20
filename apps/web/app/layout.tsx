@@ -4,8 +4,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'School Management System',
-    template: '%s · School Management System',
+    default: 'Madrasio',
+    template: '%s · Madrasio',
   },
   description: 'Multi-tenant school management SaaS foundation.',
 };

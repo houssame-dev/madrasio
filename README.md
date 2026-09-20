@@ -1,4 +1,4 @@
-# School Management System
+# Madrasio
 
 > A modern, multilingual, multi-tenant school management SaaS designed for private schools.
 
@@ -14,7 +14,7 @@
 
 ## Overview
 
-**School Management System** is a school management platform built for private schools that need a reliable and modern way to manage their academic, administrative, and communication workflows from a single system.
+**Madrasio** is a school management platform built for private schools that need a reliable and modern way to manage their academic, administrative, and communication workflows from a single system.
 
 The platform is designed around a **modular monolith architecture**, with strong domain boundaries, multi-tenant isolation, role-based authorization, historical academic integrity, and a web-first experience that can support future mobile clients.
 
@@ -310,7 +310,7 @@ Frontend permission checks are treated as a UX mechanism only. Backend authoriza
 The repository is organized around domain modules and shared platform capabilities.
 
 ```text
-school_management_system/
+madrasio/
 │
 ├── apps/
 │   └── web/

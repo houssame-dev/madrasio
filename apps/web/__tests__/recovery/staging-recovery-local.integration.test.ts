@@ -110,7 +110,7 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
       DEPLOY_TARGET_ENV: 'staging',
       STAGING_EXPECTED_PROJECT_REF: STAGING_PROJECT_REF,
       MIGRATION_DATABASE_URL: acceptedTarget.url,
-      STAGING_APP_ORIGIN: 'https://school-management-system-staging.vercel.app',
+      STAGING_APP_ORIGIN: 'https://madrasio-staging.vercel.app',
       RECOVERY_GIT_SHA: gitSha,
       BACKUP_AGE_RECIPIENT: recipient,
       RECOVERY_POSTGRES_CONTAINER_IMAGE: PINNED_POSTGRES_CONTAINER,
