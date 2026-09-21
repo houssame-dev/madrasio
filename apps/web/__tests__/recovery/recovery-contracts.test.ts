@@ -51,6 +51,7 @@ import {
   postgresContainerEnvironment,
   postgresToolEnvironment,
   postgresContainerInvocation,
+  resolveAgeToolInvocation,
   resolvePnpmInvocation,
   resolveRecoveryArchiveMount,
   resolvePostgresTlsMount,
@@ -159,6 +160,49 @@ describe('recovery target safety', () => {
 });
 
 describe('recovery archive and tools', () => {
+  it('resolves reviewed age tools with Windows, POSIX, and path-with-spaces semantics', () => {
+    expect(
+      resolveAgeToolInvocation('age-keygen', ['--version'], {
+        platform: 'win32',
+        toolDirectory: 'C:\\Program Files\\age-v1.3.1',
+      }),
+    ).toEqual({
+      command: 'C:\\Program Files\\age-v1.3.1\\age-keygen.exe',
+      args: ['--version'],
+    });
+    expect(
+      resolveAgeToolInvocation('age', ['--version'], {
+        platform: 'linux',
+        toolDirectory: '/opt/recovery tools/age-v1.3.1',
+      }),
+    ).toEqual({
+      command: '/opt/recovery tools/age-v1.3.1/age',
+      args: ['--version'],
+    });
+  });
+
+  it('retains the shell-free PATH fallback and rejects a relative age directory', () => {
+    expect(resolveAgeToolInvocation('age', ['--version'], { toolDirectory: '' })).toEqual({
+      command: 'age',
+      args: ['--version'],
+    });
+    expect(() =>
+      resolveAgeToolInvocation('age-keygen', [], {
+        platform: 'linux',
+        toolDirectory: 'relative/age-v1.3.1',
+      }),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'BACKUP_ENCRYPTION_FAILED',
+        diagnostic: {
+          phase: 'tool_verification',
+          toolCause: 'unavailable',
+          timeout: false,
+        },
+      }),
+    );
+  });
+
   it('launches pnpm through Node and npm_execpath without joining arguments', () => {
     const args = ['--filter', '@school/database', 'migrate', '--config', 'path with spaces'];
     expect(

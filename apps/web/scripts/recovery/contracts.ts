@@ -231,6 +231,7 @@ export type RecoveryDiagnostic = {
     | 'snapshot'
     | 'tls_ca_unavailable'
     | 'tls_verification'
+    | 'unavailable'
     | 'unknown';
   exitCode?: number;
   signal?: string;
@@ -417,6 +418,7 @@ export function safeRecoveryError(error: unknown): {
       'snapshot',
       'tls_ca_unavailable',
       'tls_verification',
+      'unavailable',
       'unknown',
     ]);
     const toolCause =

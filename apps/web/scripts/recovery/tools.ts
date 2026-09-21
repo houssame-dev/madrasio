@@ -63,6 +63,36 @@ export type CommandRunner = (
 ) => Promise<{ stdout: string }>;
 
 export type PnpmInvocation = { command: string; args: string[] };
+export type AgeTool = 'age' | 'age-keygen';
+export type AgeToolInvocation = { command: string; args: string[] };
+export const RECOVERY_AGE_TOOL_DIRECTORY = 'RECOVERY_AGE_TOOL_DIRECTORY';
+
+export function resolveAgeToolInvocation(
+  command: AgeTool,
+  args: string[],
+  context: {
+    platform?: NodeJS.Platform;
+    toolDirectory?: string;
+  } = {},
+): AgeToolInvocation {
+  const platform = context.platform ?? process.platform;
+  const path = platform === 'win32' ? win32 : posix;
+  const configuredDirectory = (
+    context.toolDirectory ?? process.env[RECOVERY_AGE_TOOL_DIRECTORY]
+  )?.trim();
+  if (!configuredDirectory) return { command, args: [...args] };
+  if (!path.isAbsolute(configuredDirectory)) {
+    throw new RecoveryError(
+      'BACKUP_ENCRYPTION_FAILED',
+      'The configured age tool directory is invalid.',
+      { phase: 'tool_verification', toolCause: 'unavailable', timeout: false },
+    );
+  }
+  return {
+    command: path.join(configuredDirectory, platform === 'win32' ? `${command}.exe` : command),
+    args: [...args],
+  };
+}
 
 export function resolvePnpmInvocation(
   args: string[],
@@ -177,6 +207,13 @@ export function classifyToolFailureCause(
     )
   )
     return 'network';
+  return 'unknown';
+}
+
+export function classifySpawnFailureCause(error: unknown): ExternalToolFailureCause {
+  const code = (error as NodeJS.ErrnoException | null)?.code;
+  if (code === 'ENOENT') return 'unavailable';
+  if (code === 'EACCES' || code === 'EPERM') return 'permission';
   return 'unknown';
 }
 
@@ -462,6 +499,14 @@ export const runCommand: CommandRunner = async (command, args, options = {}) => 
         const invocation = resolvePnpmInvocation(args);
         actualCommand = invocation.command;
         actualArguments = invocation.args;
+      } else if (command === 'age' || command === 'age-keygen') {
+        const invocation = resolveAgeToolInvocation(command, args, {
+          toolDirectory:
+            options.env?.[RECOVERY_AGE_TOOL_DIRECTORY] ??
+            process.env[RECOVERY_AGE_TOOL_DIRECTORY],
+        });
+        actualCommand = invocation.command;
+        actualArguments = invocation.args;
       } else {
         actualCommand = command;
         actualArguments = args;
@@ -487,9 +532,17 @@ export const runCommand: CommandRunner = async (command, args, options = {}) => 
     let stderr = '';
     child.stdout.setEncoding('utf8').on('data', (chunk) => (stdout += chunk));
     child.stderr.setEncoding('utf8').on('data', (chunk) => (stderr += chunk));
-    child.on('error', () => {
+    child.on('error', (error) => {
       clearTimeout(timer);
-      reject(new ExternalToolError('spawn', undefined, undefined, false));
+      reject(
+        new ExternalToolError(
+          'spawn',
+          undefined,
+          undefined,
+          false,
+          classifySpawnFailureCause(error),
+        ),
+      );
     });
     child.on('close', (code, signal) => {
       clearTimeout(timer);

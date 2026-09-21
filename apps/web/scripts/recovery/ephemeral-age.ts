@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import {
@@ -12,6 +11,7 @@ import {
 } from './filesystem';
 import {
   ExternalToolError,
+  RECOVERY_AGE_TOOL_DIRECTORY,
   runCommand,
   validateAgeRecipient,
   type CommandRunner,
@@ -23,6 +23,10 @@ export type EphemeralAgeIdentity = {
   workspacePath: string;
   identityPath: string;
   recipient: string;
+};
+export type EphemeralAgeIdentityOptions = {
+  runner?: CommandRunner;
+  ageToolDirectory?: string;
 };
 
 function keyGenerationDiagnostic(error: unknown): RecoveryDiagnostic {
@@ -39,7 +43,14 @@ function keyGenerationDiagnostic(error: unknown): RecoveryDiagnostic {
 }
 
 function asKeyGenerationError(error: unknown): RecoveryError {
-  if (error instanceof RecoveryError) return error;
+  if (error instanceof RecoveryError && error.diagnostic) return error;
+  if (error instanceof RecoveryError) {
+    return new RecoveryError(error.code, error.message, {
+      phase: 'key_generation',
+      toolCause: 'unknown',
+      timeout: false,
+    });
+  }
   return new RecoveryError(
     'BACKUP_ENCRYPTION_FAILED',
     'Ephemeral age identity generation failed.',
@@ -49,23 +60,22 @@ function asKeyGenerationError(error: unknown): RecoveryError {
 
 /** Creates a temporary Stage-6 identity without returning or logging private key material. */
 export async function createEphemeralAgeIdentity(
-  runner: CommandRunner = runCommand,
+  options: EphemeralAgeIdentityOptions = {},
 ): Promise<EphemeralAgeIdentity> {
+  const runner = options.runner ?? runCommand;
+  const commandOptions = {
+    timeoutMs: 30_000,
+    ...(options.ageToolDirectory
+      ? { env: { [RECOVERY_AGE_TOOL_DIRECTORY]: options.ageToolDirectory } }
+      : {}),
+  };
   let workspacePath: string | undefined;
   try {
     workspacePath = await createRecoveryWorkDirectory();
     const identityPath = join(workspacePath, IDENTITY_FILENAME);
-    await runner('age-keygen', ['--output', identityPath], { timeoutMs: 30_000 });
-    const identity = await readFile(identityPath, 'utf8');
-    const candidate = /^# public key: (age1\S+)$/m.exec(identity)?.[1];
-    if (!candidate) {
-      throw new RecoveryError(
-        'BACKUP_ENCRYPTION_FAILED',
-        'Ephemeral age identity did not contain a valid recipient.',
-        { phase: 'key_generation', toolCause: 'unknown', timeout: false },
-      );
-    }
-    const recipient = validateAgeRecipient(candidate);
+    await runner('age-keygen', ['--output', identityPath], commandOptions);
+    const derived = await runner('age-keygen', ['-y', identityPath], commandOptions);
+    const recipient = validateAgeRecipient(derived.stdout);
     return { workspacePath, identityPath, recipient };
   } catch (error) {
     const primary = asKeyGenerationError(error);
