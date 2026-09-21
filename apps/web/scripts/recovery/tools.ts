@@ -28,18 +28,29 @@ export type ResolvedRecoveryArchiveMount = {
   hostWorkspace: string;
   writable?: boolean;
 };
+export type PostgresTlsMount = {
+  hostCa: string;
+  hostDirectory: string;
+};
+export type ResolvedPostgresTlsMount = PostgresTlsMount & {
+  containerCa: string;
+  containerDirectory: string;
+};
 export type CommandOptions = {
   env?: CommandEnvironment;
+  postgresTlsMount?: PostgresTlsMount;
   recoveryArchiveMount?: RecoveryArchiveMount;
   timeoutMs?: number;
 };
 export type ExternalToolFailureKind = 'spawn' | 'connection' | 'snapshot' | 'operation';
+export type ExternalToolFailureCause = NonNullable<RecoveryDiagnostic['toolCause']>;
 export class ExternalToolError extends Error {
   constructor(
     public readonly kind: ExternalToolFailureKind,
     public readonly exitCode: number | undefined,
     public readonly signal: string | undefined,
     public readonly timeout: boolean,
+    public readonly cause: ExternalToolFailureCause = 'unknown',
   ) {
     super('External recovery tool failed; output withheld.');
     this.name = 'ExternalToolError';
@@ -115,9 +126,64 @@ export function classifyToolFailure(
   return 'operation';
 }
 
+export function classifyToolFailureCause(
+  command: string,
+  stderr: string,
+): ExternalToolFailureCause {
+  if (command !== 'pg_dump') return 'unknown';
+  const normalized = stderr.toLowerCase();
+  if (
+    /root certificate file .* (?:does not exist|not found|could not be read)|could not open certificate file|could not load root certificate file/.test(
+      normalized,
+    )
+  )
+    return 'tls_ca_unavailable';
+  if (
+    /certificate verify failed|server certificate .* does not match host name|ssl error|tls error/.test(
+      normalized,
+    )
+  )
+    return 'tls_verification';
+  if (/password authentication failed|authentication failed/.test(normalized))
+    return 'authentication';
+  if (
+    /could not translate host name|name or service not known|temporary failure in name resolution/.test(
+      normalized,
+    )
+  )
+    return 'dns';
+  if (
+    /could not import the requested snapshot|invalid snapshot identifier|snapshot .* does not exist|set transaction snapshot/.test(
+      normalized,
+    )
+  )
+    return 'snapshot';
+  if (/permission denied/.test(normalized)) return 'permission';
+  if (
+    /no space left on device|read-only file system|could not open output file|could not write to output file/.test(
+      normalized,
+    )
+  )
+    return 'filesystem';
+  if (
+    /server closed the connection unexpectedly|terminating connection due to administrator command/.test(
+      normalized,
+    )
+  )
+    return 'server';
+  if (
+    /connection to server .* failed|could not connect to server|connection refused|connection timed out/.test(
+      normalized,
+    )
+  )
+    return 'network';
+  return 'unknown';
+}
+
 export const PINNED_POSTGRES_CONTAINER =
   'postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3';
 export const RECOVERY_ARCHIVE_CONTAINER_WORKSPACE = '/madrasio-recovery';
+export const POSTGRES_TLS_CONTAINER_DIRECTORY = '/madrasio-pgssl';
 
 export function pgRestoreTableSelection(table: string): string[] {
   const match = /^(auth|public)\.([a-z][a-z0-9_]*)$/.exec(table);
@@ -185,11 +251,65 @@ export async function validateRecoveryArchiveMount(
   });
 }
 
+export function resolvePostgresTlsMount(
+  input: PostgresTlsMount,
+  context: { platform?: NodeJS.Platform } = {},
+): ResolvedPostgresTlsMount {
+  const path = (context.platform ?? process.platform) === 'win32' ? win32 : posix;
+  const hostDirectory = path.resolve(input.hostDirectory);
+  const hostCa = path.resolve(input.hostCa);
+  const caRelative = path.relative(hostDirectory, hostCa);
+  if (
+    !path.basename(hostDirectory).startsWith('madrasio-pgssl-') ||
+    caRelative !== 'root.crt' ||
+    path.isAbsolute(caRelative)
+  ) {
+    throw new RecoveryError(
+      'BACKUP_TARGET_VERIFICATION_FAILED',
+      'The PostgreSQL TLS trust mount is invalid.',
+    );
+  }
+  return {
+    hostDirectory,
+    hostCa,
+    containerDirectory: POSTGRES_TLS_CONTAINER_DIRECTORY,
+    containerCa: posix.join(POSTGRES_TLS_CONTAINER_DIRECTORY, 'root.crt'),
+  };
+}
+
+export async function validatePostgresTlsMount(
+  input: PostgresTlsMount,
+): Promise<ResolvedPostgresTlsMount> {
+  const resolved = resolvePostgresTlsMount(input);
+  let directoryReal: string;
+  let caReal: string;
+  try {
+    directoryReal = await realpath(resolved.hostDirectory);
+    const caStats = await stat(resolved.hostCa);
+    if (!caStats.isFile() || caStats.size === 0) throw new Error('invalid CA file');
+    caReal = await realpath(resolved.hostCa);
+  } catch {
+    throw new RecoveryError(
+      'BACKUP_TARGET_VERIFICATION_FAILED',
+      'The PostgreSQL TLS trust file is missing or invalid.',
+    );
+  }
+  const caRelative = relative(directoryReal, caReal);
+  if (caRelative !== 'root.crt' || isAbsolute(caRelative)) {
+    throw new RecoveryError(
+      'BACKUP_TARGET_VERIFICATION_FAILED',
+      'The PostgreSQL TLS trust file escapes its generated directory.',
+    );
+  }
+  return resolvePostgresTlsMount({ hostDirectory: directoryReal, hostCa: caReal });
+}
+
 export function postgresContainerInvocation(
   command: 'pg_dump' | 'pg_restore',
   args: string[],
   image: string,
   archiveMount?: ResolvedRecoveryArchiveMount,
+  tlsMount?: ResolvedPostgresTlsMount,
 ): string[] {
   if (command === 'pg_restore' && !archiveMount && args.join(' ') !== '--version') {
     throw new RecoveryError(
@@ -238,6 +358,12 @@ export function postgresContainerInvocation(
       : command === 'pg_dump'
         ? ['--volume', '/tmp:/tmp:rw']
         : []),
+    ...(tlsMount
+      ? [
+          '--mount',
+          `type=bind,source=${tlsMount.hostDirectory},target=${tlsMount.containerDirectory},readonly`,
+        ]
+      : []),
     ...[
       'PGHOST',
       'PGPORT',
@@ -253,17 +379,59 @@ export function postgresContainerInvocation(
   ];
 }
 
+export function postgresContainerEnvironment(
+  env: CommandEnvironment,
+  tlsMount?: ResolvedPostgresTlsMount,
+): CommandEnvironment {
+  if (env.PGSSLMODE === 'verify-full') {
+    if (!tlsMount || env.PGSSLROOTCERT !== tlsMount.hostCa) {
+      throw new RecoveryError(
+        'BACKUP_TARGET_VERIFICATION_FAILED',
+        'Containerized PostgreSQL verified TLS requires a validated trust mount.',
+      );
+    }
+    return { ...env, PGSSLROOTCERT: tlsMount.containerCa };
+  }
+  if (env.PGSSLROOTCERT || tlsMount) {
+    throw new RecoveryError(
+      'BACKUP_TARGET_VERIFICATION_FAILED',
+      'PostgreSQL TLS trust material requires verify-full mode.',
+    );
+  }
+  if (env.PGSSLMODE && env.PGSSLMODE !== 'disable') {
+    throw new RecoveryError(
+      'BACKUP_TARGET_VERIFICATION_FAILED',
+      'Unsupported PostgreSQL TLS mode.',
+    );
+  }
+  return { ...env };
+}
+
 export const runCommand: CommandRunner = async (command, args, options = {}) => {
   const archiveMount = options.recoveryArchiveMount
     ? await validateRecoveryArchiveMount(options.recoveryArchiveMount)
     : undefined;
+  const tlsMount = options.postgresTlsMount
+    ? await validatePostgresTlsMount(options.postgresTlsMount)
+    : undefined;
   return new Promise((resolve, reject) => {
     const inherited = Object.fromEntries(
-      ['PATH', 'Path', 'PATHEXT', 'SYSTEMROOT', 'SystemRoot', 'COMSPEC', 'TEMP', 'TMP', 'HOME'].map(
-        (key) => [key, process.env[key]],
-      ),
+      [
+        'PATH',
+        'Path',
+        'PATHEXT',
+        'SYSTEMROOT',
+        'SystemRoot',
+        'COMSPEC',
+        'TEMP',
+        'TMP',
+        'HOME',
+        'USERPROFILE',
+        'APPDATA',
+        'LOCALAPPDATA',
+      ].map((key) => [key, process.env[key]]),
     );
-    const childEnvironment = {
+    let childEnvironment = {
       NODE_ENV: process.env.NODE_ENV ?? 'production',
       ...inherited,
       ...options.env,
@@ -278,12 +446,17 @@ export const runCommand: CommandRunner = async (command, args, options = {}) => 
     let actualArguments: string[];
     try {
       if (useContainer) {
+        childEnvironment = {
+          ...childEnvironment,
+          ...postgresContainerEnvironment(options.env ?? {}, tlsMount),
+        };
         actualCommand = 'docker';
         actualArguments = postgresContainerInvocation(
           command as 'pg_dump' | 'pg_restore',
           args,
           configuredImage,
           archiveMount,
+          tlsMount,
         );
       } else if (command === 'pnpm') {
         const invocation = resolvePnpmInvocation(args);
@@ -328,6 +501,7 @@ export const runCommand: CommandRunner = async (command, args, options = {}) => 
             code ?? undefined,
             signal ?? undefined,
             timedOut,
+            timedOut ? 'unknown' : classifyToolFailureCause(command, stderr),
           ),
         );
     });
@@ -376,6 +550,7 @@ function toolDiagnostic(
 ): RecoveryDiagnostic {
   return {
     phase,
+    toolCause: error.cause,
     ...(error.exitCode !== undefined ? { exitCode: error.exitCode } : {}),
     ...(error.signal ? { signal: error.signal } : {}),
     timeout: error.timeout,
@@ -387,12 +562,14 @@ export async function createPgDumpArchive(
   env: CommandEnvironment,
   runner: CommandRunner = runCommand,
   archiveMount?: RecoveryArchiveMount,
+  postgresTlsMount?: PostgresTlsMount,
 ): Promise<void> {
   try {
     await runner('pg_dump', args, {
       env,
       timeoutMs: 15 * 60_000,
       ...(archiveMount ? { recoveryArchiveMount: archiveMount } : {}),
+      ...(postgresTlsMount ? { postgresTlsMount } : {}),
     });
   } catch (error) {
     const failure =
@@ -516,6 +693,7 @@ export async function postgresToolEnvironment(databaseUrl: string, ca: string | 
         PGPASSWORD: decodeURIComponent(url.password),
         PGSSLMODE: 'disable',
       },
+      tlsMount: undefined,
       cleanupDirectory: undefined,
     };
   }
@@ -524,9 +702,16 @@ export async function postgresToolEnvironment(databaseUrl: string, ca: string | 
       'BACKUP_TARGET_VERIFICATION_FAILED',
       'Trusted database CA is required.',
     );
+  const normalizedCa = ca.replace(/\\n/g, '\n').trim();
+  if (!/^-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----$/.test(normalizedCa)) {
+    throw new RecoveryError(
+      'BACKUP_TARGET_VERIFICATION_FAILED',
+      'Trusted database CA must be a PEM certificate.',
+    );
+  }
   const directory = await mkdtemp(join(tmpdir(), 'madrasio-pgssl-'));
   const caPath = join(directory, 'root.crt');
-  await writeFile(caPath, ca.replace(/\\n/g, '\n'), { mode: 0o600 });
+  await writeFile(caPath, `${normalizedCa}\n`, { mode: 0o600 });
   return {
     env: {
       PGHOST: url.hostname,
@@ -537,6 +722,7 @@ export async function postgresToolEnvironment(databaseUrl: string, ca: string | 
       PGSSLMODE: 'verify-full',
       PGSSLROOTCERT: caPath,
     },
+    tlsMount: { hostDirectory: directory, hostCa: caPath },
     cleanupDirectory: directory,
   };
 }

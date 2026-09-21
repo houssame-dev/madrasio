@@ -107,6 +107,7 @@ export async function createRecoveryBundle(
         tool.env,
         undefined,
         { hostArchive: dump, hostWorkspace: work, writable: true },
+        tool.tlsMount,
       );
       const fingerprintsPromise = (async () => {
         const values = [];

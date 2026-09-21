@@ -211,6 +211,17 @@ export type RecoveryPhase = (typeof RECOVERY_PHASES)[number];
 export type RecoveryDiagnostic = {
   phase: RecoveryPhase;
   sqlState?: string;
+  toolCause?:
+    | 'authentication'
+    | 'dns'
+    | 'filesystem'
+    | 'network'
+    | 'permission'
+    | 'server'
+    | 'snapshot'
+    | 'tls_ca_unavailable'
+    | 'tls_verification'
+    | 'unknown';
   exitCode?: number;
   signal?: string;
   timeout?: boolean;
@@ -359,6 +370,7 @@ export function safeRecoveryError(error: unknown): {
   message: string;
   phase?: RecoveryPhase;
   sqlState?: string;
+  toolCause?: RecoveryDiagnostic['toolCause'];
   exitCode?: number;
   signal?: string;
   timeout?: boolean;
@@ -384,6 +396,22 @@ export function safeRecoveryError(error: unknown): {
       diagnostic.exitCode <= 255
         ? diagnostic.exitCode
         : undefined;
+    const toolCauses = new Set<NonNullable<RecoveryDiagnostic['toolCause']>>([
+      'authentication',
+      'dns',
+      'filesystem',
+      'network',
+      'permission',
+      'server',
+      'snapshot',
+      'tls_ca_unavailable',
+      'tls_verification',
+      'unknown',
+    ]);
+    const toolCause =
+      diagnostic?.toolCause && toolCauses.has(diagnostic.toolCause)
+        ? diagnostic.toolCause
+        : undefined;
     const signal =
       diagnostic?.signal && /^SIG[A-Z0-9]+$/.test(diagnostic.signal)
         ? diagnostic.signal
@@ -395,6 +423,7 @@ export function safeRecoveryError(error: unknown): {
         ? {
             ...(phase ? { phase } : {}),
             ...(sqlState ? { sqlState } : {}),
+            ...(toolCause ? { toolCause } : {}),
             ...(exitCode !== undefined ? { exitCode } : {}),
             ...(signal ? { signal } : {}),
             timeout: diagnostic.timeout ?? false,

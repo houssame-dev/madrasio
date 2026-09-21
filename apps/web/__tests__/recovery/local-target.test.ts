@@ -1,5 +1,7 @@
 import { execFile } from 'node:child_process';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
+import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -30,6 +32,7 @@ import {
   PINNED_POSTGRES_CONTAINER,
   assertPostgresContainerArchiveReadable,
   pgRestoreTableSelection,
+  resolvePostgresTlsMount,
   runCommand,
 } from '../../scripts/recovery/tools';
 
@@ -88,6 +91,41 @@ describe('local recovery target network contract', () => {
 });
 
 describe.skipIf(!live)('live local recovery target', () => {
+  it('makes only the generated TLS trust directory readable inside the pinned container', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'madrasio-pgssl-'));
+    const ca = join(directory, 'root.crt');
+    const docker = process.env.RECOVERY_DOCKER_BINARY?.trim() || 'docker';
+    const tls = resolvePostgresTlsMount({ hostDirectory: directory, hostCa: ca });
+    try {
+      await writeFile(ca, 'local trust fixture', { mode: 0o600 });
+      await expect(
+        runCommand(docker, [
+          'run',
+          '--rm',
+          PINNED_POSTGRES_CONTAINER,
+          'test',
+          '!',
+          '-r',
+          tls.hostCa,
+        ]),
+      ).resolves.toMatchObject({ stdout: '' });
+      await expect(
+        runCommand(docker, [
+          'run',
+          '--rm',
+          '--mount',
+          `type=bind,source=${tls.hostDirectory},target=${tls.containerDirectory},readonly`,
+          PINNED_POSTGRES_CONTAINER,
+          'test',
+          '-r',
+          tls.containerCa,
+        ]),
+      ).resolves.toMatchObject({ stdout: '' });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   it('runs the exact restore migration command through the cross-platform launcher', async () => {
     const state = await createLocalRecoveryTarget();
     statePath = state.statePath;

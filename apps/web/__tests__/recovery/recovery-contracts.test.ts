@@ -14,6 +14,7 @@ import {
   assertProductionBackupTarget,
   assertStagingRecoveryTarget,
   classifyAuthTable,
+  safeRecoveryError,
 } from '@/scripts/recovery/contracts';
 import {
   assertRecoveryWorkDirectory,
@@ -41,16 +42,20 @@ import {
   assertToolVersions,
   cleanupPostgresToolEnvironment,
   classifyToolFailure,
+  classifyToolFailureCause,
   createPgDumpArchive,
   ExternalToolError,
   inspectPgDumpArchive,
   pgRestoreTableSelection,
   pgDumpArguments,
+  postgresContainerEnvironment,
   postgresToolEnvironment,
   postgresContainerInvocation,
   resolvePnpmInvocation,
   resolveRecoveryArchiveMount,
+  resolvePostgresTlsMount,
   validateRecoveryArchiveMount,
+  validatePostgresTlsMount,
   validateAgeRecipient,
 } from '@/scripts/recovery/tools';
 
@@ -311,29 +316,22 @@ describe('recovery archive and tools', () => {
     expect(query.mock.calls[1]?.[0]).toBe('select count(*)::int as count from auth."mfa_factors"');
   });
 
-  it.each([
-    'mfa_recovery_code_sets',
-    'mfa_recovery_codes',
-    'scim_tokens',
-    'scim_users',
-  ])('accepts empty reviewed durable unsupported Auth table %s', async (table) => {
-    const query = vi
-      .fn()
-      .mockResolvedValueOnce({ rows: [{ table_name: table }] })
-      .mockResolvedValueOnce({ rows: [{ count: 0 }] })
-      .mockResolvedValueOnce({ rows: [{ count: 0 }] })
-      .mockResolvedValueOnce({ rows: [] });
-    await expect(assertSupportedAuthState({ query } as never)).resolves.toBeUndefined();
-    expect(query.mock.calls[1]?.[0]).toBe(`select count(*)::int as count from auth."${table}"`);
-  });
+  it.each(['mfa_recovery_code_sets', 'mfa_recovery_codes', 'scim_tokens', 'scim_users'])(
+    'accepts empty reviewed durable unsupported Auth table %s',
+    async (table) => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ table_name: table }] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [] });
+      await expect(assertSupportedAuthState({ query } as never)).resolves.toBeUndefined();
+      expect(query.mock.calls[1]?.[0]).toBe(`select count(*)::int as count from auth."${table}"`);
+    },
+  );
 
   it('accepts the current provider schema when all four reviewed tables are empty', async () => {
-    const reviewed = [
-      'mfa_recovery_code_sets',
-      'mfa_recovery_codes',
-      'scim_tokens',
-      'scim_users',
-    ];
+    const reviewed = ['mfa_recovery_code_sets', 'mfa_recovery_codes', 'scim_tokens', 'scim_users'];
     const query = vi
       .fn()
       .mockResolvedValueOnce({ rows: reviewed.map((table_name) => ({ table_name })) })
@@ -347,21 +345,19 @@ describe('recovery archive and tools', () => {
     expect(query).toHaveBeenCalledTimes(7);
   });
 
-  it.each([
-    'mfa_recovery_code_sets',
-    'mfa_recovery_codes',
-    'scim_tokens',
-    'scim_users',
-  ])('fails closed for non-empty reviewed durable unsupported Auth table %s', async (table) => {
-    const query = vi
-      .fn()
-      .mockResolvedValueOnce({ rows: [{ table_name: table }] })
-      .mockResolvedValueOnce({ rows: [{ count: 1 }] });
-    await expect(assertSupportedAuthState({ query } as never)).rejects.toMatchObject({
-      code: 'BACKUP_AUTH_FEATURE_STATE_UNSUPPORTED',
-    });
-    expect(query).toHaveBeenCalledTimes(2);
-  });
+  it.each(['mfa_recovery_code_sets', 'mfa_recovery_codes', 'scim_tokens', 'scim_users'])(
+    'fails closed for non-empty reviewed durable unsupported Auth table %s',
+    async (table) => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ table_name: table }] })
+        .mockResolvedValueOnce({ rows: [{ count: 1 }] });
+      await expect(assertSupportedAuthState({ query } as never)).rejects.toMatchObject({
+        code: 'BACKUP_AUTH_FEATURE_STATE_UNSUPPORTED',
+      });
+      expect(query).toHaveBeenCalledTimes(2);
+    },
+  );
 
   it.each(['oauth_client_states', 'saml_relay_states'])(
     'accepts empty known transient Auth table %s without inspecting its rows',
@@ -461,6 +457,125 @@ describe('recovery archive and tools', () => {
     await expect(
       postgresToolEnvironment('postgresql://user:secret@db.example.com:5432/postgres', undefined),
     ).rejects.toMatchObject({ code: 'BACKUP_TARGET_VERIFICATION_FAILED' });
+    await expect(
+      postgresToolEnvironment('postgresql://user:secret@db.example.com:5432/postgres', 'not-a-pem'),
+    ).rejects.toMatchObject({ code: 'BACKUP_TARGET_VERIFICATION_FAILED' });
+  });
+
+  it('creates and validates one generated hosted TLS trust mount', async () => {
+    const tool = await postgresToolEnvironment(
+      'postgresql://user:secret@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
+      ca,
+    );
+    expect(tool.env).toMatchObject({
+      PGPORT: '5432',
+      PGSSLMODE: 'verify-full',
+      PGSSLROOTCERT: tool.tlsMount?.hostCa,
+    });
+    expect(tool.tlsMount).toBeDefined();
+    try {
+      await expect(validatePostgresTlsMount(tool.tlsMount!)).resolves.toMatchObject({
+        containerCa: '/madrasio-pgssl/root.crt',
+        containerDirectory: '/madrasio-pgssl',
+      });
+    } finally {
+      await cleanupPostgresToolEnvironment(tool.cleanupDirectory!);
+    }
+  });
+
+  it('maps a Windows TLS trust file to a fixed read-only Linux container path', () => {
+    const hostDirectory = 'C:\\Users\\Example User\\AppData\\Local\\Temp\\madrasio-pgssl-a1b2c3';
+    const hostCa = `${hostDirectory}\\root.crt`;
+    const tls = resolvePostgresTlsMount({ hostDirectory, hostCa }, { platform: 'win32' });
+    const archiveWorkspace =
+      'C:\\Users\\Example User\\AppData\\Local\\Temp\\madrasio-recovery-a1b2c3';
+    const archive = resolveRecoveryArchiveMount(
+      {
+        hostWorkspace: archiveWorkspace,
+        hostArchive: `${archiveWorkspace}\\recovery-data.dump`,
+        writable: true,
+      },
+      { platform: 'win32' },
+    );
+    const invocation = postgresContainerInvocation(
+      'pg_dump',
+      pgDumpArguments(archive.hostArchive, '00000003-1'),
+      'postgres:17.6-bookworm@sha256:reviewed',
+      archive,
+      tls,
+    );
+    const containerEnv = postgresContainerEnvironment(
+      {
+        PGHOST: 'aws-0-eu-central-1.pooler.supabase.com',
+        PGPORT: '5432',
+        PGSSLMODE: 'verify-full',
+        PGSSLROOTCERT: hostCa,
+      },
+      tls,
+    );
+    expect(invocation).toContain(
+      `type=bind,source=${hostDirectory},target=/madrasio-pgssl,readonly`,
+    );
+    expect(invocation.at(-1)).not.toContain('C:\\');
+    expect(containerEnv.PGSSLROOTCERT).toBe('/madrasio-pgssl/root.crt');
+    expect(containerEnv.PGPORT).toBe('5432');
+  });
+
+  it('maps a POSIX TLS trust file through the same read-only container contract', () => {
+    const hostDirectory = '/tmp/madrasio-pgssl-a1b2c3';
+    const hostCa = `${hostDirectory}/root.crt`;
+    const tls = resolvePostgresTlsMount({ hostDirectory, hostCa }, { platform: 'linux' });
+    const invocation = postgresContainerInvocation(
+      'pg_dump',
+      ['--version'],
+      'postgres:17.6-bookworm@sha256:reviewed',
+      undefined,
+      tls,
+    );
+    expect(invocation).toContain(
+      'type=bind,source=/tmp/madrasio-pgssl-a1b2c3,target=/madrasio-pgssl,readonly',
+    );
+    expect(
+      postgresContainerEnvironment({ PGSSLMODE: 'verify-full', PGSSLROOTCERT: hostCa }, tls)
+        .PGSSLROOTCERT,
+    ).toBe('/madrasio-pgssl/root.crt');
+  });
+
+  it('fails closed for missing, escaping, or insecure PostgreSQL TLS trust input', async () => {
+    expect(() =>
+      resolvePostgresTlsMount(
+        {
+          hostDirectory: '/tmp/madrasio-pgssl-a1b2c3',
+          hostCa: '/tmp/other/root.crt',
+        },
+        { platform: 'linux' },
+      ),
+    ).toThrow('trust mount is invalid');
+    await expect(
+      validatePostgresTlsMount({
+        hostDirectory: join(tmpdir(), 'madrasio-pgssl-does-not-exist'),
+        hostCa: join(tmpdir(), 'madrasio-pgssl-does-not-exist', 'root.crt'),
+      }),
+    ).rejects.toThrow('missing or invalid');
+    const tls = resolvePostgresTlsMount(
+      {
+        hostDirectory: '/tmp/madrasio-pgssl-a1b2c3',
+        hostCa: '/tmp/madrasio-pgssl-a1b2c3/root.crt',
+      },
+      { platform: 'linux' },
+    );
+    expect(() =>
+      postgresContainerEnvironment({ PGSSLMODE: 'disable', PGSSLROOTCERT: tls.hostCa }, tls),
+    ).toThrow('requires verify-full');
+    expect(() =>
+      postgresContainerEnvironment(
+        { PGSSLMODE: 'verify-full', PGSSLROOTCERT: tls.hostCa },
+        undefined,
+      ),
+    ).toThrow('requires a validated trust mount');
+    expect(() => postgresContainerEnvironment({ PGSSLMODE: 'require' }, undefined)).toThrow(
+      'Unsupported PostgreSQL TLS mode',
+    );
   });
 
   it('maps a Windows recovery archive to a fixed read-only container path', () => {
@@ -823,6 +938,57 @@ describe('snapshot and restore orchestration', () => {
       expect(classification).not.toContain('private');
       expect(JSON.stringify(classification)).not.toContain(secret);
     }
+  });
+
+  it('retains a bounded safe pg_dump cause without retaining stderr', async () => {
+    const privateStderr =
+      'pg_dump: error: root certificate file "C:\\Users\\Private User\\root.crt" does not exist private-password';
+    expect(classifyToolFailureCause('pg_dump', privateStderr)).toBe('tls_ca_unavailable');
+    const runner = vi
+      .fn()
+      .mockRejectedValue(
+        new ExternalToolError('operation', 1, undefined, false, 'tls_ca_unavailable'),
+      );
+    await expect(createPgDumpArchive([], {}, runner)).rejects.toMatchObject({
+      code: 'BACKUP_ARCHIVE_CREATION_FAILED',
+      diagnostic: {
+        phase: 'archive_creation',
+        toolCause: 'tls_ca_unavailable',
+        exitCode: 1,
+      },
+    });
+    try {
+      await createPgDumpArchive([], {}, runner);
+    } catch (error) {
+      const safe = JSON.stringify(safeRecoveryError(error));
+      expect(safe).toContain('tls_ca_unavailable');
+      expect(safe).not.toContain('Private User');
+      expect(safe).not.toContain('private-password');
+    }
+  });
+
+  it('passes the validated archive and TLS mounts to the pg_dump command runner', async () => {
+    const runner = vi.fn().mockResolvedValue({ stdout: '' });
+    const hostDirectory = '/tmp/madrasio-pgssl-a1b2c3';
+    const hostCa = `${hostDirectory}/root.crt`;
+    const archiveWorkspace = '/tmp/madrasio-recovery-a1b2c3';
+    const archive = `${archiveWorkspace}/recovery-data.dump`;
+    await createPgDumpArchive(
+      pgDumpArguments(archive, '00000003-1'),
+      { PGPORT: '5432', PGSSLMODE: 'verify-full', PGSSLROOTCERT: hostCa },
+      runner,
+      { hostWorkspace: archiveWorkspace, hostArchive: archive, writable: true },
+      { hostDirectory, hostCa },
+    );
+    expect(runner).toHaveBeenCalledWith(
+      'pg_dump',
+      expect.arrayContaining(['--snapshot=00000003-1', `--file=${archive}`]),
+      expect.objectContaining({
+        env: expect.objectContaining({ PGPORT: '5432', PGSSLMODE: 'verify-full' }),
+        recoveryArchiveMount: expect.objectContaining({ writable: true }),
+        postgresTlsMount: { hostDirectory, hostCa },
+      }),
+    );
   });
 
   it('classifies archive inspection independently from inventory mismatch', async () => {
