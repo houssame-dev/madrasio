@@ -1,7 +1,3 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Pool } from 'pg';
 
@@ -21,6 +17,11 @@ import {
   type StagingRecoveryBundle,
 } from '@/scripts/recovery/create-staging-recovery-bundle';
 import {
+  cleanupEphemeralAgeIdentity,
+  createEphemeralAgeIdentity,
+  type EphemeralAgeIdentity,
+} from '@/scripts/recovery/ephemeral-age';
+import {
   cleanupLocalRecoveryTarget,
   createLocalRecoveryTarget,
   type LocalTargetState,
@@ -32,7 +33,7 @@ const live = process.env.RECOVERY_TEST_LOCAL_TARGET === '1';
 const gitSha = 'c'.repeat(40);
 let target: LocalTargetState | undefined;
 let bundle: StagingRecoveryBundle | undefined;
-let keyDirectory: string | undefined;
+let ageIdentity: EphemeralAgeIdentity | undefined;
 let previousPostgresImage: string | undefined;
 
 function databaseUrl(state: LocalTargetState): string {
@@ -45,10 +46,10 @@ function databaseUrl(state: LocalTargetState): string {
 afterEach(async () => {
   if (target) await cleanupLocalRecoveryTarget(target.statePath).catch(() => undefined);
   if (bundle) await cleanupStagingRecoveryBundle(bundle).catch(() => undefined);
-  if (keyDirectory) await rm(keyDirectory, { recursive: true, force: true });
+  if (ageIdentity) await cleanupEphemeralAgeIdentity(ageIdentity).catch(() => undefined);
   target = undefined;
   bundle = undefined;
-  keyDirectory = undefined;
+  ageIdentity = undefined;
   acceptedTarget.url = '';
   process.env.RECOVERY_POSTGRES_CONTAINER_IMAGE = previousPostgresImage;
   previousPostgresImage = undefined;
@@ -98,12 +99,8 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
       await sourcePool.end();
     }
 
-    keyDirectory = await mkdtemp(join(tmpdir(), 'madrasio-stage6-age-'));
-    const identityPath = join(keyDirectory, 'identity.txt');
-    await runCommand('age-keygen', ['-o', identityPath]);
-    const identity = await readFile(identityPath, 'utf8');
-    const recipient = /^# public key: (age1\S+)$/m.exec(identity)?.[1];
-    expect(recipient).toMatch(/^age1/);
+    ageIdentity = await createEphemeralAgeIdentity();
+    expect(ageIdentity.recipient).toMatch(/^age1/);
 
     bundle = await createStagingRecoveryBundle({
       NODE_ENV: 'test',
@@ -112,7 +109,7 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
       MIGRATION_DATABASE_URL: acceptedTarget.url,
       STAGING_APP_ORIGIN: 'https://madrasio-staging.vercel.app',
       RECOVERY_GIT_SHA: gitSha,
-      BACKUP_AGE_RECIPIENT: recipient,
+      BACKUP_AGE_RECIPIENT: ageIdentity.recipient,
       RECOVERY_POSTGRES_CONTAINER_IMAGE: PINNED_POSTGRES_CONTAINER,
     });
     expect(bundle.authUserCount).toBe(1);
@@ -128,7 +125,7 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
         RESTORE_CONFIRMATION: 'RESTORE_ISOLATED_LOCAL',
         RESTORE_DATABASE_URL: restoredUrl,
         RECOVERY_BUNDLE_PATH: bundle.outputPath,
-        RECOVERY_AGE_IDENTITY_PATH: identityPath,
+        RECOVERY_AGE_IDENTITY_PATH: ageIdentity.identityPath,
         RECOVERY_EXPECTED_SOURCE_PROJECT_REF: STAGING_PROJECT_REF,
         RECOVERY_REPOSITORY_GIT_SHA: gitSha,
         RECOVERY_POSTGRES_CONTAINER_IMAGE: PINNED_POSTGRES_CONTAINER,

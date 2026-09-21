@@ -177,6 +177,7 @@ export type RecoveryFailureCode =
 export const RECOVERY_PHASES = [
   'target_verification',
   'tool_verification',
+  'key_generation',
   'coordinator_connection',
   'read_only_transaction',
   'snapshot_export',
