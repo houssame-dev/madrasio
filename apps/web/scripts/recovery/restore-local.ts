@@ -12,6 +12,8 @@ import {
   RecoveryError,
   assertIsolatedRestoreTarget,
   safeRecoveryError,
+  type RecoveryFailureCode,
+  type RecoveryPhase,
 } from './contracts';
 import { cleanupRecoveryWorkDirectory, createRecoveryWorkDirectory } from './filesystem';
 import { loadForeignKeys } from './inventory';
@@ -48,6 +50,23 @@ function localPgEnvironment(url: URL): Record<string, string> {
   };
 }
 
+async function inRestorePhase<T>(
+  phase: RecoveryPhase,
+  fallbackCode: RecoveryFailureCode,
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof RecoveryError && error.diagnostic) throw error;
+    throw new RecoveryError(
+      error instanceof RecoveryError ? error.code : fallbackCode,
+      'The isolated restore stopped before completion.',
+      { phase, timeout: false },
+    );
+  }
+}
+
 export async function restoreLocalRecoveryBundle(
   runtimeEnv: NodeJS.ProcessEnv = process.env,
 ): Promise<{ backupId: string; tables: number }> {
@@ -65,23 +84,43 @@ export async function restoreLocalRecoveryBundle(
     throw new RecoveryError(
       'RESTORE_DECRYPTION_FAILED',
       'Recovery object and an untracked external age identity path are required.',
+      { phase: 'restore_decryption', timeout: false },
     );
   }
   const work = await createRecoveryWorkDirectory();
   const plaintext = resolve(work, 'recovery.bundle');
   const dump = resolve(work, 'recovery-data.dump');
-  const pool = new Pool(postgresConnectionConfig(url.toString()));
+  let poolConfig;
   try {
-    await decryptBundle(encrypted, plaintext, identity);
-    const files = await readRecoveryBundle(plaintext);
+    poolConfig = postgresConnectionConfig(url.toString());
+  } catch {
+    throw new RecoveryError(
+      'RESTORE_TARGET_REJECTED',
+      'The isolated restore target connection contract is invalid.',
+      { phase: 'target_verification', timeout: false },
+    );
+  }
+  const pool = new Pool(poolConfig);
+  try {
+    await inRestorePhase('restore_decryption', 'RESTORE_DECRYPTION_FAILED', () =>
+      decryptBundle(encrypted, plaintext, identity),
+    );
+    const files = await inRestorePhase('restore_bundle_validation', 'RESTORE_MANIFEST_INVALID', () =>
+      readRecoveryBundle(plaintext),
+    );
     const manifestBytes = files.get('manifest.json');
     const dumpBytes = files.get('recovery-data.dump');
     if (!manifestBytes || !dumpBytes)
       throw new RecoveryError(
         'RESTORE_MANIFEST_INVALID',
         'Required recovery artifacts are missing.',
+        { phase: 'restore_bundle_validation', timeout: false },
       );
-    const manifest = parseRecoveryManifest(JSON.parse(manifestBytes.toString('utf8')));
+    const manifest = await inRestorePhase(
+      'restore_manifest_validation',
+      'RESTORE_MANIFEST_INVALID',
+      async () => parseRecoveryManifest(JSON.parse(manifestBytes.toString('utf8'))),
+    );
     if (
       runtimeEnv.RECOVERY_EXPECTED_SOURCE_PROJECT_REF !== manifest.source.projectRef ||
       runtimeEnv.RECOVERY_REPOSITORY_GIT_SHA !== manifest.gitSha
@@ -89,6 +128,7 @@ export async function restoreLocalRecoveryBundle(
       throw new RecoveryError(
         'RESTORE_MANIFEST_INVALID',
         'Recovery source project or repository revision was not explicitly confirmed.',
+        { phase: 'restore_manifest_validation', timeout: false },
       );
     }
     const dumpArtifact = manifest.artifacts.find(
@@ -102,6 +142,7 @@ export async function restoreLocalRecoveryBundle(
       throw new RecoveryError(
         'RESTORE_MANIFEST_INVALID',
         'Recovery artifact does not match its manifest.',
+        { phase: 'restore_manifest_validation', timeout: false },
       );
     }
     const repositoryMigrations = await loadMigrationMetadata(resolveRecoveryMigrationsDirectory());
@@ -109,13 +150,16 @@ export async function restoreLocalRecoveryBundle(
       throw new RecoveryError(
         'RESTORE_MANIFEST_INVALID',
         'Repository migration chain does not match the recovery point.',
+        { phase: 'restore_manifest_validation', timeout: false },
       );
     }
-    await writeFile(dump, dumpBytes, { mode: 0o600 });
-    await assertPostgresContainerArchiveReadable(
-      { hostArchive: dump, hostWorkspace: work },
-      runtimeEnv.RECOVERY_POSTGRES_CONTAINER_IMAGE ?? '',
-    );
+    await inRestorePhase('restore_archive_validation', 'RESTORE_DATA_FAILED', async () => {
+      await writeFile(dump, dumpBytes, { mode: 0o600 });
+      await assertPostgresContainerArchiveReadable(
+        { hostArchive: dump, hostWorkspace: work },
+        runtimeEnv.RECOVERY_POSTGRES_CONTAINER_IMAGE ?? '',
+      );
+    });
     const env = localPgEnvironment(url);
     await runFailClosedRestore({
       foundation: async () => {

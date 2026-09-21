@@ -1,5 +1,5 @@
 import type { QueryClient } from './snapshot';
-import { AUTH_TABLES, RECOVERY_TABLES, RecoveryError } from './contracts';
+import { AUTH_TABLES, RECOVERY_TABLES, RecoveryError, type RecoveryPhase } from './contracts';
 import type { ForeignKey, QualifiedTable, TableFingerprint } from './inventory';
 import {
   fingerprintTable,
@@ -162,8 +162,20 @@ export async function runFailClosedRestore(
     try {
       await phases[phase]();
     } catch (error) {
-      if (error instanceof RecoveryError) throw error;
-      throw new RecoveryError('RESTORE_DATA_FAILED', `Restore stopped during ${phase}.`);
+      if (error instanceof RecoveryError && error.diagnostic) throw error;
+      const diagnostics: Record<RestorePhase, RecoveryPhase> = {
+        foundation: 'restore_foundation',
+        migrations: 'migration_launch',
+        auth: 'restore_auth',
+        application: 'restore_application',
+        sequences: 'restore_sequences',
+        verify: 'restore_verification',
+      };
+      throw new RecoveryError(
+        error instanceof RecoveryError ? error.code : 'RESTORE_DATA_FAILED',
+        `Restore stopped during ${phase}.`,
+        { phase: diagnostics[phase], timeout: false },
+      );
     }
   }
 }

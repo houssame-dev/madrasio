@@ -129,6 +129,15 @@ describe('recovery target safety', () => {
         RESTORE_DATABASE_URL: 'postgresql://local:local@127.0.0.1:54322/postgres',
       }).hostname,
     ).toBe('127.0.0.1');
+    expect(() =>
+      assertIsolatedRestoreTarget({
+        NODE_ENV: 'test',
+        RESTORE_TARGET_ENV: 'isolated-local',
+        RESTORE_CONFIRMATION,
+        RESTORE_DATABASE_URL:
+          'postgresql://local:local@127.0.0.1:54322/postgres?sslmode=disable',
+      }),
+    ).toThrow('isolated local');
     for (const target of [
       'postgresql://x:x@db.example.com:5432/x',
       `postgresql://x:x@db.${productionRef}.supabase.co:5432/x`,
@@ -1042,16 +1051,27 @@ describe('snapshot and restore orchestration', () => {
         calls.push(name);
         if (fail) throw new Error('private detail');
       };
-    await expect(
-      runFailClosedRestore({
+    let failure: unknown;
+    try {
+      await runFailClosedRestore({
         foundation: phase('foundation'),
         migrations: phase('migrations'),
         auth: phase('auth', true),
         application: phase('application'),
         sequences: phase('sequences'),
         verify: phase('verify'),
-      }),
-    ).rejects.toThrow('auth');
+      });
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toMatchObject({
+      code: 'RESTORE_DATA_FAILED',
+      diagnostic: { phase: 'restore_auth', timeout: false },
+    });
+    expect(safeRecoveryError(failure)).toMatchObject({
+      code: 'RESTORE_DATA_FAILED',
+      phase: 'restore_auth',
+    });
     expect(calls).toEqual(['foundation', 'migrations', 'auth']);
   });
 });

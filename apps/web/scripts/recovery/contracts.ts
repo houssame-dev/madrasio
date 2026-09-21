@@ -193,6 +193,15 @@ export const RECOVERY_PHASES = [
   'archive_creation',
   'archive_inspection',
   'archive_inventory',
+  'restore_decryption',
+  'restore_bundle_validation',
+  'restore_manifest_validation',
+  'restore_archive_validation',
+  'restore_foundation',
+  'restore_auth',
+  'restore_application',
+  'restore_sequences',
+  'restore_verification',
   'migration_launch',
   'manifest_metadata',
   'server_metadata',
@@ -353,6 +362,7 @@ export function assertIsolatedRestoreTarget(env: NodeJS.ProcessEnv): URL {
     env.DEPLOY_TARGET_ENV === 'staging' ||
     url.protocol !== 'postgresql:' ||
     !localHosts.has(url.hostname) ||
+    [...url.searchParams].length !== 0 ||
     containsProviderRef ||
     url.hostname.endsWith('.supabase.com') ||
     url.hostname.endsWith('.supabase.co')
