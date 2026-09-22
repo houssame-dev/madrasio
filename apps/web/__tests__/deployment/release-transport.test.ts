@@ -66,6 +66,21 @@ describe('STAGING Git release transport', () => {
       expect.objectContaining({ method: 'POST', redirect: 'manual' }),
     );
   });
+  it('does not downgrade a confirmed 2xx when discarding the response body fails', async () => {
+    const body = new ReadableStream({
+      cancel() {
+        throw new Error('response disposal failed');
+      },
+    });
+
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(body, { status: 200 }));
+
+    await expect(triggerDeployHook(env, fetcher)).resolves.toBeUndefined();
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
 
   it.each([301, 401, 500])('fails safely for HTTP %i without a second trigger', async (status) => {
     const fetcher = vi

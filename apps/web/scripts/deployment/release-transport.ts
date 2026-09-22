@@ -64,16 +64,30 @@ export async function triggerDeployHook(
 ): Promise<void> {
   parseReleaseConfiguration(env);
   const url = parseDeployHook(env.VERCEL_DEPLOY_HOOK_URL);
+
+  let response: Response;
+
   try {
-    const response = await fetcher(url, {
+    response = await fetcher(url, {
       method: 'POST',
       redirect: 'manual',
       signal: AbortSignal.timeout(15_000),
     });
-    // Neither the URL nor the provider response body may escape this boundary.
-    await response.body?.cancel();
-    if (!response.ok) throw new Error('Hook was not accepted.');
   } catch {
+    throw new DeploymentError(
+      'DEPLOY_HOOK_FAILED',
+      'The STAGING Deploy Hook was not confirmed; inspect provider state before retrying.',
+    );
+  }
+
+  const accepted = response.ok;
+
+  // Provider response content is intentionally unused and must never escape
+  // this boundary. Failure to discard an already-received body must not
+  // downgrade a confirmed HTTP acceptance.
+  void response.body?.cancel().catch(() => undefined);
+
+  if (!accepted) {
     throw new DeploymentError(
       'DEPLOY_HOOK_FAILED',
       'The STAGING Deploy Hook was not confirmed; inspect provider state before retrying.',
