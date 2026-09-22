@@ -19,7 +19,7 @@ When a major architectural decision changes:
 3. Evaluate alternatives.
 4. Evaluate migration impact.
 5. Create a new ADR or supersede the previous one.
-6. Update `CLAUDE.md`.
+6. Update `PRD.md`.
 7. Update the relevant architecture documentation.
 8. Add/update tests where necessary.
 
@@ -66,8 +66,8 @@ Current V1 architecture decisions are primarily `Accepted`.
 
 ## Important Rule
 
-An ADR does not replace `CLAUDE.md`.
+An ADR does not replace `PRD.md`.
 
-`CLAUDE.md` contains the operational rules Claude Code must follow.
+`PRD.md` contains the operational rules AI (ex:Codex ...) must follow.
 
 ADRs explain why those rules and architectural decisions exist.

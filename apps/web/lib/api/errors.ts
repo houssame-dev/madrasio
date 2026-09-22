@@ -1,5 +1,5 @@
 /**
- * Shared HTTP adapter helpers (CLAUDE.md §28/§29).
+ * Shared HTTP adapter helpers (PRD.md §28/§29).
  *
  * Request parsing (Zod) and error mapping only — no business logic here. Route
  * Handlers delegate to `modules/<domain>/application/*` use cases and
@@ -49,7 +49,7 @@ function isFeatureScopedError(error: unknown): error is AppError & { featureCode
 }
 
 /**
- * Maps any thrown error to a stable machine-readable API error (CLAUDE.md §28).
+ * Maps any thrown error to a stable machine-readable API error (PRD.md §28).
  * Feature-scoped errors surface both the generic `code` and the module
  * `featureCode`; unexpected errors never leak internals.
  */

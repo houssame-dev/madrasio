@@ -5,7 +5,7 @@ import { isRole } from './roles';
 import type { AuthorizationRequirements, ScopeRequirement } from './requirements';
 
 /**
- * The canonical authorization pipeline (CLAUDE.md §15, overview.md §16).
+ * The canonical authorization pipeline (PRD.md §15, overview.md §16).
  *
  * Order is fixed and must not be reordered:
  *

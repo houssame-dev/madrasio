@@ -64,7 +64,7 @@ export async function requireCurrentContext(
   const selectedSchoolId = await (deps.readSelectedSchoolId ?? readSelectedSchoolId)();
   const resolution = await resolveUserContext(db, { userId: user.id, selectedSchoolId });
 
-  // Canonical stage order (CLAUDE.md §15): global User lifecycle runs before
+  // Canonical stage order (PRD.md §15): global User lifecycle runs before
   // membership/current-school — an inactive User is denied even with a valid
   // selector and ACTIVE memberships (Task 014.1 §6/§9/§13).
   assertUserActive(resolution);

@@ -2,7 +2,7 @@
 
 Server-side authorization pipeline.
 
-Implements the pipeline documented in CLAUDE.md:
+Implements the pipeline documented in PRD.md:
 
 ```
 Authenticated?

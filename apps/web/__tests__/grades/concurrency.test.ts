@@ -11,7 +11,7 @@
  *
  * The protection mechanism is the DATABASE (unique `idempotency_key` and the
  * partial `(result_id, publication_version)` unique indexes) inside the
- * publication transaction — never application locks (no Redis, CLAUDE.md §5.4).
+ * publication transaction — never application locks (no Redis, PRD.md §5.4).
  *
  * PGlite executes on a single connection, so the two calls interleave at await
  * boundaries and the DB constraints are what make the outcome deterministic:

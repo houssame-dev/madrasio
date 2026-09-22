@@ -3,7 +3,7 @@
 > Task 005 — reusable, server-side authorization foundation for V1.
 
 This document describes the implemented authorization foundation. It is an
-implementation companion to `CLAUDE.md` §13–§16, `docs/architecture/overview.md`
+implementation companion to `PRD.md` §13–§16, `docs/architecture/overview.md`
 §16 and the accepted ADRs (ADR-007, ADR-008, ADR-009, ADR-005, ADR-018). It does
 not rewrite the architecture documentation and does not define the final V1
 permission matrix.
@@ -29,7 +29,7 @@ apps/web/lib/
 └── db/              Drizzle client (schema-registered)
 ```
 
-Authorization rules belong ONLY in this boundary (CLAUDE.md §15). They never
+Authorization rules belong ONLY in this boundary (PRD.md §15). They never
 live in React components, Route Handlers, random utilities, or schema files.
 
 ## 2. Context
@@ -49,7 +49,7 @@ from `school_memberships`; a client-provided `schoolId` is never trusted alone.
 
 ## 3. Pipeline
 
-The canonical order is fixed (CLAUDE.md §15):
+The canonical order is fixed (PRD.md §15):
 
 ```
 Authenticated User → Active User → Valid School Membership → Current School

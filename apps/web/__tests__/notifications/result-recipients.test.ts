@@ -55,7 +55,7 @@ describe('resolveResultNotificationRecipients (Task 012 §23)', () => {
 
   it('5. other-School Parent is never part of the candidates (School scoping is enforced by the loading query)', () => {
     // The pure resolver only ever sees candidates loaded for the publication's
-    // School (the repository query is School-scoped, CLAUDE.md §13). A foreign
+    // School (the repository query is School-scoped, PRD.md §13). A foreign
     // Parent is simply absent from the candidate set and therefore excluded.
     const result = resolveResultNotificationRecipients([candidate('user-a')]);
     expect(result.recipientUserIds).toEqual(['user-a']);

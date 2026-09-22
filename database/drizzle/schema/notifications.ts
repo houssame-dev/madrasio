@@ -45,7 +45,7 @@ export const notificationSourceType = pgEnum('notification_source_type', [
  * authenticated User (domain-model §63, Task 010 §2).
  *
  * The notification DATABASE record is the source of truth for delivery
- * (ADR-013, CLAUDE.md §12); realtime/queue delivery is NOT. There is no
+ * (ADR-013, PRD.md §12); realtime/queue delivery is NOT. There is no
  * realtime/WebSocket/email/SMS/push channel in V1 (ADR-014/ADR-015).
  *
  * PROCESSING SOURCE (Task 010 §13): notifications are produced by the

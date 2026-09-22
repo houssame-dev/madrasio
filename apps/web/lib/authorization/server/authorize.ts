@@ -19,7 +19,7 @@ export type AuthorizeInput = ResolveContextInput;
  *
  * - `authorizeOperation` returns the decision (no throw).
  * - `requireOperation` throws the mapped AppError on denial — the idiomatic
- *   guard for Application Use Cases (CLAUDE.md §15).
+ *   guard for Application Use Cases (PRD.md §15).
  *
  * The caller supplies `userId` from the authenticated session
  * (`lib/auth/getSessionUserId`) and `schoolId` from the request — neither is

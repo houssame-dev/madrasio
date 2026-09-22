@@ -3,14 +3,14 @@
 > Module: **Notifications / Infrastructure**
 > Status: **Operational (Task 044; foundation from Task 013)**
 > Related: ADR-012 (Transactional Outbox), ADR-013 (Persisted Notifications),
-> ADR-015 (Defer Redis/BullMQ), CLAUDE.md §30–§33, `docs/domain/business-rules.md`
+> ADR-015 (Defer Redis/BullMQ), PRD.md §30–§33, `docs/domain/business-rules.md`
 > §17/§21, `docs/architecture/overview.md` §33–§35.
 
 This document describes the small operational layer built over the existing
 transactional Outbox (`outbox_events`). It adds safe retry, bounded batch
 draining and operational visibility — WITHOUT introducing a new queue system,
 Redis/BullMQ, Kafka, a second outbox, distributed locks, dead-letter
-infrastructure, or a cron platform (CLAUDE.md §33, ADR-015).
+infrastructure, or a cron platform (PRD.md §33, ADR-015).
 
 The outbox model itself is NOT redesigned. `outbox_events` remains exactly as
 committed; no schema change and no migration were required.

@@ -6,7 +6,7 @@ import type { Role } from './roles';
  * Task 005 establishes the permission MECHANISM, not the final V1 matrix.
  * Only the minimal set needed to demonstrate the foundation is defined here;
  * the full module-by-module matrix is a product decision for later tasks
- * (CLAUDE.md §5, Task 005 §5). The identifiers are kept stable so modules can
+ * (PRD.md §5, Task 005 §5). The identifiers are kept stable so modules can
  * reference them without literals.
  *
  * Naming convention: `<module>.<action>` with read / enter / manage / publish
@@ -39,7 +39,7 @@ export const PERMISSIONS = [
 export type Permission = (typeof PERMISSIONS)[number];
 
 /**
- * Centralized, deterministic Role → Permission mapping (CLAUDE.md §6).
+ * Centralized, deterministic Role → Permission mapping (PRD.md §6).
  *
  * This is the ONLY place role→permission decisions live; the authorization
  * engine consumes it and React never re-implements it.
@@ -110,7 +110,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
 /**
  * Pure role→permission lookup shared by the server engine and the UX helpers.
  * Never used as an authorization boundary by itself — the server always runs
- * the full pipeline (CLAUDE.md §16).
+ * the full pipeline (PRD.md §16).
  */
 export function roleHasPermission(role: Role | null | undefined, permission: Permission): boolean {
   return role != null && ROLE_PERMISSIONS[role].includes(permission);

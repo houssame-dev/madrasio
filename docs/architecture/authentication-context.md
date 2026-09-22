@@ -4,7 +4,7 @@
 > foundation into a real application/session context used by APIs.
 
 This document describes the implemented server-side authentication / current
-context layer. It is an implementation companion to `CLAUDE.md` §5/§13–§16,
+context layer. It is an implementation companion to `PRD.md` §5/§13–§16,
 `docs/architecture/overview.md` §15/§16, the accepted ADRs (ADR-005, ADR-007,
 ADR-017, ADR-018, ADR-019) and the domain rules BR-AUTH-001/002/004/005/006, BR-SCHOOL-002/003/
 004 and BR-ROLE-001/002.
@@ -97,7 +97,7 @@ Key invariants:
 - It applies to ALL roles including SUPER_ADMIN — no exemptions, and no
   platform-global powers are introduced.
 
-Canonical flow (CLAUDE.md §15) becomes:
+Canonical flow (PRD.md §15) becomes:
 
 ```
 Supabase authenticated identity

@@ -7,7 +7,7 @@
  * durable hand-off to Notifications (ADR-012/ADR-013).
  *
  * Public surface: domain vocabulary/events + application use cases. Drizzle
- * specifics stay inside `infrastructure/` (ADR-004, CLAUDE.md §24).
+ * specifics stay inside `infrastructure/` (ADR-004, PRD.md §24).
  */
 
 export * from './domain';

@@ -62,7 +62,7 @@ The announcements use case writes ONLY:
 - the shared `outbox_events` row (via `persistOutboxEvent`, ADR-012)
 
 It NEVER writes `notifications`, `grades`, `attendance` or `homework` rows
-(CLAUDE.md §17). The Notifications processor is the only producer of
+(PRD.md §17). The Notifications processor is the only producer of
 notifications and consumes the durable outbox event.
 
 ## 4. Authorization
@@ -70,7 +70,7 @@ notifications and consumes the durable outbox event.
 Publishing requires the `announcements.publish` permission with a valid
 ACTIVE SchoolMembership + School Context (BR-ANNOUNCEMENT-006). The pipeline
 is the canonical `lib/authorization/server` pipeline; the frontend is never
-authoritative (CLAUDE.md §16).
+authoritative (PRD.md §16).
 
 The permission matrix grants `announcements.publish` to `SCHOOL_ADMIN`,
 `SUPER_ADMIN` and `TEACHER` (BR-ANNOUNCEMENT-007 — teacher direct publishing).
@@ -256,7 +256,7 @@ Response `201 { "data": { publicationId, announcementId,
 announcementVersionId, publicationVersion, status, scheduledAt, publishedAt,
 publishedBy, idempotencyKey, eventEmitted } }`.
 
-Errors use stable machine-readable codes (CLAUDE.md §28): generic `code` +
+Errors use stable machine-readable codes (PRD.md §28): generic `code` +
 module `featureCode`. Unauthenticated → 401, forbidden → 403, not found →
 404, validation → 400, business rule violations → 422, conflicts → 409.
 

@@ -14,7 +14,7 @@ It is the authoritative reference for:
 
 This document must be read together with:
 
-- `CLAUDE.md`
+- `PRD.md`
 - `README.md`
 - `docs/domain/domain-model.md`
 - `docs/architecture/overview.md`

@@ -1,7 +1,7 @@
 /**
  * Authentication / current-context errors (Task 014 §39).
  *
- * Controlled, machine-readable `featureCode`s (CLAUDE.md §28) layered on top of
+ * Controlled, machine-readable `featureCode`s (PRD.md §28) layered on top of
  * the generic cross-cutting `FORBIDDEN`. These describe AUTHORIZATION-STAGE
  * conditions the server derives — never client-provided values:
  *

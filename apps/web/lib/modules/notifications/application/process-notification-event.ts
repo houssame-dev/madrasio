@@ -5,7 +5,7 @@
  * consumes durable `outbox_events` (ADR-012): one logical domain event → zero
  * or more persisted notifications.
  *
- * PROCESSING IS IDEMPOTENT (Task 010 §25, BR-NOTIFICATION-005, CLAUDE.md §32):
+ * PROCESSING IS IDEMPOTENT (Task 010 §25, BR-NOTIFICATION-005, PRD.md §32):
  * an event already marked PROCESSED is a no-op, and the notification inserts
  * use `ON CONFLICT DO NOTHING` on `(source_event_id, recipient_user_id)`. The
  * insert + PROCESSED mark happen inside ONE transaction, so a failure rolls
@@ -218,7 +218,7 @@ async function processAnnouncementPublished(
   const schoolId = payload.schoolId;
 
   // School-scoped lookup: a publication from another School can never resolve
-  // (tenant isolation is server-side, CLAUDE.md §13).
+  // (tenant isolation is server-side, PRD.md §13).
   const publication = await repo.findAnnouncementPublication(db, schoolId, payload.publicationId);
   if (!publication) {
     throw new NotificationProcessingError(
@@ -295,7 +295,7 @@ async function processResultPublished(
   const schoolId = payload.schoolId;
 
   // School-scoped lookup: a publication from another School can never resolve
-  // (tenant isolation is server-side, CLAUDE.md §13). The publication row is
+  // (tenant isolation is server-side, PRD.md §13). The publication row is
   // NOT used to recompute recipients — the frozen payload is the source of
   // truth (Task 012 §7).
   const publication = await repo.findResultPublication(db, schoolId, payload.publicationId);

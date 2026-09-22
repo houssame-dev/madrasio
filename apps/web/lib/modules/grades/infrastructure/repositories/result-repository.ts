@@ -3,7 +3,7 @@
  *
  * This is the ONLY place Drizzle specifics touch the Results domain. Use
  * Cases consume plain records; the engine never sees the database (ADR-004,
- * CLAUDE.md §24).
+ * PRD.md §24).
  *
  * The `GradesDb` surface mirrors `AuthorizationDb`: both the node-postgres
  * client (`lib/db/client.ts`) and the PGlite test client satisfy it, keeping
@@ -13,7 +13,7 @@
  * Query/upsert helpers keep School tenant integrity: every lookup is filtered
  * by `schoolId`, so a valid UUID from another School can never resolve.
  * Composite foreign keys in the schema provide the final database-level
- * guarantee (CLAUDE.md §13/§19).
+ * guarantee (PRD.md §13/§19).
  */
 
 import { and, count, desc, eq, exists, inArray, type SQL } from 'drizzle-orm';
@@ -423,7 +423,7 @@ export async function findStudentEnrollment(
  * (Task 012 §1/§3): the Parents of the Student in the SAME School with the
  * relationship + membership statuses needed by the pure resolver.
  *
- * The query is School-scoped (tenant isolation, CLAUDE.md §13) and the join on
+ * The query is School-scoped (tenant isolation, PRD.md §13) and the join on
  * `parents.user_id` naturally excludes Parents with no authenticated User (a
  * NULL `user_id` can never match a membership row). The pure resolver
  * (`domain/result-recipients`) applies the approved eligibility policy

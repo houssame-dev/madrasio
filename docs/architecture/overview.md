@@ -6,7 +6,7 @@ It is the architectural reference for the V1 implementation.
 
 It must be read together with:
 - `README.md`
-- `CLAUDE.md`
+- `PRD.md`
 - `docs/domain/`
 - `docs/adr/`
 
@@ -1115,7 +1115,7 @@ madrasio/
 ├── .github/
 │   └── workflows/
 │
-├── CLAUDE.md
+├── PRD.md
 ├── README.md
 └── package.json
 ```

@@ -1,5 +1,5 @@
 /**
- * Outbox persistence (ADR-012, CLAUDE.md §31/§32).
+ * Outbox persistence (ADR-012, PRD.md §31/§32).
  *
  * `persistOutboxEvent` inserts a PENDING OutboxEvent row. It is called from
  * INSIDE the same database transaction that commits the domain state change
@@ -7,8 +7,8 @@
  * event can never be lost if delivery fails afterwards.
  *
  * The database record is the source of truth for the event; realtime/queue
- * delivery is NOT (CLAUDE.md §12). Consumers must be idempotent
- * (at-least-once; see CLAUDE.md §32) — this helper deliberately does NOT
+ * delivery is NOT (PRD.md §12). Consumers must be idempotent
+ * (at-least-once; see PRD.md §32) — this helper deliberately does NOT
  * deduplicate; duplicate events are prevented at the domain layer via
  * publication idempotency keys and partial-unique constraints.
  *

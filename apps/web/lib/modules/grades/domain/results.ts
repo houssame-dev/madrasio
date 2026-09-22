@@ -21,7 +21,7 @@ export const RESULT_TYPES = ['SUBJECT', 'PERIOD', 'ANNUAL'] as const;
 export type ResultType = (typeof RESULT_TYPES)[number];
 
 /**
- * Machine-readable feature error codes for the Results domain (CLAUDE.md §28).
+ * Machine-readable feature error codes for the Results domain (PRD.md §28).
  * Feature-specific codes exist in addition to the generic cross-cutting codes.
  */
 export const RESULT_ERROR_CODES = [

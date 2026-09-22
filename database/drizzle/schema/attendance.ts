@@ -8,7 +8,7 @@ import { students } from './students';
 /**
  * AttendanceRecord status (own enum, no giant shared status enum).
  *
- * V1 daily attendance statuses (CLAUDE.md §9, BR-ATTENDANCE-*, domain-model
+ * V1 daily attendance statuses (PRD.md §9, BR-ATTENDANCE-*, domain-model
  * §40, Task 007 §2):
  *
  * - PRESENT — attended

@@ -4,7 +4,7 @@
  * Thin route-handler helpers: request parsing (Zod) and error mapping only.
  * No business logic here — handlers delegate to
  * `modules/announcements/application/*` use cases and translate results into
- * DTOs (`lib/api/README.md`, CLAUDE.md §25/§28/§29).
+ * DTOs (`lib/api/README.md`, PRD.md §25/§28/§29).
  */
 
 import { z, type output, type ZodTypeAny } from 'zod';

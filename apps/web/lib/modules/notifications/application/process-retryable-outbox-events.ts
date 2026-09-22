@@ -2,7 +2,7 @@
  * Process a bounded batch of retryable outbox events (Task 013 §6–§14).
  *
  * A SMALL operational layer over the existing Outbox — no new queue, no Redis,
- * no locks (CLAUDE.md §33, ADR-015). It is safe to call repeatedly (a future
+ * no locks (PRD.md §33, ADR-015). It is safe to call repeatedly (a future
  * scheduled runner may invoke it periodically, Task 013 §27).
  *
  * Semantics:

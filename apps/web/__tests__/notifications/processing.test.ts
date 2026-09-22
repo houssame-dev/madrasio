@@ -357,7 +357,7 @@ describe('notification never grants source access (§31)', () => {
 
     // Knowing the publication id (e.g. from a notification) grants NOTHING:
     // the source lookup is school-scoped and a School B context can never
-    // resolve School A's publication (BR-NOTIFICATION-006, CLAUDE.md §13).
+    // resolve School A's publication (BR-NOTIFICATION-006, PRD.md §13).
     const crossSchool = await notificationsRepo.findAnnouncementPublication(testDb.db, schoolB.schoolId, publication.publicationId);
     expect(crossSchool).toBeNull();
 

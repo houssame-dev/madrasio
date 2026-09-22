@@ -90,7 +90,7 @@
  *   hold a SchoolMembership in the SAME School (composite FK on
  *   `school_memberships(school_id, user_id)`, ADR-007), and UNIQUE
  *   `(source_event_id, recipient_user_id)` makes processing idempotent
- *   (at-least-once, CLAUDE.md §32).
+ *   (at-least-once, PRD.md §32).
  *
  * The remaining V1 domain schema (files, etc.) is intentionally not declared
  * yet. Schemas will be added by the dedicated database schema tasks, after

@@ -3,7 +3,7 @@ import { check, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } 
 
 /**
  * OutboxEvent — the transactional outbox (ADR-012, domain-model §63,
- * CLAUDE.md §31).
+ * PRD.md §31).
  *
  * Critical cross-module events (e.g. ResultPublished, ResultRevisionPublished)
  * are persisted HERE inside the SAME database transaction as the domain state

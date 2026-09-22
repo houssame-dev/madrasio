@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { Can } from '@/lib/authorization/can';
 import { roleHasPermission } from '@/lib/authorization/permissions';
 
-describe('Can — UX permission gate (Task 005 §19, CLAUDE.md §40)', () => {
+describe('Can — UX permission gate (Task 005 §19, PRD.md §40)', () => {
   it('renders children when the role has the permission', () => {
     render(
       <Can role="SCHOOL_ADMIN" permission="students.manage">

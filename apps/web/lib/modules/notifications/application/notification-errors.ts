@@ -1,7 +1,7 @@
 /**
  * Notifications processing errors (Task 010 §13/§15).
  *
- * Feature-specific machine-readable codes (CLAUDE.md §28) layered on top of
+ * Feature-specific machine-readable codes (PRD.md §28) layered on top of
  * the generic cross-cutting `BUSINESS_RULE_VIOLATION`. Frontends depend on
  * `featureCode`, never on the English message.
  */

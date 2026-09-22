@@ -2,7 +2,7 @@
  * Authorization helpers for the Announcements publish use case (Task 011).
  *
  * Every protected Announcement operation runs the canonical server-side
- * pipeline (CLAUDE.md §15) via `lib/authorization/server`. This helper adapts
+ * pipeline (PRD.md §15) via `lib/authorization/server`. This helper adapts
  * the driver-agnostic `AnnouncementsDb` to the `AuthorizationDb` surface (the
  * same cast pattern used by the grades/notifications test helpers and the
  * grades `requireResultOperation`).

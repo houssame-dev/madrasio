@@ -2,7 +2,7 @@
  * Authorization helpers for the Results use cases (Task 006D Part U).
  *
  * Every protected Results operation runs the canonical server-side pipeline
- * (CLAUDE.md §15) via `lib/authorization/server`. These helpers just adapt the
+ * (PRD.md §15) via `lib/authorization/server`. These helpers just adapt the
  * driver-agnostic `GradesDb` to the `AuthorizationDb` surface (same underlying
  * object — the cast mirrors the pattern already used by the test helpers) and
  * provide an OR-variant for operations that accept more than one valid

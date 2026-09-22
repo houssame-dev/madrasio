@@ -1,4 +1,4 @@
-# Madrasio — Claude Code Project Rules
+# Madrasio — Product Requirements Document
 
 ## 1. Project Identity
 
@@ -1115,9 +1115,9 @@ Before implementing a task:
 
 ---
 
-# 53. Claude Code Behavior Rules
+# 53. AI (ex:Codex ...) Behavior Rules
 
-Claude Code MUST:
+AI (ex:Codex ...) MUST:
 
 - respect approved architecture
 - avoid inventing business rules
@@ -1128,7 +1128,7 @@ Claude Code MUST:
 - keep changes scoped
 - explain architectural conflicts before making major changes
 
-Claude Code MUST NOT:
+AI (ex:Codex ...) MUST NOT:
 
 - add NestJS
 - add Prisma

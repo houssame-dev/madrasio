@@ -1,7 +1,7 @@
 /**
  * Results use-case errors (Task 006D).
  *
- * Feature-specific error codes (CLAUDE.md §28) layered on top of the generic
+ * Feature-specific error codes (PRD.md §28) layered on top of the generic
  * cross-cutting `BUSINESS_RULE_VIOLATION`. Frontends depend on `featureCode`
  * (a stable machine-readable identifier), never on the English message.
  */

@@ -11,7 +11,7 @@ export interface CanProps {
 }
 
 /**
- * UX-only permission gate (CLAUDE.md §40, Task 005 §19).
+ * UX-only permission gate (PRD.md §40, Task 005 §19).
  *
  * Hides UI when the current role lacks a permission. It is NOT a security
  * boundary: the server always re-checks authorization. Stateless and

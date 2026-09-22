@@ -163,7 +163,7 @@ matching publication and event.
 - `ResultPublished` (eventType) — initial publication.
 - `ResultRevisionPublished` — revision.
 
-Payloads carry `eventId`, `schoolId`, `studentId`, `resultType`, the result id(s), `resultValue`, `publicationId`, `publicationVersion`, `publishedAt` **and the frozen publication-time notification recipient snapshot** `recipientUserIds` (Task 012). Consumers must be idempotent (at-least-once, CLAUDE.md §32).
+Payloads carry `eventId`, `schoolId`, `studentId`, `resultType`, the result id(s), `resultValue`, `publicationId`, `publicationVersion`, `publishedAt` **and the frozen publication-time notification recipient snapshot** `recipientUserIds` (Task 012). Consumers must be idempotent (at-least-once, PRD.md §32).
 
 ### Atomicity of the recipient snapshot (Task 012 §8)
 
@@ -232,7 +232,7 @@ ALLOW/DENY). There is no "notification possession" authorization.
 
 ## 5. Authorization Matrix (Part U)
 
-Every protected operation is re-authorized **server-side** via the canonical pipeline (CLAUDE.md §15/§16). Frontend permission checks are UX only.
+Every protected operation is re-authorized **server-side** via the canonical pipeline (PRD.md §15/§16). Frontend permission checks are UX only.
 
 | Operation | Permission | Scope | Resource state |
 |---|---|---|---|
@@ -251,7 +251,7 @@ Every protected operation is re-authorized **server-side** via the canonical pip
 
 ## 6. Error Codes
 
-Generic codes follow CLAUDE.md §28. Feature codes (`ResultDomainError.featureCode`):
+Generic codes follow PRD.md §28. Feature codes (`ResultDomainError.featureCode`):
 
 `CALCULATION_INCOMPLETE`, `CONFIGURATION_INVALID`, `GRADEBOOK_NOT_AVAILABLE`, `STUDENT_NOT_ENROLLED`, `RESULT_NOT_FOUND`, `RESULT_ALREADY_FINALIZED`, `RESULT_NOT_FINALIZED`, `RESULT_ALREADY_PUBLISHED`, `RESULT_NOT_PUBLISHED`, `INVALID_RESULT_STATE`, `PUBLICATION_CONFLICT`.
 

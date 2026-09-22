@@ -2,7 +2,7 @@
  * Results authorization matrix tests (Task 006D Part U) — PGlite-backed.
  *
  * Every sensitive operation is authorized AGAIN on the server through the
- * canonical pipeline (CLAUDE.md §15/§16). This verifies the matrix:
+ * canonical pipeline (PRD.md §15/§16). This verifies the matrix:
  *
  *   Operation               | School Admin | Scoped Teacher | Out-of-scope Teacher | Parent
  *   ------------------------|--------------|----------------|----------------------|-------

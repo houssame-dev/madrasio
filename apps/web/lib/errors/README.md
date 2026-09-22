@@ -2,7 +2,7 @@
 
 Foundation for application errors.
 
-This folder hosts the **generic** error categories documented in `CLAUDE.md`
+This folder hosts the **generic** error categories documented in `PRD.md`
 (VALIDATION_ERROR, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, CONFLICT,
 BUSINESS_RULE_VIOLATION, RATE_LIMITED, INTERNAL_ERROR).
 

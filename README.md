@@ -335,7 +335,7 @@ madrasio/
 ├── .github/
 │   └── workflows/
 │
-├── CLAUDE.md
+├── PRD.md
 ├── README.md
 └── package.json
 ```
@@ -439,9 +439,9 @@ docs/
 
 Important architectural decisions are recorded as ADRs (Architecture Decision Records).
 
-The authoritative project instructions for Claude Code are stored in:
+The authoritative project instructions for AI (ex:Codex ...) are stored in:
 
-> `CLAUDE.md`
+> `PRD.md`
 
 ---
 
@@ -508,7 +508,7 @@ This project is currently under active development.
 
 Development conventions, architectural constraints, and coding rules are documented in:
 
-- `CLAUDE.md`
+- `PRD.md`
 - `docs/architecture/`
 - `docs/adr/`
 

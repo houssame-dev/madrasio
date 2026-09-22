@@ -9,7 +9,7 @@
  *   User ACTIVE  + Membership ACTIVE  → normal processing
  *
  * The denial runs BEFORE membership/role/permission/scope evaluation
- * (canonical order, CLAUDE.md §15) and applies to every role including
+ * (canonical order, PRD.md §15) and applies to every role including
  * SUPER_ADMIN.
  */
 

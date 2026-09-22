@@ -21,7 +21,7 @@
  * does NOT decide. Denial for a globally inactive User is enforced by
  * `assertUserActive` (used by `requireCurrentContext`, `selectCurrentSchool`
  * and the `/me` route) BEFORE any membership/role/permission/scope evaluation
- * (CLAUDE.md §15 canonical order). `contextFromResolution` derives `userActive`
+ * (PRD.md §15 canonical order). `contextFromResolution` derives `userActive`
  * from the resolved DB status — never hardcoded.
  *
  * The role ALWAYS comes from the resolved ACTIVE membership row — never from
@@ -152,7 +152,7 @@ export async function resolveUserContext(
 
 /**
  * Enforces the global User lifecycle stage of the canonical pipeline
- * (CLAUDE.md §15, Task 014.1 §6): a SUSPENDED or DISABLED User is denied
+ * (PRD.md §15, Task 014.1 §6): a SUSPENDED or DISABLED User is denied
  * BEFORE SchoolMembership authorization, role, permissions, and academic
  * scope. Global User lifecycle wins over School membership lifecycle
  * (Task 014.1 §10/§11 — applies to ALL roles including SUPER_ADMIN).

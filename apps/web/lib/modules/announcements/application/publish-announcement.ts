@@ -50,7 +50,7 @@
  * silently publishes to nobody and never falls back to an implicit
  * School-wide audience.
  *
- * MODULE OWNERSHIP (CLAUDE.md §17): this use case writes ONLY
+ * MODULE OWNERSHIP (PRD.md §17): this use case writes ONLY
  * `announcement_publications`, `publication_recipient_snapshots`, the
  * Announcement status, and the shared outbox event. It NEVER writes
  * Notifications/Grades/Attendance/Homework rows — the Notifications processor

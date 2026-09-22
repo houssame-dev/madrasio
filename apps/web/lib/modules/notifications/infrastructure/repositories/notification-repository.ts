@@ -4,7 +4,7 @@
  *
  * This is the ONLY place Drizzle specifics touch the Notifications domain.
  * The processor consumes plain records; the engine never sees the database
- * (ADR-004, CLAUDE.md §24).
+ * (ADR-004, PRD.md §24).
  *
  * The `NotificationsDb` surface mirrors `OutboxDb`/`GradesDb`: both the
  * node-postgres client (`lib/db/client.ts`) and the PGlite test client
@@ -13,9 +13,9 @@
  *
  * Cross-module reads (Task 010 §13): the processor READS Announcement domain
  * rows (publication → version → snapshot) to build notifications, but it never
- * mutates Announcement data (CLAUDE.md §17). School tenant integrity is kept
+ * mutates Announcement data (PRD.md §17). School tenant integrity is kept
  * server-side: every source lookup is filtered by `schoolId`, so a valid UUID
- * from another School can never resolve (CLAUDE.md §13/§26).
+ * from another School can never resolve (PRD.md §13/§26).
  */
 
 import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';

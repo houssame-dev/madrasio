@@ -6,7 +6,7 @@
  * and computes a Result value — or a controlled `incomplete` outcome that
  * explains WHY no value can be produced.
  *
- * FUNDAMENTAL SEPARATIONS (CLAUDE.md §8, BR-GRADE-*):
+ * FUNDAMENTAL SEPARATIONS (PRD.md §8, BR-GRADE-*):
  *
  *   Grade ≠ SubjectResult ≠ PeriodResult ≠ AnnualResult
  *

@@ -4,7 +4,7 @@
  *
  * This is the ONLY place Drizzle specifics touch the Announcements domain.
  * Use Cases consume plain records; the engine never sees the database
- * (ADR-004, CLAUDE.md §24).
+ * (ADR-004, PRD.md §24).
  *
  * The `AnnouncementsDb` surface mirrors `GradesDb`/`NotificationsDb`: both the
  * node-postgres client (`lib/db/client.ts`) and the PGlite test client
@@ -12,7 +12,7 @@
  * committed migrations.
  *
  * Tenant integrity: every lookup is filtered by `schoolId`, so a valid UUID
- * from another School can never resolve (CLAUDE.md §13/§26). Composite foreign
+ * from another School can never resolve (PRD.md §13/§26). Composite foreign
  * keys in the schema provide the final database-level guarantee.
  *
  * Recipient candidates are loaded from the CURRENT relationship snapshot at

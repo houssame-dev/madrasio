@@ -23,7 +23,7 @@ describe('roles — V1 role model (BR-ROLE-001)', () => {
   });
 });
 
-describe('role → permission mapping (CLAUDE.md §6, Task 005 §6)', () => {
+describe('role → permission mapping (PRD.md §6, Task 005 §6)', () => {
   it('every permission is a member of PERMISSIONS', () => {
     for (const role of ROLES) {
       for (const permission of ROLE_PERMISSIONS[role]) {

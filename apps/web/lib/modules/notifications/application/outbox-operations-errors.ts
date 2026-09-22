@@ -1,7 +1,7 @@
 /**
  * Outbox operational errors (Task 013 §29).
  *
- * Controlled, machine-readable codes (CLAUDE.md §28) for the operational
+ * Controlled, machine-readable codes (PRD.md §28) for the operational
  * layer that drives retries/batches over the existing Outbox. These are
  * distinct from NotificationProcessingError: they describe OPERATIONAL
  * preconditions, not downstream processing failures. A PROCESSED replay is

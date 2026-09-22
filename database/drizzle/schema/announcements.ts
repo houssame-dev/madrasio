@@ -135,7 +135,7 @@ export const announcements = pgTable(
  * Version remains a distinct, reconstructable content snapshot.
  *
  * `title` + `body` are both required (NOT NULL): a Version represents a
- * complete publishable state (CLAUDE.md §11). Body is stored as PLAIN TEXT —
+ * complete publishable state (PRD.md §11). Body is stored as PLAIN TEXT —
  * there is no shared rich-text/sanitization pipeline in the project yet, so
  * rich-text rendering is deferred (Task 009 §5/§34). Raw user HTML must never
  * be rendered as trusted content without sanitization.

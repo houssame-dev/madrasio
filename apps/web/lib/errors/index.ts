@@ -3,7 +3,7 @@
  *
  * Domain-specific error codes (e.g. GRADEBOOK_CLOSED, STUDENT_NOT_ENROLLED)
  * will be added when the relevant modules are implemented. For now we only
- * ship the generic, cross-cutting error categories documented in CLAUDE.md.
+ * ship the generic, cross-cutting error categories documented in PRD.md.
  */
 
 export type AppErrorCode =

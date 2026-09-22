@@ -7,7 +7,7 @@
  * (ADR-014/ADR-015).
  *
  * Public surface: domain vocabulary/content + application use cases.
- * Drizzle specifics stay inside `infrastructure/` (ADR-004, CLAUDE.md §24).
+ * Drizzle specifics stay inside `infrastructure/` (ADR-004, PRD.md §24).
  */
 
 export * from './domain';

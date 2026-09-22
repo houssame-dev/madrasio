@@ -2,7 +2,7 @@
  * Mark one notification as read (Task 010 §8/§9).
  *
  * `userId` + `schoolId` are resolved server-side from the authenticated
- * session / current School context (BR-NOTIFICATION-007, CLAUDE.md §15) — they
+ * session / current School context (BR-NOTIFICATION-007, PRD.md §15) — they
  * are never trusted from the client. The database UPDATE is scoped by BOTH, so
  * a User can only ever mark their OWN notification inside their current
  * School: a wrong recipient or a cross-school id resolves to nothing (returns
