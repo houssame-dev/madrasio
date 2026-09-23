@@ -217,6 +217,110 @@ describe('recovery archive and tools', () => {
     });
   });
 
+  it('uses the verified Windows npm-global pnpm package when npm_execpath is unavailable', () => {
+    const args = ['--filter', '@school/database', 'migrate'];
+    const appData = 'C:\\Users\\Example\\AppData\\Roaming';
+    const packageJson =
+      'C:\\Users\\Example\\AppData\\Roaming\\npm\\node_modules\\pnpm\\package.json';
+    const launcher =
+      'C:\\Users\\Example\\AppData\\Roaming\\npm\\node_modules\\pnpm\\bin\\pnpm.mjs';
+
+    const readTextFile = vi.fn((filePath: string) => {
+      expect(filePath).toBe(packageJson);
+      return JSON.stringify({
+        name: 'pnpm',
+        version: '11.22.0',
+        bin: { pnpm: 'bin/pnpm.mjs' },
+      });
+    });
+
+    const isFile = vi.fn((filePath: string) => filePath === launcher);
+
+    expect(
+      resolvePnpmInvocation(args, {
+        platform: 'win32',
+        execPath: 'C:\\Program Files\\nodejs\\node.exe',
+        npmExecPath: '',
+        appData,
+        readTextFile,
+        isFile,
+      }),
+    ).toEqual({
+      command: 'C:\\Program Files\\nodejs\\node.exe',
+      args: [launcher, ...args],
+    });
+
+    expect(readTextFile).toHaveBeenCalledTimes(1);
+    expect(isFile).toHaveBeenCalledWith(launcher);
+  });
+
+  it('fails closed when the Windows npm-global pnpm package cannot be verified', () => {
+    const baseContext = {
+      platform: 'win32' as const,
+      execPath: 'C:\\Program Files\\nodejs\\node.exe',
+      npmExecPath: '',
+      appData: 'C:\\Users\\Example\\AppData\\Roaming',
+      isFile: () => true,
+    };
+
+    for (const metadata of [
+      {
+        name: 'not-pnpm',
+        version: '11.22.0',
+        bin: { pnpm: 'bin/pnpm.mjs' },
+      },
+      {
+        name: 'pnpm',
+        version: '11.21.0',
+        bin: { pnpm: 'bin/pnpm.mjs' },
+      },
+      {
+        name: 'pnpm',
+        version: '11.22.0',
+        bin: { pnpm: '..\\outside\\pnpm.mjs' },
+      },
+      {
+        name: 'pnpm',
+        version: '11.22.0',
+        bin: { pnpm: 'bin/pnpm.cmd' },
+      },
+      {
+        name: 'pnpm',
+        version: '11.22.0',
+        bin: { pnpm: 'bin/pnpm' },
+      },
+    ]) {
+      expect(() =>
+        resolvePnpmInvocation(['migrate'], {
+          ...baseContext,
+          readTextFile: () => JSON.stringify(metadata),
+        }),
+      ).toThrowError(
+        expect.objectContaining({
+          code: 'RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED',
+          diagnostic: { phase: 'migration_launch', timeout: false },
+        }),
+      );
+    }
+
+    expect(() =>
+      resolvePnpmInvocation(['migrate'], {
+        ...baseContext,
+        readTextFile: () =>
+          JSON.stringify({
+            name: 'pnpm',
+            version: '11.22.0',
+            bin: { pnpm: 'bin/pnpm.mjs' },
+          }),
+        isFile: () => false,
+      }),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED',
+        diagnostic: { phase: 'migration_launch', timeout: false },
+      }),
+    );
+  });
   it('accepts a native POSIX pnpm launcher independently of the test host', () => {
     expect(
       resolvePnpmInvocation(['--filter', '@school/database', 'migrate'], {
@@ -270,6 +374,7 @@ describe('recovery archive and tools', () => {
         platform: 'win32',
         execPath: 'C:\\Program Files\\nodejs\\node.exe',
         npmExecPath: '',
+        appData: '',
       }),
     ).toThrowError(
       expect.objectContaining({

@@ -12,10 +12,10 @@ Stage 6 acceptance is complete through reconstructed evidence after the original
 manual lifecycle was interrupted.
 
 Current closeout work:
-1. synchronize Task 050 / recovery documentation;
-2. permanently harden the Windows pnpm launcher resolution used by recovery;
-3. rerun the relevant recovery verification suite;
-4. close Task 050 only after the documentation and launcher follow-up are complete.
+1. commit the fully verified and already-staged Windows pnpm launcher hardening;
+2. push the substantive launcher commit and verify CI / automatic STAGING deployment;
+3. synchronize this canonical handoff with the launcher commit SHA and remote status;
+4. continue Task 050 closeout while the separate Production backup/customer-data gate remains blocked.
 
 ## Current branch
 
@@ -263,40 +263,100 @@ Fix commit:
 
 This deployment incident is closed.
 
+## Stage 6 documentation milestone
+
+The completed Task 050 Stage 6 recovery evidence and Production-gate status were
+committed to `main` as:
+
+637071611749dd8b190430e09f694ab6a41f7b88
+
+Commit:
+
+docs: record Task 050 Stage 6 recovery acceptance
+
+Remote verification:
+
+- CI: PASS
+- Deploy STAGING: PASS
+
+The repository working tree was clean immediately after that commit and push.
+
+The recovery architecture now records:
+
+- Stage 6 STAGING/local recovery acceptance;
+- the interrupted original manual lifecycle accurately;
+- reconstructed acceptance through the preserved real bundle;
+- 41-table manifest reconciliation;
+- restored Auth/application UUID invariants;
+- tenant and academic relationship verification;
+- application-security verification;
+- complete Stage 6 cleanup;
+- Production RPO as still unproven;
+- Production RTO as not yet accepted as a Production operational objective;
+- the continuing Production customer-data onboarding block.
+
 ## Current recovery engineering follow-up
 
-The real Stage 6 restore exposed a Windows pnpm-launcher portability issue.
+The Windows pnpm-launcher portability issue exposed by the real Stage 6 restore
+has been resolved by the currently staged repository hardening.
 
-Root cause already established:
+Root cause:
 
-- recovery tooling intentionally avoids shell-based package-manager execution;
-- on Windows, `resolvePnpmInvocation()` requires a safe absolute JavaScript pnpm
-  launcher when using Node directly;
-- pnpm 11.22.0 in the operator environment did not populate `npm_execpath`;
-- the actual safe launcher was located at the installed pnpm.cjs path;
-- setting `npm_execpath` to that absolute launcher allowed the real restore to
-  complete successfully.
+- recovery intentionally avoids shell-based package-manager execution;
+- pnpm 11.22.0 on the Windows operator workstation did not populate
+  `npm_execpath`;
+- the real Stage 6 restore succeeded only after the operator supplied an
+  absolute pnpm JavaScript launcher manually;
+- that manual environment workaround proved the restore implementation but was
+  not acceptable as the permanent repository contract.
 
-The manual environment workaround proved the recovery implementation works but
-is NOT considered the permanent repository fix.
+Permanent repository fix now staged:
 
-The repository must still gain the smallest safe Windows launcher-resolution
-hardening, backed by tests.
+- an existing valid absolute `npm_execpath` remains authoritative;
+- when it is absent on Windows, recovery verifies only the npm-global pnpm
+  package under `%APPDATA%\npm\node_modules\pnpm`;
+- package name and version must match `pnpm` `11.22.0`;
+- the launcher comes from the package's own `bin.pnpm` declaration;
+- the launcher must remain inside the verified package root;
+- only `pnpm.js`, `pnpm.cjs`, or `pnpm.mjs` is accepted;
+- execution remains direct through Node with no shell or `.cmd` fallback;
+- invalid or unavailable metadata remains fail-closed.
+
+Verification is complete:
+
+- focused recovery contracts: 83/83 PASS;
+- broader recovery suite: 147 PASS / 8 intentional opt-in skips;
+- real Windows fallback smoke with `npm_execpath` ignored: PASS;
+- disposable synthetic local recovery round-trip with `npm_execpath` unset:
+  PASS;
+- TypeScript: PASS;
+- final diff checks: PASS;
+- recovery-target cleanup: zero containers, volumes, and networks remain;
+- pinned PostgreSQL 17.6 tool image and runtimes verified.
 
 Do not reintroduce the earlier temporary `restore-local.ts` environment-spread
-experiment. The successful real restore proved it was not required.
+experiment. It was not required for the successful real restore and is not
+part of this fix.
 
+The launcher hardening is staged but has not yet been committed or pushed.
 ## Current blockers
 
 ### Task 050 engineering closeout
 
 No Stage 6 restore execution blocker remains.
 
-Remaining engineering follow-up:
+The Windows `resolvePnpmInvocation()` hardening and its local verification are
+complete. The verified three-file change is staged.
 
-`resolvePnpmInvocation()` must be made robust on Windows when `npm_execpath` is
-not provided by pnpm, without falling back to unsafe shell execution or blindly
-launching `.cmd` shims.
+Remaining engineering closeout:
+
+- commit the staged launcher hardening;
+- push it through the normal repository workflow;
+- verify CI and the automatically triggered STAGING deployment result;
+- record the substantive commit SHA and remote verification in this file;
+- then continue to the next Task 050 closeout step.
+
+No additional Stage 6 restore execution is required.
 
 ### Production/customer-data gate
 
@@ -327,30 +387,96 @@ Recently completed deployment-fix files:
 The deployment-fix files are committed and no longer active work unless a new
 failure is observed.
 
+## Windows pnpm launcher hardening milestone
+
+The Windows `resolvePnpmInvocation()` portability issue exposed by the real
+Task 050 Stage 6 restore is now fixed and locally verified.
+
+Implementation:
+
+- existing valid absolute `npm_execpath` remains the first-choice launcher;
+- Linux/non-Windows behavior remains unchanged;
+- when `npm_execpath` is absent on Windows, recovery checks only the bounded
+  npm-global pnpm package under `%APPDATA%\npm\node_modules\pnpm`;
+- package metadata must identify exactly `pnpm` version `11.22.0`;
+- the launcher must come from the package's own `bin.pnpm` declaration;
+- the declared launcher must remain inside that pnpm package root;
+- only an actual `pnpm.js`, `pnpm.cjs`, or `pnpm.mjs` launcher is accepted;
+- the JavaScript launcher is executed directly with Node through
+  `process.execPath`;
+- `.cmd`, `.bat`, `.ps1`, shell execution, and arbitrary PATH discovery remain
+  disallowed;
+- unverified or unavailable launchers fail closed as
+  `RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED`.
+
+Files changed:
+
+- `apps/web/scripts/recovery/tools.ts`
+- `apps/web/__tests__/recovery/recovery-contracts.test.ts`
+- `docs/PROJECT-STATE.md`
+
+Verification completed:
+
+- focused `recovery-contracts.test.ts`: PASS, 83/83 tests;
+- verified Windows APPDATA fallback regression: PASS;
+- invalid package/version/path/launcher fail-closed regressions: PASS;
+- existing explicit `npm_execpath` behavior: PASS;
+- existing Linux fallback behavior: PASS;
+- real Windows launcher smoke with `npm_execpath` deliberately ignored:
+  PASS;
+- smoke resolved `pnpm.mjs` from the verified APPDATA package and executed
+  pnpm `11.22.0` through Node with `shell: false`;
+- broader recovery regression suite: PASS, 147 passed / 8 intentionally
+  skipped with all live integration gates disabled;
+- disposable local synthetic recovery round-trip: PASS, 1/1;
+- that integration ran with `npm_execpath` unset, exercising the new Windows
+  fallback through the actual database migration and local restore path;
+- synthetic round-trip restored and verified non-empty Auth/application data;
+- post-integration cleanup: PASS, zero labeled recovery containers, volumes,
+  and networks remain;
+- exact pinned PostgreSQL tools image is available locally;
+- `pg_dump` runtime: PostgreSQL 17.6 PASS;
+- `pg_restore` runtime: PostgreSQL 17.6 PASS;
+- final `pnpm --filter @school/web typecheck`: PASS;
+- final `git diff --check`: PASS.
+
+No hosted STAGING or Production mutation was performed during this launcher
+hardening work. The integration used only disposable loopback-local recovery
+targets and synthetic data.
+
+The previous real Task 050 Stage 6 restore must not be repeated. Its acceptance
+remains the previously documented reconstructed/completed Stage 6 evidence.
+
+Production customer onboarding remains blocked by the Production backup gate;
+this launcher fix does not change that gate.
+
+The launcher fix is now ready for staging and commit review. It has not yet
+been committed or pushed.
 ## Exact next step
 
-1. Review and commit the completed Task 050 Stage 6 documentation together with
-   this canonical PROJECT-STATE.md handoff.
+1. Commit the already-staged verified Windows recovery pnpm launcher hardening.
 
-2. Inspect `apps/web/scripts/recovery/tools.ts` and the focused recovery tests for
-   the Windows `resolvePnpmInvocation()` contract.
+2. Confirm the commit contains exactly:
+   - `apps/web/scripts/recovery/tools.ts`
+   - `apps/web/__tests__/recovery/recovery-contracts.test.ts`
+   - `docs/PROJECT-STATE.md`
 
-3. Identify the narrowest safe way to resolve the installed pnpm JavaScript
-   launcher when `npm_execpath` is absent on Windows.
+3. Push the substantive commit through the normal repository workflow.
 
-4. Preserve the existing fail-closed rules:
-   - no shell execution;
-   - no blind `.cmd` execution;
-   - no user-specific path committed;
-   - no weakening of package-manager launcher validation.
+4. Verify:
+   - CI result;
+   - automatically triggered STAGING deployment result;
+   - no manual deploy-hook trigger and no retry unless provider evidence requires
+     investigation.
 
-5. Implement the smallest test-backed fix.
+5. Immediately synchronize this PROJECT-STATE.md with:
+   - the substantive launcher commit SHA;
+   - CI status;
+   - STAGING deployment status;
+   - the next Task 050 closeout step.
 
-6. Run targeted recovery tests, the applicable non-empty local integration
-   rehearsal, TypeScript verification, and repository diff checks.
-
-7. Synchronize this PROJECT-STATE.md again immediately after that milestone.
-
+Do not rerun the real Stage 6 restore, recreate hosted STAGING fixtures, or
+manually trigger a STAGING deployment hook.
 ## Important operations that must NOT be repeated
 
 - DO NOT rerun the real Stage 6 restore. It already succeeded.

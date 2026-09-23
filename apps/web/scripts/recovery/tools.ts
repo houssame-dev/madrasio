@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { readFileSync, statSync } from 'node:fs';
 import { mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, posix, relative, resolve, win32 } from 'node:path';
@@ -94,12 +95,79 @@ export function resolveAgeToolInvocation(
   };
 }
 
+const RECOVERY_PNPM_VERSION = '11.22.0';
+
+function resolveWindowsPnpmLauncher(context: {
+  appData?: string;
+  readTextFile?: (filePath: string) => string;
+  isFile?: (filePath: string) => boolean;
+}): string | undefined {
+  const appData = (context.appData ?? process.env.APPDATA)?.trim();
+
+  if (!appData || !win32.isAbsolute(appData)) return undefined;
+
+  const packageRoot = win32.join(appData, 'npm', 'node_modules', 'pnpm');
+  const packageJsonPath = win32.join(packageRoot, 'package.json');
+  const readTextFile =
+    context.readTextFile ?? ((filePath: string) => readFileSync(filePath, 'utf8'));
+  const isFile =
+    context.isFile ?? ((filePath: string) => statSync(filePath).isFile());
+
+  let metadata: {
+    name?: unknown;
+    version?: unknown;
+    bin?: { pnpm?: unknown };
+  };
+
+  try {
+    metadata = JSON.parse(readTextFile(packageJsonPath)) as typeof metadata;
+  } catch {
+    return undefined;
+  }
+
+  if (
+    metadata.name !== 'pnpm' ||
+    metadata.version !== RECOVERY_PNPM_VERSION ||
+    typeof metadata.bin?.pnpm !== 'string'
+  ) {
+    return undefined;
+  }
+
+  const declaredLauncher = metadata.bin.pnpm.trim();
+
+  if (!declaredLauncher || win32.isAbsolute(declaredLauncher)) return undefined;
+
+  const launcher = win32.resolve(packageRoot, declaredLauncher);
+  const relativeLauncher = win32.relative(packageRoot, launcher);
+
+  if (
+    !relativeLauncher ||
+    relativeLauncher === '..' ||
+    relativeLauncher.startsWith(`..${win32.sep}`) ||
+    win32.isAbsolute(relativeLauncher) ||
+    !/^pnpm\.(?:js|cjs|mjs)$/i.test(win32.basename(launcher))
+  ) {
+    return undefined;
+  }
+
+  try {
+    if (!isFile(launcher)) return undefined;
+  } catch {
+    return undefined;
+  }
+
+  return launcher;
+}
+
 export function resolvePnpmInvocation(
   args: string[],
   context: {
     platform?: NodeJS.Platform;
     execPath?: string;
     npmExecPath?: string;
+    appData?: string;
+    readTextFile?: (filePath: string) => string;
+    isFile?: (filePath: string) => boolean;
   } = {},
 ): PnpmInvocation {
   const platform = context.platform ?? process.platform;
@@ -123,6 +191,16 @@ export function resolvePnpmInvocation(
   }
 
   if (platform === 'win32') {
+    const fallbackLauncher = resolveWindowsPnpmLauncher({
+      appData: context.appData,
+      readTextFile: context.readTextFile,
+      isFile: context.isFile,
+    });
+
+    if (fallbackLauncher) {
+      return { command: execPath, args: [fallbackLauncher, ...args] };
+    }
+
     throw new RecoveryError(
       'RESTORE_PACKAGE_MANAGER_LAUNCH_FAILED',
       'The recovery package-manager launcher is unavailable.',
