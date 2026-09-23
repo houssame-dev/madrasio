@@ -1,10 +1,10 @@
 # Production backup and recovery
 
-Status: Task 050 Stage 4.1 repository implementation. Provider infrastructure is provisioned, but the automation remains disabled and no real Production recovery point has been created. Customer onboarding remains blocked by the backup gate.
+Status: Task 050 Stage 6 STAGING/local recovery acceptance is complete through reconstructed evidence after the original manual lifecycle was interrupted. The recovery format and isolated restore path have been proven against a real STAGING bundle, but Production automation remains disabled and no real Production recovery point has been created. Customer onboarding remains blocked by the Production backup gate.
 
 ## Recovery objective and authority
 
-The accepted target is an application-controlled recovery point at least every six hours (RPO target: 6 hours) and a rehearsed restoration within eight hours (RTO target: 8 hours). Neither objective is operationally proven yet.
+The accepted target is an application-controlled recovery point at least every six hours (RPO target: 6 hours) and a rehearsed restoration within eight hours (RTO target: 8 hours). Stage 6 now proves the repository-owned restore mechanism and its data, Auth identity, relational, migration, and application-security reconciliation against a real STAGING recovery bundle restored into an isolated local target. The Production RPO remains unproven because no real Production recovery point or active Production backup automation exists. The RTO target has meaningful STAGING/local rehearsal evidence but is not yet accepted as a Production operational objective because the original end-to-end Stage 6 manual lifecycle was interrupted and no timed Production restore has been completed.
 
 Recovery uses hybrid Model B:
 
@@ -165,6 +165,77 @@ The subsequent read-only hosted preflight found that node-postgres returns `SHOW
 
 During that preflight, the complete Cronitor telemetry URL was rendered by the provider inspection surface. The credential value is intentionally not recorded here. Rotation is mandatory before another Production backup, and future monitoring verification must inspect only bounded monitor configuration/status without rendering or copying the telemetry URL.
 
+## Stage 6 acceptance evidence — 2026-09-22
+
+The final Stage 6 evidence came from one real hosted-STAGING recovery lifecycle
+whose original operator orchestration was interrupted after source verification
+and bundle creation. The original runner therefore did **not** itself emit
+`STAGE_6_RESULT: PASS`. Acceptance was reconstructed without repeating the
+hosted mutation by combining the already-captured source evidence, the exact
+preserved encrypted bundle, one isolated restore, independent semantic
+verification, and bounded cleanup.
+
+The source recovery evidence used repository SHA
+`d499d1996151fff789d50ca8bf638d6a0a66ca44` and produced backup
+`20260922T030909Z-d499d1996151-a7ec79b36fa64be5`. The preserved ciphertext was
+55,290 bytes with SHA-256
+`5d5afe2b0952c2aaed1761d1a217dc576ec8d4f7a11e06a59d68a8ed25781d3d`.
+Its matching external age identity was confirmed with age 1.3.1.
+
+The exact preserved bundle was restored once into a fresh loopback-only local
+recovery target. The restore emitted `isolated_restore_verified` for all 41
+manifest tables. That success occurs only after the repository migration
+contract, restored table counts/fingerprints, identity/relationship
+reconciliation, and application-security audit complete successfully.
+
+A separate read-only semantic verification of that restored target confirmed:
+
+- 8 `auth.users`;
+- 8 `auth.identities`;
+- 39 public application tables;
+- 16 Drizzle migrations;
+- 39 RLS-enabled application tables;
+- zero application RLS policies;
+- exact Teacher Auth / `public.users` UUID identity preservation;
+- exact Parent Auth / `public.users` UUID identity preservation;
+- expected School/membership/profile relationships;
+- expected Student/enrollment/Class/AcademicYear relationships.
+
+The complete `auth.users` fingerprint reconciliation also covers the restored
+encrypted-password row content at the table-fingerprint level. The interrupted
+operator process did not emit its original explicit password-hash comparison
+labels, so those labels must not be retroactively claimed.
+
+Cleanup was independently completed and verified after the interrupted
+lifecycle:
+
+- the hosted STAGING fixture application rows were removed;
+- the two exact temporary STAGING Auth identities were removed;
+- STAGING returned to its accepted baseline;
+- the interrupted local recovery target was removed;
+- the successful restored local target was removed;
+- the preserved encrypted bundle was removed;
+- the matching ephemeral age identity was removed;
+- temporary recovery workspaces were removed;
+- temporary Stage 6 operator scripts were removed.
+
+No second real restore, new Stage 6 STAGING fixture, additional hosted cleanup,
+or recovery-artifact reconstruction is required or authorized by this evidence.
+
+The real restore also exposed a Windows package-manager launcher portability
+issue. In the operator environment, pnpm 11.22.0 did not populate
+`npm_execpath`; supplying the existing absolute `pnpm.cjs` launcher allowed the
+restore to complete. That manual environment workaround proves the restore path
+but is not the permanent repository fix. `resolvePnpmInvocation()` still
+requires a narrowly scoped, fail-closed Windows hardening that must not fall
+back to shell execution or blindly execute `.cmd` shims.
+
+Stage 6 therefore establishes the real STAGING-to-isolated-local recovery
+mechanism and reconciliation contract. It does **not** clear the Production
+customer-data onboarding block: no real Production encrypted recovery point,
+active Production backup cadence, independent Production readback, or timed
+Production restore has yet been accepted.
+
 ## Gate status
 
-Stage 4.1 does not clear `PRODUCTION_CUSTOMER_DATA_ONBOARDING_BLOCKED_BY_BACKUP`. The workflow is intentionally inactive until the separately authorized Stage 4.2 manual backup succeeds. Onboarding readiness additionally requires a real encrypted Production recovery point in R2, independent readback, its corresponding Cronitor heartbeat, and a successful timed isolated restore rehearsal demonstrating the recovery point, identity invariants, relational invariants, security invariants, RPO, and RTO.
+Stage 6 STAGING/local recovery acceptance does not clear `PRODUCTION_CUSTOMER_DATA_ONBOARDING_BLOCKED_BY_BACKUP`. Production backup automation remains inactive and no real Production recovery point has been accepted. Onboarding readiness still requires a real encrypted Production recovery point in R2, independent readback, its corresponding Cronitor heartbeat, and a successful timed isolated Production restore rehearsal demonstrating the recovery point, identity invariants, relational invariants, security invariants, RPO, and RTO.
