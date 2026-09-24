@@ -72,6 +72,71 @@ The backup process receives only `BACKUP_AGE_RECIPIENT`, never the offline priva
 
 The offline private identity must remain outside the repository, CI, Vercel, GitHub secrets used for backup creation, and object storage. Restore requires an explicit external identity file; secret material is never accepted through loggable command arguments.
 
+## Production age identity custody and recovery-point supersession
+
+> Architecture authority: ADR-020 — Production Age Identity Custody and Recovery-Point Supersession
+
+The original accepted Production recovery point remains immutable historical
+evidence of successful Production backup creation, encryption, upload, remote
+verification, independent readback, monitoring, and cleanup.
+
+Its current decryption readiness is a separate concern. The matching private age
+identity is not currently available on the reviewed recovery workstation, so the
+historical recovery point is not currently an authorized Stage 5 restore source.
+This does not prove that an operator-controlled offline copy cannot exist
+elsewhere.
+
+A newly generated age identity cannot decrypt ciphertext encrypted to the
+historical recipient. The historical object must not be rewritten, relabeled,
+re-encrypted in place, or represented as decryptable by a replacement identity.
+
+Before a replacement Production recovery point may be authorized, Production
+age identity custody requires:
+
+1. reviewed age 1.3.1 tooling;
+2. generation on an operator-controlled workstation outside the repository;
+3. no private identity material in the repository, CI, Vercel, GitHub backup
+   secrets, object storage, application configuration, logs, or chat;
+4. two operator-controlled custody copies:
+   - one primary recovery copy;
+   - one independently stored secondary recovery copy;
+5. both copies must be regular files outside the repository;
+6. `age-keygen -y` must independently derive the same public recipient from both;
+7. only the public recipient may be configured as Production
+   `BACKUP_AGE_RECIPIENT`;
+8. private identity paths must never be committed or stored in provider
+   configuration;
+9. readiness evidence may record only non-secret status such as age version,
+   copy count, outside-repository checks, and recipient-match results;
+10. loss of either custody copy reopens the identity-custody gate.
+
+Replacement recovery-point procedure:
+
+1. preserve the historical ciphertext unchanged;
+2. retain its restore-readiness status as BLOCKED while its original identity is
+   unavailable;
+3. implement and verify a repository-owned identity-custody readiness gate;
+4. establish the verified two-copy custody contract;
+5. update only the public Production recipient after both copies independently
+   derive the same recipient;
+6. keep recurring Production backup automation disabled;
+7. require separate deliberate authorization for a replacement Production backup;
+8. retain the existing exact-SHA CI and manual Production backup authorization
+   requirements;
+9. verify immutable upload, HEAD metadata, independent GET readback, bytes, and
+   SHA-256;
+10. perform a timed Production-to-isolated-local restore;
+11. accept Production RTO only after all restore reconciliation, Auth, migration,
+    relationship, security, and cleanup requirements pass.
+
+A replacement recovery point does not erase or retroactively change the
+historical recovery point. They remain separately identifiable by backup ID,
+object key, repository SHA, recipient fingerprint, ciphertext bytes, and
+ciphertext SHA-256.
+
+Production customer onboarding remains blocked until a decryptable Production
+recovery point completes the required timed isolated-local restore and the
+remaining recovery gates are accepted.
 ## Isolated restore
 
 `pnpm recovery:restore:local` refuses Production, STAGING, Supabase hosts, and every non-loopback database. It requires all of:

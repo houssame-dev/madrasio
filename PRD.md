@@ -1178,8 +1178,32 @@ The following are protected decisions:
 - Outbox/event architecture
 - No mandatory realtime in V1
 - No microservices in V1
+- Production age identity custody and recovery-point supersession (ADR-020)
 
 Changing one of these requires explicit approval.
+
+## Production Recovery Identity Custody
+
+For Production recovery:
+
+- historical accepted ciphertext must never be rewritten or represented as
+  decryptable by a replacement identity;
+- private Production age identity material must remain outside the repository,
+  CI, hosted provider configuration, object storage, application configuration,
+  logs, and chat;
+- two operator-controlled external custody copies are required before a
+  replacement public recipient can be accepted;
+- both copies must independently derive the same expected public recipient;
+- only the public recipient may be configured for Production backup creation;
+- changing the public recipient or creating a replacement Production recovery
+  point requires separate deliberate authorization;
+- recurring Production backup automation remains disabled until separately
+  accepted;
+- Production customer onboarding remains blocked until a decryptable Production
+  recovery point completes the required timed isolated-local restore and the
+  remaining recovery gates are accepted.
+
+See ADR-020 and `docs/architecture/production-backup-and-recovery.md`.
 
 ---
 

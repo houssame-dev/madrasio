@@ -8,109 +8,103 @@ Task 050 — Production Backup & Recovery
 
 ## Current Stage
 
-Stage 5 — repository-owned Production restore-readiness implementation and
-repository verification are COMPLETE locally.
+Stage 5 — Production-to-isolated-local restore remains BLOCKED because the
+matching external private age identity for the historical accepted Production
+recovery point is not currently available.
 
-Repository verification evidence:
+Substantive repository commit:
 
-- focused Production ciphertext retrieval tests: PASS, 5/5;
-- bounded test-fixture typing correction: PASS;
-- repository typecheck: PASS across all participating workspaces;
-- broader recovery suite: PASS;
-- recovery test files: 7 passed, 3 skipped;
-- recovery tests: 152 passed, 8 skipped;
-- final `git diff --check`: PASS;
-- final retrieval implementation/static contract review: PASS;
-- package wiring review: PASS;
-- recovery architecture reconciliation review: PASS;
-- repository mutation from verification: NONE.
+`81bf394ccd761e0c5499174e73b04e3f34a74e1c`
 
-The two repository-owned Stage 5 readiness blockers are now RESOLVED:
+Resolved prerequisites:
 
 - `STAGE5_R2_RETRIEVAL_ORCHESTRATION_NOT_YET_DEFINED` — RESOLVED;
-- `STAGE5_RECOVERY_DOCUMENTATION_RECONCILIATION_REQUIRED` — RESOLVED.
+- `STAGE5_RECOVERY_DOCUMENTATION_RECONCILIATION_REQUIRED` — RESOLVED;
+- `STAGE5_PINNED_POSTGRES_IMAGE_NOT_LOCALLY_AVAILABLE` — RESOLVED.
 
-The implemented Production ciphertext retrieval path:
-
-- reuses the existing signed R2 object-store transport;
-- requires an explicit accepted object key;
-- requires exact expected ciphertext bytes;
-- requires exact expected ciphertext SHA-256;
-- verifies remote metadata before download;
-- downloads only into a generated recovery workspace;
-- independently verifies downloaded ciphertext bytes and SHA-256;
-- fails closed on identity or ciphertext mismatch;
-- cleans the generated workspace on retrieval failure;
-- provides bounded explicit cleanup after successful retrieval;
-- keeps provider credentials environment-only.
-
-Only the following Stage 5 operational prerequisites remain unresolved:
+Historical recovery-point blocker:
 
 - `STAGE5_EXTERNAL_AGE_IDENTITY_PATH_NOT_CONFIGURED`
-- `STAGE5_PINNED_POSTGRES_IMAGE_NOT_LOCALLY_AVAILABLE`
 
-No real Production recovery object has been retrieved during Stage 5.
+A deliberate replacement-recovery architecture is now documented locally.
+
+It requires:
+
+- preservation of the historical ciphertext;
+- no claim that a replacement identity can decrypt it;
+- a repository-owned Production identity-custody readiness gate;
+- two independently stored operator-controlled custody copies;
+- independent recipient derivation from both copies;
+- only the matching public recipient in provider configuration;
+- recurring backup automation remaining disabled;
+- separate authorization for any replacement Production backup;
+- a timed isolated-local restore before recovery acceptance.
+
+No replacement identity has been generated.
+
+No Production recipient has been changed.
+
+No new Production recovery point has been created.
 
 The timed Production restore has NOT started.
 
-The six-hour Production RPO cadence remains unproven because recurring
-Production backup automation is intentionally disabled.
-
-The Production RTO target remains unproven until the timed Stage 5
-Production-to-isolated-local restore completes.
+Production RPO and RTO remain unproven.
 
 Production customer onboarding remains blocked.
 Current closeout work:
-1. preserve all accepted Stage 4.2 Production recovery-point evidence;
-2. preserve all accepted Stage 5 repository implementation and verification evidence;
-3. create one substantive implementation/documentation commit containing the six
-   currently changed files;
-4. do not create a state-only commit;
-5. after the substantive commit, verify the resulting repository SHA and clean
-   working tree;
-6. then resolve the remaining operational prerequisites:
-   - exact pinned PostgreSQL 17.6 image availability;
-   - external Production age identity configuration and recipient validation;
-7. rerun the Stage 5 readiness gate before any real Production recovery-object
-   retrieval;
-8. start the timed Production restore boundary before the first real retrieval,
-   workspace, or recovery-target action;
-9. keep Production customer onboarding blocked.
+1. preserve the historical accepted Production recovery point unchanged;
+2. preserve its decryption-readiness classification as BLOCKED;
+3. preserve all accepted Stage 5 implementation and verification evidence;
+4. keep recurring Production backup automation disabled;
+5. implement a repository-owned Production age identity-custody readiness gate;
+6. verify that gate synthetically before any real Production identity generation;
+7. only after that implementation is accepted may a new identity be generated;
+8. require two independently stored custody copies deriving the same recipient;
+9. require separate architecture/state authorization before changing the public
+   Production recipient or creating a replacement recovery point;
+10. keep Production customer onboarding blocked.
 ## Current branch
 
 main
 
 ## Latest relevant commit
 
-b6b10389312842954779f9fe721ce586b18d4259
+81bf394ccd761e0c5499174e73b04e3f34a74e1c
 
 Commit:
 
-`fix: harden Windows recovery pnpm launcher`
+feat: add verified production recovery retrieval
 
-Repository verification:
+Repository status:
 
-- local `HEAD`: b6b10389312842954779f9fe721ce586b18d4259
-- `origin/main`: b6b10389312842954779f9fe721ce586b18d4259
+- local `HEAD`:
+  `81bf394ccd761e0c5499174e73b04e3f34a74e1c`;
+- `origin/main`:
+  `81bf394ccd761e0c5499174e73b04e3f34a74e1c`;
+- substantive commit push: PASS;
+- exact remote SHA verification: PASS;
+- only local dirty file:
+  `docs/PROJECT-STATE.md`;
+- state-only commit: NOT CREATED.
 
 Remote verification:
 
-- CI run 35818717476: completed / success
-- Deploy STAGING run 35818717473: completed / success
-- workflow head SHA: b6b10389312842954779f9fe721ce586b18d4259
-- `staging_exact_sha_ready`: PASS for the same SHA
-- `staging_deployment_smoke_passed`: PASS for the same SHA
-- live STAGING smoke checks: 11
+- CI run `35949518875`: completed / success;
+- CI workflow: `CI`;
+- CI event: `push`;
+- CI exact head SHA:
+  `81bf394ccd761e0c5499174e73b04e3f34a74e1c`;
+- Deploy STAGING run `35949518775`: completed / success;
+- deployment workflow: `Deploy STAGING`;
+- deployment event: `push`;
+- deployment exact head SHA:
+  `81bf394ccd761e0c5499174e73b04e3f34a74e1c`;
+- automatic push-trigger evidence: PASS;
+- manual deployment trigger: NOT USED.
 
-No additional launcher deployment or provider inspection is required.
-Previous documentation migration commit:
-
-a1e394530483d9f1c33fc6469feaab9469306a18
-
-Commit:
-
-docs: replace Claude project rules with PRD
-
+Historical verification for
+`b6b10389312842954779f9fe721ce586b18d4259` remains valid for the earlier
+Windows recovery pnpm launcher milestone.
 ## Completed work
 
 ### Task 050 recovery implementation
@@ -1079,44 +1073,158 @@ implementation or verification.
 
 The implementation remains uncommitted at this milestone so the canonical state
 can be included in the same substantive implementation/documentation commit.
+## Stage 5 pinned PostgreSQL image availability milestone
+
+Result:
+
+`PASS — EXACT PINNED POSTGRESQL 17.6 IMAGE AVAILABLE`
+
+Reviewed immutable image:
+
+`postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3`
+
+Evidence:
+
+- image was absent at the initial availability probe;
+- exact immutable digest pull completed successfully;
+- local image digest matches the reviewed digest exactly;
+- `psql (PostgreSQL) 17.6`: PASS;
+- `pg_dump (PostgreSQL) 17.6`: PASS;
+- `pg_restore (PostgreSQL) 17.6`: PASS;
+- version-check containers used `--rm`;
+- no persistent recovery container was created;
+- no local recovery target was created;
+- no Production R2, database, decryption, or restore action occurred.
+
+Blocker status:
+
+`STAGE5_PINNED_POSTGRES_IMAGE_NOT_LOCALLY_AVAILABLE` — RESOLVED
+
+Remaining operational blocker:
+
+`STAGE5_EXTERNAL_AGE_IDENTITY_PATH_NOT_CONFIGURED`
+## Stage 5 Production age identity investigation milestone
+
+Result:
+
+`BLOCKED — MATCHING EXTERNAL PRODUCTION AGE IDENTITY NOT CURRENTLY AVAILABLE`
+
+Evidence:
+
+- Production public age recipient is available;
+- reviewed `age-keygen` v1.3.1 is available;
+- explicitly configured Process/User/Machine identity paths: 0;
+- controlled workstation recovery-location candidates: 0;
+- discovered age private-identity-shaped files: 0;
+- matching Production identities: 0;
+- retained Stage 5 evidence contains no authoritative usable Production identity
+  path;
+- private key contents were never printed;
+- identity paths were never printed;
+- no new age identity was generated;
+- no Production R2 object was accessed or downloaded;
+- no decryption occurred;
+- no recovery target was created;
+- timed restore did not start.
+
+Blocker remains:
+
+`STAGE5_EXTERNAL_AGE_IDENTITY_PATH_NOT_CONFIGURED`
+
+Interpretation:
+
+The accepted Production recovery point is not currently decryptable on this
+workstation. This is not proof that the external identity is permanently lost;
+an operator-controlled offline copy may still exist elsewhere.
+## Stage 5 Production age identity custody remediation implementation milestone
+
+Result:
+
+`IMPLEMENTED AND SYNTHETICALLY VERIFIED — REAL PRODUCTION CUSTODY NOT YET ESTABLISHED`
+
+ADR-020 now records the accepted Production age identity custody and
+recovery-point supersession architecture.
+
+Repository implementation:
+
+- `apps/web/scripts/recovery/production-age-custody.ts`;
+- `apps/web/__tests__/recovery/production-age-custody.test.ts`;
+- two explicit external identity-file inputs;
+- absolute-path enforcement;
+- repository-containment rejection;
+- regular-file existence enforcement;
+- distinct canonical-copy enforcement;
+- reviewed age 1.3.1 runtime enforcement;
+- independent `age-keygen -y` recipient derivation from both copies;
+- identical-recipient enforcement;
+- explicit expected-public-recipient enforcement;
+- bounded non-secret readiness output;
+- fail-closed error handling without identity contents or paths.
+
+Verification:
+
+- focused custody tests: PASS, 10/10;
+- repository TypeScript: PASS;
+- broader recovery regression: PASS, 162 passed / 8 intentionally skipped;
+- all live recovery integration gates were disabled during the broader suite;
+- `git diff --check`: PASS.
+
+Documentation authority:
+
+- ADR-020: Accepted;
+- ADR index: updated;
+- PRD §55: Production recovery custody rules added;
+- recovery architecture: ADR-020 cross-reference added.
+
+No real Production identity has been generated.
+
+No Production public recipient has been changed.
+
+No Production provider configuration has been mutated.
+
+No Production R2 object has been accessed or downloaded.
+
+No replacement Production recovery point has been created.
+
+No timed Production restore has started.
+
+Recurring Production backup automation remains disabled.
+
+Production RPO and RTO remain unproven.
+
+Production customer onboarding remains blocked.
 ## Exact next step
 
-Task 050 Stage 5 — create one substantive repository commit containing the
-verified Production-retrieval implementation, tests, package wiring, recovery
-architecture reconciliation, and this canonical state update.
+Task 050 Stage 5 remains blocked from a timed Production restore until a new
+operator-controlled Production age identity custody set is deliberately
+established under ADR-020.
 
-The commit must contain exactly the current six-file change surface:
+The next action is NOT yet key generation.
 
-- `apps/web/scripts/recovery/retrieve-production-recovery.ts`
-- `apps/web/__tests__/recovery/retrieve-production-recovery.test.ts`
-- `apps/web/package.json`
-- `package.json`
-- `docs/architecture/production-backup-and-recovery.md`
-- `docs/PROJECT-STATE.md`
+Before any real identity generation or provider mutation:
 
-Do not create a documentation-only or state-only commit.
-
-Before committing, verify:
-
-- HEAD is still the accepted pre-implementation SHA;
-- the working tree contains exactly those six files;
-- `git diff --check` passes.
+1. review and commit the custody-gate implementation, ADR-020, PRD, architecture,
+   and PROJECT-STATE changes together as one substantive repository change;
+2. push that exact commit;
+3. require exact-SHA CI success;
+4. require accepted STAGING deployment/verification for that exact commit if the
+   normal repository release contract requires it;
+5. only after the committed implementation is accepted may a separate operator
+   checkpoint authorize the real two-copy Production identity custody ceremony.
 
 Do NOT yet:
 
-- access real Production R2;
-- download the accepted Production recovery object;
-- configure/read the Production age identity;
-- pull the PostgreSQL image;
-- create a local recovery target;
+- generate a real Production age identity;
+- change `BACKUP_AGE_RECIPIENT`;
+- create or dispatch a replacement Production backup;
+- enable recurring Production backup automation;
+- access or download Production R2 recovery data;
+- create a local restore target for Production;
 - start the timed Production restore;
-- execute the restore;
 - access Production database data;
 - emit Cronitor telemetry;
-- dispatch/rerun a Production backup;
-- enable recurring Production backup automation;
-- trigger a deployment;
-- rerun Stage 6.
+- manually deploy;
+- rerun historical Stage 6.
 
 Production customer onboarding remains blocked.
 ## Important operations that must NOT be repeated

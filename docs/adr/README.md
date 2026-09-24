@@ -61,6 +61,7 @@ Current V1 architecture decisions are primarily `Accepted`.
 | ADR-017 | REST API Versioned under `/api/v1` |
 | ADR-018 | Shared UUID Between Supabase Auth User and Application User |
 | ADR-019 | Application-Owned Canonical User Email Mapping |
+| ADR-020 | Production Age Identity Custody and Recovery-Point Supersession |
 
 ---
 
