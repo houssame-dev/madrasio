@@ -33,6 +33,7 @@
     "verify:production-cron": "pnpm --filter @school/web verify:production-cron",
     "bootstrap:first-tenant:production": "pnpm --filter @school/web bootstrap:first-tenant:production",
     "recovery:backup:production": "pnpm --filter @school/web recovery:backup:production",
+    "recovery:retrieve:production": "pnpm --filter @school/web recovery:retrieve:production",
     "recovery:restore:local": "pnpm --filter @school/web recovery:restore:local",
     "test:recovery": "pnpm --filter @school/web test:recovery",
     "db:generate": "pnpm --filter @school/database generate",

@@ -8,31 +8,101 @@ Task 050 — Production Backup & Recovery
 
 ## Current Stage
 
-Stage 6 acceptance is complete through reconstructed evidence after the original
-manual lifecycle was interrupted.
+Stage 5 — repository-owned Production restore-readiness implementation and
+repository verification are COMPLETE locally.
 
+Repository verification evidence:
+
+- focused Production ciphertext retrieval tests: PASS, 5/5;
+- bounded test-fixture typing correction: PASS;
+- repository typecheck: PASS across all participating workspaces;
+- broader recovery suite: PASS;
+- recovery test files: 7 passed, 3 skipped;
+- recovery tests: 152 passed, 8 skipped;
+- final `git diff --check`: PASS;
+- final retrieval implementation/static contract review: PASS;
+- package wiring review: PASS;
+- recovery architecture reconciliation review: PASS;
+- repository mutation from verification: NONE.
+
+The two repository-owned Stage 5 readiness blockers are now RESOLVED:
+
+- `STAGE5_R2_RETRIEVAL_ORCHESTRATION_NOT_YET_DEFINED` — RESOLVED;
+- `STAGE5_RECOVERY_DOCUMENTATION_RECONCILIATION_REQUIRED` — RESOLVED.
+
+The implemented Production ciphertext retrieval path:
+
+- reuses the existing signed R2 object-store transport;
+- requires an explicit accepted object key;
+- requires exact expected ciphertext bytes;
+- requires exact expected ciphertext SHA-256;
+- verifies remote metadata before download;
+- downloads only into a generated recovery workspace;
+- independently verifies downloaded ciphertext bytes and SHA-256;
+- fails closed on identity or ciphertext mismatch;
+- cleans the generated workspace on retrieval failure;
+- provides bounded explicit cleanup after successful retrieval;
+- keeps provider credentials environment-only.
+
+Only the following Stage 5 operational prerequisites remain unresolved:
+
+- `STAGE5_EXTERNAL_AGE_IDENTITY_PATH_NOT_CONFIGURED`
+- `STAGE5_PINNED_POSTGRES_IMAGE_NOT_LOCALLY_AVAILABLE`
+
+No real Production recovery object has been retrieved during Stage 5.
+
+The timed Production restore has NOT started.
+
+The six-hour Production RPO cadence remains unproven because recurring
+Production backup automation is intentionally disabled.
+
+The Production RTO target remains unproven until the timed Stage 5
+Production-to-isolated-local restore completes.
+
+Production customer onboarding remains blocked.
 Current closeout work:
-1. commit the fully verified and already-staged Windows pnpm launcher hardening;
-2. push the substantive launcher commit and verify CI / automatic STAGING deployment;
-3. synchronize this canonical handoff with the launcher commit SHA and remote status;
-4. continue Task 050 closeout while the separate Production backup/customer-data gate remains blocked.
-
+1. preserve all accepted Stage 4.2 Production recovery-point evidence;
+2. preserve all accepted Stage 5 repository implementation and verification evidence;
+3. create one substantive implementation/documentation commit containing the six
+   currently changed files;
+4. do not create a state-only commit;
+5. after the substantive commit, verify the resulting repository SHA and clean
+   working tree;
+6. then resolve the remaining operational prerequisites:
+   - exact pinned PostgreSQL 17.6 image availability;
+   - external Production age identity configuration and recipient validation;
+7. rerun the Stage 5 readiness gate before any real Production recovery-object
+   retrieval;
+8. start the timed Production restore boundary before the first real retrieval,
+   workspace, or recovery-target action;
+9. keep Production customer onboarding blocked.
 ## Current branch
 
 main
 
 ## Latest relevant commit
 
-5d9dd3e84cbd87cf2afe9f81cf5abfd1b1e7b17d
+b6b10389312842954779f9fe721ce586b18d4259
 
 Commit:
 
-fix: preserve accepted staging deploy hook responses
+`fix: harden Windows recovery pnpm launcher`
+
+Repository verification:
+
+- local `HEAD`: b6b10389312842954779f9fe721ce586b18d4259
+- `origin/main`: b6b10389312842954779f9fe721ce586b18d4259
 
 Remote verification:
-- CI #93: PASS
-- Deploy STAGING #36: PASS
 
+- CI run 35818717476: completed / success
+- Deploy STAGING run 35818717473: completed / success
+- workflow head SHA: b6b10389312842954779f9fe721ce586b18d4259
+- `staging_exact_sha_ready`: PASS for the same SHA
+- `staging_deployment_smoke_passed`: PASS for the same SHA
+- live STAGING smoke checks: 11
+
+No additional launcher deployment or provider inspection is required.
 Previous documentation migration commit:
 
 a1e394530483d9f1c33fc6469feaab9469306a18
@@ -45,7 +115,18 @@ docs: replace Claude project rules with PRD
 
 ### Task 050 recovery implementation
 
-Task 050 Stages 1–5 are complete.
+Task 050 recovery stage status:
+
+- Stage 1: complete.
+- Stage 2: complete.
+- Stage 3: complete.
+- Stage 4.1: complete — repository implementation and provider infrastructure.
+- Stage 4.2: pending — no accepted real Production recovery point exists yet.
+- Stage 5: pending — no accepted timed Production-to-isolated-local restore has been completed.
+- Stage 6: complete through the documented STAGING/local reconstructed acceptance evidence.
+
+Production customer onboarding remains blocked until the remaining Production
+backup/recovery evidence is accepted.
 
 The recovery architecture uses the `madrasio-recovery-v1` format and an explicit
 41-table recovery inventory:
@@ -310,7 +391,7 @@ Root cause:
 - that manual environment workaround proved the restore implementation but was
   not acceptable as the permanent repository contract.
 
-Permanent repository fix now staged:
+Permanent repository fix committed locally:
 
 - an existing valid absolute `npm_execpath` remains authoritative;
 - when it is absent on Windows, recovery verifies only the npm-global pnpm
@@ -338,7 +419,36 @@ Do not reintroduce the earlier temporary `restore-local.ts` environment-spread
 experiment. It was not required for the successful real restore and is not
 part of this fix.
 
-The launcher hardening is staged but has not yet been committed or pushed.
+The launcher hardening was committed locally as:
+
+b6b10389312842954779f9fe721ce586b18d4259
+
+Commit:
+
+fix: harden Windows recovery pnpm launcher
+
+The substantive commit has been pushed to origin/main.
+
+Remote branch verification:
+
+b6b10389312842954779f9fe721ce586b18d4259
+
+origin/main matches the substantive launcher commit exactly.
+
+Remote verification for the substantive launcher commit is complete:
+
+- CI run 35818717476: PASS
+- Deploy STAGING run 35818717473: PASS
+- both workflow runs report exact head SHA b6b10389312842954779f9fe721ce586b18d4259
+- deployment wait gate emitted `staging_exact_sha_ready` for that exact SHA
+  after 8 attempts;
+- STAGING smoke verification emitted `staging_deployment_smoke_passed`;
+- smoke origin: `https://madrasio-staging.vercel.app`;
+- smoke commit SHA: b6b10389312842954779f9fe721ce586b18d4259;
+- smoke checks: 11.
+
+The launcher deployment therefore has exact-SHA and live STAGING smoke proof.
+No further provider inspection or redeployment is required.
 ## Current blockers
 
 ### Task 050 engineering closeout
@@ -346,15 +456,27 @@ The launcher hardening is staged but has not yet been committed or pushed.
 No Stage 6 restore execution blocker remains.
 
 The Windows `resolvePnpmInvocation()` hardening and its local verification are
-complete. The verified three-file change is staged.
+complete.
 
-Remaining engineering closeout:
+The substantive launcher fix is committed locally as:
 
-- commit the staged launcher hardening;
-- push it through the normal repository workflow;
-- verify CI and the automatically triggered STAGING deployment result;
-- record the substantive commit SHA and remote verification in this file;
-- then continue to the next Task 050 closeout step.
+b6b10389312842954779f9fe721ce586b18d4259
+
+`fix: harden Windows recovery pnpm launcher`
+
+Task 050 launcher engineering follow-up is complete:
+
+- CI 35818717476 is complete and successful for
+  b6b10389312842954779f9fe721ce586b18d4259;
+- Deploy STAGING 35818717473 is complete and successful for
+  b6b10389312842954779f9fe721ce586b18d4259;
+- the deployment exact-SHA wait gate passed for that same SHA;
+- the live STAGING smoke verification passed for that same SHA with 11 checks;
+- no additional launcher implementation, restore execution, provider inspection,
+  or redeployment is required.
+
+The remaining blocker is separate from this engineering fix: Production
+customer onboarding remains blocked by the Production backup/recovery gate.
 
 No additional Stage 6 restore execution is required.
 
@@ -450,33 +572,553 @@ remains the previously documented reconstructed/completed Stage 6 evidence.
 Production customer onboarding remains blocked by the Production backup gate;
 this launcher fix does not change that gate.
 
-The launcher fix is now ready for staging and commit review. It has not yet
-been committed or pushed.
+The verified launcher hardening was committed locally as:
+
+b6b10389312842954779f9fe721ce586b18d4259
+
+Commit:
+
+fix: harden Windows recovery pnpm launcher
+
+It has been pushed successfully to origin/main, and the remote branch resolves
+exactly to:
+
+b6b10389312842954779f9fe721ce586b18d4259
+
+GitHub Actions and STAGING verification are complete:
+
+- CI 35818717476: completed / success
+- Deploy STAGING 35818717473: completed / success
+- workflow head SHA: b6b10389312842954779f9fe721ce586b18d4259
+- `staging_exact_sha_ready`:
+  b6b10389312842954779f9fe721ce586b18d4259
+- `staging_deployment_smoke_passed`:
+  b6b10389312842954779f9fe721ce586b18d4259
+- smoke origin: `https://madrasio-staging.vercel.app`
+- smoke checks: 11
+
+Exact deployed-SHA verification is accepted from the existing successful
+workflow evidence. No additional provider-state inspection is required.
+## Cronitor credential rotation milestone
+
+The previously exposed Task 050 Production-backup Cronitor telemetry credential
+was rotated by the operator before another Production backup attempt.
+
+The GitHub Production environment secret replacement was verified using secret
+metadata only:
+
+- secret: `BACKUP_HEARTBEAT_URL`;
+- updated at: `2026-09-23T17:52:33Z`;
+- freshness verification: PASS;
+- secret/telemetry URL value retrieved: NO;
+- heartbeat emitted during verification: NO;
+- R2 write performed: NO;
+- Production database access performed: NO;
+- Production backup workflow dispatched: NO;
+- Production backup automation enabled: NO;
+- deployment triggered: NO;
+- repository mutation during verification: NONE.
+
+The earlier PowerShell metadata-verification attempts that failed because of
+array parsing and `gh --jq` quoting did not perform any hosted mutation and are
+not recovery failures.
+
+The Cronitor rotation prerequisite for the next Production backup attempt is
+accepted.
+## Production backup automation safety correction milestone
+
+The first final hosted Stage 4.2 readiness preflight discovered that the
+GitHub Production environment variable
+`PRODUCTION_BACKUP_AUTOMATION_ENABLED` was exactly `true`.
+
+The readiness preflight therefore stopped and did not authorize or dispatch a
+Production backup.
+
+A separate bounded safety correction then:
+
+- confirmed the activation variable was exactly `true`;
+- deleted only `PRODUCTION_BACKUP_AUTOMATION_ENABLED`;
+- verified the variable was absent afterward;
+- restored the intended fail-closed state:
+  absent activation variable => recurring automation disabled;
+- verified no active or conflicting Backup Production workflow run existed.
+
+Safety classification of the correction:
+
+- Production database access: NO;
+- R2 access/write: NO;
+- Cronitor heartbeat: NO;
+- Production backup workflow dispatch: NO;
+- deployment trigger: NO;
+- secret values accessed: NO;
+- local repository mutation: NONE.
+
+The unsafe recurring-automation state is resolved.
+
+A fresh final read-only hosted readiness preflight must pass before the first
+manual Production recovery-point attempt can receive explicit authorization.
+## Final hosted readiness preflight milestone
+
+The fresh final Stage 4.2 hosted readiness preflight passed from beginning to
+end after the Production automation safety correction.
+
+Accepted evidence:
+
+- candidate SHA:
+  `b6b10389312842954779f9fe721ce586b18d4259`;
+- candidate remains identical to current `main`;
+- exact-SHA CI run `35818717476`: success;
+- hosted workflow `.github/workflows/backup-production.yml`: active;
+- manual workflow-dispatch contract: PASS;
+- required Production secret names: PASS;
+- rotated `BACKUP_HEARTBEAT_URL` metadata: PASS;
+- required Production variable names: PASS;
+- `PRODUCTION_BACKUP_AUTOMATION_ENABLED`: ABSENT;
+- recurring Production backup automation: DISABLED;
+- active/conflicting Production backup runs: NONE;
+- `production-backup` concurrency: clear;
+- local repository mutation: NONE.
+
+The preflight did not access Production data, access or write R2, emit a
+Cronitor heartbeat, retrieve secret values, dispatch a backup workflow,
+mutate automation state, or trigger a deployment.
+
+The hosted readiness gate for one separately authorized manual Production
+recovery-point attempt is accepted.
+## First Production recovery-point dispatch milestone
+
+The first separately authorized Task 050 Stage 4.2 Production recovery-point
+attempt was dispatched exactly once.
+
+Dispatch evidence:
+
+- workflow: `.github/workflows/backup-production.yml`;
+- GitHub Actions run ID: `35904888145`;
+- candidate SHA:
+  `b6b10389312842954779f9fe721ce586b18d4259`;
+- confirmation: `BACKUP_PRODUCTION`;
+- retention class: `frequent`;
+- event: `workflow_dispatch`;
+- created at: `2026-09-23T18:47:22Z`;
+- initial captured status: `queued`;
+- dispatch CLI exit code: `0`;
+- dispatch attempts issued: EXACTLY ONE;
+- second dispatch authorized: NO;
+- blind retry authorized: NO;
+- recurring automation enabled: NO;
+- local repository mutation during dispatch: NONE.
+
+This milestone records only dispatch acceptance.
+
+It does NOT establish that a Production recovery point was successfully
+created or accepted.
+
+The exact run must be inspected before any further hosted mutation.
+## First Production recovery-point run execution milestone
+
+GitHub Actions run `35904888145` completed successfully on attempt `1`.
+
+Execution evidence:
+
+- workflow: `Backup Production`;
+- head SHA:
+  `b6b10389312842954779f9fe721ce586b18d4259`;
+- event: `workflow_dispatch`;
+- run conclusion: `success`;
+- activation-gate job conclusion: `success`;
+- Production recovery-point job ID: `107330024195`;
+- Production recovery-point job conclusion: `success`;
+- `Create, upload, read back, and verify recovery point`: `success`;
+- `Verify temporary recovery cleanup`: `success`.
+
+The successful job metadata establishes that the repository-defined backup path
+ran through recovery-point creation/verification and cleanup without a workflow
+failure.
+
+It does not yet independently establish the exact recovery-point evidence
+needed for Stage 4.2 acceptance because raw job logs have not yet been reviewed.
+
+No second dispatch, rerun, manual Production database action, manual R2 action,
+manual Cronitor action, automation mutation, or deployment occurred during the
+metadata inspection.
+## Production recovery-contract log review milestone
+
+The bounded read-only log review of Production backup job `107330024195`
+completed successfully.
+
+A structured runtime event was emitted:
+
+- event: `production_backup_verified`;
+- backup ID:
+  `20260923T184801Z-b6b103893128-1c8113bc7dcfd798`;
+- retention class: `frequent`;
+- object key:
+  `frequent/2026/09/23/20260923T184801Z-b6b103893128-1c8113bc7dcfd798.age`;
+- encrypted object bytes: `34729`.
+
+Additional review results:
+
+- backup execution: FOUND;
+- encrypted bundle: FOUND;
+- upload: FOUND;
+- readback: FOUND;
+- recovery-point verification: FOUND;
+- heartbeat: FOUND;
+- cleanup: FOUND;
+- classified backup failure: NOT FOUND;
+- `Verify temporary recovery cleanup`: SUCCESS.
+
+No workflow rerun, second dispatch, manual Production database action, manual R2
+action, manual Cronitor action, automation mutation, or local repository
+mutation occurred.
+
+The generic log-pattern ordering scan is retained only as a diagnostic hint,
+not as acceptance proof, because echoed source/command text can produce false
+first-occurrence matches.
+## Stage 4.2 Production recovery-point acceptance milestone
+
+Task 050 Stage 4.2 is accepted.
+
+One manually authorized real Production recovery point was created and verified
+by GitHub Actions run `35904888145`.
+
+Accepted artifact identity:
+
+- backup ID:
+  `20260923T184801Z-b6b103893128-1c8113bc7dcfd798`;
+- retention class: `frequent`;
+- R2 object:
+  `frequent/2026/09/23/20260923T184801Z-b6b103893128-1c8113bc7dcfd798.age`;
+- encrypted bytes: `34729`;
+- recovery-contract SHA:
+  `b6b10389312842954779f9fe721ce586b18d4259`.
+
+Acceptance evidence combines:
+
+- exact-SHA CI acceptance;
+- final hosted readiness preflight;
+- exactly one authorized manual Production dispatch;
+- successful attempt-1 workflow execution;
+- successful Production recovery-point job;
+- runtime `production_backup_verified` event;
+- exact-SHA source correlation;
+- immutable R2 upload contract;
+- remote bytes/SHA verification;
+- independent ciphertext download/readback;
+- downloaded bytes/SHA verification;
+- verified-before-success-heartbeat ordering;
+- successful temporary recovery cleanup;
+- no classified backup failure.
+
+The broad log first-occurrence scan that previously produced misleading
+ordering ordinals is NOT used as acceptance evidence.
+
+The authoritative ordering comes from the exact implementation plus the
+successful structured runtime event.
+
+No additional Production backup is required for this Stage 4.2 acceptance.
+
+Recurring automation remains disabled.
+
+The next recovery gate is Stage 5: a timed restore of the accepted Production
+recovery point into an explicitly isolated local target.
+## Stage 5 restore-readiness preflight milestone
+
+The Stage 5 read-only restore-readiness preflight completed.
+
+Result:
+
+`BLOCKED`
+
+Exactly four readiness blockers were identified:
+
+- `STAGE5_EXTERNAL_AGE_IDENTITY_PATH_NOT_CONFIGURED`
+- `STAGE5_PINNED_POSTGRES_IMAGE_NOT_LOCALLY_AVAILABLE`
+- `STAGE5_R2_RETRIEVAL_ORCHESTRATION_NOT_YET_DEFINED`
+- `STAGE5_RECOVERY_DOCUMENTATION_RECONCILIATION_REQUIRED`
+
+Positive readiness evidence:
+
+- Docker daemon available;
+- no existing local recovery targets;
+- Production expected project ref available;
+- reviewed R2 download primitive present;
+- accepted local restore entrypoint present;
+- loopback/non-loopback guards intact;
+- recovery tool/version contracts intact;
+- Stage 4.2 accepted Production recovery point unchanged;
+- Production backup automation still disabled.
+
+No recovery-side effects occurred during the preflight:
+
+- Production object download: NO;
+- Production object decryption: NO;
+- local recovery target creation: NO;
+- restore execution: NO;
+- Production database manual access: NO;
+- STAGING mutation: NO;
+- R2 access/write: NO;
+- Cronitor telemetry: NO;
+- backup dispatch/rerun: NO;
+- Docker image pull: NO;
+- automation mutation: NO;
+- deployment trigger: NO;
+- Stage 6 rerun: NO.
+
+The Stage 5 timing boundary remains:
+
+- start immediately before the first recovery-side action;
+- stop only after restore plus the required reconciliation/security verification;
+- cleanup is mandatory separate post-timing acceptance evidence;
+- RTO target remains <= 8 hours.
+## Stage 5 repository-blocker design inspection milestone
+
+The bounded read-only inspection of the two repository-owned Stage 5 blockers
+completed successfully.
+
+Result:
+
+`PASS`
+
+R2 retrieval findings:
+
+- `R2RecoveryObjectStore.download(key, destination)` already exists;
+- it uses a signed HTTPS GET against the reviewed private R2 target;
+- required provider configuration remains environment-only:
+  - `R2_ENDPOINT`
+  - `R2_BUCKET_NAME`
+  - `R2_ACCESS_KEY_ID`
+  - `R2_SECRET_ACCESS_KEY`
+- ciphertext output is created with mode `0600`;
+- no credential value needs to be printed or persisted by the operator entrypoint.
+
+Workspace findings:
+
+- `createRecoveryWorkDirectory()` already creates a generated operating-system
+  temporary `madrasio-recovery-*` directory;
+- the directory is hardened to mode `0700` where supported;
+- `cleanupRecoveryWorkDirectory()` refuses cleanup outside the generated
+  recovery-workspace namespace;
+- cleanup removes the entire generated workspace;
+- no new workspace or cleanup primitive is required.
+
+Entrypoint findings:
+
+- current recovery entrypoints cover Production backup, STAGING bundle creation,
+  local restore, and local target creation;
+- no Production ciphertext retrieval entrypoint exists;
+- the minimum implementation is a thin wrapper around the existing R2 download
+  primitive;
+- the wrapper must retrieve exactly one explicit accepted object;
+- expected encrypted byte count and expected SHA-256 must be explicit inputs;
+- downloaded ciphertext must be verified before restore use;
+- provider credentials must remain environment-only;
+- generated temporary workspace cleanup must occur on both success and failure;
+- focused retrieval tests and package-script wiring are required.
+
+Documentation findings:
+
+- obsolete Production/Stage 4.2 wording remains in
+  `docs/architecture/production-backup-and-recovery.md`;
+- four distinct source locations contain stale state;
+- the inspection produced five phrase matches because one source line matched two
+  stale-pattern checks;
+- the document must be updated to reflect the accepted real Production recovery
+  point and the current Stage 5 timed-restore gate.
+
+No implementation or provider-side effect occurred during this inspection.
+
+An implementation commit is required before the timed Stage 5 restore.
+## Stage 5 repository readiness implementation milestone
+
+The bounded Stage 5 repository implementation completed locally.
+
+Result:
+
+`IMPLEMENTED — VERIFICATION PENDING`
+
+Files introduced:
+
+- `apps/web/scripts/recovery/retrieve-production-recovery.ts`
+- `apps/web/__tests__/recovery/retrieve-production-recovery.test.ts`
+
+Files modified:
+
+- `apps/web/package.json`
+- `package.json`
+- `docs/architecture/production-backup-and-recovery.md`
+- `docs/PROJECT-STATE.md`
+
+Static implementation guards passed:
+
+- required retrieval anchors present;
+- no hard-coded R2 credential detected;
+- targeted obsolete recovery-architecture wording removed;
+- `git diff --check` passed.
+
+No runtime verification has yet been accepted for this implementation.
+
+No real Production recovery/provider operation occurred:
+
+- Production R2 access: NO;
+- Production object download: NO;
+- Production object decryption: NO;
+- local recovery-target creation: NO;
+- restore execution: NO;
+- Production database access: NO;
+- PostgreSQL image pull: NO;
+- Production age-identity access: NO;
+- Cronitor telemetry: NO;
+- backup dispatch/rerun: NO;
+- automation mutation: NO;
+- deployment trigger: NO;
+- commit: NO;
+- Stage 6 rerun: NO.
+## Stage 5 focused Production retrieval test milestone
+
+The focused local verification for
+`retrieve-production-recovery.test.ts` completed successfully.
+
+Result:
+
+`PASS — 5/5 TESTS`
+
+Verified behavior:
+
+- explicit accepted object identity is required before workspace creation;
+- remote metadata verification precedes download;
+- expected key, bytes, and SHA-256 are enforced;
+- downloaded ciphertext is independently verified;
+- metadata mismatch fails closed with cleanup;
+- downloaded-ciphertext mismatch fails closed with cleanup;
+- invalid successful-cleanup paths are rejected.
+
+The test process had no real R2 provider configuration.
+
+No Production/provider recovery side effect occurred.
+## Stage 5 repository typecheck failure milestone
+
+Repository typecheck result:
+
+`FAILED — BOUNDED TEST-TYPING DEFECT`
+
+Successful workspace checks before failure:
+
+- `database`: PASS;
+- `packages/config`: PASS;
+- `packages/shared`: PASS;
+- `packages/ui`: PASS.
+
+Failure:
+
+`apps/web/__tests__/recovery/retrieve-production-recovery.test.ts`
+
+TypeScript reported that the object returned by
+`environment(): NodeJS.ProcessEnv` does not contain required `NODE_ENV`.
+
+Root cause is bounded to the new test fixture.
+
+Required correction:
+
+- add `NODE_ENV: 'test'` to that helper;
+- do not weaken the `NodeJS.ProcessEnv` type;
+- do not change the Production retrieval implementation to resolve this test-only
+  typing failure.
+
+No provider/recovery side effect occurred.
+## Stage 5 repository typecheck pass milestone
+
+Repository typecheck retry result:
+
+`PASS`
+
+Workspace results:
+
+- `database`: PASS;
+- `packages/config`: PASS;
+- `packages/shared`: PASS;
+- `packages/ui`: PASS;
+- `apps/web`: PASS.
+
+The prior test-only `NODE_ENV` typing defect is resolved.
+
+Repository mutation from typecheck:
+
+`NONE`
+
+No provider/recovery side effect occurred.
+## Stage 5 repository verification completion milestone
+
+The repository-owned Stage 5 readiness implementation completed its full local
+verification cycle.
+
+Result:
+
+`PASS — REPOSITORY IMPLEMENTATION VERIFIED`
+
+Verification:
+
+- focused retrieval tests: 5/5 PASS;
+- repository typecheck: PASS;
+- broader recovery suite: 152 passed / 8 skipped;
+- final diff/static review: PASS;
+- `git diff --check`: PASS.
+
+Resolved repository blockers:
+
+- `STAGE5_R2_RETRIEVAL_ORCHESTRATION_NOT_YET_DEFINED`
+- `STAGE5_RECOVERY_DOCUMENTATION_RECONCILIATION_REQUIRED`
+
+Remaining operational blockers:
+
+- `STAGE5_EXTERNAL_AGE_IDENTITY_PATH_NOT_CONFIGURED`
+- `STAGE5_PINNED_POSTGRES_IMAGE_NOT_LOCALLY_AVAILABLE`
+
+No real Production/provider recovery action occurred during repository
+implementation or verification.
+
+The implementation remains uncommitted at this milestone so the canonical state
+can be included in the same substantive implementation/documentation commit.
 ## Exact next step
 
-1. Commit the already-staged verified Windows recovery pnpm launcher hardening.
+Task 050 Stage 5 — create one substantive repository commit containing the
+verified Production-retrieval implementation, tests, package wiring, recovery
+architecture reconciliation, and this canonical state update.
 
-2. Confirm the commit contains exactly:
-   - `apps/web/scripts/recovery/tools.ts`
-   - `apps/web/__tests__/recovery/recovery-contracts.test.ts`
-   - `docs/PROJECT-STATE.md`
+The commit must contain exactly the current six-file change surface:
 
-3. Push the substantive commit through the normal repository workflow.
+- `apps/web/scripts/recovery/retrieve-production-recovery.ts`
+- `apps/web/__tests__/recovery/retrieve-production-recovery.test.ts`
+- `apps/web/package.json`
+- `package.json`
+- `docs/architecture/production-backup-and-recovery.md`
+- `docs/PROJECT-STATE.md`
 
-4. Verify:
-   - CI result;
-   - automatically triggered STAGING deployment result;
-   - no manual deploy-hook trigger and no retry unless provider evidence requires
-     investigation.
+Do not create a documentation-only or state-only commit.
 
-5. Immediately synchronize this PROJECT-STATE.md with:
-   - the substantive launcher commit SHA;
-   - CI status;
-   - STAGING deployment status;
-   - the next Task 050 closeout step.
+Before committing, verify:
 
-Do not rerun the real Stage 6 restore, recreate hosted STAGING fixtures, or
-manually trigger a STAGING deployment hook.
+- HEAD is still the accepted pre-implementation SHA;
+- the working tree contains exactly those six files;
+- `git diff --check` passes.
+
+Do NOT yet:
+
+- access real Production R2;
+- download the accepted Production recovery object;
+- configure/read the Production age identity;
+- pull the PostgreSQL image;
+- create a local recovery target;
+- start the timed Production restore;
+- execute the restore;
+- access Production database data;
+- emit Cronitor telemetry;
+- dispatch/rerun a Production backup;
+- enable recurring Production backup automation;
+- trigger a deployment;
+- rerun Stage 6.
+
+Production customer onboarding remains blocked.
 ## Important operations that must NOT be repeated
 
 - DO NOT rerun the real Stage 6 restore. It already succeeded.
