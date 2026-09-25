@@ -8,103 +8,108 @@ Task 050 — Production Backup & Recovery
 
 ## Current Stage
 
-Stage 5 — Production-to-isolated-local restore remains BLOCKED because the
-matching external private age identity for the historical accepted Production
-recovery point is not currently available.
+Stage 5 — the repository-owned Production age identity custody gate at
+`670a6c502a7ea1442b238c7404752548c8822e9e` remains accepted by exact-SHA CI
+and STAGING, but its original two-plaintext-copy custody policy is now being
+superseded by the approved ADR-020 encrypted off-device escrow amendment.
 
-Substantive repository commit:
+Accepted existing release evidence:
 
-`81bf394ccd761e0c5499174e73b04e3f34a74e1c`
+- CI run `36042621930`: completed / success;
+- Deploy STAGING run `36042621963`: completed / success;
+- both runs use exact SHA
+  `670a6c502a7ea1442b238c7404752548c8822e9e`;
+- both were automatically triggered by `push`.
 
-Resolved prerequisites:
+Approved replacement custody architecture:
 
-- `STAGE5_R2_RETRIEVAL_ORCHESTRATION_NOT_YET_DEFINED` — RESOLVED;
-- `STAGE5_RECOVERY_DOCUMENTATION_RECONCILIATION_REQUIRED` — RESOLVED;
-- `STAGE5_PINNED_POSTGRES_IMAGE_NOT_LOCALLY_AVAILABLE` — RESOLVED.
+- one plaintext primary Production age identity outside the repository;
+- one passphrase-encrypted escrow copy of that same identity;
+- encrypted escrow stored in independently controlled off-device storage;
+- escrow passphrase kept separately from the ciphertext;
+- passphrase operations remain operator-interactive;
+- repository automation consumes only non-secret artifact-bound verification
+  evidence;
+- off-device retrieval/hash verification is required before custody acceptance.
 
-Historical recovery-point blocker:
+The earlier second-physical-device blocker remains historical evidence of why
+the original custody design could not be executed on this workstation. It is no
+longer the approved remediation requirement.
 
-- `STAGE5_EXTERNAL_AGE_IDENTITY_PATH_NOT_CONFIGURED`
+The amended escrow implementation is NOT yet complete or accepted.
 
-A deliberate replacement-recovery architecture is now documented locally.
+No replacement Production identity has been generated.
 
-It requires:
+No escrow artifact or passphrase has been created.
 
-- preservation of the historical ciphertext;
-- no claim that a replacement identity can decrypt it;
-- a repository-owned Production identity-custody readiness gate;
-- two independently stored operator-controlled custody copies;
-- independent recipient derivation from both copies;
-- only the matching public recipient in provider configuration;
-- recurring backup automation remaining disabled;
-- separate authorization for any replacement Production backup;
-- a timed isolated-local restore before recovery acceptance.
+No Production public recipient has been changed.
 
-No replacement identity has been generated.
+No replacement Production recovery point has been created.
 
-No Production recipient has been changed.
+Recurring Production backup automation remains disabled.
 
-No new Production recovery point has been created.
-
-The timed Production restore has NOT started.
+The timed Production-to-isolated-local restore has NOT started.
 
 Production RPO and RTO remain unproven.
 
 Production customer onboarding remains blocked.
 Current closeout work:
 1. preserve the historical accepted Production recovery point unchanged;
-2. preserve its decryption-readiness classification as BLOCKED;
-3. preserve all accepted Stage 5 implementation and verification evidence;
-4. keep recurring Production backup automation disabled;
-5. implement a repository-owned Production age identity-custody readiness gate;
-6. verify that gate synthetically before any real Production identity generation;
-7. only after that implementation is accepted may a new identity be generated;
-8. require two independently stored custody copies deriving the same recipient;
-9. require separate architecture/state authorization before changing the public
-   Production recipient or creating a replacement recovery point;
-10. keep Production customer onboarding blocked.
+2. preserve its historical decryption-readiness classification as BLOCKED;
+3. preserve custody-gate release evidence for
+   `670a6c502a7ea1442b238c7404752548c8822e9e`;
+4. preserve CI run `36042621930` and Deploy STAGING run `36042621963`;
+5. keep recurring Production backup automation disabled;
+6. implement the approved encrypted off-device escrow architecture;
+7. verify the implementation synthetically before any real Production identity,
+   passphrase, escrow artifact, cloud upload, or provider mutation;
+8. commit the implementation, ADR-020 amendment, PRD, architecture, tests, and
+   PROJECT-STATE together as one substantive change;
+9. require exact-SHA CI and accepted STAGING verification for that future
+   substantive commit;
+10. only afterward authorize a separate real Production custody ceremony.
 ## Current branch
 
 main
 
 ## Latest relevant commit
 
-81bf394ccd761e0c5499174e73b04e3f34a74e1c
+670a6c502a7ea1442b238c7404752548c8822e9e
 
 Commit:
 
-feat: add verified production recovery retrieval
+`feat: add production age identity custody gate`
 
-Repository status:
+Repository status at remote acceptance:
 
 - local `HEAD`:
-  `81bf394ccd761e0c5499174e73b04e3f34a74e1c`;
+  `670a6c502a7ea1442b238c7404752548c8822e9e`;
 - `origin/main`:
-  `81bf394ccd761e0c5499174e73b04e3f34a74e1c`;
+  `670a6c502a7ea1442b238c7404752548c8822e9e`;
+- remote `main`:
+  `670a6c502a7ea1442b238c7404752548c8822e9e`;
 - substantive commit push: PASS;
-- exact remote SHA verification: PASS;
-- only local dirty file:
-  `docs/PROJECT-STATE.md`;
-- state-only commit: NOT CREATED.
+- exact remote SHA verification: PASS.
 
 Remote verification:
 
-- CI run `35949518875`: completed / success;
+- CI run `36042621930`: completed / success;
 - CI workflow: `CI`;
 - CI event: `push`;
 - CI exact head SHA:
-  `81bf394ccd761e0c5499174e73b04e3f34a74e1c`;
-- Deploy STAGING run `35949518775`: completed / success;
+  `670a6c502a7ea1442b238c7404752548c8822e9e`;
+- Deploy STAGING run `36042621963`: completed / success;
 - deployment workflow: `Deploy STAGING`;
 - deployment event: `push`;
 - deployment exact head SHA:
-  `81bf394ccd761e0c5499174e73b04e3f34a74e1c`;
+  `670a6c502a7ea1442b238c7404752548c8822e9e`;
 - automatic push-trigger evidence: PASS;
+- manual workflow dispatch: NOT USED;
 - manual deployment trigger: NOT USED.
 
 Historical verification for
-`b6b10389312842954779f9fe721ce586b18d4259` remains valid for the earlier
-Windows recovery pnpm launcher milestone.
+`81bf394ccd761e0c5499174e73b04e3f34a74e1c` remains valid for the earlier
+Production recovery-retrieval implementation milestone.
 ## Completed work
 
 ### Task 050 recovery implementation
@@ -1193,37 +1198,264 @@ Recurring Production backup automation remains disabled.
 Production RPO and RTO remain unproven.
 
 Production customer onboarding remains blocked.
+## Stage 5 Production age custody gate repository/release acceptance milestone
+
+Result:
+
+`PASS — CUSTODY GATE REPOSITORY/RELEASE ACCEPTED; REAL PRODUCTION CUSTODY NOT YET ESTABLISHED`
+
+Accepted repository SHA:
+
+`670a6c502a7ea1442b238c7404752548c8822e9e`
+
+Evidence:
+
+- substantive custody-gate commit: PASS;
+- exact seven-file commit surface: PASS;
+- push to `main`: PASS;
+- local / `origin/main` / remote `main` exact SHA: PASS;
+- CI run `36042621930`: completed / success;
+- CI workflow/event: `CI` / `push`;
+- CI exact head SHA: PASS;
+- Deploy STAGING run `36042621963`: completed / success;
+- deployment workflow/event: `Deploy STAGING` / `push`;
+- deployment exact head SHA: PASS;
+- automatic push-trigger evidence: PASS;
+- manual workflow dispatch: NOT USED;
+- manual deployment trigger: NOT USED.
+
+This milestone accepts the repository-owned custody gate only.
+
+It does NOT establish real Production private-key custody.
+
+It does NOT make the historical accepted ciphertext decryptable.
+
+It does NOT authorize a Production recipient change.
+
+It does NOT authorize a replacement Production recovery point.
+
+It does NOT authorize recurring Production backup automation.
+
+It does NOT prove Production RPO or RTO.
+
+Production customer onboarding remains blocked.
+## Stage 5 Production age custody storage topology milestone
+
+Result:
+
+`BLOCKED — SECOND INDEPENDENT STORAGE DEVICE REQUIRED`
+
+Read-only topology inspection evidence:
+
+- repository authority: PASS;
+- custody-gate release acceptance remains valid;
+- reviewed age 1.3.1 tooling remains valid;
+- recurring Production backup automation remains disabled;
+- eligible local/removable filesystem volumes discovered: 1;
+- available eligible volume: `C:`;
+- no second independent storage volume was available;
+- real Production age identity generation therefore remains unauthorized.
+
+ADR-020 requires two operator-controlled custody copies with independent storage.
+
+A second directory on `C:` does not satisfy this blocker.
+
+A second partition on the same underlying physical disk must not be treated as
+an independent custody failure domain.
+
+The preferred secondary custody destination is a separate operator-controlled
+physical device such as an external USB flash drive, external SSD, or separate
+physical internal disk.
+
+No custody directory was created.
+
+No Production identity was generated.
+
+No private identity material was written.
+
+No Production public recipient was changed.
+
+No replacement Production recovery point was created.
+
+Production customer onboarding remains blocked.
+## Stage 5 encrypted off-device escrow architecture amendment milestone
+
+Result:
+
+`APPROVED — HARDWARE-ONLY SECONDARY CUSTODY SUPERSEDED BY ENCRYPTED OFF-DEVICE ESCROW; IMPLEMENTATION NOT YET COMPLETE`
+
+Decision date:
+
+`2026-09-25`
+
+Reason:
+
+The reviewed workstation exposes only one eligible filesystem volume. Requiring
+purchase of dedicated removable hardware is not necessary to achieve independent
+recoverability.
+
+Approved custody model:
+
+- primary: one plaintext Production age identity outside the repository;
+- secondary: passphrase-encrypted age escrow containing the same identity;
+- secondary ciphertext: independently stored off-device;
+- passphrase: independently held and never stored beside the ciphertext;
+- passphrase interaction: terminal/operator only;
+- automated readiness: non-secret artifact-bound evidence only.
+
+Tool-runner audit:
+
+- current `CommandRunner` has no secret/input channel;
+- current `runCommand` closes stdin immediately;
+- no Production passphrase transport will be added through command arguments,
+  environment variables, logs, or chat;
+- reviewed age passphrase interaction remains an explicit operator ceremony.
+
+The earlier:
+
+`BLOCKED — SECOND INDEPENDENT STORAGE DEVICE REQUIRED`
+
+milestone remains preserved as historical evidence for the superseded
+two-plaintext-copy design.
+
+It no longer means a USB flash drive, external SSD, or second physical disk must
+be purchased.
+
+This architecture amendment alone does NOT authorize:
+
+- Production identity generation;
+- Production escrow creation;
+- passphrase creation or entry;
+- cloud/off-device upload;
+- Production recipient mutation;
+- replacement Production backup creation;
+- recurring Production backup activation;
+- Production R2 access;
+- timed Production restore.
+
+Production customer onboarding remains blocked.
+## Stage 5 encrypted off-device escrow synthetic implementation milestone
+
+Result:
+
+`PASS — ENCRYPTED OFF-DEVICE ESCROW IMPLEMENTATION SYNTHETICALLY VERIFIED LOCALLY; NOT YET COMMITTED OR RELEASE-ACCEPTED`
+
+Repository base:
+
+`670a6c502a7ea1442b238c7404752548c8822e9e`
+
+Substantive working-tree surface:
+
+- `PRD.md`;
+- `apps/web/__tests__/recovery/production-age-custody.test.ts`;
+- `apps/web/__tests__/recovery/production-age-escrow.test.ts`;
+- `apps/web/package.json`;
+- `apps/web/scripts/recovery/production-age-custody.ts`;
+- `apps/web/scripts/recovery/production-age-escrow.ts`;
+- `apps/web/scripts/recovery/run-production-age-escrow.ts`;
+- `docs/PROJECT-STATE.md`;
+- `docs/adr/ADR-020-production-age-identity-custody-and-recovery-point-supersession.md`;
+- `docs/architecture/production-backup-and-recovery.md`.
+
+Implemented custody model:
+
+- one plaintext primary Production age identity outside the repository;
+- one passphrase-encrypted escrow artifact for the same identity;
+- operator-interactive age passphrase handling through inherited terminal I/O;
+- no passphrase transport through command arguments, environment variables,
+  repository configuration, logs, or chat;
+- explicit off-device retrieval confirmation;
+- SHA-256 binding of the encrypted escrow artifact;
+- non-secret escrow verification receipt;
+- receipt binding to reviewed age runtime, expected Production recipient,
+  ciphertext SHA-256, recovery proof, and off-device retrieval evidence;
+- non-interactive fail-closed custody gate;
+- dedicated operator command surface for later escrow creation/verification.
+
+Local verification:
+
+- focused encrypted escrow suites: PASS;
+- focused tests: 17 / 17 PASS;
+- web TypeScript check: PASS;
+- broader recovery regression: PASS;
+- targeted encrypted escrow ESLint: PASS;
+- web TypeScript regression: PASS;
+- `git diff --check`: PASS.
+
+The implementation remains entirely synthetic.
+
+No real Production identity was generated.
+
+No real Production escrow artifact was created.
+
+No Production passphrase was requested or entered.
+
+No interactive real Production custody ceremony was executed.
+
+No cloud or off-device storage was accessed.
+
+No Production public recipient was changed.
+
+No Production R2 or Production database access occurred.
+
+No Production backup was dispatched or rerun.
+
+Recurring Production backup automation remains disabled.
+
+No timed Production restore started.
+
+Historical Stage 6 was not rerun.
+
+This implementation is not yet committed and has not yet received exact-SHA CI
+or STAGING release acceptance.
+
+Production customer onboarding remains blocked.
 ## Exact next step
 
-Task 050 Stage 5 remains blocked from a timed Production restore until a new
-operator-controlled Production age identity custody set is deliberately
-established under ADR-020.
+Task 050 Stage 5 — perform a final pre-commit review of the exact ten-file
+encrypted off-device escrow change.
 
-The next action is NOT yet key generation.
+The final review must verify:
 
-Before any real identity generation or provider mutation:
+1. repository base remains
+   `670a6c502a7ea1442b238c7404752548c8822e9e`;
+2. the working tree contains exactly the ten approved substantive files;
+3. ADR-020, PRD, architecture, implementation, tests, package command, and
+   PROJECT-STATE remain mutually consistent;
+4. the old two-plaintext-copy implementation contract is absent from active
+   source;
+5. the earlier second-physical-device blocker remains preserved only as
+   historical evidence;
+6. no real Production private age identity appears in the change;
+7. no Production escrow passphrase transport exists through command arguments,
+   environment variables, repository configuration, logs, or chat;
+8. `git diff --check` remains PASS;
+9. focused escrow tests, broader recovery tests, targeted lint, and typecheck
+   evidence remain accepted.
 
-1. review and commit the custody-gate implementation, ADR-020, PRD, architecture,
-   and PROJECT-STATE changes together as one substantive repository change;
-2. push that exact commit;
-3. require exact-SHA CI success;
-4. require accepted STAGING deployment/verification for that exact commit if the
-   normal repository release contract requires it;
-5. only after the committed implementation is accepted may a separate operator
-   checkpoint authorize the real two-copy Production identity custody ceremony.
+If that final review passes, create one substantive commit containing the entire
+ten-file change. Do not create separate documentation, state, or implementation
+commits.
+
+After the substantive commit, push it to `main` and require automatic exact-SHA
+CI and Deploy STAGING acceptance before any real Production custody ceremony is
+authorized.
 
 Do NOT yet:
 
 - generate a real Production age identity;
+- create a real Production escrow;
+- request or enter a Production escrow passphrase;
+- upload an escrow artifact to off-device storage;
 - change `BACKUP_AGE_RECIPIENT`;
-- create or dispatch a replacement Production backup;
+- dispatch a replacement Production backup;
 - enable recurring Production backup automation;
-- access or download Production R2 recovery data;
-- create a local restore target for Production;
-- start the timed Production restore;
+- access Production R2;
 - access Production database data;
+- create a Production restore target;
+- start the timed Production restore;
 - emit Cronitor telemetry;
-- manually deploy;
+- manually trigger CI or STAGING deployment;
 - rerun historical Stage 6.
 
 Production customer onboarding remains blocked.

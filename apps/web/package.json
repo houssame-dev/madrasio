@@ -34,6 +34,7 @@
     "recovery:bundle:staging": "tsx scripts/recovery/create-staging-recovery-bundle.ts",
     "recovery:restore:local": "tsx scripts/recovery/restore-local.ts",
     "recovery:target:local": "tsx scripts/recovery/local-target.ts",
+    "recovery:custody:production": "tsx scripts/recovery/run-production-age-escrow.ts",
     "test:recovery": "vitest run __tests__/recovery"
   },
   "dependencies": {

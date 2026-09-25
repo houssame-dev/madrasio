@@ -80,64 +80,137 @@ The original accepted Production recovery point remains immutable historical
 evidence of successful Production backup creation, encryption, upload, remote
 verification, independent readback, monitoring, and cleanup.
 
-Its current decryption readiness is a separate concern. The matching private age
-identity is not currently available on the reviewed recovery workstation, so the
+Its current decryption readiness is separate. The matching historical private
+age identity is not currently available on the reviewed workstation, so the
 historical recovery point is not currently an authorized Stage 5 restore source.
-This does not prove that an operator-controlled offline copy cannot exist
+This does not prove that an operator-controlled historical copy cannot exist
 elsewhere.
 
-A newly generated age identity cannot decrypt ciphertext encrypted to the
-historical recipient. The historical object must not be rewritten, relabeled,
-re-encrypted in place, or represented as decryptable by a replacement identity.
+A newly generated identity cannot decrypt ciphertext encrypted to the historical
+recipient. The historical object must not be rewritten, relabeled, re-encrypted
+in place, or represented as decryptable by a replacement identity.
 
-Before a replacement Production recovery point may be authorized, Production
-age identity custody requires:
+### Replacement Production identity custody model
 
-1. reviewed age 1.3.1 tooling;
-2. generation on an operator-controlled workstation outside the repository;
-3. no private identity material in the repository, CI, Vercel, GitHub backup
-   secrets, object storage, application configuration, logs, or chat;
-4. two operator-controlled custody copies:
-   - one primary recovery copy;
-   - one independently stored secondary recovery copy;
-5. both copies must be regular files outside the repository;
-6. `age-keygen -y` must independently derive the same public recipient from both;
-7. only the public recipient may be configured as Production
-   `BACKUP_AGE_RECIPIENT`;
-8. private identity paths must never be committed or stored in provider
-   configuration;
-9. readiness evidence may record only non-secret status such as age version,
-   copy count, outside-repository checks, and recipient-match results;
-10. loss of either custody copy reopens the identity-custody gate.
+Replacement custody uses two independently recoverable forms of the same
+identity:
 
-Replacement recovery-point procedure:
+1. primary plaintext identity:
+   - operator-controlled;
+   - regular file;
+   - outside the repository;
+   - never uploaded to CI, Vercel, GitHub secrets, R2/object storage, application
+     configuration, logs, chat, or the escrow storage provider;
+
+2. secondary encrypted escrow:
+   - passphrase-encrypted age file containing the exact primary identity;
+   - created with reviewed age 1.3.1;
+   - stored in independently controlled off-device storage;
+   - safe for the storage provider to hold only because it is ciphertext;
+   - useless for recovery if its independently held passphrase is lost.
+
+Dedicated removable hardware is not mandatory.
+
+Two plaintext copies on the same workstation are not accepted as independent
+custody.
+
+### Passphrase boundary
+
+Passphrase-protected age operations are operator-interactive.
+
+The Production escrow passphrase must not be:
+
+- a command-line argument;
+- an environment variable;
+- stored in repository files;
+- stored in CI;
+- stored in Vercel or other application/provider configuration;
+- stored in R2;
+- printed to logs;
+- entered into chat;
+- stored beside the encrypted escrow artifact.
+
+The passphrase must be kept in a separate operator-controlled custody channel.
+
+### Repository-owned verification model
+
+The custody implementation is split deliberately into:
+
+1. an operator-interactive escrow ceremony; and
+2. a non-interactive repository custody gate.
+
+The interactive ceremony is responsible for:
+
+- creating the encrypted escrow from the exact primary identity;
+- validating recovery using the reviewed age runtime;
+- performing a non-secret cryptographic round-trip probe;
+- proving that the escrow recovery path corresponds to the primary identity;
+- emitting only non-secret verification evidence.
+
+The non-interactive gate is responsible for:
+
+- primary identity path validation;
+- repository-containment rejection;
+- regular-file validation;
+- reviewed age runtime/version validation;
+- expected public-recipient validation;
+- encrypted escrow artifact validation;
+- escrow ciphertext SHA-256 validation;
+- verification-receipt validation;
+- receipt/artifact/recipient/version binding;
+- fail-closed handling for stale or mismatched evidence.
+
+The repository must never need the Production escrow passphrase in order to
+perform its non-interactive readiness checks.
+
+### Off-device escrow acceptance
+
+Creating an encrypted escrow file locally does not establish secondary custody.
+
+Before replacement recovery readiness can be accepted:
+
+1. the encrypted artifact is created locally;
+2. its SHA-256 is recorded as non-secret evidence;
+3. it is stored in an independently controlled off-device provider;
+4. an independently retrieved copy is obtained;
+5. the retrieved ciphertext SHA-256 exactly matches the verified artifact;
+6. the interactive recovery proof succeeds against that retrieved artifact;
+7. the non-interactive custody gate accepts the resulting artifact-bound
+   verification evidence.
+
+The provider stores only encrypted ciphertext.
+
+### Replacement recovery-point procedure
 
 1. preserve the historical ciphertext unchanged;
 2. retain its restore-readiness status as BLOCKED while its original identity is
    unavailable;
-3. implement and verify a repository-owned identity-custody readiness gate;
-4. establish the verified two-copy custody contract;
-5. update only the public Production recipient after both copies independently
-   derive the same recipient;
-6. keep recurring Production backup automation disabled;
-7. require separate deliberate authorization for a replacement Production backup;
-8. retain the existing exact-SHA CI and manual Production backup authorization
-   requirements;
-9. verify immutable upload, HEAD metadata, independent GET readback, bytes, and
-   SHA-256;
-10. perform a timed Production-to-isolated-local restore;
-11. accept Production RTO only after all restore reconciliation, Auth, migration,
+3. implement and verify the amended encrypted-escrow custody architecture;
+4. establish the primary plaintext identity;
+5. create the passphrase-encrypted escrow;
+6. establish separate passphrase custody;
+7. establish off-device ciphertext custody;
+8. perform off-device retrieval/hash verification;
+9. perform the interactive escrow recovery proof;
+10. require the repository custody gate to accept the resulting evidence;
+11. update only the public Production recipient;
+12. keep recurring Production backup automation disabled;
+13. require separate deliberate authorization for a replacement Production
+    backup;
+14. retain exact-SHA CI and Production backup authorization requirements;
+15. verify immutable upload, HEAD metadata, independent GET readback, bytes, and
+    SHA-256;
+16. perform a timed Production-to-isolated-local restore;
+17. accept Production RTO only after all restore reconciliation, Auth, migration,
     relationship, security, and cleanup requirements pass.
 
-A replacement recovery point does not erase or retroactively change the
-historical recovery point. They remain separately identifiable by backup ID,
-object key, repository SHA, recipient fingerprint, ciphertext bytes, and
-ciphertext SHA-256.
+The historical and replacement recovery points remain separately identifiable
+by backup ID, object key, repository SHA, recipient fingerprint, ciphertext
+bytes, and ciphertext SHA-256.
 
 Production customer onboarding remains blocked until a decryptable Production
 recovery point completes the required timed isolated-local restore and the
-remaining recovery gates are accepted.
-## Isolated restore
+remaining recovery gates are accepted.## Isolated restore
 
 `pnpm recovery:restore:local` refuses Production, STAGING, Supabase hosts, and every non-loopback database. It requires all of:
 

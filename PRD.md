@@ -1188,12 +1188,24 @@ For Production recovery:
 
 - historical accepted ciphertext must never be rewritten or represented as
   decryptable by a replacement identity;
-- private Production age identity material must remain outside the repository,
-  CI, hosted provider configuration, object storage, application configuration,
-  logs, and chat;
-- two operator-controlled external custody copies are required before a
-  replacement public recipient can be accepted;
-- both copies must independently derive the same expected public recipient;
+- the replacement plaintext Production age identity must remain outside the
+  repository, CI, hosted provider configuration, object storage, application
+  configuration, logs, and chat;
+- primary custody requires one operator-controlled plaintext identity outside
+  the repository;
+- secondary custody uses a passphrase-encrypted age escrow artifact containing
+  the exact primary identity;
+- only the encrypted escrow artifact may be stored in independently controlled
+  off-device storage;
+- the escrow passphrase must remain separate from the escrow artifact and must
+  never be supplied through command arguments, environment variables, CI,
+  provider configuration, logs, or chat;
+- escrow creation and recovery verification are operator-interactive operations;
+- accepted escrow evidence must be cryptographically bound to the encrypted
+  artifact SHA-256, expected Production public recipient, and reviewed age
+  runtime version;
+- the off-device escrow must be retrieved and verified byte/hash-equivalent
+  before Production custody is accepted;
 - only the public recipient may be configured for Production backup creation;
 - changing the public recipient or creating a replacement Production recovery
   point requires separate deliberate authorization;
@@ -1203,8 +1215,10 @@ For Production recovery:
   recovery point completes the required timed isolated-local restore and the
   remaining recovery gates are accepted.
 
-See ADR-020 and `docs/architecture/production-backup-and-recovery.md`.
+Dedicated removable hardware is not mandatory when independently controlled
+passphrase-encrypted off-device escrow satisfies this custody contract.
 
+See ADR-020 and `docs/architecture/production-backup-and-recovery.md`.
 ---
 
 # 56. Definition of Done
