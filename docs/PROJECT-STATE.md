@@ -1,13 +1,13 @@
-# Madrasio — Current Project State
+# Madrasio ΓÇö Current Project State
 
 Last updated: 2026-09-27
 ## Current Task
 
-Task 050 — Production Backup & Recovery
+Task 050 ΓÇö Production Backup & Recovery
 
 ## Current Stage
 
-Task 050 Production RTO remains accepted and complete.
+Task 050 Production RTO remains accepted.
 
 Accepted Production RTO:
 
@@ -15,38 +15,35 @@ Accepted Production RTO:
 
 Production RPO remains NOT ACCEPTED.
 
-The two-hour Production backup cadence remediation is now implemented and
-verified LOCALLY.
+The Production two-hour backup cadence remediation is now:
 
-Frequent cron:
+- committed;
+- pushed to `main`;
+- exact-SHA CI verified;
+- hosted-workflow verified.
+
+Accepted remediation SHA:
+
+`037a2b646f71753f65d865b5e4249bd3d2939396`
+
+Hosted frequent cron:
 
 `23 1,3,5,7,9,11,13,15,17,19,21,23 * * *`
 
-Weekly cron remains:
+Hosted weekly cron remains:
 
 `47 2 * * 0`
 
-ADR-021 exists locally as a new untracked file until the remediation commit.
+The separate Deploy STAGING run reported a Deploy Hook failure, but provider
+evidence proves the stable STAGING origin is already serving the exact
+remediation SHA.
 
-Local validation passed:
+No Deploy Hook retry is authorized or required.
 
-- focused workflow contract:
-  27/27;
-- recovery regression:
-  169 passed / 8 intentionally skipped;
-- web TypeScript:
-  PASS;
-- diff check:
-  PASS.
+The remaining Production RPO gate is natural recurring-cadence evidence.
 
-The reviewed pre-commit surface is exactly six files:
-
-- five remediation implementation files;
-- `docs/PROJECT-STATE.md`.
-
-No commit or push has occurred yet.
-
-No hosted workflow/provider change from this remediation is active yet.
+At least two post-remediation naturally scheduled verified Production recovery
+points are required to establish at least one real operating interval.
 
 Production customer onboarding remains blocked.
 
@@ -83,9 +80,9 @@ Task 050 recovery stage status:
 - Stage 1: complete.
 - Stage 2: complete.
 - Stage 3: complete.
-- Stage 4.1: complete — repository implementation and provider infrastructure.
-- Stage 4.2: pending — no accepted real Production recovery point exists yet.
-- Stage 5: pending — no accepted timed Production-to-isolated-local restore has been completed.
+- Stage 4.1: complete ΓÇö repository implementation and provider infrastructure.
+- Stage 4.2: pending ΓÇö no accepted real Production recovery point exists yet.
+- Stage 5: pending ΓÇö no accepted timed Production-to-isolated-local restore has been completed.
 - Stage 6: complete through the documented STAGING/local reconstructed acceptance evidence.
 
 Production customer onboarding remains blocked until the remaining Production
@@ -898,7 +895,7 @@ The bounded Stage 5 repository implementation completed locally.
 
 Result:
 
-`IMPLEMENTED — VERIFICATION PENDING`
+`IMPLEMENTED ΓÇö VERIFICATION PENDING`
 
 Files introduced:
 
@@ -944,7 +941,7 @@ The focused local verification for
 
 Result:
 
-`PASS — 5/5 TESTS`
+`PASS ΓÇö 5/5 TESTS`
 
 Verified behavior:
 
@@ -963,7 +960,7 @@ No Production/provider recovery side effect occurred.
 
 Repository typecheck result:
 
-`FAILED — BOUNDED TEST-TYPING DEFECT`
+`FAILED ΓÇö BOUNDED TEST-TYPING DEFECT`
 
 Successful workspace checks before failure:
 
@@ -1017,7 +1014,7 @@ verification cycle.
 
 Result:
 
-`PASS — REPOSITORY IMPLEMENTATION VERIFIED`
+`PASS ΓÇö REPOSITORY IMPLEMENTATION VERIFIED`
 
 Verification:
 
@@ -1046,7 +1043,7 @@ can be included in the same substantive implementation/documentation commit.
 
 Result:
 
-`PASS — EXACT PINNED POSTGRESQL 17.6 IMAGE AVAILABLE`
+`PASS ΓÇö EXACT PINNED POSTGRESQL 17.6 IMAGE AVAILABLE`
 
 Reviewed immutable image:
 
@@ -1067,7 +1064,7 @@ Evidence:
 
 Blocker status:
 
-`STAGE5_PINNED_POSTGRES_IMAGE_NOT_LOCALLY_AVAILABLE` — RESOLVED
+`STAGE5_PINNED_POSTGRES_IMAGE_NOT_LOCALLY_AVAILABLE` ΓÇö RESOLVED
 
 Remaining operational blocker:
 
@@ -1076,7 +1073,7 @@ Remaining operational blocker:
 
 Result:
 
-`BLOCKED — MATCHING EXTERNAL PRODUCTION AGE IDENTITY NOT CURRENTLY AVAILABLE`
+`BLOCKED ΓÇö MATCHING EXTERNAL PRODUCTION AGE IDENTITY NOT CURRENTLY AVAILABLE`
 
 Evidence:
 
@@ -1109,7 +1106,7 @@ an operator-controlled offline copy may still exist elsewhere.
 
 Result:
 
-`IMPLEMENTED AND SYNTHETICALLY VERIFIED — REAL PRODUCTION CUSTODY NOT YET ESTABLISHED`
+`IMPLEMENTED AND SYNTHETICALLY VERIFIED ΓÇö REAL PRODUCTION CUSTODY NOT YET ESTABLISHED`
 
 ADR-020 now records the accepted Production age identity custody and
 recovery-point supersession architecture.
@@ -1142,7 +1139,7 @@ Documentation authority:
 
 - ADR-020: Accepted;
 - ADR index: updated;
-- PRD §55: Production recovery custody rules added;
+- PRD ┬º55: Production recovery custody rules added;
 - recovery architecture: ADR-020 cross-reference added.
 
 No real Production identity has been generated.
@@ -1166,7 +1163,7 @@ Production customer onboarding remains blocked.
 
 Result:
 
-`PASS — CUSTODY GATE REPOSITORY/RELEASE ACCEPTED; REAL PRODUCTION CUSTODY NOT YET ESTABLISHED`
+`PASS ΓÇö CUSTODY GATE REPOSITORY/RELEASE ACCEPTED; REAL PRODUCTION CUSTODY NOT YET ESTABLISHED`
 
 Accepted repository SHA:
 
@@ -1207,7 +1204,7 @@ Production customer onboarding remains blocked.
 
 Result:
 
-`BLOCKED — SECOND INDEPENDENT STORAGE DEVICE REQUIRED`
+`BLOCKED ΓÇö SECOND INDEPENDENT STORAGE DEVICE REQUIRED`
 
 Read-only topology inspection evidence:
 
@@ -1246,7 +1243,7 @@ Production customer onboarding remains blocked.
 
 Result:
 
-`APPROVED — HARDWARE-ONLY SECONDARY CUSTODY SUPERSEDED BY ENCRYPTED OFF-DEVICE ESCROW; IMPLEMENTATION NOT YET COMPLETE`
+`APPROVED ΓÇö HARDWARE-ONLY SECONDARY CUSTODY SUPERSEDED BY ENCRYPTED OFF-DEVICE ESCROW; IMPLEMENTATION NOT YET COMPLETE`
 
 Decision date:
 
@@ -1277,7 +1274,7 @@ Tool-runner audit:
 
 The earlier:
 
-`BLOCKED — SECOND INDEPENDENT STORAGE DEVICE REQUIRED`
+`BLOCKED ΓÇö SECOND INDEPENDENT STORAGE DEVICE REQUIRED`
 
 milestone remains preserved as historical evidence for the superseded
 two-plaintext-copy design.
@@ -1302,7 +1299,7 @@ Production customer onboarding remains blocked.
 
 Result:
 
-`PASS — ENCRYPTED OFF-DEVICE ESCROW IMPLEMENTATION SYNTHETICALLY VERIFIED LOCALLY; NOT YET COMMITTED OR RELEASE-ACCEPTED`
+`PASS ΓÇö ENCRYPTED OFF-DEVICE ESCROW IMPLEMENTATION SYNTHETICALLY VERIFIED LOCALLY; NOT YET COMMITTED OR RELEASE-ACCEPTED`
 
 Repository base:
 
@@ -1378,7 +1375,7 @@ Production customer onboarding remains blocked.
 
 Result:
 
-`PASS — ENCRYPTED OFF-DEVICE ESCROW REPOSITORY/RELEASE ACCEPTED; REAL PRODUCTION CUSTODY NOT YET ESTABLISHED`
+`PASS ΓÇö ENCRYPTED OFF-DEVICE ESCROW REPOSITORY/RELEASE ACCEPTED; REAL PRODUCTION CUSTODY NOT YET ESTABLISHED`
 
 Accepted repository SHA:
 
@@ -1438,7 +1435,7 @@ Production customer onboarding remains blocked.
 
 Result:
 
-`PASS — NEW PRODUCTION AGE IDENTITY CUSTODY ACCEPTED`
+`PASS ΓÇö NEW PRODUCTION AGE IDENTITY CUSTODY ACCEPTED`
 
 Repository/release authority:
 
@@ -5796,64 +5793,156 @@ remediation commit is pushed and exact-SHA hosted verification passes.
 
 Production customer onboarding remains blocked.
 
+## Stage 5 Production RPO two-hour cadence exact-SHA hosted verification milestone
+
+Remediation commit:
+
+`037a2b646f71753f65d865b5e4249bd3d2939396`
+
+Exact-SHA repository CI:
+
+`PASS`
+
+GitHub CI run:
+
+`36463939619`
+
+The hosted Production backup workflow at the remediation SHA was independently
+verified.
+
+Hosted frequent backup-attempt cron:
+
+`23 1,3,5,7,9,11,13,15,17,19,21,23 * * *`
+
+Hosted weekly cron remains:
+
+`47 2 * * 0`
+
+Protected Production backup contracts remain present:
+
+- manual workflow dispatch support;
+- fail-closed `PRODUCTION_BACKUP_AUTOMATION_ENABLED`;
+- Production environment;
+- non-cancelling `production-backup` concurrency;
+- 60-minute bounded timeout.
+
+Recurring Production backup automation remains enabled.
+
+The earlier broad exact-SHA verification classified the remediation as failed
+because it treated every push-triggered workflow for the commit as repository CI.
+
+That classification was overinclusive.
+
+`Deploy STAGING` is a separate deployment workflow and is not repository CI for
+the Production backup cadence remediation.
+
+Deploy STAGING run:
+
+`36463939651`
+
+reported failure at:
+
+`Trigger STAGING Deploy Hook`
+
+The cadence-remediation commit did not modify the STAGING deployment workflow or
+deployment transport implementation.
+
+The previously accepted Deploy Hook transport fix remains in repository history.
+
+Provider-visible evidence proved:
+
+- exact tested SHA promotion to `staging-release` succeeded;
+- `staging-release` equals
+  `037a2b646f71753f65d865b5e4249bd3d2939396`;
+- the stable STAGING deployment health endpoint reports `status=ok`;
+- the stable STAGING deployment health endpoint reports exact commit SHA
+  `037a2b646f71753f65d865b5e4249bd3d2939396`.
+
+Therefore the STAGING incident is classified:
+
+`DEPLOY_STAGING_HOOK_REPORTED_FAILURE_BUT_EXACT_SHA_IS_LIVE_NO_RETRY`
+
+No manual Deploy Hook retry is authorized or required.
+
+This proves a hook-confirmation false-negative/ambiguity at the workflow
+boundary. It does not independently prove a specific lower-level network or
+timing mechanism.
+
+Accepted Production RTO remains:
+
+`997.767` seconds
+
+Production RPO remains:
+
+`NOT ACCEPTED`
+
+The repository/CI/hosted-workflow side of the two-hour cadence remediation is
+accepted.
+
+Production RPO still requires natural operating evidence from the new schedule.
+
+No manual Production backup dispatch may substitute for natural schedule
+evidence.
+
+No provider mutation, Cronitor mutation, direct R2 access, direct Production
+database access, recovery retrieval, or restore was performed by this
+verification.
+
+Production customer onboarding remains blocked.
+
 ## Exact next step
 
-Task 050 - create and push one exact six-file Production RPO cadence-remediation
-commit.
+Task 050 - observe the hardened Production backup cadence using NATURAL scheduled
+runs only.
 
 Authorization marker:
 
-`PRODUCTION_RPO_TWO_HOUR_CADENCE_REMEDIATION_COMMIT_AND_PUSH_ONLY`
+`PRODUCTION_RPO_TWO_HOUR_CADENCE_NATURAL_SCHEDULED_EVIDENCE_OBSERVATION_ONLY`
 
-The commit must contain exactly:
+Do not manually dispatch a Production backup to create acceptance evidence.
 
-1. `.github/workflows/backup-production.yml`;
-2. `apps/web/__tests__/recovery/backup-production.test.ts`;
-3. `docs/PROJECT-STATE.md`;
-4. `docs/adr/README.md`;
-5. `docs/adr/ADR-021-production-backup-cadence-hardening.md`;
-6. `docs/architecture/production-backup-and-recovery.md`.
+Observe post-remediation `schedule` events for the hosted Production backup
+workflow.
 
-ADR-021 must transition from NEW/UNTRACKED to tracked only through this commit.
+Acceptance review requires at least two naturally scheduled verified recovery
+points after remediation SHA:
 
-ADR-020 must remain unchanged.
+`037a2b646f71753f65d865b5e4249bd3d2939396`
 
-Before commit:
+because two recovery-point timestamps are the minimum needed to measure one real
+operating interval.
 
-- revalidate the exact six-file working-tree surface;
-- run `git diff --check`;
-- stage exactly the six authorized files;
-- verify the staged file list is exactly those six files;
-- verify no unrelated staged or unstaged change exists.
+Each accepted natural point must prove:
 
-Create exactly one remediation commit.
+- workflow event is `schedule`;
+- hosted workflow contains the accepted two-hour cadence;
+- Production backup job succeeds;
+- recovery point reaches
+  `PRODUCTION_BACKUP_RECOVERY_POINT_VERIFIED`;
+- exactly one `production_backup_verified` event is emitted;
+- create/upload/readback/verification succeeds;
+- temporary recovery cleanup succeeds;
+- success heartbeat path completes.
 
-Push that exact commit to:
+Final Production RPO acceptance review additionally requires:
 
-`origin/main`
+- measured recovery-point interval <= 6 hours;
+- measured success-heartbeat interval <= 5 hours;
+- latest accepted recovery point fresh within 6 hours;
+- no failed natural Production backup run in the acceptance observation window;
+- accepted Production RTO of `997.767` seconds remains preserved.
 
-The checkpoint must then prove:
+Do not:
 
-- local HEAD equals the remediation commit SHA;
-- origin/main equals that exact SHA;
-- the commit contains exactly the six authorized files;
-- the commit has exactly one parent;
-- no merge or unrelated change entered the commit.
-
-The commit/push checkpoint must NOT:
-
-- mutate GitHub Production variables or secrets;
+- manually dispatch the backup workflow as substitute evidence;
 - mutate Cronitor;
-- manually dispatch a Production backup;
+- mutate Production variables or secrets;
 - access Production R2 directly;
 - access Production database directly;
-- retrieve or restore a Production recovery object;
-- claim Production RPO acceptance.
+- retrieve or restore another Production recovery object;
+- retry the STAGING Deploy Hook incident.
 
-After push, the next gate is exact-SHA CI and hosted workflow/provider
-verification.
-
-Natural scheduled backup evidence is only valid after that hosted verification.
+Until those natural operating observations are accepted:
 
 Production RPO remains NOT ACCEPTED.
 
