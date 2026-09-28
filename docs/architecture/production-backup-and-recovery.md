@@ -252,11 +252,20 @@ The Production age recipient is public CI configuration. Its private identity ha
 
 Cronitor replaces the originally proposed Healthchecks.io integration because operator authentication to Healthchecks.io was unreliable. The `madrasio-production-backup` heartbeat monitor expects one verified recovery point every four hours with one hour of grace, in its Production environment. Its telemetry URL is the GitHub Production secret `BACKUP_HEARTBEAT_URL`. Two healthy Stage 3 fixture events are retained as audit evidence: the browser-reported first request appeared locally blocked but reached Cronitor, and the explicit verification request produced the second event. Neither event represents a real Production backup.
 
+> Architecture authority for Production backup cadence hardening:
+> ADR-021 — Production Backup Cadence Hardening.
+
+The scheduled frequent workflow now attempts a Production recovery point every
+two hours at minute 23. This is the backup-attempt cadence, not a change to
+the monitoring threshold. Cronitor continues to expect at least one verified
+recovery point every four hours with one hour of grace, so the existing
+five-hour monitoring/freshness failure window remains intentionally unchanged.
+
 ## Production backup automation
 
 `.github/workflows/backup-production.yml` is the sole Production backup workflow. It supports explicit manual dispatch and two future schedules:
 
-- frequent recovery attempts at minute 23 every four hours;
+- frequent recovery attempts at minute 23 every two hours;
 - an additional weekly recovery point at 02:47 UTC each Sunday.
 
 Scheduled events are fail-closed behind the Production environment variable `PRODUCTION_BACKUP_AUTOMATION_ENABLED`. Missing, blank, or any value other than exact `true` produces only a safe disabled notice; it does not check out code or receive database, R2, encryption, or heartbeat inputs. Stage 4.1 does not create or enable this variable. Manual Stage 4.2 acceptance instead requires exact `BACKUP_PRODUCTION`, an explicit `frequent` or `weekly` retention class, and a lowercase 40-character SHA that is both an ancestor of `main` and has a successful exact-SHA CI run.

@@ -56,8 +56,23 @@ describe('Production backup workflow contract', () => {
 
   it('defines disabled-by-default offset schedules and deterministic weekly retention', async () => {
     const workflow = await workflowText();
-    expect(workflow).toContain("cron: '23 1,5,9,13,17,21 * * *'");
-    expect(workflow).toContain("cron: '47 2 * * 0'");
+    const frequentSchedule = "cron: '23 1,3,5,7,9,11,13,15,17,19,21,23 * * *'";
+    const weeklySchedule = "cron: '47 2 * * 0'";
+
+    expect(workflow).toContain(frequentSchedule);
+    expect(workflow).toContain(weeklySchedule);
+    expect(workflow.split(frequentSchedule)).toHaveLength(2);
+    expect(workflow.split(weeklySchedule)).toHaveLength(2);
+    expect(workflow).toContain(
+      'AUTOMATION_ENABLED: ${{ vars.PRODUCTION_BACKUP_AUTOMATION_ENABLED }}',
+    );
+    expect(workflow).toContain("if: needs.gate.outputs.should-run == 'true'");
+    expect(workflow).toContain('workflow_dispatch:');
+    expect(workflow).not.toMatch(/^\s*repository_dispatch\s*:/m);
+    expect(workflow).toContain('environment: Production');
+    expect(workflow).toContain('group: production-backup');
+    expect(workflow).toContain('cancel-in-progress: false');
+    expect(workflow).toContain('timeout-minutes: 60');
     expect(workflow).toContain(
       'AUTOMATION_ENABLED: ${{ vars.PRODUCTION_BACKUP_AUTOMATION_ENABLED }}',
     );
