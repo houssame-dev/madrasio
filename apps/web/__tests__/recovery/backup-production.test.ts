@@ -22,6 +22,7 @@ import {
 import { CronitorRecoveryHeartbeat } from '@/scripts/recovery/heartbeat';
 import { R2RecoveryObjectStore } from '@/scripts/recovery/r2';
 import { PINNED_POSTGRES_CONTAINER } from '@/scripts/recovery/tools';
+import { backupTriggerMetadata } from '@/scripts/recovery/run-production-backup';
 
 const sha = 'a'.repeat(64);
 const bundle: ProductionRecoveryBundle = {
@@ -39,6 +40,45 @@ function workflowText(): Promise<string> {
 }
 
 describe('Production backup workflow contract', () => {
+  it('gates external automatic dispatch, preserves manual execution and rejects unsafe attribution', async () => {
+    const workflow = await workflowText();
+    expect(workflow).toContain('trigger_source:');
+    expect(workflow).toContain('scheduled_for_utc:');
+    expect(workflow).toContain("schedule) automatic=true");
+    expect(workflow).toContain('manual) automatic=false; test -z "$SCHEDULED_FOR_UTC"');
+    expect(workflow).toContain("cloudflare-cron-v1)\n                  automatic=true");
+    expect(workflow).toContain('test "$DISPATCH_RETENTION" = \'frequent\'');
+    expect(workflow).toContain('"$automatic" == \'true\' && "$AUTOMATION_ENABLED" != \'true\'');
+    expect(workflow).toContain('*) exit 1');
+    expect(workflow).toContain(String.raw`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$`);
+    expect(workflow).toContain('d.toISOString() !== s');
+    expect(workflow).toContain("github.event_name == 'schedule' && 'github-schedule'");
+    expect(workflow).toContain('RECOVERY_SCHEDULED_FOR_UTC: ${{ inputs.scheduled_for_utc }}');
+  });
+
+  it('emits only validated trigger metadata in verified-backup evidence', async () => {
+    const source = await readFile(resolve(process.cwd(), 'scripts/recovery/run-production-backup.ts'), 'utf8');
+    expect(source).toContain("event: 'production_backup_verified',\n        ...metadata");
+    expect(source.indexOf('await executeVerifiedBackup')).toBeLessThan(source.indexOf("event: 'production_backup_verified'"));
+    expect(backupTriggerMetadata({})).toEqual({ triggerSource: 'manual', scheduledForUtc: null });
+    expect(backupTriggerMetadata({ RECOVERY_TRIGGER_SOURCE: 'github-schedule' })).toEqual({ triggerSource: 'github-schedule', scheduledForUtc: null });
+    expect(backupTriggerMetadata({ RECOVERY_TRIGGER_SOURCE: 'cloudflare-cron-v1', RECOVERY_RETENTION_CLASS: 'frequent', RECOVERY_SCHEDULED_FOR_UTC: '2026-09-30T02:23:00.000Z' })).toEqual({ triggerSource: 'cloudflare-cron-v1', scheduledForUtc: '2026-09-30T02:23:00.000Z' });
+  });
+
+  it.each(['', '2026-02-30T02:23:00.000Z', '2026-09-30T02:23:00Z', '2026-09-30T02:23:00x000Z', 'private-material'])(
+    'rejects invalid external timestamps without echoing input: case %#', (timestamp) => {
+      expect(() => backupTriggerMetadata({ RECOVERY_TRIGGER_SOURCE: 'cloudflare-cron-v1', RECOVERY_RETENTION_CLASS: 'frequent', RECOVERY_SCHEDULED_FOR_UTC: timestamp })).toThrow(/^Invalid backup trigger metadata\.$/);
+    },
+  );
+
+  it('rejects external weekly retention, unknown source and manual scheduled timestamp', () => {
+    for (const env of [
+      { RECOVERY_TRIGGER_SOURCE: 'private-material' },
+      { RECOVERY_TRIGGER_SOURCE: 'manual', RECOVERY_SCHEDULED_FOR_UTC: '2026-09-30T02:23:00.000Z' },
+      { RECOVERY_TRIGGER_SOURCE: 'cloudflare-cron-v1', RECOVERY_RETENTION_CLASS: 'weekly', RECOVERY_SCHEDULED_FOR_UTC: '2026-09-30T02:23:00.000Z' },
+    ]) expect(() => backupTriggerMetadata(env)).toThrow(/^Invalid backup trigger metadata\.$/);
+  });
+
   it('is manually confirmed, SHA-bound, environment-scoped, bounded and non-cancelling', async () => {
     const workflow = await workflowText();
     expect(workflow).toContain('name: Backup Production');

@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import {
   appendSafeBackupFailureSummary,
@@ -12,7 +13,36 @@ import { cleanupRecoveryWorkDirectory, createRecoveryWorkDirectory } from './fil
 import { CronitorRecoveryHeartbeat } from './heartbeat';
 import { R2RecoveryObjectStore } from './r2';
 
+/** Attribution is allowlisted metadata, never authentication or arbitrary log text. */
+export function backupTriggerMetadata(env: Readonly<Record<string, string | undefined>>): {
+  triggerSource: 'manual' | 'github-schedule' | 'cloudflare-cron-v1';
+  scheduledForUtc: string | null;
+} {
+  const triggerSource = env.RECOVERY_TRIGGER_SOURCE ?? 'manual';
+  const timestamp = env.RECOVERY_SCHEDULED_FOR_UTC ?? '';
+  if (!['manual', 'github-schedule', 'cloudflare-cron-v1'].includes(triggerSource)) {
+    throw new Error('Invalid backup trigger metadata.');
+  }
+  if (triggerSource === 'cloudflare-cron-v1') {
+    const date = new Date(timestamp);
+    if (
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(timestamp) ||
+      !Number.isFinite(date.getTime()) ||
+      date.toISOString() !== timestamp ||
+      env.RECOVERY_RETENTION_CLASS !== 'frequent'
+    )
+      throw new Error('Invalid backup trigger metadata.');
+  } else if (timestamp !== '') {
+    throw new Error('Invalid backup trigger metadata.');
+  }
+  return {
+    triggerSource: triggerSource as 'manual' | 'github-schedule' | 'cloudflare-cron-v1',
+    scheduledForUtc: timestamp || null,
+  };
+}
+
 async function main(): Promise<void> {
+  const metadata = backupTriggerMetadata(process.env);
   const directory = await createRecoveryWorkDirectory();
   const outputPath = resolve(directory, 'production-recovery.age');
   const readbackPath = resolve(directory, 'production-recovery.readback.age');
@@ -31,6 +61,7 @@ async function main(): Promise<void> {
     process.stdout.write(
       `${JSON.stringify({
         event: 'production_backup_verified',
+        ...metadata,
         backupId: result.backupId,
         retentionClass: result.retentionClass,
         objectKey: result.objectKey,
@@ -53,12 +84,14 @@ async function main(): Promise<void> {
   if (primaryError) throw primaryError;
 }
 
-main().catch(async (error) => {
-  await appendSafeBackupFailureSummary(
-    process.env.GITHUB_STEP_SUMMARY,
-    process.env.RECOVERY_GIT_SHA ?? '',
-    error,
-  ).catch(() => undefined);
-  process.stderr.write(`${JSON.stringify(safeRecoveryError(error))}\n`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch(async (error) => {
+    await appendSafeBackupFailureSummary(
+      process.env.GITHUB_STEP_SUMMARY,
+      process.env.RECOVERY_GIT_SHA ?? '',
+      error,
+    ).catch(() => undefined);
+    process.stderr.write(`${JSON.stringify(safeRecoveryError(error))}\n`);
+    process.exitCode = 1;
+  });
+}

@@ -1,51 +1,42 @@
 # Madrasio ΓÇö Current Project State
 
-Last updated: 2026-09-27
+Last updated: 2026-09-30
 ## Current Task
 
 Task 050 ΓÇö Production Backup & Recovery
 
 ## Current Stage
 
-Task 050 Production RTO remains accepted.
+Task 050 independent-scheduler local repository implementation: PASS.
 
-Accepted Production RTO:
+Local repository blockers for this implementation: NONE.
 
-`997.767` seconds
+Accepted Production RTO remains `997.767` seconds.
 
-Production RPO remains NOT ACCEPTED.
+Production RPO remains NOT ACCEPTED. The accepted ADR-022 implementation does
+not establish natural automatic recovery-point cadence.
 
-The Production two-hour backup cadence remediation is now:
+Production customer onboarding remains blocked:
 
-- committed;
-- pushed to `main`;
-- exact-SHA CI verified;
-- hosted-workflow verified.
+`PRODUCTION_CUSTOMER_DATA_ONBOARDING_BLOCKED_BY_BACKUP`
 
-Accepted remediation SHA:
+The GitHub two-hour and weekly schedules are preserved. The independent
+Cloudflare scheduled-only Worker is implemented locally but is not deployed;
+its Cron Trigger is not activated. Both automatic paths use the existing
+Production automation kill switch. Provider setup is NOT yet authorized.
 
-`037a2b646f71753f65d865b5e4249bd3d2939396`
+Immediate gate: pre-commit acceptance of the exact 11-file repository surface:
+PASS (local verification only; commit/push remain unauthorized).
 
-Hosted frequent cron:
+`PROJECT_STATE_SYNC_AND_PRECOMMIT_AFTER_INDEPENDENT_SCHEDULER_LOCAL_IMPLEMENTATION_PASS`
 
-`23 1,3,5,7,9,11,13,15,17,19,21,23 * * *`
+After that acceptance, the next gate requires separate authorization:
 
-Hosted weekly cron remains:
+`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_IMPLEMENTATION_COMMIT_AND_PUSH_ONLY`
 
-`47 2 * * 0`
-
-The separate Deploy STAGING run reported a Deploy Hook failure, but provider
-evidence proves the stable STAGING origin is already serving the exact
-remediation SHA.
-
-No Deploy Hook retry is authorized or required.
-
-The remaining Production RPO gate is natural recurring-cadence evidence.
-
-At least two post-remediation naturally scheduled verified Production recovery
-points are required to establish at least one real operating interval.
-
-Production customer onboarding remains blocked.
+No staging, commit, push, provider setup or Production operation is authorized
+during this synchronization/pre-commit gate. The historical implementation-only
+plan retained under Exact next step does not authorize another implementation.
 
 ## Current branch
 
@@ -5890,59 +5881,338 @@ verification.
 
 Production customer onboarding remains blocked.
 
+## Stage 5 Production RPO independent scheduler ADR-022 and implementation-preparation milestone
+
+Event:
+
+`production_rpo_independent_scheduler_adr_022_and_implementation_preparation`
+
+Result:
+
+`PASS`
+
+Classification:
+
+`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_ADR_ACCEPTED_IMPLEMENTATION_PLAN_PREPARED_NO_RUNTIME_OR_PROVIDER_MUTATION`
+
+Accepted Production RTO:
+
+`997.767` seconds
+
+Production RPO remains:
+
+`NOT ACCEPTED`
+
+GitHub-only two-hour scheduling has failed the required operating-cadence proof.
+
+Observed evidence:
+
+- 3 successful natural Production backups;
+- 0 failed natural Production backups;
+- 9 fully elapsed nominal two-hour windows;
+- 7 empty workflow-run creation windows;
+- maximum run-creation gap:
+  `7.177 hours`;
+- maximum recovery-point gap:
+  `7.174 hours`;
+- maximum heartbeat-evidence gap:
+  `7.171 hours`.
+
+Accepted scheduler-resilience decision:
+
+`ADD_INDEPENDENT_AUTOMATIC_SCHEDULER_TRIGGER_WHILE_RETAINING_GITHUB_TWO_HOUR_SCHEDULE`
+
+Selected independent scheduler:
+
+`CLOUDFLARE_WORKERS_CRON`
+
+Provider:
+
+`Cloudflare Workers Cron`
+
+Cloudflare cadence:
+
+`23 0,2,4,6,8,10,12,14,16,18,20,22 * * *`
+
+Existing GitHub cadence:
+
+`23 1,3,5,7,9,11,13,15,17,19,21,23 * * *`
+
+Combined nominal opportunity spacing:
+
+`1 hour`
+
+Selected authentication:
+
+`GITHUB_APP_INSTALLATION_TOKEN`
+
+Selected dispatch mechanism:
+
+`GITHUB_ACTIONS_WORKFLOW_DISPATCH`
+
+GitHub App scope:
+
+- Madrasio repository only;
+- Actions:
+  `write`;
+- Contents:
+  none;
+- Administration:
+  none;
+- long-lived PAT:
+  prohibited.
+
+ADR created locally:
+
+`docs/adr/ADR-022-production-backup-independent-scheduler.md`
+
+No runtime implementation has occurred.
+
+No Cloudflare Worker or Cron Trigger has been created.
+
+No GitHub App or credential has been created.
+
+No provider configuration has been mutated.
+
+No Production backup dispatch was issued.
+
+No Cronitor configuration changed.
+
+Production customer onboarding remains blocked.
+
+## Stage 5 Production RPO independent scheduler local implementation milestone
+
+Event:
+
+`production_rpo_independent_scheduler_local_repository_implementation`
+
+Result:
+
+`PASS`
+
+Classification:
+
+`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_LOCAL_IMPLEMENTATION_VERIFIED_NO_PROVIDER_MUTATION`
+
+Implementation baseline: `main` at
+`2efc185fd749ffaa811413e124f0234fcda6ebc8`. The candidate remains uncommitted.
+
+Accepted Production RTO remains `997.767` seconds. Production RPO remains
+`NOT ACCEPTED`. Production customer onboarding remains `BLOCKED` under
+`PRODUCTION_CUSTOMER_DATA_ONBOARDING_BLOCKED_BY_BACKUP`.
+
+Accepted ADR-022 architecture implemented locally:
+
+- GitHub native frequent cadence: `23 1,3,5,7,9,11,13,15,17,19,21,23 * * *`;
+- Cloudflare independent cadence: `23 0,2,4,6,8,10,12,14,16,18,20,22 * * *`;
+- weekly GitHub cadence: `47 2 * * 0`;
+- combined nominal automatic opportunity spacing: `1 hour`;
+- authentication: `GITHUB_APP_INSTALLATION_TOKEN`;
+- provider: `CLOUDFLARE_WORKERS_CRON`;
+- dispatch mechanism: `GITHUB_ACTIONS_WORKFLOW_DISPATCH`;
+- external trigger source: `cloudflare-cron-v1`.
+
+Exact eight implementation files:
+
+1. `.github/workflows/backup-production.yml`;
+2. `apps/web/scripts/recovery/run-production-backup.ts`;
+3. `apps/web/__tests__/recovery/backup-production.test.ts`;
+4. `apps/web/__tests__/recovery/production-backup-scheduler.test.ts`;
+5. `infra/cloudflare/production-backup-scheduler/worker.ts`;
+6. `infra/cloudflare/production-backup-scheduler/wrangler.jsonc`;
+7. `infra/cloudflare/production-backup-scheduler/README.md`;
+8. `docs/architecture/production-backup-and-recovery.md`.
+
+Accepted local implementation verification:
+
+- focused Production backup/scheduler tests: 64 passed;
+- complete recovery regression: 206 passed / 8 opt-in skipped;
+- web TypeScript: PASS;
+- `git diff --check`: PASS.
+
+Verified implementation properties:
+
+- GitHub two-hour schedule preserved;
+- weekly schedule preserved;
+- Cloudflare automatic path uses the existing Production automation kill switch;
+- intentional manual `workflow_dispatch` semantics preserved;
+- external Cloudflare path is frequent-only;
+- scheduled UTC metadata validated;
+- safe `production_backup_verified` attribution includes allowlisted
+  `triggerSource` and `scheduledForUtc`;
+- Worker uses repository-scoped GitHub App authentication with Actions write;
+- Worker has no public fetch handler;
+- Worker calls `controller.noRetry()`;
+- maximum one workflow dispatch attempt per scheduled invocation;
+- immediate blind retry prohibited, including ambiguous dispatch acceptance;
+- dispatch acceptance is not backup/recovery success;
+- Cloudflare Cron not activated;
+- no real provider credential created or stored.
+
+Safety boundary of this local milestone:
+
+- no GitHub App created;
+- no GitHub App credential created or real installation token minted;
+- no Cloudflare Worker deployed;
+- no Cloudflare Cron Trigger created;
+- no workflow dispatch issued;
+- no GitHub provider secrets/variables changed;
+- no Cronitor mutation;
+- no Production R2 access;
+- no Production database access;
+- no Production age identity access;
+- no commit;
+- no push.
+
+Dependencies, lockfile and migrations are unchanged. The implementation preserved
+PROJECT-STATE, the ADR index, ADR-022 and ADR-021. This subsequent gate authorizes
+only PROJECT-STATE synchronization; all other candidate files remain protected.
+
+This milestone DOES NOT mean Production RPO acceptance. Natural automatic
+evidence is still required under ADR-022. Provider setup is not yet authorized.
+The immediate gate is local pre-commit acceptance of the exact 11-file candidate,
+with no staging, commit or push during this gate.
+
+Subsequent PROJECT-STATE synchronization/pre-commit verification (2026-09-30):
+
+- focused tests: 64 passed;
+- recovery regression: 206 passed / 8 opt-in skipped;
+- web TypeScript and canonical `pnpm lint`: PASS;
+- `git diff --check` and untracked-file whitespace checks: PASS;
+- no dedicated pre-commit script or active hook was found;
+- exact 11-file working-tree surface retained; nothing staged;
+- all 96 prior H2 headings retained in order; exactly one milestone H2 added;
+- `## Current Stage` remains unique;
+- historical milestone sections remain unchanged;
+- all other 10 candidate files and protected ADR-021 retain their pre-gate hashes;
+- dependencies, lockfiles and migrations remain unchanged;
+- static credential/dispatch/activation checks: PASS;
+- no provider or Production operation, commit or push occurred.
+
+Local pre-commit acceptance: PASS. Next gate, requiring separate authorization:
+`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_IMPLEMENTATION_COMMIT_AND_PUSH_ONLY`.
+
 ## Exact next step
 
-Task 050 - observe the hardened Production backup cadence using NATURAL scheduled
-runs only.
+Current handoff: complete local pre-commit acceptance of the exact 11-file
+candidate. If all checks pass, request the separately authorized gate
+`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_IMPLEMENTATION_COMMIT_AND_PUSH_ONLY`.
+Provider setup remains unauthorized. The prior implementation-only plan below
+is retained as historical authorization, not a request to repeat implementation.
+
+Task 050 - perform one bounded LOCAL repository implementation of the accepted
+independent Production backup scheduler contract.
 
 Authorization marker:
 
-`PRODUCTION_RPO_TWO_HOUR_CADENCE_NATURAL_SCHEDULED_EVIDENCE_OBSERVATION_ONLY`
+`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_LOCAL_REPOSITORY_IMPLEMENTATION_ONLY`
 
-Do not manually dispatch a Production backup to create acceptance evidence.
+This authorization is LOCAL repository implementation only.
 
-Observe post-remediation `schedule` events for the hosted Production backup
-workflow.
+It must NOT:
 
-Acceptance review requires at least two naturally scheduled verified recovery
-points after remediation SHA:
-
-`037a2b646f71753f65d865b5e4249bd3d2939396`
-
-because two recovery-point timestamps are the minimum needed to measure one real
-operating interval.
-
-Each accepted natural point must prove:
-
-- workflow event is `schedule`;
-- hosted workflow contains the accepted two-hour cadence;
-- Production backup job succeeds;
-- recovery point reaches
-  `PRODUCTION_BACKUP_RECOVERY_POINT_VERIFIED`;
-- exactly one `production_backup_verified` event is emitted;
-- create/upload/readback/verification succeeds;
-- temporary recovery cleanup succeeds;
-- success heartbeat path completes.
-
-Final Production RPO acceptance review additionally requires:
-
-- measured recovery-point interval <= 6 hours;
-- measured success-heartbeat interval <= 5 hours;
-- latest accepted recovery point fresh within 6 hours;
-- no failed natural Production backup run in the acceptance observation window;
-- accepted Production RTO of `997.767` seconds remains preserved.
-
-Do not:
-
-- manually dispatch the backup workflow as substitute evidence;
+- create/deploy a Cloudflare Worker;
+- create/enable a Cloudflare Cron Trigger;
+- create a GitHub App;
+- create/reveal/rotate/store a real GitHub App private key;
+- mint a real GitHub installation token;
+- mutate Production GitHub variables or secrets;
 - mutate Cronitor;
-- mutate Production variables or secrets;
+- manually dispatch a Production backup;
 - access Production R2 directly;
-- access Production database directly;
-- retrieve or restore another Production recovery object;
-- retry the STAGING Deploy Hook incident.
+- access Production DB directly;
+- retrieve or restore a Production recovery object;
+- commit;
+- push;
+- mutate `docs/PROJECT-STATE.md`;
+- mutate ADR-022 or its index entry.
 
-Until those natural operating observations are accepted:
+Authorized implementation surface:
+
+1. `.github/workflows/backup-production.yml`;
+2. `apps/web/scripts/recovery/run-production-backup.ts`;
+3. `apps/web/__tests__/recovery/backup-production.test.ts`;
+4. `apps/web/__tests__/recovery/production-backup-scheduler.test.ts`;
+5. `infra/cloudflare/production-backup-scheduler/worker.ts`;
+6. `infra/cloudflare/production-backup-scheduler/wrangler.jsonc`;
+7. `infra/cloudflare/production-backup-scheduler/README.md`;
+8. `docs/architecture/production-backup-and-recovery.md`.
+
+The workflow implementation must add safe inputs:
+
+- `trigger_source`;
+- `scheduled_for_utc`.
+
+Cloudflare-originated automatic dispatch must:
+
+- use source:
+  `cloudflare-cron-v1`;
+- use retention:
+  `frequent`;
+- use exact confirmation:
+  `BACKUP_PRODUCTION`;
+- use a pinned exact candidate SHA;
+- fail closed behind:
+  `PRODUCTION_BACKUP_AUTOMATION_ENABLED=true`;
+- never be treated as manual cadence evidence.
+
+Manual operator semantics must remain preserved.
+
+GitHub schedule execution must remain represented safely as:
+
+`github-schedule`
+
+The Worker must:
+
+- expose scheduled execution only;
+- sign a GitHub App JWT with Web Crypto;
+- mint a short-lived installation token;
+- issue at most one workflow-dispatch request per invocation;
+- disable automatic retry;
+- never log/persist the App private key or installation token;
+- treat GitHub dispatch acceptance as dispatch acceptance only;
+- contain no Production DB/R2/age/restore/Cronitor credentials.
+
+Secret:
+
+`GITHUB_APP_PRIVATE_KEY`
+
+Non-secret variables:
+
+- `GITHUB_APP_ID`;
+- `GITHUB_INSTALLATION_ID`;
+- `GITHUB_OWNER`;
+- `GITHUB_REPOSITORY`;
+- `GITHUB_WORKFLOW`;
+- `BACKUP_CANDIDATE_SHA`.
+
+Repository configuration must describe cadence:
+
+`23 0,2,4,6,8,10,12,14,16,18,20,22 * * *`
+
+No provider activation is authorized.
+
+Tests must cover workflow gate/source behavior, scheduled timestamp validation,
+manual preservation, external frequent-only behavior, GitHub App JWT/token
+contracts, exact dispatch payload, one dispatch attempt, no blind retry, no
+public Worker fetch trigger, and secret-safe output/errors.
+
+Architecture documentation must reference ADR-022 and distinguish the two
+independent automatic scheduler fault domains.
+
+If this eight-file implementation surface proves insufficient, STOP instead of
+silently broadening it.
+
+Required local verification:
+
+- focused workflow/scheduler tests;
+- relevant full recovery regression;
+- web TypeScript validation;
+- static secret/logging guards;
+- `git diff --check`.
+
+A separate PROJECT-STATE synchronization/pre-commit review is required after
+successful local implementation.
 
 Production RPO remains NOT ACCEPTED.
 

@@ -63,6 +63,7 @@ Current V1 architecture decisions are primarily `Accepted`.
 | ADR-019 | Application-Owned Canonical User Email Mapping |
 | ADR-020 | Production Age Identity Custody and Recovery-Point Supersession |
 | ADR-021 | Production Backup Cadence Hardening |
+| ADR-022 | Production Backup Independent Scheduler |
 
 ---
 

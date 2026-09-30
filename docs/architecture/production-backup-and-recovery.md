@@ -385,4 +385,58 @@ Production restore has yet been accepted.
 
 ## Gate status
 
-Stage 6 STAGING/local recovery acceptance and the accepted Task 050 Stage 4.2 Production recovery point do not yet clear `PRODUCTION_CUSTOMER_DATA_ONBOARDING_BLOCKED_BY_BACKUP`. The real encrypted Production point in R2, independent readback, and successful monitoring evidence are now accepted. Production backup automation remains intentionally disabled, so the six-hour Production RPO cadence is not yet proven. Onboarding readiness still requires the successful Task 050 Stage 5 timed isolated Production restore demonstrating identity, relational, migration, and security invariants, plus acceptance of the remaining Production backup-cadence and Task 050 gates.
+The accepted Production RTO is 997.767 seconds. Production RPO remains NOT
+ACCEPTED. `PRODUCTION_CUSTOMER_DATA_ONBOARDING_BLOCKED_BY_BACKUP` remains in force.
+GitHub-native automation was activated, but its natural trigger-delivery gaps
+failed the timing contract; local scheduler implementation is not RPO acceptance.
+
+## Independent scheduler repository contract (ADR-022)
+
+GitHub's frequent schedule remains `23 1,3,5,7,9,11,13,15,17,19,21,23 * * *`;
+the weekly schedule remains `47 2 * * 0`. The future Cloudflare schedule is
+`23 0,2,4,6,8,10,12,14,16,18,20,22 * * *`. Combined nominal frequent opportunity
+spacing is one hour. Three successful natural backups with zero execution
+failures nevertheless left maximum creation/recovery-point/heartbeat gaps of
+7.177/7.174/7.171 hours. The six-hour RPO and five-hour monitoring window are
+unchanged. See ADR-022 for the accepted decision and evidence criteria.
+
+The scheduled-only Worker lives in
+`infra/cloudflare/production-backup-scheduler`. It dispatches the existing
+workflow; it never implements backup logic. Wrangler deliberately has no active
+Cron triggers. There is no HTTP handler. Provider activation remains a separate
+authorization after implementation CI and exact-SHA acceptance.
+
+Authentication uses a repository-only GitHub App with Actions write, without
+Contents write, Administration, unrelated permissions or a long-lived PAT.
+`GITHUB_APP_PRIVATE_KEY` is a Worker secret only. Web Crypto RS256 supports
+GitHub's PKCS#1 RSA PEM and PKCS#8 PEM; each invocation mints a short-lived,
+repository/Actions-scoped installation token in memory. No credentials are
+logged or persisted. The Worker contains no database, R2, age or Cronitor access.
+
+One invocation calls `noRetry()` and makes at most one `workflow_dispatch`, with
+bounded HTTP timeouts, redirects refused and no immediate retry on ambiguous
+acceptance. A 2xx response means dispatch accepted, not backup success.
+The request targets `main` with the pinned `BACKUP_CANDIDATE_SHA` input, exact
+confirmation, frequent retention, source `cloudflare-cron-v1` and the controller's
+scheduled UTC timestamp. The existing main-ancestry and successful exact-SHA CI
+checks still gate the candidate before recovery work.
+
+The existing `PRODUCTION_BACKUP_AUTOMATION_ENABLED` switch must equal lowercase
+`true` for both native GitHub and Cloudflare automatic paths. Explicit manual
+dispatch keeps its confirmation/SHA contract. The workflow rejects unknown
+sources, external weekly retention, invalid/nonexistent UTC timestamps, and
+scheduled metadata on manual requests. Attribution is not authority: App
+installation permissions remain the external authentication boundary.
+
+Verified recovery output now includes allowlisted `triggerSource` (`manual`,
+`github-schedule`, `cloudflare-cron-v1`) and `scheduledForUtc` (Cloudflare's exact
+UTC instant, otherwise null). It is still emitted only after verified backup
+orchestration succeeds. Encryption, immutable upload/readback, heartbeat,
+cleanup, Production environment, permissions, 60-minute timeout and
+non-cancelling `production-backup` concurrency are unchanged.
+
+Future activation order and rollback are documented in the Worker README.
+No App creation, credential setup, Worker deployment, Cron activation, backup
+dispatch or Production access occurs during this repository implementation.
+RPO acceptance still requires natural automatic evidence under ADR-022; manual
+dispatch and dispatch acceptance cannot establish cadence.
