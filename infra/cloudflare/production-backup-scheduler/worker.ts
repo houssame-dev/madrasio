@@ -104,9 +104,9 @@ function validate(controller: ScheduledController, env: SchedulerEnv): string {
 
 async function post(path: string, authorization: string, body: unknown): Promise<Response> {
   // Redirects must not forward credentials; bounded single attempts, no response/error logging.
-  return fetch(`https://api.github.com${path}`, {
+  const response = await fetch(`https://api.github.com${path}`, {
     method: 'POST',
-    redirect: 'error',
+    redirect: 'manual',
     signal: AbortSignal.timeout(20_000),
     headers: {
       Authorization: `Bearer ${authorization}`,
@@ -117,6 +117,8 @@ async function post(path: string, authorization: string, body: unknown): Promise
     },
     body: JSON.stringify(body),
   });
+  if (response.status >= 300 && response.status < 400) throw new Error('Redirect rejected.');
+  return response;
 }
 
 export default {

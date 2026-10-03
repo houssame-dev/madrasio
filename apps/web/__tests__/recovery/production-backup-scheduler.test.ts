@@ -194,7 +194,7 @@ describe('independent scheduled dispatch (no provider access)', () => {
         'Bearer synthetic-installation-value',
       );
       for (const [, request] of fetcher.mock.calls) {
-        expect(request!.redirect).toBe('error');
+        expect(request!.redirect).toBe('manual');
         expect(request!.method).toBe('POST');
         expect(request!.signal).toBeDefined();
       }
@@ -268,6 +268,58 @@ describe('independent scheduled dispatch (no provider access)', () => {
     expect(fetcher).toHaveBeenCalledTimes(mode.startsWith('dispatch-') ? 2 : 1);
     for (const log of logs) expect(log).not.toHaveBeenCalled();
   });
+
+  describe.each(['installation-token', 'workflow-dispatch'] as const)(
+    '%s redirect refusal',
+    (endpoint) => {
+      it.each(Array.from({ length: 100 }, (_, index) => 300 + index))(
+        'rejects HTTP %i without following, retrying or exposing provider material',
+        async (status) => {
+          const fetcher = transport();
+          fetcher.mockReset();
+          if (endpoint === 'workflow-dispatch') {
+            fetcher.mockResolvedValueOnce(
+              new Response(
+                JSON.stringify({
+                  token: 'synthetic-installation-value',
+                  expires_at: '2026-09-30T03:23:00Z',
+                }),
+                { status: 201 },
+              ),
+            );
+          }
+          // A null body also permits HTTP 304; no redirect response may be parsed.
+          const redirect = new Response(null, {
+            status,
+            headers: { Location: 'https://untrusted.invalid/private-provider-material' },
+          });
+          const readBody = vi.spyOn(redirect, 'json');
+          fetcher.mockResolvedValueOnce(redirect);
+          const logs = ['log', 'error', 'warn', 'info', 'debug'].map((method) =>
+            vi.spyOn(console, method as 'log'),
+          );
+          const invocation = controller();
+          await expect(worker.scheduled(invocation, environment())).rejects.toThrow(
+            /^BACKUP_SCHEDULER_DISPATCH_NOT_CONFIRMED$/,
+          );
+          expect(invocation.noRetry).toHaveBeenCalledOnce();
+          expect(fetcher).toHaveBeenCalledTimes(endpoint === 'installation-token' ? 1 : 2);
+          expect(readBody).not.toHaveBeenCalled();
+          for (const [url, request] of fetcher.mock.calls) {
+            expect(new URL(url as string).origin).toBe('https://api.github.com');
+            expect(request!.redirect).toBe('manual');
+            expect(request!.method).toBe('POST');
+          }
+          if (endpoint === 'installation-token') {
+            expect(fetcher.mock.calls[0][0]).toBe(
+              'https://api.github.com/app/installations/456/access_tokens',
+            );
+          }
+          for (const log of logs) expect(log).not.toHaveBeenCalled();
+        },
+      );
+    },
+  );
 
   it('exposes scheduled execution only, keeps provider activation disabled and has no backup authority', async () => {
     expect(Object.keys(worker)).toEqual(['scheduled']);
