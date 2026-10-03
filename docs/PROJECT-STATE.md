@@ -1,48 +1,149 @@
 # Madrasio ΓÇö Current Project State
 
-Last updated: 2026-09-30
+Last updated: 2026-10-03 (UTC acceptance review)
+
 ## Current Task
 
 Task 050 ΓÇö Production Backup & Recovery
 
 ## Current Stage
 
-Task 050 independent-scheduler local repository implementation: PASS.
+Task 050 combined Production recovery acceptance: PASS.
 
-Local repository blockers for this implementation: NONE.
+- Production RTO: `ACCEPTED — 997.767 seconds`.
+- Production RPO: `ACCEPTED` under ADR-022.
+- Backup-specific onboarding blocker: `RESOLVED`.
+- Production customer-data onboarding is no longer blocked by backup/RPO
+  readiness. This does not satisfy or waive unrelated Production onboarding
+  requirements and does not authorize customer-data creation.
 
-Accepted Production RTO remains `997.767` seconds.
+Accepted implementation: `eeb42755f51262a7e82fbc413d7b33f750f06bd6`,
+`fix: reject scheduler redirects under workerd`; extends the accepted ADR-022
+implementation at `b6c74fc0affbef2a145e85b4c317b7bcb33f43ad`.
 
-Production RPO remains NOT ACCEPTED. The accepted ADR-022 implementation does
-not establish natural automatic recovery-point cadence.
+GitHub App/provider setup is complete. The active independent scheduler is
+Cloudflare Workers Cron, Worker `madrasio-production-backup-scheduler`, account
+`64d8b2cdf738b722db49bcb6fc075820`:
+
+- version: `90a9c266-7da7-4544-96cf-fbf6324429fe`;
+- deployment: `c7d04fff-97fd-4e58-91ae-898e42107d98`, traffic `100%`;
+- corrected-version activation: `2026-10-03T14:57:32.876654Z`;
+- candidate SHA: `eeb42755f51262a7e82fbc413d7b33f750f06bd6`;
+- Cron (UTC): `23 0,2,4,6,8,10,12,14,16,18,20,22 * * *`, unchanged since
+  `2026-10-02T15:26:31.822436Z`.
+
+GitHub-native two-hour scheduling remains active and operational; the weekly
+schedule and shared automatic-backup kill switch are preserved. Cron existence
+alone is not RPO evidence: natural verified recovery points establish acceptance.
+
+Final read-only acceptance review: `2026-10-03T23:38:03Z`. Four natural corrected
+Cloudflare recovery points and two GitHub-native recovery points passed. Maximum
+combined recovery-point and success-heartbeat evidence gaps were both
+`2h 00m 07.160s`; latest evidence freshness was `1h 13m 53.142s` for both.
+Relevant failed automatic attempts: `0`.
+
+These are observed acceptance metrics, not a replacement contractual RPO.
+The thresholds remain recovery-point interval/freshness <= 6 hours and
+success-heartbeat evidence interval/freshness <= 5 hours. Heartbeat evidence
+timestamps record successful repository-owned acknowledgement evidence, not
+independently fetched Cronitor receipt timestamps.
+
+Current gate: `PRODUCTION_RPO_COMBINED_ACCEPTANCE_DECISION_AND_STATE_TRANSITION`:
+`PASS`. Classification:
+`PRODUCTION_RPO_ACCEPTED_BACKUP_ONBOARDING_BLOCKER_RESOLVED`.
+
+Next separately authorized gate:
+`PRODUCTION_RPO_ACCEPTANCE_PROJECT_STATE_COMMIT_AND_PUSH`.
+This state transition is unstaged/uncommitted; no commit or push is authorized.
+
+### Historical control-plane synchronization snapshot (2026-10-02)
+
+The following snapshot is retained unchanged as historical evidence, not CURRENT
+status. Its pending-runtime/RPO state and next gate were superseded by the final
+acceptance milestone below.
+
+Task 050 independent-scheduler provider setup and Cloudflare Cron control-plane
+activation: PASS.
+
+ADR-022 repository implementation is accepted at exact SHA
+`b6c74fc0affbef2a145e85b4c317b7bcb33f43ad`.
+
+GitHub App/provider setup is complete. The Cloudflare scheduled-only Worker is
+deployed and configured, and its approved Cron Trigger is activated.
+
+Accepted control-plane classification:
+
+`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_CLOUDFLARE_CRON_ACTIVATED_CONTROL_PLANE_VERIFIED`
+
+Production RTO remains `ACCEPTED — 997.767 seconds`.
+
+Production RPO remains `NOT ACCEPTED`. Cron existence is NOT RPO evidence.
+Natural Cloudflare runtime proof has not yet been accepted; natural automatic
+recovery-point cadence remains to be verified under ADR-022.
 
 Production customer onboarding remains blocked:
 
 `PRODUCTION_CUSTOMER_DATA_ONBOARDING_BLOCKED_BY_BACKUP`
 
-The GitHub two-hour and weekly schedules are preserved. The independent
-Cloudflare scheduled-only Worker is implemented locally but is not deployed;
-its Cron Trigger is not activated. Both automatic paths use the existing
-Production automation kill switch. Provider setup is NOT yet authorized.
+The GitHub two-hour and weekly schedules are preserved. Both automatic paths
+use the existing Production automation kill switch.
 
-Immediate gate: pre-commit acceptance of the exact 11-file repository surface:
-PASS (local verification only; commit/push remain unauthorized).
+Accepted activation evidence (2026-10-02; not a new provider inspection):
 
-`PROJECT_STATE_SYNC_AND_PRECOMMIT_AFTER_INDEPENDENT_SCHEDULER_LOCAL_IMPLEMENTATION_PASS`
+- Cloudflare Account ID: `64d8b2cdf738b722db49bcb6fc075820`;
+- Worker: `madrasio-production-backup-scheduler`;
+- Deployment ID: `1551cd75-a59b-46d7-88cd-69a7e5d63718`;
+- Version ID: `2bcc6712-461b-4f9f-8269-aaa5956d3ad5`;
+- active traffic: `100%`; Worker versions/deployments: `2 / 2`;
+- activated Cron (UTC): `23 0,2,4,6,8,10,12,14,16,18,20,22 * * *`;
+- activation timestamp: `2026-10-02T15:26:31.822436Z`;
+- schedules changed from `[]` to exactly the approved Cron through one schedules
+  PUT; PUT and immediate GET returned HTTP `200` / `success=true`;
+- no Worker deployment/version change occurred during activation;
+- application ETag remained
+  `fb7844e5465d1dbcb028a3cfc26bcd18eb2dd600017d73d3c5a8918daf6dd541`;
+- secret names/count and six non-secret variables remained unchanged;
+- scheduled-only handler; workers.dev/previews disabled; routes, custom domains,
+  incoming service references and tail producers remained zero;
+- no Builds/Git integration or Queue/Event attachment, supported by accepted
+  operator-provided Dashboard evidence;
+- no manual Worker execution, JWT/installation-token test or workflow dispatch
+  was used as evidence;
+- repository remained clean at the accepted implementation SHA.
 
-After that acceptance, the next gate requires separate authorization:
+Current gate: `PROJECT_STATE_SYNC_AFTER_CLOUDFLARE_CRON_ACTIVATION`.
+This is documentation-only; no staging, commit, push, provider or Production
+operation is authorized. Earlier milestone sections preserve their historical
+state and authorization boundaries, not the current provider state.
 
-`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_IMPLEMENTATION_COMMIT_AND_PUSH_ONLY`
+Next operational gate, requiring separate authorization:
 
-No staging, commit, push, provider setup or Production operation is authorized
-during this synchronization/pre-commit gate. The historical implementation-only
-plan retained under Exact next step does not authorize another implementation.
+`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_NATURAL_CLOUDFLARE_EXECUTION_OBSERVATION`
 
 ## Current branch
 
 main
 
 ## Latest relevant commit
+
+`eeb42755f51262a7e82fbc413d7b33f750f06bd6`
+
+`fix: reject scheduler redirects under workerd`
+
+Exact-SHA CI `37093500178` and Deploy STAGING `37093500180`: success. The
+application STAGING deployment was not the Cloudflare Worker deployment.
+The corrected Worker subsequently passed natural-runtime observation.
+
+### Historical initial independent-scheduler implementation
+
+`b6c74fc0affbef2a145e85b4c317b7bcb33f43ad`
+
+`feat(recovery): add independent production backup scheduler`
+
+Accepted ADR-022 implementation commit. Provider activation evidence is recorded
+above; it does not establish runtime or RPO acceptance.
+
+### Historical earlier release evidence
 
 `1db366dae0c6328bb00ec639c3d5d11de9cc6de6`
 
@@ -63,6 +164,9 @@ Historical earlier repository/release milestones remain valid historical evidenc
 and are not rewritten by this current metadata section.
 
 ## Completed work
+
+Earlier sections below are historical milestone snapshots. Their pending or
+blocked statements are preserved, not active overrides of Current Stage.
 
 ### Task 050 recovery implementation
 
@@ -6092,7 +6196,121 @@ Subsequent PROJECT-STATE synchronization/pre-commit verification (2026-09-30):
 Local pre-commit acceptance: PASS. Next gate, requiring separate authorization:
 `PRODUCTION_RPO_INDEPENDENT_SCHEDULER_IMPLEMENTATION_COMMIT_AND_PUSH_ONLY`.
 
+## Final Production RPO acceptance milestone — 2026-10-03 (UTC)
+
+Gate: `PRODUCTION_RPO_COMBINED_ACCEPTANCE_DECISION_AND_STATE_TRANSITION`.
+Result: `PASS`.
+Classification: `PRODUCTION_RPO_ACCEPTED_BACKUP_ONBOARDING_BLOCKER_RESOLVED`.
+Final fresh evidence cutoff/review: `2026-10-03T23:38:03Z`.
+
+### Historical failure, remediation and clarification
+
+Initial October 2 natural Cloudflare executions failed with
+`scriptThrewException`, before GitHub dispatch. The external GitHub App
+authentication chain was proven healthy. Local workerd diagnostics established
+unsupported `redirect: 'error'` behavior. The accepted fix uses
+`redirect: 'manual'` and explicitly rejects every HTTP 300–399 response while
+preserving bounded, single-attempt, sanitized execution.
+
+The fix passed repository tests, exact-SHA hosted CI and natural corrected-runtime
+execution. The pre-fix failures remain historical remediation evidence and are
+excluded from the corrected-runtime window beginning
+`2026-10-03T14:57:32.876654Z`.
+
+The earlier timestamp-only incomplete observation remains a historical result.
+It was superseded by an evidence-contract clarification, not a runtime change:
+Cloudflare-originated `scheduledForUtc` is the exact provider-supplied
+`controller.scheduledTime`, converted with
+`new Date(controller.scheduledTime).toISOString()` without rounding or
+normalization. The earlier requirement for nominal `:23:00.000Z` equality was
+incorrect; actual provider `:23:03.000Z` values were preserved unchanged through
+the workflow input and verified event.
+
+Superseding observation classification:
+`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_REDIRECT_FIX_NATURAL_CLOUDFLARE_EXECUTION_OBSERVATION_PASS`.
+
+### Natural corrected-runtime evidence
+
+All six runs used accepted candidate/head SHA
+`eeb42755f51262a7e82fbc413d7b33f750f06bd6`, attempt 1, completed successfully,
+and emitted exactly one `production_backup_verified` event classified
+`PRODUCTION_BACKUP_RECOVERY_POINT_VERIFIED`. No manual run was counted.
+
+| GitHub run | Source | Provider scheduledForUtc | Verified-event timestamp (UTC) |
+| --- | --- | --- | --- |
+| 37136646001 | cloudflare-cron-v1 | 2026-10-03T16:23:03.000Z | 2026-10-03T16:24:24.6268825Z |
+| 37140522918 | github-schedule | null | 2026-10-03T17:27:52.2892453Z |
+| 37143982577 | cloudflare-cron-v1 | 2026-10-03T18:23:03.000Z | 2026-10-03T18:24:26.4550935Z |
+| 37151339068 | cloudflare-cron-v1 | 2026-10-03T20:23:03.000Z | 2026-10-03T20:24:33.6152578Z |
+| 37157729241 | github-schedule | null | 2026-10-03T22:15:29.8563199Z |
+| 37158256881 | cloudflare-cron-v1 | 2026-10-03T22:23:03.000Z | 2026-10-03T22:24:09.8577270Z |
+
+All four Cloudflare Past Cron Events reported `success` for the approved Cron;
+the corresponding GitHub event was `workflow_dispatch`, with origin established
+by structured source/timestamp attribution, not the event name alone. The two
+native runs had GitHub event `schedule`. The native workflow remains active.
+The fresh readback found no additional runs or relevant automatic failures in
+the accepted window. Four Cloudflare points exceed ADR-022's minimum of two.
+
+### Acceptance calculations and decision
+
+Consecutive combined verification-evidence gaps, rounded to milliseconds:
+`3807.662`, `3394.166`, `7207.160`, `6656.241`, `520.001` seconds.
+The first value corrects earlier sub-millisecond truncation in the calculation;
+the original event timestamps are unchanged.
+
+- Maximum combined verified recovery-point gap: `7207.1601643 seconds`
+  (`2h 00m 07.160s` rounded); threshold <= 6 hours: PASS.
+- Latest verified recovery-point evidence freshness at final review:
+  `4433.142273 seconds` (`1h 13m 53.142s` rounded); threshold <= 6 hours: PASS.
+- Maximum combined success-heartbeat evidence gap: `7207.1601643 seconds`;
+  threshold <= 5 hours: PASS.
+- Latest success-heartbeat evidence freshness: `4433.142273 seconds`;
+  threshold <= 5 hours: PASS.
+- Relevant failed corrected-runtime automatic attempts: `0`.
+
+The repository emits `production_backup_verified` only after immutable recovery
+object creation, independent remote readback/verification, successful Production
+Cronitor success-heartbeat acknowledgement and successful orchestration return.
+Heartbeat failure cannot emit a successful verified event. Accordingly these
+timestamps are repository-owned success-heartbeat acknowledgement evidence,
+not independently retrieved Cronitor provider receipt timestamps.
+
+Formal decision: Production RPO `ACCEPTED`. The observed maximum gap is evidence,
+not the contractual RPO. Production RTO remains `ACCEPTED — 997.767 seconds`;
+no restore was rerun and no contrary evidence was found.
+
+`PRODUCTION_CUSTOMER_DATA_ONBOARDING_BLOCKED_BY_BACKUP` is now a resolved
+historical blocker. Production customer-data onboarding is no longer blocked by
+backup/RPO readiness. Unrelated onboarding gates remain in force; this decision
+does not authorize customer-data creation or assert overall Production readiness.
+
+Only this document was edited. No staging, commit, push, provider mutation,
+Worker invocation, workflow dispatch/rerun, or Production DB/R2/age/restore
+operation occurred in this decision gate.
+
 ## Exact next step
+
+Request separate authorization for:
+
+`PRODUCTION_RPO_ACCEPTANCE_PROJECT_STATE_COMMIT_AND_PUSH`.
+
+Do not stage, commit or push automatically. Production RPO is accepted and the
+backup-specific onboarding blocker is resolved; unrelated onboarding requirements
+are not waived.
+
+### Historical post-activation observation handoff (2026-10-02)
+
+Under separate authorization, perform:
+
+`PRODUCTION_RPO_INDEPENDENT_SCHEDULER_NATURAL_CLOUDFLARE_EXECUTION_OBSERVATION`
+
+Do not begin observation during this documentation-only synchronization. Do not
+repeat provider setup or Cron activation, or substitute a manual Worker
+invocation/workflow dispatch for natural runtime evidence. Production RPO remains
+`NOT ACCEPTED` and customer onboarding remains blocked.
+
+### Historical implementation-only handoff (2026-09-30)
 
 Current handoff: complete local pre-commit acceptance of the exact 11-file
 candidate. If all checks pass, request the separately authorized gate
