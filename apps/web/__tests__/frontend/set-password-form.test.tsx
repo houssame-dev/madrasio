@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SetPasswordForm } from '@/components/auth/set-password-form';
 
@@ -22,6 +22,7 @@ describe('invite password setup', () => {
   beforeEach(() => {
     mocks.updateUser.mockReset(); mocks.replace.mockReset(); mocks.refresh.mockReset();
   });
+  afterEach(() => vi.restoreAllMocks());
 
   it('requires matching suitable passwords without contacting Auth', async () => {
     renderForm();
@@ -54,6 +55,34 @@ describe('invite password setup', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not be set/);
     expect(screen.queryByText(/provider internals/)).not.toBeInTheDocument();
     expect(mocks.replace).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('New password')).toHaveFocus();
+  });
+
+  it('supports Enter after hydration and keeps the pending update on the controlled Auth path', async () => {
+    let finish!: (result: { error: null }) => void;
+    mocks.updateUser.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const queryClient = renderForm();
+    const originalUrl = window.location.href;
+    const syntheticPassword = 'synthetic-keyboard-only-123';
+    expect(screen.getByLabelText('New password')).toBeEnabled();
+    await userEvent.type(screen.getByLabelText('New password'), syntheticPassword);
+    await userEvent.type(screen.getByLabelText('Confirm password'), syntheticPassword);
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledOnce());
+    expect(mocks.updateUser).toHaveBeenCalledWith({ password: syntheticPassword });
+    expect(screen.getByRole('button', { name: 'Saving password…' })).toBeDisabled();
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(window.location.href).toBe(originalUrl);
+    await act(async () => finish({ error: null }));
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/dashboard'));
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+    expect(mocks.refresh).toHaveBeenCalledOnce();
+    expect([log, info, warn, error].some((spy) => JSON.stringify(spy.mock.calls).includes(syntheticPassword))).toBe(false);
+    expect(JSON.stringify(localStorage).includes(syntheticPassword)).toBe(false);
+    expect(JSON.stringify(sessionStorage).includes(syntheticPassword)).toBe(false);
   });
 });
-
