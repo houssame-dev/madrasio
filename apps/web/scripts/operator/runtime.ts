@@ -915,8 +915,8 @@ export async function runHostedPreflight(config: BootstrapConfig, db: Db): Promi
     !row ||
     row.database !== 'postgres' ||
     row.auth_users !== 'auth.users' ||
-    row.migration_count !== 16 ||
-    row.public_table_count !== 39
+    row.migration_count !== 17 ||
+    row.public_table_count !== 40
   ) {
     throw new OperatorError(
       'HOSTED_PREFLIGHT_FAILED',

@@ -384,9 +384,9 @@ describe('recovery archive and tools', () => {
     );
   });
 
-  it('uses one complete 39-table application allowlist plus durable Auth', () => {
-    expect(APPLICATION_TABLES).toHaveLength(39);
-    expect(new Set(RECOVERY_TABLES).size).toBe(41);
+  it('uses one complete 40-table application allowlist plus durable Auth', () => {
+    expect(APPLICATION_TABLES).toHaveLength(40);
+    expect(new Set(RECOVERY_TABLES).size).toBe(42);
     expect(RECOVERY_TABLES).toContain('auth.users');
     expect(RECOVERY_TABLES).not.toContain('auth.sessions');
     expect(RECOVERY_TABLES).not.toContain('auth.oauth_client_states');
@@ -577,7 +577,7 @@ describe('recovery archive and tools', () => {
     expect(args).toContain('--format=custom');
     expect(args).toContain('--data-only');
     expect(args).toContain('--snapshot=00000003-1');
-    expect(args.filter((item) => item === '--table')).toHaveLength(41);
+    expect(args.filter((item) => item === '--table')).toHaveLength(42);
     expect(args.join(' ')).not.toMatch(/password|database-url|session|refresh_tokens/);
   });
 
@@ -1226,14 +1226,14 @@ describe('snapshot and restore orchestration', () => {
 });
 
 describe('manifest, reconciliation, cleanup and future transport boundary', () => {
-  it('captures the exact ordered 0000-0015 repository migration contract', async () => {
+  it('captures the exact ordered 0000-0016 repository migration contract', async () => {
     const metadata = await loadMigrationMetadata(
       resolve(process.cwd(), '../../database/drizzle/migrations'),
     );
-    expect(metadata.count).toBe(16);
-    expect(metadata.latest).toBe('0015_data-api-grants-hardening');
-    expect(Object.keys(metadata.fileSha256)).toHaveLength(16);
-    expect(metadata.createdAt).toHaveLength(16);
+    expect(metadata.count).toBe(17);
+    expect(metadata.latest).toBe('0016_audit-events');
+    expect(Object.keys(metadata.fileSha256)).toHaveLength(17);
+    expect(metadata.createdAt).toHaveLength(17);
   });
 
   it('canonicalizes objects without locale-dependent key order and rejects unknown manifests', () => {

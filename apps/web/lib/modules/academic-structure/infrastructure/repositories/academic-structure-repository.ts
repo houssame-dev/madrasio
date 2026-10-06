@@ -174,6 +174,13 @@ export async function listCurriculumVersions(db: AcademicStructureDb, schoolId: 
   return { rows, total: totals[0]?.value ?? 0 };
 }
 export async function findCurriculumVersion(db: AcademicStructureDb, schoolId: string, id: string) { const [row] = await db.select().from(schema.curriculumVersions).where(and(eq(schema.curriculumVersions.schoolId, schoolId), eq(schema.curriculumVersions.id, id))).limit(1); return row ?? null; }
+/** Lock before reading the previous status for attributable lifecycle transitions. */
+export async function findCurriculumVersionForUpdate(db: AcademicStructureDb, schoolId: string, id: string) {
+  const [row] = await db.select().from(schema.curriculumVersions)
+    .where(and(eq(schema.curriculumVersions.schoolId, schoolId), eq(schema.curriculumVersions.id, id))).for('update').limit(1);
+  return row ?? null;
+}
+
 /** SHARE conflicts with lifecycle UPDATE, not merely key changes. Hold through Class write. */
 export async function findCurriculumVersionForShare(db: AcademicStructureDb, schoolId: string, id: string) {
   const [row] = await db.select().from(schema.curriculumVersions)

@@ -125,3 +125,4 @@ export * from './attendance';
 export * from './homework';
 export * from './announcements';
 export * from './notifications';
+export * from './audit';

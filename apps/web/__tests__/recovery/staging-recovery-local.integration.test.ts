@@ -95,6 +95,13 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
          values ($1,$2,$3,'SCHOOL_ADMIN')`,
         [membershipId, schoolId, userId],
       );
+      await sourcePool.query(
+        `insert into public.audit_events
+          (action,scope,school_id,actor_kind,actor_user_id,resource_type,metadata)
+         values ('CurriculumVersionStatusChanged','SCHOOL',$1,'USER',$2,'CurriculumVersion',
+           '{"previousStatus":"DRAFT","newStatus":"ACTIVE"}')`,
+        [schoolId, userId],
+      );
     } finally {
       await sourcePool.end();
     }
@@ -113,7 +120,7 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
       RECOVERY_POSTGRES_CONTAINER_IMAGE: PINNED_POSTGRES_CONTAINER,
     });
     expect(bundle.authUserCount).toBe(1);
-    expect(bundle.applicationTableCount).toBe(39);
+    expect(bundle.applicationTableCount).toBe(40);
 
     await cleanupLocalRecoveryTarget(target.statePath);
     target = await createLocalRecoveryTarget();
@@ -130,7 +137,7 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
         RECOVERY_REPOSITORY_GIT_SHA: gitSha,
         RECOVERY_POSTGRES_CONTAINER_IMAGE: PINNED_POSTGRES_CONTAINER,
       }),
-    ).resolves.toMatchObject({ tables: 41 });
+    ).resolves.toMatchObject({ tables: 42 });
     const restoredPool = new Pool({ connectionString: restoredUrl, ssl: false });
     try {
       await expect(
@@ -140,10 +147,11 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
             (select count(*)::int from auth.identities) auth_identities,
             (select count(*)::int from public.users) users,
             (select count(*)::int from public.schools) schools,
-            (select count(*)::int from public.school_memberships) memberships`,
+            (select count(*)::int from public.school_memberships) memberships,
+            (select count(*)::int from public.audit_events) audit_events`,
         ),
       ).resolves.toMatchObject({
-        rows: [{ auth_users: 1, auth_identities: 1, users: 1, schools: 1, memberships: 1 }],
+        rows: [{ auth_users: 1, auth_identities: 1, users: 1, schools: 1, memberships: 1, audit_events: 1 }],
       });
     } finally {
       await restoredPool.end();

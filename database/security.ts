@@ -17,7 +17,7 @@ defaults AS (
     AND NOT (p.proname='rls_auto_enable' AND p.pronargs=0 AND p.prorettype='event_trigger'::regtype)
     AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid='pg_proc'::regclass AND d.objid=p.oid AND d.deptype='e')
 )
-SELECT 'table_inventory' AS violation WHERE (SELECT count(*) FROM app_tables) <> 39
+SELECT 'table_inventory' AS violation WHERE (SELECT count(*) FROM app_tables) <> 40
 UNION ALL SELECT 'platform_roles' WHERE (SELECT count(*) FROM api_roles) <> 3
 UNION ALL SELECT 'table_owner_or_rls' WHERE EXISTS (
   SELECT 1 FROM app_tables WHERE NOT relrowsecurity OR relowner<>(SELECT oid FROM owner_role))

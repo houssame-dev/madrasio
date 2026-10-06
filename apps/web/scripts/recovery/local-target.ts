@@ -594,7 +594,7 @@ export async function verifyLocalRecoveryTarget(
     if (options.expectMigrated) {
       if (
         row.application_tables !== APPLICATION_TABLES.length ||
-        migrations !== 16 ||
+        migrations !== 17 ||
         row.rls_tables !== APPLICATION_TABLES.length ||
         row.policies !== 0
       ) {

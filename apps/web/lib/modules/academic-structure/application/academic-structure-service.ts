@@ -1,4 +1,5 @@
 import type { Permission } from '@/lib/authorization/permissions';
+import { recordSchoolAudit } from '@/lib/audit/service';
 import { requireOperation, type AuthorizationDb } from '@/lib/authorization/server';
 
 import type {
@@ -157,13 +158,28 @@ export async function getCurriculumVersion(db: AcademicStructureDb, actor: Actor
 export async function createCurriculumVersion(db: AcademicStructureDb, actor: Actor, curriculumId: string, input: CurriculumVersionCreate) {
   await manage(db, actor); if (!await repo.findCurriculum(db, actor.schoolId, curriculumId)) notFound('Curriculum');
   if (input.status && input.status !== 'DRAFT') assertTransition('curriculum-version', 'DRAFT', input.status);
-  return view(await unique(() => repo.insertCurriculumVersion(db, actor.schoolId, curriculumId, input)));
+  return db.transaction(async (tx) => {
+    const created = await unique(() => repo.insertCurriculumVersion(tx, actor.schoolId, curriculumId, input));
+    if (created.status !== 'DRAFT') await recordSchoolAudit(tx, actor, {
+      action: 'CurriculumVersionStatusChanged', resourceId: created.id,
+      metadata: { previousStatus: 'DRAFT', newStatus: created.status },
+    });
+    return view(created);
+  });
 }
 export async function patchCurriculumVersion(db: AcademicStructureDb, actor: Actor, id: string, input: CurriculumVersionPatch) {
-  await manage(db, actor); const current = await repo.findCurriculumVersion(db, actor.schoolId, id); if (!current) notFound('Curriculum version');
-  if (input.status) assertTransition('curriculum-version', current.status, input.status);
-  if (input.name !== undefined && current.status !== 'DRAFT') throw new AcademicStructureError('CURRICULUM_VERSION_IMMUTABLE', 'Only a DRAFT CurriculumVersion may change its version name.');
-  return view((await unique(() => repo.updateCurriculumVersion(db, actor.schoolId, id, input))) ?? notFound('Curriculum version'));
+  await manage(db, actor);
+  return db.transaction(async (tx) => {
+    const current = await repo.findCurriculumVersionForUpdate(tx, actor.schoolId, id); if (!current) notFound('Curriculum version');
+    if (input.status) assertTransition('curriculum-version', current.status, input.status);
+    if (input.name !== undefined && current.status !== 'DRAFT') throw new AcademicStructureError('CURRICULUM_VERSION_IMMUTABLE', 'Only a DRAFT CurriculumVersion may change its version name.');
+    const updated = (await unique(() => repo.updateCurriculumVersion(tx, actor.schoolId, id, input))) ?? notFound('Curriculum version');
+    if (updated.status !== current.status) await recordSchoolAudit(tx, actor, {
+      action: 'CurriculumVersionStatusChanged', resourceId: id,
+      metadata: { previousStatus: current.status, newStatus: updated.status },
+    });
+    return view(updated);
+  });
 }
 
 export async function listCurriculumSubjects(db: AcademicStructureDb, actor: Actor, versionId: string, input: PageInput & StatusFilter<'ACTIVE' | 'INACTIVE'>) {
@@ -226,6 +242,10 @@ export async function patchClass(db: AcademicStructureDb, actor: Actor, id: stri
     }
     await assertClassRelations(tx, actor, { academicYearId: current.academicYearId, levelId: input.levelId ?? current.levelId, trackId: input.trackId === undefined ? current.trackId : input.trackId, curriculumVersionId: input.curriculumVersionId ?? current.curriculumVersionId });
     await unique(() => repo.updateClass(tx, actor.schoolId, id, input));
+    if (curriculumChanged) await recordSchoolAudit(tx, actor, {
+      action: 'ClassCurriculumChanged', resourceId: id,
+      metadata: { previousVersionId: current.curriculumVersionId, newVersionId: input.curriculumVersionId! },
+    });
     return (await repo.findClass(tx, actor.schoolId, id)) ?? notFound('Class');
   }, { isolationLevel: 'read committed' });
 }

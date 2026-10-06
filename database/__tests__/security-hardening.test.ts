@@ -28,7 +28,7 @@ describe('0015 application privilege hardening', () => {
   it.each([false, true])('replays the full chain with broad defaults=%s and preserves platform access', async (broad) => {
     const client = await fixture(broad);
     expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
-    expect((await client.query<{ count: number }>('select count(*)::int as count from drizzle.__drizzle_migrations')).rows[0].count).toBe(16);
+    expect((await client.query<{ count: number }>('select count(*)::int as count from drizzle.__drizzle_migrations')).rows[0].count).toBe(17);
     expect((await client.query<{ ok: boolean }>(`select has_function_privilege('anon','public.rls_auto_enable()','EXECUTE') as ok`)).rows[0].ok).toBe(true);
     await client.exec('CREATE TABLE storage.platform_probe (id int)');
     expect((await client.query<{ ok: boolean }>(`select has_table_privilege('service_role','storage.platform_probe','SELECT') as ok`)).rows[0].ok).toBe(true);

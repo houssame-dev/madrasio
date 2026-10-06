@@ -13,6 +13,7 @@ import type { Role } from './roles';
  * granularity where the domain needs it.
  */
 export const PERMISSIONS = [
+  'audit.read',
   'school.read',
   'academic_structure.read',
   'academic_structure.manage',
@@ -58,6 +59,7 @@ export type Permission = (typeof PERMISSIONS)[number];
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   SUPER_ADMIN: PERMISSIONS,
   SCHOOL_ADMIN: [
+    'audit.read',
     'school.read',
     'academic_structure.read',
     'academic_structure.manage',

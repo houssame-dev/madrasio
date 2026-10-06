@@ -113,6 +113,13 @@
       "when": 1788445882606,
       "tag": "0015_data-api-grants-hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791252143800,
+      "tag": "0016_audit-events",
+      "breakpoints": true
     }
   ]
 }
