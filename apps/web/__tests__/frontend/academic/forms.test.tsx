@@ -14,6 +14,50 @@ function renderForm(ui: React.ReactElement) {
 afterEach(() => vi.restoreAllMocks());
 
 describe('academic forms use exact contracts', () => {
+  const classOptions = {
+    years: [{ id: yearId, name: '2026/2027', startDate: '2026-09-01', endDate: '2027-06-30', status: 'ACTIVE' as const, ...timestamps }],
+    levels: [{ id: levelId, stageId, name: 'Level 1', sequence: 1, status: 'ACTIVE' as const, ...timestamps }], tracks: [],
+    versions: [
+      { id: versionId, curriculumId, curriculumName: 'National', name: 'Archived version', status: 'ARCHIVED' as const, ...timestamps },
+      { id: '00000000-0000-4000-8000-000000000082', curriculumId, curriculumName: 'National', name: 'Draft version', status: 'DRAFT' as const, ...timestamps },
+      { id: '00000000-0000-4000-8000-000000000083', curriculumId, curriculumName: 'National', name: 'Active version', status: 'ACTIVE' as const, ...timestamps },
+    ],
+  };
+  const historicalClass = { id: 'class', name: 'Class A', academicYearId: yearId, stageId, levelId, trackId: null, curriculumVersionId: versionId, status: 'CLOSED' as const, canChangeCurriculum: false, ...timestamps };
+
+  it('offers only ACTIVE versions for normal creation and defaults to the active option', () => {
+    renderForm(<ClassForm {...classOptions} onCancel={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.queryByRole('option', { name: /Archived version|Draft version/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Curriculum version' })).toHaveValue(classOptions.versions[2].id);
+  });
+
+  it('does not submit new Classes if no ACTIVE version exists', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    renderForm(<ClassForm {...classOptions} versions={classOptions.versions.slice(0, 2)} onCancel={vi.fn()} onSaved={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText('Name'), 'No curriculum');
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+    expect(screen.getByText(/No active curriculum version/)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('renders a historical archived reference, explains the lock, and omits rebinding from metadata PATCH', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: historicalClass }));
+    renderForm(<ClassForm {...classOptions} initial={historicalClass} onCancel={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.queryByRole('combobox', { name: 'Curriculum version' })).not.toBeInTheDocument();
+    expect(screen.getByText('National — Archived version')).toBeInTheDocument();
+    expect(screen.getByText(/Classes with academic history/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).not.toHaveProperty('curriculumVersionId');
+  });
+
+  it('permits an eligible unused Class correction to an ACTIVE version', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: historicalClass }));
+    renderForm(<ClassForm {...classOptions} initial={{ ...historicalClass, canChangeCurriculum: true }} onCancel={vi.fn()} onSaved={vi.fn()} />);
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Curriculum version' }), classOptions.versions[2].id);
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toHaveProperty('curriculumVersionId', classOptions.versions[2].id);
+  });
+
   it('creates an optional-code Subject without ever sending coefficient', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: { id: subjectId } }));
     renderForm(<SubjectForm onCancel={vi.fn()} onSaved={vi.fn()} />);
@@ -67,7 +111,7 @@ describe('academic forms use exact contracts', () => {
     const years = [{ id: yearId, name: '2026/2027', startDate: '2026-09-01', endDate: '2027-06-30', status: 'PLANNED' as const, ...timestamps }];
     const levels = [{ id: levelId, stageId, name: 'Level 1', sequence: 1, status: 'ACTIVE' as const, ...timestamps }];
     const tracks = [{ id: trackId, name: 'Science', sequence: 1, status: 'ACTIVE' as const, ...timestamps }];
-    const versions = [{ id: versionId, curriculumId, curriculumName: 'National', name: 'V1', status: 'DRAFT' as const, ...timestamps }];
+    const versions = [{ id: versionId, curriculumId, curriculumName: 'National', name: 'V1', status: 'ACTIVE' as const, ...timestamps }];
     const view = renderForm(<ClassForm years={years} levels={levels} tracks={tracks} versions={versions} onCancel={vi.fn()} onSaved={vi.fn()} />);
     await userEvent.type(screen.getByLabelText('Name'), 'Class A');
     await userEvent.click(screen.getByRole('button', { name: 'Create' }));

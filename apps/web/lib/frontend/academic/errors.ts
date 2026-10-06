@@ -9,6 +9,8 @@ const messages: Record<string, string> = {
   ACADEMIC_YEAR_DATES_IMMUTABLE: 'These academic year dates can no longer be changed because the year is operational or has dependent academic records.',
   ACADEMIC_PERIOD_DATES_IMMUTABLE: 'These period dates can no longer be changed because the period is operational or has dependent academic records.',
   CURRICULUM_VERSION_IMMUTABLE: 'Only a draft curriculum version can be structurally changed.',
+  CLASS_CURRICULUM_IMMUTABLE: 'The curriculum cannot be changed because the Class already has academic history.',
+  CURRICULUM_VERSION_NOT_ACTIVE: 'Select an active curriculum version.',
 };
 
 export function academicErrorMessage(error: unknown): string {

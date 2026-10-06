@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({ db: null as unknown, context: null as unknown,
 vi.mock('@/lib/db/client', () => ({ getDb: () => mocks.db }));
 vi.mock('@/lib/auth/require-context', () => ({ requireCurrentContext: async () => { if (mocks.authError) throw mocks.authError; return mocks.context; } }));
 
-import { academicYearGET, academicYearPATCH, academicYearsGET, academicYearsPOST, classesGET, classesPOST, curriculumSubjectsPOST, periodPATCH, periodsPOST, subjectGET, subjectsGET, subjectsPOST, versionGET } from '@/lib/api/academic-structure';
+import { academicYearGET, academicYearPATCH, academicYearsGET, academicYearsPOST, classPATCH, classesGET, classesPOST, curriculumSubjectsPOST, periodPATCH, periodsPOST, subjectGET, subjectsGET, subjectsPOST, versionGET } from '@/lib/api/academic-structure';
 
 let test: AuthTestDb;
 let schoolId: string;
@@ -85,9 +85,24 @@ describe('representative academic structure HTTP contracts', () => {
     const stage = await test.seed.insert((await import('@school/database')).stages).values({ schoolId, name: 'Primary', sequence: 1 }).returning();
     const level = await test.seed.insert((await import('@school/database')).levels).values({ schoolId, stageId: stage[0].id, name: 'Year 1', sequence: 1 }).returning();
     const curriculum = await test.seed.insert((await import('@school/database')).curricula).values({ schoolId, name: 'National' }).returning();
-    const version = await test.seed.insert((await import('@school/database')).curriculumVersions).values({ schoolId, curriculumId: curriculum[0].id, name: 'v1' }).returning();
+    const schema = await import('@school/database');
+    for (const status of ['DRAFT', 'ARCHIVED'] as const) {
+      const [ineligible] = await test.seed.insert(schema.curriculumVersions).values({ schoolId, curriculumId: curriculum[0].id, name: status, status }).returning();
+      const rejected = await classesPOST(json('http://local', 'POST', { academicYearId: year.id, levelId: level[0].id, curriculumVersionId: ineligible.id, name: status }));
+      expect(rejected.status).toBe(422);
+      expect(await rejected.json()).toMatchObject({ error: { featureCode: 'CURRICULUM_VERSION_NOT_ACTIVE' } });
+    }
+    const version = await test.seed.insert(schema.curriculumVersions).values({ schoolId, curriculumId: curriculum[0].id, name: 'v1', status: 'ACTIVE' }).returning();
     const created = await classesPOST(json('http://local', 'POST', { academicYearId: year.id, levelId: level[0].id, curriculumVersionId: version[0].id, name: 'Class A' }));
     expect(created.status).toBe(201); expect((await classesGET(new Request(`http://local/api/v1/classes?academicYearId=${year.id}`))).status).toBe(200);
+    const klass = (await created.json()).data;
+    const [student] = await test.seed.insert(schema.students).values({ schoolId, firstName: 'Test', lastName: 'Student' }).returning();
+    await test.seed.insert(schema.studentEnrollments).values({ schoolId, classId: klass.id, academicYearId: year.id, studentId: student.id, effectiveFrom: '2025-09-01' });
+    const [replacement] = await test.seed.insert(schema.curriculumVersions).values({ schoolId, curriculumId: curriculum[0].id, name: 'v2', status: 'ACTIVE' }).returning();
+    const rebind = await classPATCH(json('http://local', 'PATCH', { curriculumVersionId: replacement.id }), params({ id: klass.id }));
+    expect(rebind.status).toBe(422);
+    expect(await rebind.json()).toMatchObject({ error: { featureCode: 'CLASS_CURRICULUM_IMMUTABLE' } });
+    expect((await classPATCH(json('http://local', 'PATCH', { curriculumVersionId: replacement.id, canChangeCurriculum: true }), params({ id: klass.id }))).status).toBe(400);
     const bad = await classesPOST(json('http://local', 'POST', { academicYearId: crypto.randomUUID(), levelId: level[0].id, curriculumVersionId: version[0].id, name: 'Bad' }));
     expect(await bad.json()).toMatchObject({ error: { featureCode: 'NOT_FOUND' } });
   });

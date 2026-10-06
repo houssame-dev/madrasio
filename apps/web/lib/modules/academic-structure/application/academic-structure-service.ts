@@ -192,12 +192,40 @@ async function assertClassRelations(db: AcademicStructureDb, actor: Actor, input
   if (input.trackId && !await repo.findTrack(db, actor.schoolId, input.trackId)) notFound('Track');
   if (!await repo.findCurriculumVersion(db, actor.schoolId, input.curriculumVersionId)) notFound('Curriculum version');
 }
-export async function createClass(db: AcademicStructureDb, actor: Actor, input: ClassCreate) { await manage(db, actor); await assertClassRelations(db, actor, input); if (input.status && input.status !== 'ACTIVE') assertTransition('class', 'ACTIVE', input.status); const inserted = await unique(() => repo.insertClass(db, actor.schoolId, input)); return (await repo.findClass(db, actor.schoolId, inserted.id)) ?? notFound('Class'); }
+async function requireActiveClassCurriculum(db: AcademicStructureDb, actor: Actor, id: string) {
+  const version = await repo.findCurriculumVersionForShare(db, actor.schoolId, id);
+  if (!version) notFound('Curriculum version');
+  if (version.status !== 'ACTIVE') throw new AcademicStructureError(
+    'CURRICULUM_VERSION_NOT_ACTIVE', 'Select an active curriculum version for a new Class curriculum binding.',
+  );
+}
+
+export async function createClass(db: AcademicStructureDb, actor: Actor, input: ClassCreate) {
+  await manage(db, actor);
+  return db.transaction(async (tx) => {
+    await assertClassRelations(tx, actor, input);
+    await requireActiveClassCurriculum(tx, actor, input.curriculumVersionId);
+    if (input.status && input.status !== 'ACTIVE') assertTransition('class', 'ACTIVE', input.status);
+    const inserted = await unique(() => repo.insertClass(tx, actor.schoolId, input));
+    return (await repo.findClass(tx, actor.schoolId, inserted.id)) ?? notFound('Class');
+  }, { isolationLevel: 'read committed' });
+}
 export async function patchClass(db: AcademicStructureDb, actor: Actor, id: string, input: ClassPatch) {
-  await manage(db, actor); const current = await repo.findClass(db, actor.schoolId, id); if (!current) notFound('Class');
-  if (input.status) assertTransition('class', current.status, input.status);
-  if (current.status === 'ARCHIVED' && Object.keys(input).some((key) => key !== 'status')) throw new AcademicStructureError('INVALID_STATUS_TRANSITION', 'An archived Class is immutable.');
-  await assertClassRelations(db, actor, { academicYearId: current.academicYearId, levelId: input.levelId ?? current.levelId, trackId: input.trackId === undefined ? current.trackId : input.trackId, curriculumVersionId: input.curriculumVersionId ?? current.curriculumVersionId });
-  await unique(() => repo.updateClass(db, actor.schoolId, id, input));
-  return (await repo.findClass(db, actor.schoolId, id)) ?? notFound('Class');
+  await manage(db, actor);
+  return db.transaction(async (tx) => {
+    const current = await repo.findClassForUpdate(tx, actor.schoolId, id);
+    if (!current) notFound('Class');
+    if (input.status) assertTransition('class', current.status, input.status);
+    if (current.status === 'ARCHIVED' && Object.keys(input).some((key) => key !== 'status')) throw new AcademicStructureError('INVALID_STATUS_TRANSITION', 'An archived Class is immutable.');
+    const curriculumChanged = input.curriculumVersionId !== undefined && input.curriculumVersionId !== current.curriculumVersionId;
+    if (curriculumChanged) {
+      if (await repo.classHasAcademicHistory(tx, actor.schoolId, id)) throw new AcademicStructureError(
+        'CLASS_CURRICULUM_IMMUTABLE', 'The curriculum cannot be changed because the Class already has academic history.',
+      );
+      await requireActiveClassCurriculum(tx, actor, input.curriculumVersionId!);
+    }
+    await assertClassRelations(tx, actor, { academicYearId: current.academicYearId, levelId: input.levelId ?? current.levelId, trackId: input.trackId === undefined ? current.trackId : input.trackId, curriculumVersionId: input.curriculumVersionId ?? current.curriculumVersionId });
+    await unique(() => repo.updateClass(tx, actor.schoolId, id, input));
+    return (await repo.findClass(tx, actor.schoolId, id)) ?? notFound('Class');
+  }, { isolationLevel: 'read committed' });
 }

@@ -35,6 +35,8 @@ export interface CurriculumSubjectDto extends Timestamps {
   subjectCode: string | null; coefficient: string; displayOrder: number | null; status: ActiveStatus;
 }
 export interface ClassDto extends Timestamps {
+  /** Server-computed hint; the mutation service always rechecks under lock. */
+  canChangeCurriculum?: boolean;
   id: string; academicYearId: string; stageId: string; levelId: string;
   trackId: string | null; curriculumVersionId: string; name: string; status: ClassStatus;
 }

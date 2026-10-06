@@ -92,6 +92,7 @@ describe('AcademicYear and AcademicPeriod application rules', () => {
 
   it('freezes Year and Period dates once operational history exists without rewriting that history', async () => {
     const a = await actor(); const s = await structure(a);
+    await app.patchCurriculumVersion(db, a, s.version.id, { status: 'ACTIVE' });
     const period = await app.createAcademicPeriod(db, a, s.year.id, { name: 'Term 1', sequence: 1, startDate: '2025-09-01', endDate: '2025-12-20' });
     const klass = await app.createClass(db, a, { academicYearId: s.year.id, levelId: s.level.id, curriculumVersionId: s.version.id, name: 'Class A' });
     const subject = await app.createSubject(db, a, { name: 'Mathematics' });
@@ -263,8 +264,34 @@ describe('Curriculum versioning and coefficients', () => {
 });
 
 describe('Class historical identity and authorization', () => {
+  it('allows unused Class correction, rejects non-ACTIVE bindings, and preserves tenant/role checks', async () => {
+    const a = await actor(); const s = await structure(a);
+    const input = { academicYearId: s.year.id, levelId: s.level.id, curriculumVersionId: s.version.id, name: 'Unused' };
+    await expect(app.createClass(db, a, input)).rejects.toMatchObject({ featureCode: 'CURRICULUM_VERSION_NOT_ACTIVE' });
+    await app.patchCurriculumVersion(db, a, s.version.id, { status: 'ACTIVE' });
+    const klass = await app.createClass(db, a, input);
+    expect(klass.canChangeCurriculum).toBe(true);
+    const replacement = await app.createCurriculumVersion(db, a, s.curriculum.id, { name: 'v2' });
+    await expect(app.patchClass(db, a, klass.id, { curriculumVersionId: replacement.id })).rejects.toMatchObject({ featureCode: 'CURRICULUM_VERSION_NOT_ACTIVE' });
+    await app.patchCurriculumVersion(db, a, replacement.id, { status: 'ACTIVE' });
+    expect((await app.patchClass(db, a, klass.id, { curriculumVersionId: replacement.id })).curriculumVersionId).toBe(replacement.id);
+    await app.patchCurriculumVersion(db, a, replacement.id, { status: 'ARCHIVED' });
+    await expect(app.createClass(db, a, { ...input, curriculumVersionId: replacement.id, name: 'Invalid' })).rejects.toMatchObject({ featureCode: 'CURRICULUM_VERSION_NOT_ACTIVE' });
+    expect(await app.patchClass(db, a, klass.id, { name: 'Renamed', curriculumVersionId: replacement.id })).toMatchObject({ name: 'Renamed', curriculumVersionId: replacement.id });
+    const b = await actor('SCHOOL_ADMIN', 'Foreign'); const foreign = await structure(b);
+    await app.patchCurriculumVersion(db, b, foreign.version.id, { status: 'ACTIVE' });
+    await expect(app.patchClass(db, a, klass.id, { curriculumVersionId: foreign.version.id })).rejects.toMatchObject({ featureCode: 'NOT_FOUND' });
+    await expect(app.patchClass(db, a, klass.id, { levelId: foreign.level.id })).rejects.toMatchObject({ featureCode: 'NOT_FOUND' });
+    await expect(app.patchClass(db, b, klass.id, { name: 'Hidden' })).rejects.toMatchObject({ featureCode: 'NOT_FOUND' });
+    for (const role of ['TEACHER', 'PARENT'] as const) {
+      const userId = await seedUser(test.seed); await seedMembership(test.seed, userId, a.schoolId, role);
+      await expect(app.patchClass(db, { ...a, userId }, klass.id, { curriculumVersionId: s.version.id })).rejects.toBeInstanceOf(ForbiddenError);
+    }
+  });
+
   it('creates an exact year-bound Class, validates every relation, and follows lifecycle', async () => {
     const a = await actor(); const s = await structure(a);
+    await app.patchCurriculumVersion(db, a, s.version.id, { status: 'ACTIVE' });
     const klass = await app.createClass(db, a, { academicYearId: s.year.id, levelId: s.level.id, curriculumVersionId: s.version.id, name: 'Class A' });
     expect(klass.academicYearId).toBe(s.year.id);
     expect((await app.patchClass(db, a, klass.id, { status: 'CLOSED' })).status).toBe('CLOSED');

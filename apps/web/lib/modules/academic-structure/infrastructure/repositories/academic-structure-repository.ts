@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, exists, ilike, or, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, exists, ilike, or, sql, type SQL } from 'drizzle-orm';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import * as schema from '@school/database';
 
@@ -174,6 +174,13 @@ export async function listCurriculumVersions(db: AcademicStructureDb, schoolId: 
   return { rows, total: totals[0]?.value ?? 0 };
 }
 export async function findCurriculumVersion(db: AcademicStructureDb, schoolId: string, id: string) { const [row] = await db.select().from(schema.curriculumVersions).where(and(eq(schema.curriculumVersions.schoolId, schoolId), eq(schema.curriculumVersions.id, id))).limit(1); return row ?? null; }
+/** SHARE conflicts with lifecycle UPDATE, not merely key changes. Hold through Class write. */
+export async function findCurriculumVersionForShare(db: AcademicStructureDb, schoolId: string, id: string) {
+  const [row] = await db.select().from(schema.curriculumVersions)
+    .where(and(eq(schema.curriculumVersions.schoolId, schoolId), eq(schema.curriculumVersions.id, id)))
+    .for('share').limit(1);
+  return row ?? null;
+}
 export async function insertCurriculumVersion(db: AcademicStructureDb, schoolId: string, curriculumId: string, input: Omit<typeof schema.curriculumVersions.$inferInsert, 'schoolId' | 'curriculumId'>) { const [row] = await db.insert(schema.curriculumVersions).values({ ...input, schoolId, curriculumId }).returning(); return row; }
 export async function updateCurriculumVersion(db: AcademicStructureDb, schoolId: string, id: string, input: Partial<typeof schema.curriculumVersions.$inferInsert>) { const [row] = await db.update(schema.curriculumVersions).set({ ...input, updatedAt: new Date() }).where(and(eq(schema.curriculumVersions.schoolId, schoolId), eq(schema.curriculumVersions.id, id))).returning(); return row ?? null; }
 export async function curriculumVersionHasReferences(db: AcademicStructureDb, schoolId: string, id: string) {
@@ -206,6 +213,37 @@ export async function findCurriculumSubject(db: AcademicStructureDb, schoolId: s
 export async function insertCurriculumSubject(db: AcademicStructureDb, schoolId: string, curriculumVersionId: string, input: Omit<typeof schema.curriculumSubjects.$inferInsert, 'schoolId' | 'curriculumVersionId'>) { const [row] = await db.insert(schema.curriculumSubjects).values({ ...input, schoolId, curriculumVersionId }).returning(); return row; }
 export async function updateCurriculumSubject(db: AcademicStructureDb, schoolId: string, id: string, input: Partial<typeof schema.curriculumSubjects.$inferInsert>) { const [row] = await db.update(schema.curriculumSubjects).set({ ...input, updatedAt: new Date() }).where(and(eq(schema.curriculumSubjects.schoolId, schoolId), eq(schema.curriculumSubjects.id, id))).returning(); return row ?? null; }
 
+/**
+ * All lifecycle states count: ended/archived records still carry academic history.
+ * Assessments/Grades are covered by their required Gradebook; submissions by
+ * Homework targets. Announcement audiences alone do not depend on curriculum.
+ */
+function classHistoryExists(db: AcademicStructureDb): SQL {
+  return or(...[
+    schema.studentEnrollments, schema.teacherAssignments, schema.gradebooks,
+    schema.subjectResults, schema.periodResults, schema.annualResults,
+    schema.resultPublications, schema.attendanceRecords, schema.homeworkTargets,
+  ].map((table) => exists(db.select({ id: table.id }).from(table).where(and(
+    eq(table.schoolId, schema.classes.schoolId), eq(table.classId, schema.classes.id),
+  )))))!;
+}
+
+export async function findClassForUpdate(db: AcademicStructureDb, schoolId: string, id: string) {
+  // Full UPDATE lock conflicts with the KEY SHARE locks taken by immediate
+  // Class foreign keys when academic dependents are inserted. NO KEY UPDATE
+  // would not protect this boundary. Check history in a subsequent statement.
+  const [row] = await db.select().from(schema.classes)
+    .where(and(eq(schema.classes.schoolId, schoolId), eq(schema.classes.id, id)))
+    .for('update').limit(1);
+  return row ?? null;
+}
+
+export async function classHasAcademicHistory(db: AcademicStructureDb, schoolId: string, id: string) {
+  const [row] = await db.select({ used: classHistoryExists(db) }).from(schema.classes)
+    .where(and(eq(schema.classes.schoolId, schoolId), eq(schema.classes.id, id))).limit(1);
+  return row?.used ?? false;
+}
+
 export async function listClasses(db: AcademicStructureDb, schoolId: string, paging: Paging, filters: { academicYearId?: string; status?: typeof schema.classStatus.enumValues[number]; levelId?: string; stageId?: string; trackId?: string }) {
   const condition = where([
     eq(schema.classes.schoolId, schoolId),
@@ -217,6 +255,7 @@ export async function listClasses(db: AcademicStructureDb, schoolId: string, pag
   ]);
   const base = db.select({
     id: schema.classes.id, academicYearId: schema.classes.academicYearId,
+    canChangeCurriculum: sql<boolean>`${schema.classes.status} <> 'ARCHIVED' and not (${classHistoryExists(db)})`,
     levelId: schema.classes.levelId, stageId: schema.levels.stageId,
     trackId: schema.classes.trackId, curriculumVersionId: schema.classes.curriculumVersionId,
     name: schema.classes.name, status: schema.classes.status,
@@ -229,6 +268,7 @@ export async function listClasses(db: AcademicStructureDb, schoolId: string, pag
 export async function findClass(db: AcademicStructureDb, schoolId: string, id: string) {
   const [row] = await db.select({
     id: schema.classes.id, academicYearId: schema.classes.academicYearId,
+    canChangeCurriculum: sql<boolean>`${schema.classes.status} <> 'ARCHIVED' and not (${classHistoryExists(db)})`,
     levelId: schema.classes.levelId, stageId: schema.levels.stageId,
     trackId: schema.classes.trackId, curriculumVersionId: schema.classes.curriculumVersionId,
     name: schema.classes.name, status: schema.classes.status,
