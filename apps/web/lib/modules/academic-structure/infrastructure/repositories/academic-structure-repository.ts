@@ -159,8 +159,8 @@ export async function findSubject(db: AcademicStructureDb, schoolId: string, id:
 export async function insertSubject(db: AcademicStructureDb, schoolId: string, input: Omit<typeof schema.subjects.$inferInsert, 'schoolId'>) { const [row] = await db.insert(schema.subjects).values({ ...input, schoolId }).returning(); return row; }
 export async function updateSubject(db: AcademicStructureDb, schoolId: string, id: string, input: Partial<typeof schema.subjects.$inferInsert>) { const [row] = await db.update(schema.subjects).set({ ...input, updatedAt: new Date() }).where(and(eq(schema.subjects.schoolId, schoolId), eq(schema.subjects.id, id))).returning(); return row ?? null; }
 
-export async function listCurricula(db: AcademicStructureDb, schoolId: string, paging: Paging, status?: typeof schema.curriculumStatus.enumValues[number]) {
-  const condition = where([eq(schema.curricula.schoolId, schoolId), status ? eq(schema.curricula.status, status) : undefined]);
+export async function listCurricula(db: AcademicStructureDb, schoolId: string, paging: Paging, filters: { status?: typeof schema.curriculumStatus.enumValues[number]; search?: string }) {
+  const condition = where([eq(schema.curricula.schoolId, schoolId), filters.status ? eq(schema.curricula.status, filters.status) : undefined, filters.search ? ilike(schema.curricula.name, `%${filters.search.replace(/[\\%_]/g, (char) => `\\${char}`)}%`) : undefined]);
   const [rows, totals] = await Promise.all([db.select().from(schema.curricula).where(condition).orderBy(asc(schema.curricula.name), asc(schema.curricula.id)).limit(paging.limit).offset(paging.offset), db.select({ value: count() }).from(schema.curricula).where(condition)]);
   return { rows, total: totals[0]?.value ?? 0 };
 }
@@ -251,9 +251,10 @@ export async function classHasAcademicHistory(db: AcademicStructureDb, schoolId:
   return row?.used ?? false;
 }
 
-export async function listClasses(db: AcademicStructureDb, schoolId: string, paging: Paging, filters: { academicYearId?: string; status?: typeof schema.classStatus.enumValues[number]; levelId?: string; stageId?: string; trackId?: string }) {
+export async function listClasses(db: AcademicStructureDb, schoolId: string, paging: Paging, filters: { search?: string; academicYearId?: string; status?: typeof schema.classStatus.enumValues[number]; levelId?: string; stageId?: string; trackId?: string }) {
   const condition = where([
     eq(schema.classes.schoolId, schoolId),
+    filters.search ? ilike(schema.classes.name, `%${filters.search.replace(/[\\%_]/g, (char) => `\\${char}`)}%`) : undefined,
     filters.academicYearId ? eq(schema.classes.academicYearId, filters.academicYearId) : undefined,
     filters.status ? eq(schema.classes.status, filters.status) : undefined,
     filters.levelId ? eq(schema.classes.levelId, filters.levelId) : undefined,

@@ -1,4 +1,5 @@
 'use client';
+import { PageContainer } from '@/components/ui/page-container';
 
 import { cn } from '@school/shared';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -50,12 +51,12 @@ export function AcademicWorkspace() {
   if (!role || !can(role, 'academic_structure.read')) return <AccessDeniedWithReturn />;
   const canManage = can(role, 'academic_structure.manage');
   const shared = { schoolId: context.currentSchool!.id, canManage, page, status, onPage: (nextPage: number) => updateUrl({ page: nextPage }), onStatus: (nextStatus?: string) => updateUrl({ status: nextStatus, page: 1 }) };
-  return <div className="mx-auto max-w-[100rem] space-y-6"><ManagementPageHeader readOnly={!canManage} /><nav aria-label={t.academicSections} className="flex gap-1 overflow-x-auto rounded-lg border bg-card p-1">{sections.map((item) => <button key={item} type="button" aria-current={section === item ? 'page' : undefined} className={cn('shrink-0 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground', section === item && 'bg-accent text-accent-foreground')} onClick={() => updateUrl({ section: item, page: 1, status: undefined, search: undefined })}>{t.sections[item]}</button>)}</nav>
+  return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6"><ManagementPageHeader readOnly={!canManage} /><nav aria-label={t.academicSections} className="flex gap-1 overflow-x-auto rounded-lg border bg-card p-1">{sections.map((item) => <button key={item} type="button" aria-current={section === item ? 'page' : undefined} className={cn('shrink-0 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground', section === item && 'bg-accent text-accent-foreground')} onClick={() => updateUrl({ section: item, page: 1, status: undefined, search: undefined })}>{t.sections[item]}</button>)}</nav>
     {section === 'years' ? <YearsSection {...shared} /> : null}
     {section === 'structure' ? <StructureSection schoolId={shared.schoolId} canManage={canManage} page={page} onPage={shared.onPage} /> : null}
     {section === 'tracks' ? <TracksSection {...shared} /> : null}
     {section === 'subjects' ? <SubjectsSection {...shared} search={search} onSearch={(nextSearch) => updateUrl({ search: nextSearch, page: 1 })} /> : null}
-    {section === 'curricula' ? <CurriculaSection {...shared} /> : null}
-    {section === 'classes' ? <ClassesSection {...shared} /> : null}
-  </div>;
+    {section === 'curricula' ? <CurriculaSection {...shared} search={search} onSearch={(nextSearch) => updateUrl({ search: nextSearch, page: 1 })} /> : null}
+    {section === 'classes' ? <ClassesSection {...shared} search={search} onSearch={(nextSearch) => updateUrl({ search: nextSearch, page: 1 })} /> : null}
+  </PageContainer>;
 }

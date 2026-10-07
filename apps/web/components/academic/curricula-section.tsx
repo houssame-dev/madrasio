@@ -1,4 +1,8 @@
 'use client';
+import { SearchInput } from '@/components/ui/search-input';
+import { managementCopy } from '@/lib/frontend/management-copy';
+
+import { useSuccessFeedback } from '@/lib/frontend/use-success-feedback';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Pencil, Plus } from 'lucide-react';
@@ -13,15 +17,15 @@ import { CurriculumForm, CurriculumSubjectForm, VersionForm } from './forms';
 import { activeTransitions, curriculumTransitions, LifecycleActions, versionTransitions } from './lifecycle-actions';
 import { EmptyTableRow, InlineFeedback, Modal, Pagination, SectionHeader, StatusBadge, TableShell, selectClassName } from './ui';
 
-export function CurriculaSection({ schoolId, canManage, page, status, onPage, onStatus }: { schoolId: string; canManage: boolean; page: number; status?: string; onPage: (page: number) => void; onStatus: (status?: string) => void }) {
+export function CurriculaSection({ schoolId, canManage, page, status, search, onSearch = () => {}, onPage, onStatus }: { schoolId: string; canManage: boolean; page: number; status?: string; search?: string; onSearch?: (search?: string) => void; onPage: (page: number) => void; onStatus: (status?: string) => void }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<CurriculumDto | null | undefined>();
   const [selected, setSelected] = useState<CurriculumDto>();
-  const [notice, setNotice] = useState<string>();
-  const params = { page, pageSize: 20, status };
+  const [notice, setNotice] = useSuccessFeedback();
+  const params = { page, pageSize: 20, search, status };
   const query = useQuery({ queryKey: academicKeys.list(schoolId, 'curricula', params), queryFn: () => academicApi.curricula(params) });
   const invalidate = async () => { await Promise.all([queryClient.invalidateQueries({ queryKey: ['academic', schoolId, 'curricula'] }), queryClient.invalidateQueries({ queryKey: academicKeys.selectors(schoolId, 'curricula') }), queryClient.invalidateQueries({ queryKey: academicKeys.selectors(schoolId, 'versions') })]); setNotice(t.mutationSuccess); };
-  return <div className="space-y-6"><SectionHeader title={t.sections.curricula} description="Curricula contain named historical versions; versions contain contextual subject coefficients." action={canManage ? <Button type="button" onClick={() => setEditing(null)}><Plus className="size-4" aria-hidden="true" />{t.createCurriculum}</Button> : undefined} />{notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}<label className="block max-w-xs"><span className="sr-only">{t.filterStatus}</span><select aria-label={t.filterStatus} value={status ?? ''} className={selectClassName} onChange={(event) => onStatus(event.target.value || undefined)}><option value="">{t.allStatuses}</option>{['ACTIVE', 'INACTIVE', 'ARCHIVED'].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>{query.isError ? <ApiErrorState title={t.listError} onRetry={() => void query.refetch()} /> : <><TableShell headers={[t.name, t.status, t.actions]} loading={query.isPending}>{query.data?.data.length === 0 ? <EmptyTableRow columns={3} /> : query.data?.data.map((curriculum) => <tr key={curriculum.id}><td className="px-4 py-3 font-medium">{curriculum.name}</td><td className="px-4 py-3"><StatusBadge status={curriculum.status} /></td><td className="px-4 py-3"><div className="flex justify-end gap-1"><Button type="button" size="sm" variant="outline" onClick={() => setSelected(curriculum)}>{t.versions}<ChevronRight className="size-4" aria-hidden="true" /></Button>{canManage ? <><Button type="button" variant="ghost" size="sm" aria-label={`${t.edit} ${curriculum.name}`} onClick={() => setEditing(curriculum)}><Pencil className="size-4" aria-hidden="true" /></Button><LifecycleActions resourceName={curriculum.name} path={`/api/v1/curricula/${curriculum.id}`} transitions={curriculumTransitions(curriculum.status)} onSaved={invalidate} /></> : null}</div></td></tr>)}</TableShell>{query.data ? <Pagination {...query.data.meta} onPage={onPage} /> : null}</>}{selected ? <VersionsPanel schoolId={schoolId} curriculum={selected} canManage={canManage} onClose={() => setSelected(undefined)} /> : <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">{t.selectCurriculum}</p>}<Modal open={editing !== undefined} title={editing ? t.editCurriculum : t.createCurriculum} onClose={() => setEditing(undefined)}>{editing !== undefined ? <CurriculumForm initial={editing ?? undefined} onCancel={() => setEditing(undefined)} onSaved={async () => { await invalidate(); setEditing(undefined); }} /> : null}</Modal></div>;
+  return <div className="space-y-6"><SectionHeader title={t.sections.curricula} description="Curricula contain named historical versions; versions contain contextual subject coefficients." action={canManage ? <Button type="button" onClick={() => setEditing(null)}><Plus className="size-4" aria-hidden="true" />{t.createCurriculum}</Button> : undefined} />{notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}<SearchInput id="curricula-search" label={managementCopy.searchCurricula} value={search} onSearch={onSearch} busy={query.isFetching} /><label className="block max-w-xs"><span className="sr-only">{t.filterStatus}</span><select aria-label={t.filterStatus} value={status ?? ''} className={selectClassName} onChange={(event) => onStatus(event.target.value || undefined)}><option value="">{t.allStatuses}</option>{['ACTIVE', 'INACTIVE', 'ARCHIVED'].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>{query.isError ? <ApiErrorState title={t.listError} onRetry={() => void query.refetch()} /> : <><TableShell headers={[t.name, t.status, t.actions]} loading={query.isPending}>{query.data?.data.length === 0 ? <EmptyTableRow columns={3} /> : query.data?.data.map((curriculum) => <tr key={curriculum.id}><td className="px-4 py-3 font-medium">{curriculum.name}</td><td className="px-4 py-3"><StatusBadge status={curriculum.status} /></td><td className="px-4 py-3"><div className="flex justify-end gap-1"><Button type="button" size="sm" variant="outline" onClick={() => setSelected(curriculum)}>{t.versions}<ChevronRight className="size-4" aria-hidden="true" /></Button>{canManage ? <><Button type="button" variant="ghost" size="sm" aria-label={`${t.edit} ${curriculum.name}`} onClick={() => setEditing(curriculum)}><Pencil className="size-4" aria-hidden="true" /></Button><LifecycleActions resourceName={curriculum.name} path={`/api/v1/curricula/${curriculum.id}`} transitions={curriculumTransitions(curriculum.status)} onSaved={invalidate} /></> : null}</div></td></tr>)}</TableShell>{query.data ? <Pagination {...query.data.meta} onPage={onPage} /> : null}</>}{selected ? <VersionsPanel schoolId={schoolId} curriculum={selected} canManage={canManage} onClose={() => setSelected(undefined)} /> : <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">{t.selectCurriculum}</p>}<Modal open={editing !== undefined} title={editing ? t.editCurriculum : t.createCurriculum} onClose={() => setEditing(undefined)}>{editing !== undefined ? <CurriculumForm initial={editing ?? undefined} onCancel={() => setEditing(undefined)} onSaved={async () => { await invalidate(); setEditing(undefined); }} /> : null}</Modal></div>;
 }
 
 function VersionsPanel({ schoolId, curriculum, canManage, onClose }: { schoolId: string; curriculum: CurriculumDto; canManage: boolean; onClose: () => void }) {
@@ -29,7 +33,7 @@ function VersionsPanel({ schoolId, curriculum, canManage, onClose }: { schoolId:
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<CurriculumVersionDto | null | undefined>();
   const [selected, setSelected] = useState<CurriculumVersionDto>();
-  const [notice, setNotice] = useState<string>();
+  const [notice, setNotice] = useSuccessFeedback();
   const params = { page, pageSize: 20 };
   const query = useQuery({ queryKey: academicKeys.versions(schoolId, curriculum.id, params), queryFn: () => academicApi.versions(curriculum.id, params) });
   const invalidate = async () => { await Promise.all([queryClient.invalidateQueries({ queryKey: ['academic', schoolId, 'versions', curriculum.id] }), queryClient.invalidateQueries({ queryKey: academicKeys.selectors(schoolId, 'versions') })]); setNotice(t.mutationSuccess); };
@@ -40,7 +44,7 @@ function CurriculumSubjectsPanel({ schoolId, version, canManage, onClose }: { sc
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<CurriculumSubjectDto | null | undefined>();
-  const [notice, setNotice] = useState<string>();
+  const [notice, setNotice] = useSuccessFeedback();
   const params = { page, pageSize: 20 };
   const query = useQuery({ queryKey: academicKeys.curriculumSubjects(schoolId, version.id, params), queryFn: () => academicApi.curriculumSubjects(version.id, params) });
   const allAttached = useQuery({ queryKey: academicKeys.selectors(schoolId, `curriculum-subjects-${version.id}`), queryFn: () => academicApi.allCurriculumSubjects(version.id) });

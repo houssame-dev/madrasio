@@ -1,4 +1,5 @@
 'use client';
+import { useSuccessFeedback } from '@/lib/frontend/use-success-feedback';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus } from 'lucide-react';
@@ -19,7 +20,7 @@ export function StructureSection({ schoolId, canManage, page, onPage }: { school
   const [stageFilter, setStageFilter] = useState<string>();
   const [stageEditing, setStageEditing] = useState<OrderedStructureDto | null | undefined>();
   const [levelEditing, setLevelEditing] = useState<LevelDto | null | undefined>();
-  const [notice, setNotice] = useState<string>();
+  const [notice, setNotice] = useSuccessFeedback();
   const stageParams = { page, pageSize: 20 };
   const levelParams = { page: levelPage, pageSize: 20, stageId: stageFilter };
   const stages = useQuery({ queryKey: academicKeys.list(schoolId, 'stages', stageParams), queryFn: () => academicApi.stages(stageParams) });

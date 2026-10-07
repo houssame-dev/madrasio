@@ -1,4 +1,5 @@
 'use client';
+import { useSuccessFeedback } from '@/lib/frontend/use-success-feedback';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus } from 'lucide-react';
@@ -16,7 +17,7 @@ import { EmptyTableRow, InlineFeedback, Modal, Pagination, SectionHeader, Status
 export function TracksSection({ schoolId, canManage, page, status, onPage, onStatus }: { schoolId: string; canManage: boolean; page: number; status?: string; onPage: (page: number) => void; onStatus: (status?: string) => void }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<OrderedStructureDto | null | undefined>();
-  const [notice, setNotice] = useState<string>();
+  const [notice, setNotice] = useSuccessFeedback();
   const params = { page, pageSize: 20, status };
   const query = useQuery({ queryKey: academicKeys.list(schoolId, 'tracks', params), queryFn: () => academicApi.tracks(params) });
   const invalidate = async () => { await Promise.all([queryClient.invalidateQueries({ queryKey: ['academic', schoolId, 'tracks'] }), queryClient.invalidateQueries({ queryKey: academicKeys.selectors(schoolId, 'tracks') })]); setNotice(t.mutationSuccess); };

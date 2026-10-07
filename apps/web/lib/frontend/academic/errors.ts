@@ -26,7 +26,7 @@ export function mapValidationErrors<T extends FieldValues>(error: unknown, setEr
   let mapped = false;
   for (const issue of details?.issues ?? []) {
     if (issue.path && issue.message) {
-      setError(issue.path as Path<T>, { type: 'server', message: issue.message });
+      setError(issue.path as Path<T>, { type: 'server', message: issue.message }, { shouldFocus: !mapped });
       mapped = true;
     }
   }

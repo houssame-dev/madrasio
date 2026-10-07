@@ -1,4 +1,5 @@
 'use client';
+import { useSuccessFeedback } from '@/lib/frontend/use-success-feedback';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus } from 'lucide-react';
@@ -19,7 +20,7 @@ export function YearsSection({ schoolId, canManage, page, status, onPage, onStat
   const years = useQuery({ queryKey: academicKeys.list(schoolId, 'years', params), queryFn: () => academicApi.years(params) });
   const [editing, setEditing] = useState<AcademicYearDto | null | undefined>();
   const [selectedYearId, setSelectedYearId] = useState<string>();
-  const [notice, setNotice] = useState<string>();
+  const [notice, setNotice] = useSuccessFeedback();
   const selectedYear = useMemo(() => years.data?.data.find((year) => year.id === selectedYearId), [selectedYearId, years.data]);
   const invalidateYears = async () => {
     await Promise.all([
@@ -47,7 +48,7 @@ function PeriodsPanel({ schoolId, year, canManage, onClose }: { schoolId: string
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<AcademicPeriodDto | null | undefined>();
-  const [notice, setNotice] = useState<string>();
+  const [notice, setNotice] = useSuccessFeedback();
   const params = { page, pageSize: 20 };
   const periods = useQuery({ queryKey: academicKeys.periods(schoolId, year.id, params), queryFn: () => academicApi.periods(year.id, params) });
   const invalidate = async () => { await queryClient.invalidateQueries({ queryKey: ['academic', schoolId, 'periods', year.id] }); setNotice(t.mutationSuccess); };

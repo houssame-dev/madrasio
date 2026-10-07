@@ -1,4 +1,5 @@
 'use client';
+import { PageContainer } from '@/components/ui/page-container';
 
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -38,9 +39,9 @@ export function AttendanceWorkspace() {
   if (years.isError || classes.isError || teacherClasses.isError) return <ApiErrorState title={t.rosterUnavailable} onRetry={() => { void years.refetch(); void classes.refetch(); if (role === 'TEACHER') void teacherClasses.refetch(); }} />;
   const selectedYear = years.data.find((year) => year.id === academicYearId);
   const historyClasses = role === 'TEACHER' ? classes.data.filter((klass) => (teacherClasses.data ?? []).includes(klass.id)) : classes.data;
-  return <div className="mx-auto max-w-[110rem] space-y-6">
+  return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
     <header><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.description}</p></header>
     <nav aria-label={t.title} className="flex gap-2"><Button type="button" variant={section === 'daily' ? 'default' : 'outline'} onClick={() => change({ section: 'daily' })}>{t.daily}</Button><Button type="button" variant={section === 'history' ? 'default' : 'outline'} onClick={() => change({ section: 'history' })}>{t.history}</Button></nav>
     {section === 'daily' ? <><AttendanceContextControls years={years.data} classes={availableClasses} academicYearId={academicYearId} classId={classId} date={date} teacherScoped={role === 'TEACHER'} onYear={(value) => change({ academicYearId: value || undefined, classId: undefined })} onClass={(value) => change({ classId: value || undefined })} onDate={(value) => change({ date: value || undefined })} /><p className="text-xs text-muted-foreground">{t.schoolTimezone}</p><DailyAttendancePanel key={`${academicYearId}:${classId}:${date}`} schoolId={schoolId} timezone={app.currentSchool!.timezone} academicYear={selectedYear} classId={classId} date={date} onDirtyChange={setDirty} /></> : <AttendanceHistory schoolId={schoolId} years={years.data} classes={historyClasses} />}
-  </div>;
+  </PageContainer>;
 }

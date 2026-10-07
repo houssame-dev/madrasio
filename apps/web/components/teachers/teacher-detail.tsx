@@ -1,4 +1,6 @@
 'use client';
+import { PageContainer } from '@/components/ui/page-container';
+import { useSuccessFeedback } from '@/lib/frontend/use-success-feedback';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Pencil, Plus } from 'lucide-react';
@@ -31,7 +33,7 @@ export function TeacherDetailWorkspace({ teacherId }: { teacherId: string }) {
 
 function TeacherDetail({ schoolId, role, teacherId }: { schoolId: string; role: 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT'; teacherId: string }) {
   const canManage = can(role, 'teachers.manage'); const queryClient = useQueryClient(); const searchParams = useSearchParams(); const pathname = usePathname(); const router = useRouter();
-  const [editing, setEditing] = useState(false); const [assigning, setAssigning] = useState(false); const [inviting, setInviting] = useState(false); const [notice, setNotice] = useState<string>();
+  const [editing, setEditing] = useState(false); const [assigning, setAssigning] = useState(false); const [inviting, setInviting] = useState(false); const [notice, setNotice] = useSuccessFeedback();
   const historyValue = Number(searchParams.get('historyPage') ?? '1'); const historyPage = Number.isInteger(historyValue) && historyValue > 0 ? historyValue : 1;
   const updateUrl = useCallback((updates: Record<string, string | number | undefined>) => { const next = new URLSearchParams(searchParams.toString()); for (const [key, value] of Object.entries(updates)) { if (value === undefined || value === '') next.delete(key); else next.set(key, String(value)); } const suffix = next.toString(); router.replace(`${pathname}${suffix ? `?${suffix}` : ''}`, { scroll: false }); }, [pathname, router, searchParams]);
   const teacher = useQuery({ queryKey: teacherKeys.detail(schoolId, teacherId), queryFn: () => teachersApi.detail(teacherId) });
@@ -43,7 +45,7 @@ function TeacherDetail({ schoolId, role, teacherId }: { schoolId: string; role: 
   if (teacher.isError || years.isError || classes.isError || subjects.isError) return <ApiErrorState title={t.unavailable} description={t.unavailableDescription} onRetry={() => { void teacher.refetch(); void years.refetch(); void classes.refetch(); void subjects.refetch(); }} />;
   const value = teacher.data; const name = `${value.firstName} ${value.lastName}`;
   const invalidate = async (message: string = t.changesSaved, includeList = false) => { await invalidateTeacher(queryClient, schoolId, teacherId, includeList); setNotice(message); };
-  return <div className="mx-auto max-w-[100rem] space-y-6">
+  return <PageContainer variant="FORM_DETAIL" className="space-y-6">
     <Link href="/teachers" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />{t.backToTeachers}</Link>
     <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-semibold tracking-tight">{name}</h1><StatusBadge status={value.status} /></div><p className="mt-1 text-sm text-muted-foreground">{value.teacherCode ?? `${t.teacherCode}: ${t.unknown}`}</p></div>{canManage ? <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{t.editTeacher}</Button><TeacherLifecycleActions teacher={value} onSaved={async () => invalidate(t.changesSaved, true)} /></div> : <div className="rounded-md border bg-muted px-3 py-2 text-sm">{t.readOnly}</div>}</header>
     {notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}
@@ -54,5 +56,5 @@ function TeacherDetail({ schoolId, role, teacherId }: { schoolId: string; role: 
     <Modal open={editing} title={t.editTeacher} description={t.linkedHint} onClose={() => setEditing(false)}><TeacherForm initial={value} onCancel={() => setEditing(false)} onSaved={async () => { await invalidate(t.changesSaved, true); setEditing(false); }} /></Modal>
     <Modal open={inviting} title={t.inviteAccount} description={t.linkedHint} onClose={() => setInviting(false)}>{inviting ? <AccountAccessForm invite={(email) => teachersApi.inviteAccount(teacherId, email)} onCancel={() => setInviting(false)} onLinked={async () => { await invalidate(t.accountInvited, true); setInviting(false); }} /> : null}</Modal>
     <Modal open={assigning} title={t.createAssignment} description={t.assignmentSeparate} onClose={() => setAssigning(false)}>{assigning && activeAssignments.data ? <AssignmentForm schoolId={schoolId} teacherId={teacherId} years={years.data} subjects={subjects.data} activeAssignments={activeAssignments.data} onCancel={() => setAssigning(false)} onSaved={async () => { await invalidate(t.assignmentsUpdated); setAssigning(false); }} /> : null}</Modal>
-  </div>;
+  </PageContainer>;
 }

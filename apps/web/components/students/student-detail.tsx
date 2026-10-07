@@ -1,4 +1,6 @@
 'use client';
+import { PageContainer } from '@/components/ui/page-container';
+import { useSuccessFeedback } from '@/lib/frontend/use-success-feedback';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Pencil, Plus, RefreshCw } from 'lucide-react';
@@ -38,7 +40,7 @@ function StudentDetail({ schoolId, role, studentId }: { schoolId: string; role: 
   const [editing, setEditing] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [transferring, setTransferring] = useState(false);
-  const [notice, setNotice] = useState<string>();
+  const [notice, setNotice] = useSuccessFeedback();
   const yearId = searchParams.get('academicYearId') || '';
   const historyValue = Number(searchParams.get('historyPage') ?? '1');
   const historyPage = Number.isInteger(historyValue) && historyValue > 0 ? historyValue : 1;
@@ -68,7 +70,7 @@ function StudentDetail({ schoolId, role, studentId }: { schoolId: string; role: 
   const name = `${value.firstName} ${value.lastName}`;
   const invalidate = async (message: string = t.changesSaved, includeList = false) => { await invalidateStudent(queryClient, schoolId, studentId, includeList); setNotice(message); };
   const multipleActive = years.data.filter((year) => year.status === 'ACTIVE').length > 1;
-  return <div className="mx-auto max-w-[100rem] space-y-6">
+  return <PageContainer variant="FORM_DETAIL" className="space-y-6">
     <Link href="/students" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />{t.backToStudents}</Link>
     <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-semibold tracking-tight">{name}</h1><StatusBadge status={value.status} /></div><p className="mt-1 text-sm text-muted-foreground">{value.studentCode ?? t.studentCode + ': ' + t.unknown}</p></div>{canManage ? <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{t.editStudent}</Button><StudentLifecycleActions student={value} onSaved={async () => invalidate(t.changesSaved, true)} /></div> : <div className="rounded-md border bg-muted px-3 py-2 text-sm">{t.readOnly}</div>}</header>
     {notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}
@@ -81,5 +83,5 @@ function StudentDetail({ schoolId, role, studentId }: { schoolId: string; role: 
     <Modal open={editing} title={t.editStudent} onClose={() => setEditing(false)}><StudentForm initial={value} onCancel={() => setEditing(false)} onSaved={async () => { await invalidate(t.changesSaved, true); setEditing(false); }} /></Modal>
     <Modal open={enrolling} title={t.createEnrollment} description={t.enrollmentSeparate} onClose={() => setEnrolling(false)}>{enrolling ? <EnrollmentForm schoolId={schoolId} studentId={studentId} years={years.data} initialYearId={yearId || undefined} onCancel={() => setEnrolling(false)} onSaved={async () => { await invalidate(t.placementUpdated); setEnrolling(false); }} /> : null}</Modal>
     <Modal open={transferring} title={t.transfer} description={t.transferDescription} onClose={() => setTransferring(false)}>{transferring && placement.data && selectedYear && yearClasses.data ? <TransferForm studentId={studentId} year={selectedYear} classes={yearClasses.data} current={placement.data} onCancel={() => setTransferring(false)} onSaved={async () => { await invalidate(t.placementUpdated); setTransferring(false); }} /> : null}</Modal>
-  </div>;
+  </PageContainer>;
 }

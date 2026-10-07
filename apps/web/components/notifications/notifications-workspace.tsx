@@ -1,4 +1,5 @@
 'use client';
+import { PageContainer } from '@/components/ui/page-container';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCheck, LoaderCircle } from 'lucide-react';
@@ -56,7 +57,7 @@ export function NotificationsWorkspace() {
   });
   if (!allowed || !schoolId) return <AccessDeniedWithReturn />;
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <PageContainer variant="READING_CONTENT" className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.description}</p></div>
         <div className="flex items-center gap-3 self-start">
@@ -75,6 +76,6 @@ export function NotificationsWorkspace() {
       {markAll.isError ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{notificationErrorMessage(markAll.error)}</p> : null}
       {list.isError ? <ApiErrorState title={t.unavailable} description={notificationErrorMessage(list.error)} onRetry={() => void list.refetch()} /> : <NotificationsList result={list.data} loading={list.isPending} status={status} sourceType={sourceType} onOpen={setSelectedId} onPage={(next) => updateUrl({ page: next })} />}
       <NotificationDetail schoolId={schoolId} notificationId={selectedId} onClose={() => setSelectedId(null)} />
-    </div>
+    </PageContainer>
   );
 }

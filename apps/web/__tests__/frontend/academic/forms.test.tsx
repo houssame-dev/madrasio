@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClassForm, CurriculumSubjectForm, SubjectForm, VersionForm } from '@/components/academic/forms';
@@ -92,7 +92,8 @@ describe('academic forms use exact contracts', () => {
     expect(screen.queryByRole('option', { name: /Mathematics/ })).not.toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('Coefficient'), '0');
     await userEvent.click(screen.getByRole('button', { name: 'Create' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/greater than zero/i);
+    await waitFor(() => expect(screen.getByLabelText('Coefficient')).toHaveAccessibleDescription(/greater than zero/i));
+    expect(screen.getByLabelText('Coefficient')).toHaveAttribute('aria-invalid', 'true');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

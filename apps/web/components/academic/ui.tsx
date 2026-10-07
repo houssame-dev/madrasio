@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertCircle, CheckCircle2, LoaderCircle, X } from 'lucide-react';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { Children, cloneElement, isValidElement, useEffect, useRef, type ReactNode, type HTMLAttributes } from 'react';
 import { cn } from '@school/shared';
 import { Button } from '@school/ui';
 import { academicCopy as t } from '@/lib/frontend/academic/copy';
@@ -51,14 +51,25 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
   return <nav aria-label={t.pagination} className="flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">{t.page} {page} / {pages} · {total}</p><div className="flex gap-2"><Button type="button" variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>{t.previous}</Button><Button type="button" variant="outline" size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>{t.next}</Button></div></nav>;
 }
 
-export function InlineFeedback({ kind, children }: { kind: 'success' | 'error'; children: ReactNode }) {
+export function InlineFeedback({ kind, children }: { kind: 'success' | 'error' | 'warning'; children: ReactNode }) {
   const Icon = kind === 'success' ? CheckCircle2 : AlertCircle;
-  return <div role={kind === 'error' ? 'alert' : 'status'} className={cn('flex items-start gap-2 rounded-md border px-3 py-2 text-sm', kind === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-destructive/30 bg-destructive/5 text-destructive')}><Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />{children}</div>;
+  return <div role={kind === 'error' ? 'alert' : 'status'} aria-atomic="true" className={cn('flex items-start gap-2 rounded-md border px-3 py-2 text-sm', kind === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : kind === 'warning' ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-destructive/30 bg-destructive/5 text-destructive')}><Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />{children}</div>;
 }
 
-export function Field({ label, htmlFor, error, hint, children }: { label: string; htmlFor: string; error?: string; hint?: string; children: ReactNode }) {
+export function Field({ label, htmlFor, error, hint, required, children }: { label: string; htmlFor: string; error?: string; hint?: string; required?: boolean; children: ReactNode }) {
   const errorId = `${htmlFor}-error`;
-  return <div className="space-y-1.5"><label htmlFor={htmlFor} className="text-sm font-medium">{label}</label>{children}{hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}{error ? <p id={errorId} className="text-xs text-destructive" role="alert">{error}</p> : null}</div>;
+  const hintId = `${htmlFor}-hint`;
+  // Clone only the labelled native control, preserving its RHF ref and handlers.
+  const controls = Children.map(children, (child) => {
+    if (!isValidElement<HTMLAttributes<HTMLElement> & { required?: boolean }>(child) || child.props.id !== htmlFor) return child;
+    const describedBy = [...new Set([child.props['aria-describedby'], hint ? hintId : undefined, error ? errorId : undefined].filter(Boolean).join(' ').split(' ').filter(Boolean))].join(' ');
+    return cloneElement(child, {
+      'aria-invalid': error ? true : child.props['aria-invalid'],
+      'aria-describedby': describedBy || undefined,
+      'aria-required': required || child.props.required || child.props['aria-required'],
+    });
+  });
+  return <div className="space-y-1.5"><label htmlFor={htmlFor} className="text-sm font-medium">{label}</label>{controls}{hint ? <p id={hintId} className="text-xs text-muted-foreground">{hint}</p> : null}{error ? <p id={errorId} className="text-xs text-destructive">{error}</p> : null}</div>;
 }
 
 export function Modal({ open, title, description, onClose, children }: { open: boolean; title: string; description?: string; onClose: () => void; children: ReactNode }) {

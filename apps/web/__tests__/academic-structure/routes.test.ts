@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { curriculaGET } from '@/lib/api/academic-structure';
 
 import type { CurrentContext } from '@/lib/authorization/context';
 import { UnauthenticatedError } from '@/lib/errors';
@@ -26,6 +27,14 @@ const json = (url: string, method: string, body: unknown) => new Request(url, { 
 const params = (values: Record<string, string>) => ({ params: Promise.resolve(values) });
 
 describe('representative academic structure HTTP contracts', () => {
+  it('accepts bounded name search only and rejects client authority on searchable lists', async () => {
+    for (const get of [classesGET, curriculaGET]) {
+      expect((await get(new Request('http://local?search=Atlas&status=ACTIVE&page=1'))).status).toBe(200);
+      for (const query of [`search=${'x'.repeat(101)}`, 'search=Atlas&classCode=ABC', `search=Atlas&schoolId=${schoolId}`]) {
+        expect((await get(new Request(`http://local?${query}`))).status).toBe(400);
+      }
+    }
+  });
   it('GET/POST/PATCH academic years use envelopes, pagination and controlled lifecycle errors', async () => {
     const createdResponse = await academicYearsPOST(json('http://local/api/v1/academic-years', 'POST', { name: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-01' }));
     expect(createdResponse.status).toBe(201); const created = (await createdResponse.json()).data;

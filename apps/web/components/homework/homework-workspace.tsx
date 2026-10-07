@@ -1,4 +1,5 @@
 'use client';
+import { PageContainer } from '@/components/ui/page-container';
 
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Search } from 'lucide-react';
@@ -39,7 +40,7 @@ export function HomeworkWorkspace() {
   if (years.isPending || classes.isPending || subjects.isPending || scope.isPending) return <InlineLoading label={t.loading} />;
   if (years.isError || classes.isError || subjects.isError || scope.isError) return <ApiErrorState title={t.unavailable} onRetry={() => { void years.refetch(); void classes.refetch(); void subjects.refetch(); void scope.refetch(); }} />;
   const availableClasses = academicYearId ? classes.data.filter((item) => item.academicYearId === academicYearId) : classes.data;
-  return <div className="mx-auto max-w-[110rem] space-y-6">
+  return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{role === 'TEACHER' ? t.teacherDescription : t.description}</p></div>{canManage && scope.data.length > 0 ? <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{t.create}</Button> : null}</header>
     {canManage && scope.data.length === 0 ? <InlineFeedback kind="error">{t.authorScopeMissing}</InlineFeedback> : null}
     <section className="space-y-3" aria-labelledby="homework-filters"><h2 id="homework-filters" className="text-sm font-semibold">{t.filters}</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -52,5 +53,5 @@ export function HomeworkWorkspace() {
     </div></section>
     {invalidRange ? <InlineFeedback kind="error">{t.invalidRange}</InlineFeedback> : list.isError ? <ApiErrorState title={t.unavailable} onRetry={() => void list.refetch()} /> : <HomeworkTable result={list.data} loading={list.isPending} years={years.data} subjects={subjects.data} onPage={(next) => updateUrl({ page: next })} />}
     <Modal open={creating} title={t.create} description={t.authorScopeMissing} onClose={() => setCreating(false)}>{creating ? <HomeworkForm schoolId={schoolId} years={years.data} subjects={subjects.data} assignments={scope.data} onCancel={() => setCreating(false)} /> : null}</Modal>
-  </div>;
+  </PageContainer>;
 }

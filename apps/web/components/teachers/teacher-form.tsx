@@ -28,8 +28,8 @@ export function TeacherForm({ initial, onCancel, onSaved }: { initial?: TeacherD
   return <form className="space-y-4" noValidate onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
     {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label={t.firstName} htmlFor="teacher-first-name" error={form.formState.errors.firstName?.message}><input id="teacher-first-name" className={inputClassName} aria-invalid={!!form.formState.errors.firstName} {...form.register('firstName')} /></Field>
-      <Field label={t.lastName} htmlFor="teacher-last-name" error={form.formState.errors.lastName?.message}><input id="teacher-last-name" className={inputClassName} aria-invalid={!!form.formState.errors.lastName} {...form.register('lastName')} /></Field>
+      <Field required label={t.firstName} htmlFor="teacher-first-name" error={form.formState.errors.firstName?.message}><input id="teacher-first-name" className={inputClassName} aria-invalid={!!form.formState.errors.firstName} {...form.register('firstName')} /></Field>
+      <Field required label={t.lastName} htmlFor="teacher-last-name" error={form.formState.errors.lastName?.message}><input id="teacher-last-name" className={inputClassName} aria-invalid={!!form.formState.errors.lastName} {...form.register('lastName')} /></Field>
     </div>
     <Field label={`${t.teacherCode} (${t.optional})`} htmlFor="teacher-code" error={form.formState.errors.teacherCode?.message}><input id="teacher-code" className={inputClassName} aria-invalid={!!form.formState.errors.teacherCode} {...form.register('teacherCode')} /></Field>
     <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={initial ? t.save : t.create} />

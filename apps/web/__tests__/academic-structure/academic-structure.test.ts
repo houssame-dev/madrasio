@@ -32,6 +32,25 @@ async function structure(a: app.Actor) {
 }
 
 describe('AcademicYear and AcademicPeriod application rules', () => {
+  it('searches Class/Curriculum names within tenant, year, status and pagination boundaries', async () => {
+    const a = await actor(); const context = await structure(a);
+    await app.patchCurriculumVersion(db, a, context.version.id, { status: 'ACTIVE' });
+    const klass = await app.createClass(db, a, { academicYearId: context.year.id, levelId: context.level.id, curriculumVersionId: context.version.id, name: 'Atlas A' });
+    await app.createClass(db, a, { academicYearId: context.year.id, levelId: context.level.id, curriculumVersionId: context.version.id, name: 'Other' });
+    const input = { page: 1, pageSize: 1, search: 'atlas', status: 'ACTIVE' as const, academicYearId: context.year.id };
+    expect(await app.listClasses(db, a, input)).toMatchObject({ data: [{ id: klass.id }], meta: { total: 1 } });
+    expect((await app.listClasses(db, a, { ...input, status: 'CLOSED' })).data).toEqual([]);
+    expect((await app.listClasses(db, a, { ...input, academicYearId: randomUUID() })).data).toEqual([]);
+    expect((await app.listClasses(db, a, { ...input, search: '%' })).data).toEqual([]);
+    expect((await app.listClasses(db, a, { ...input, search: undefined })).meta.total).toBe(2);
+    await app.createCurriculum(db, a, { name: 'Archived National', status: 'ARCHIVED' });
+    const curricula = await app.listCurricula(db, a, { page: 1, pageSize: 1, search: 'national', status: 'ARCHIVED' });
+    expect(curricula).toMatchObject({ data: [{ name: 'Archived National' }], meta: { total: 1 } });
+    expect((await app.listCurricula(db, a, { page: 1, pageSize: 10, search: '%' })).data).toEqual([]);
+    const b = await actor('SCHOOL_ADMIN', 'Other tenant');
+    expect((await app.listClasses(db, b, input)).data).toEqual([]);
+    expect((await app.listCurricula(db, b, { page: 1, pageSize: 10, search: 'national' })).data).toEqual([]);
+  });
   it('lists only the current School, creates safely, and hides foreign detail', async () => {
     const a = await actor(); const yearA = await app.createAcademicYear(db, a, { name: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-01' });
     const b = await actor('SCHOOL_ADMIN', 'School B'); await app.createAcademicYear(db, b, { name: '2026/2027', startDate: '2026-09-01', endDate: '2027-07-01' });
