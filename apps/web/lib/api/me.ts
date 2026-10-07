@@ -23,6 +23,8 @@ import {
   type ResolvedUserContext,
 } from '@/lib/auth/current-context';
 import type { Role } from '@/lib/authorization/roles';
+import { validateSchoolTimezone } from '@school/shared';
+import { BusinessRuleViolationError } from '@/lib/errors';
 
 export interface MeUserDto {
   id: string;
@@ -31,6 +33,7 @@ export interface MeUserDto {
 export interface MeCurrentSchoolDto {
   id: string;
   role: Role;
+  timezone: string;
 }
 
 export interface MeMembershipDto {
@@ -47,10 +50,15 @@ export interface MeResponseDto {
 }
 
 export function toMeResponse(resolution: ResolvedUserContext): MeResponseDto {
+  if (resolution.currentSchool) {
+    try { validateSchoolTimezone(resolution.currentSchool.timezone); } catch {
+      throw new BusinessRuleViolationError('School timezone is invalid. Contact your school administrator.');
+    }
+  }
   return {
     user: { id: resolution.userId },
     currentSchool: resolution.currentSchool
-      ? { id: resolution.currentSchool.schoolId, role: resolution.currentSchool.role }
+      ? { id: resolution.currentSchool.schoolId, role: resolution.currentSchool.role, timezone: resolution.currentSchool.timezone }
       : null,
     memberships: resolution.memberships
       .filter((membership: ResolvedMembership) => membership.status === 'ACTIVE')

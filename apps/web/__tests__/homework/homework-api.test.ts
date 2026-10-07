@@ -197,6 +197,15 @@ describe('Homework targets and Teacher scope', () => {
 });
 
 describe('Homework submission eligibility, review, and history', () => {
+  it('fails closed for an invalid School timezone without creating a Submission', async () => {
+    const homework = await published();
+    const student = await seedStudent(context.test, context.schoolId);
+    await enroll(student.id);
+    await context.test.seed.update(schema.schools).set({ timezone: 'Invalid/School' }).where(eq(schema.schools.id, context.schoolId));
+    await expect(app.createHomeworkSubmission(db, teacher, homework.id, { studentId: student.id }))
+      .rejects.toMatchObject({ featureCode: 'INVALID_HOMEWORK_CONTEXT' });
+    expect(await context.test.seed.select().from(schema.homeworkSubmissions)).toHaveLength(0);
+  });
   it('uses due-date historical enrollment, derives LATE, and preserves one logical Submission', async () => {
     const homework = await published();
     const student = await seedStudent(context.test, context.schoolId);

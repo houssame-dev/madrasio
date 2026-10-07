@@ -1,12 +1,9 @@
 import { z } from 'zod';
+import { isCalendarDate, schoolDateFromInstant } from '@school/shared';
 
 export const attendanceStatuses = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'] as const;
 
-export const calendarDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
-  const [year, month, day] = value.split('-').map(Number);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
-}, 'Choose a valid calendar date.');
+export const calendarDateSchema = z.string().refine(isCalendarDate, 'Choose a valid calendar date.');
 
 export const attendanceEntrySchema = z.object({
   studentId: z.string().uuid(),
@@ -24,10 +21,6 @@ export const attendanceBatchSchema = z.object({
   });
 });
 
-export function localCalendarToday(now = new Date()): string {
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+export function schoolCalendarToday(timezone: string, now = new Date()): string {
+  return schoolDateFromInstant(now, timezone);
 }
-

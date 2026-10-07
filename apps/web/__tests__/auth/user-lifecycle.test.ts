@@ -194,7 +194,7 @@ describe('Task 014.1 §18 — /me API semantics for inactive users', () => {
     const resolution = await resolveMeContext(test.db, user, null);
     const payload = toMeResponse(resolution);
     expect(payload.user).toEqual({ id: user });
-    expect(payload.currentSchool).toEqual({ id: school.id, role: 'SCHOOL_ADMIN' });
+    expect(payload.currentSchool).toEqual({ id: school.id, role: 'SCHOOL_ADMIN', timezone: 'UTC' });
   });
 
   it('GET /me — SUSPENDED User gets a controlled denial (never an operational School)', async () => {

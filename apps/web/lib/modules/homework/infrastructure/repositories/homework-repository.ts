@@ -246,7 +246,7 @@ export async function eligibleTargetClassIds(
 export async function findSchoolTimezone(db: HomeworkDb, schoolId: string) {
   const [row] = await db.select({ timezone: schema.schools.timezone }).from(schema.schools)
     .where(eq(schema.schools.id, schoolId)).limit(1);
-  return row?.timezone ?? 'UTC';
+  return row?.timezone ?? null;
 }
 
 export async function insertSubmission(

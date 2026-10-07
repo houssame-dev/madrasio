@@ -23,6 +23,17 @@ function setup() {
 }
 
 describe('Attendance workspace access and exact context', () => {
+  it('defaults to the School calendar day rather than the browser day', async () => {
+    setup();
+    navigation.search = `section=daily&academicYearId=${yearId}&classId=${classId}`;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2025-10-11T00:30:00Z'));
+    try {
+      renderAttendance(<AttendanceWorkspace />, 'SCHOOL_ADMIN', 'America/New_York');
+      expect(await screen.findByText('Sara Amrani')).toBeInTheDocument();
+      expect(screen.getByLabelText('Attendance date')).toHaveValue('2025-10-10');
+    } finally { vi.useRealTimers(); }
+  });
   it('allows SchoolAdmin management and keeps Year-driven Class options exact', async () => {
     setup(); renderAttendance(<AttendanceWorkspace />);
     expect(await screen.findByText('Sara Amrani')).toBeInTheDocument();

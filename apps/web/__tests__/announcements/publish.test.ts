@@ -12,7 +12,8 @@
 
 import { and, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { schoolWallTimeToInstant } from '@school/shared';
 
 import * as schema from '@school/database';
 
@@ -535,6 +536,25 @@ describe('publishAnnouncement — teacher scope (Task 011 §39)', () => {
 });
 
 describe('publishAnnouncement — scheduling & due work (Task 011 §39)', () => {
+  it('retains the absolute scheduled instant after a School timezone change and publishes only when due', async () => {
+    const school = await seedSchool(test.seed);
+    const { admin } = await seedSchoolAdminWithParents(school);
+    const announcement = await seedAnnouncement(test.seed, school.schoolId, admin);
+    await seedTarget(test.seed, school.schoolId, announcement.versionId, 'PARENTS', 'SCHOOL', school.yearId);
+    const instant = schoolWallTimeToInstant('2026-06-15T12:00', 'America/New_York');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-06-15T15:59:59Z'));
+    try {
+      const scheduled = await publishAnnouncement(test.db, { userId: admin, schoolId: school.schoolId, announcementId: announcement.announcementId, announcementVersionId: announcement.versionId, idempotencyKey: randomUUID(), scheduledAt: instant });
+      await test.seed.update(schema.schools).set({ timezone: 'Asia/Tokyo' }).where(eq(schema.schools.id, school.schoolId));
+      await expect(publishDueAnnouncement(test.db, { publicationId: scheduled.publicationId })).rejects.toMatchObject({ featureCode: 'NOT_PUBLISHABLE' });
+      const [stored] = await test.seed.select().from(schema.announcementPublications).where(eq(schema.announcementPublications.id, scheduled.publicationId));
+      expect(stored.scheduledAt?.toISOString()).toBe(instant);
+      vi.setSystemTime(new Date(instant));
+      expect((await publishDueAnnouncement(test.db, { publicationId: scheduled.publicationId })).eventEmitted).toBe(true);
+      expect(await loadOutboxEvents()).toHaveLength(1);
+    } finally { vi.useRealTimers(); }
+  });
   it('a future scheduledAt creates a SCHEDULED publication with NO event; due processing publishes + emits', async () => {
     const school = await seedSchool(test.seed);
     const { admin, parentA, parentB } = await seedSchoolAdminWithParents(school);

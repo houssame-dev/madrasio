@@ -21,7 +21,7 @@ function setup(options: { error?: boolean; closed?: boolean; total?: number } = 
 
 describe('authoritative daily Attendance roster', () => {
   it('uses the Class/date roster, renders historical Students without current-enrollment filtering, and preserves null', async () => {
-    const fetchMock = setup(); renderAttendance(<DailyAttendancePanel schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={vi.fn()} />);
+    const fetchMock = setup(); renderAttendance(<DailyAttendancePanel timezone="UTC" schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={vi.fn()} />);
     expect(await screen.findByText('Sara Amrani')).toBeInTheDocument();
     expect(screen.getAllByText(/Not marked/).length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Attendance status for Omar Bennani')).toHaveValue('LATE');
@@ -31,7 +31,7 @@ describe('authoritative daily Attendance roster', () => {
   });
 
   it.each(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'] as const)('submits %s in one atomic bulk request with an exact calendar DATE', async (status) => {
-    const fetchMock = setup(); renderAttendance(<DailyAttendancePanel schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={vi.fn()} />);
+    const fetchMock = setup(); renderAttendance(<DailyAttendancePanel timezone="UTC" schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={vi.fn()} />);
     await userEvent.selectOptions(await screen.findByLabelText('Attendance status for Sara Amrani'), status);
     await userEvent.type(screen.getByLabelText('Attendance note for Sara Amrani'), 'Plain note');
     await userEvent.click(screen.getByRole('button', { name: 'Save Attendance' }));
@@ -44,7 +44,7 @@ describe('authoritative daily Attendance roster', () => {
   });
 
   it('marks only unpersisted and still-unedited rows PRESENT without writing before Save', async () => {
-    const fetchMock = setup(); renderAttendance(<DailyAttendancePanel schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={vi.fn()} />);
+    const fetchMock = setup(); renderAttendance(<DailyAttendancePanel timezone="UTC" schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={vi.fn()} />);
     await screen.findByText('Sara Amrani'); await userEvent.click(screen.getByRole('button', { name: 'Mark unmarked present' }));
     expect(screen.getByLabelText('Attendance status for Sara Amrani')).toHaveValue('PRESENT');
     expect(screen.getByLabelText('Attendance status for Omar Bennani')).toHaveValue('LATE');
@@ -52,7 +52,7 @@ describe('authoritative daily Attendance roster', () => {
   });
 
   it('retains dirty edits and reports one controlled atomic failure', async () => {
-    setup({ error: true }); const onDirty = vi.fn(); renderAttendance(<DailyAttendancePanel schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={onDirty} />);
+    setup({ error: true }); const onDirty = vi.fn(); renderAttendance(<DailyAttendancePanel timezone="UTC" schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={onDirty} />);
     const status = await screen.findByLabelText('Attendance status for Sara Amrani'); await userEvent.selectOptions(status, 'ABSENT'); await userEvent.click(screen.getByRole('button', { name: 'Save Attendance' }));
     expect(await screen.findByText('A selected Student was not enrolled in this Class on the Attendance date.')).toBeInTheDocument();
     expect(status).toHaveValue('ABSENT'); expect(screen.getByText(/Unsaved Attendance changes/)).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe('authoritative daily Attendance roster', () => {
       if ((init as RequestInit | undefined)?.method === 'PUT') return Response.json({ error: { code: 'BUSINESS_RULE_VIOLATION', featureCode: 'ATTENDANCE_ENTRY_NOT_ALLOWED', message: 'hidden database detail' } }, { status: 409 });
       throw new Error(`Unexpected request: ${url}`);
     });
-    renderAttendance(<DailyAttendancePanel schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={vi.fn()} />);
+    renderAttendance(<DailyAttendancePanel timezone="UTC" schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={vi.fn()} />);
     await userEvent.selectOptions(await screen.findByLabelText('Attendance status for Sara Amrani'), 'ABSENT');
     await userEvent.click(screen.getByRole('button', { name: 'Save Attendance' }));
     expect(await screen.findByText('Closed or archived Classes allow corrections to existing Attendance only.')).toBeInTheDocument();
@@ -75,7 +75,7 @@ describe('authoritative daily Attendance roster', () => {
   });
 
   it('permits existing-row correction but disables creation for null rows in a CLOSED Class', async () => {
-    const fetchMock = setup({ closed: true }); renderAttendance(<DailyAttendancePanel schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={vi.fn()} />);
+    const fetchMock = setup({ closed: true }); renderAttendance(<DailyAttendancePanel timezone="UTC" schoolId={schoolId} academicYear={year} classId={classId} date="2025-10-10" onDirtyChange={vi.fn()} />);
     expect(await screen.findByLabelText('Attendance status for Sara Amrani')).toBeDisabled();
     const existing = screen.getByLabelText('Attendance status for Omar Bennani'); expect(existing).toBeEnabled(); await userEvent.selectOptions(existing, 'PRESENT'); await userEvent.click(screen.getByRole('button', { name: 'Save Attendance' }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'PUT')).toBe(true));
@@ -84,10 +84,10 @@ describe('authoritative daily Attendance roster', () => {
   });
 
   it('blocks obvious future and outside-Year dates without fetching', () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch'); const first = renderAttendance(<DailyAttendancePanel schoolId={schoolId} academicYear={year} classId={classId} date="2099-01-01" onDirtyChange={vi.fn()} />);
-    expect(screen.getByText(/Server UTC-day validation remains authoritative/)).toBeInTheDocument(); expect(fetchMock).not.toHaveBeenCalled();
+    const fetchMock = vi.spyOn(globalThis, 'fetch'); const first = renderAttendance(<DailyAttendancePanel timezone="UTC" schoolId={schoolId} academicYear={year} classId={classId} date="2099-01-01" onDirtyChange={vi.fn()} />);
+    expect(screen.getByText(/The School timezone is authoritative/)).toBeInTheDocument(); expect(fetchMock).not.toHaveBeenCalled();
     first.unmount();
-    renderAttendance(<DailyAttendancePanel schoolId={schoolId} academicYear={year} classId={classId} date="2025-08-31" onDirtyChange={vi.fn()} />);
+    renderAttendance(<DailyAttendancePanel timezone="UTC" schoolId={schoolId} academicYear={year} classId={classId} date="2025-08-31" onDirtyChange={vi.fn()} />);
     expect(screen.getByText('The date must fall within the selected Academic Year.')).toBeInTheDocument(); expect(fetchMock).not.toHaveBeenCalled();
   });
 });

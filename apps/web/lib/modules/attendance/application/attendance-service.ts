@@ -1,4 +1,5 @@
 import type { Role } from '@/lib/authorization/roles';
+import { schoolDateFromInstant } from '@school/shared';
 import {
   requireOperation, resolveCurrentContext, type AuthorizationDb,
 } from '@/lib/authorization/server';
@@ -22,9 +23,6 @@ function view<T extends { schoolId?: string }>(row: T): Omit<T, 'schoolId'> {
 function notFound(): never {
   throw new AttendanceDomainError('ATTENDANCE_NOT_FOUND', 'Attendance context was not found.');
 }
-function todayUtc(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 async function currentRole(db: AttendanceDb, actor: AttendanceActor): Promise<Role> {
   await requireOperation(db as unknown as AuthorizationDb, actor, { scope: { kind: 'school' } });
@@ -46,8 +44,12 @@ async function authorizeClass(
   return role;
 }
 
-function assertDate(date: string, academicYear: { startDate: string; endDate: string }) {
-  if (date > todayUtc()) {
+function assertDate(date: string, academicYear: { startDate: string; endDate: string }, timezone: string) {
+  let today: string;
+  try { today = schoolDateFromInstant(new Date(), timezone); } catch {
+    throw new AttendanceDomainError('INVALID_ATTENDANCE_DATE', 'School timezone is invalid. Contact your school administrator.');
+  }
+  if (date > today) {
     throw new AttendanceDomainError('INVALID_ATTENDANCE_DATE', 'Attendance cannot be entered for a future date.');
   }
   if (date < academicYear.startDate || date > academicYear.endDate) {
@@ -75,7 +77,7 @@ export async function putDailyAttendance(
   await authorizeClass(db, actor, {
     classId: context.class.id, academicYearId: context.class.academicYearId,
   }, 'attendance.manage');
-  assertDate(date, context.academicYear);
+  assertDate(date, context.academicYear, context.timezone);
 
   const rows = await db.transaction(async (tx) => {
     const transactionDb = tx as unknown as AttendanceDb;
@@ -135,7 +137,7 @@ export async function getDailyAttendance(
   await authorizeClass(db, actor, {
     classId: context.class.id, academicYearId: context.class.academicYearId,
   }, 'attendance.read');
-  assertDate(date, context.academicYear);
+  assertDate(date, context.academicYear, context.timezone);
   const result = await repo.listDailyRoster(db, {
     schoolId: actor.schoolId,
     classId: context.class.id,

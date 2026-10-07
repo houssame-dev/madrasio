@@ -1,4 +1,5 @@
 export { cn } from './cn';
+export { SchoolTimeError, validateSchoolTimezone, calendarDate, isCalendarDate, schoolDateFromInstant, schoolWallTimeToInstant, formatSchoolInstant } from './school-time';
 
 /**
  * Supported application locales.

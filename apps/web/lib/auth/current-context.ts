@@ -56,6 +56,7 @@ export interface ResolveUserContextInput {
 export interface ResolvedMembership {
   schoolId: string;
   schoolName: string;
+  timezone: string;
   role: Role;
   status: 'ACTIVE' | 'INACTIVE';
 }
@@ -107,6 +108,7 @@ export async function resolveUserContext(
       role: schema.schoolMemberships.role,
       status: schema.schoolMemberships.status,
       schoolName: schema.schools.name,
+      timezone: schema.schools.timezone,
     })
     .from(schema.schoolMemberships)
     .innerJoin(schema.schools, eq(schema.schools.id, schema.schoolMemberships.schoolId))
@@ -116,6 +118,7 @@ export async function resolveUserContext(
   const memberships: ResolvedMembership[] = rows.map((row) => ({
     schoolId: row.schoolId,
     schoolName: row.schoolName,
+    timezone: row.timezone,
     role: row.role,
     status: row.status,
   }));

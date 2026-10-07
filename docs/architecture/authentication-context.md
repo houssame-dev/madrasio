@@ -216,7 +216,7 @@ shows a real resolved context driving `publishResult` end-to-end.
 {
   "data": {
     "user": { "id": "..." },
-    "currentSchool": { "id": "...", "role": "..." } | null,
+    "currentSchool": { "id": "...", "role": "...", "timezone": "Africa/Casablanca" } | null,
     "memberships": [
       { "schoolId": "...", "schoolName": "...", "role": "...", "status": "ACTIVE" }
     ]

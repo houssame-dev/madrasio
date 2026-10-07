@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Dashboard } from '@/components/app/dashboard';
-import { localCalendarToday } from '@/lib/frontend/attendance/schemas';
+import { schoolCalendarToday } from '@/lib/frontend/attendance/schemas';
 import { assignment, classId, endedAssignment, page, renderDashboard, secondAssignment, successfulDashboardFetch, teacher, teacherId, yearId } from './test-helpers';
 
 afterEach(() => vi.restoreAllMocks());
@@ -66,7 +66,7 @@ describe('role-aware Dashboard', () => {
     successfulDashboardFetch();
     renderDashboard(<Dashboard />);
     const card = await screen.findByRole('article', { name: '1A' });
-    expect(within(card).getByRole('link', { name: 'Take attendance for 1A' })).toHaveAttribute('href', `/attendance?section=daily&academicYearId=${yearId}&classId=${classId}&date=${localCalendarToday()}`);
+    expect(within(card).getByRole('link', { name: 'Take attendance for 1A' })).toHaveAttribute('href', `/attendance?section=daily&academicYearId=${yearId}&classId=${classId}&date=${schoolCalendarToday('UTC')}`);
     expect(within(card).getByRole('link', { name: 'Open Mathematics gradebooks for 1A' })).toHaveAttribute('href', `/grades?academicYearId=${yearId}&classId=${classId}&subjectId=${assignment.subjectId}`);
     const homework = within(card).getByRole('link', { name: 'Open Homework for Mathematics in 1A' });
     expect(homework).toHaveAttribute('href', `/homework?academicYearId=${yearId}&classId=${classId}`);

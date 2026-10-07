@@ -27,7 +27,7 @@ export function renderNotifications(ui: ReactElement, role: Role = 'PARENT'): Re
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <AppContextProvider value={{ user: { id: userId }, currentSchool: { id: schoolId, role }, memberships: [{ schoolId, schoolName: 'Atlas School', role, status: 'ACTIVE' }] }}>
+      <AppContextProvider value={{ user: { id: userId }, currentSchool: { id: schoolId, role, timezone: 'UTC' }, memberships: [{ schoolId, schoolName: 'Atlas School', role, status: 'ACTIVE' }] }}>
         {ui}
       </AppContextProvider>
     </QueryClientProvider>,

@@ -24,7 +24,7 @@ export const attendanceCopy = {
   unsaved: 'Unsaved Attendance changes',
   unsavedPrompt: 'Discard unsaved Attendance changes?',
   selectContext: 'Select an Academic Year, Class, and date to load the authoritative roster.',
-  futureDate: 'Choose today or an earlier local calendar date. Server UTC-day validation remains authoritative.',
+  futureDate: 'Choose today or an earlier School calendar date. The School timezone is authoritative.',
   outsideYear: 'The date must fall within the selected Academic Year.',
   rosterUnavailable: 'Attendance roster unavailable',
   loading: 'Loading Attendance…',
@@ -44,5 +44,5 @@ export const attendanceCopy = {
   noHistory: 'No persisted Attendance records match these filters.',
   noGlobalYear: 'No global current Academic Year is assumed. A sole ACTIVE Year may be preselected only as a local convenience.',
   teacherScope: 'Teacher options are narrowed from ACTIVE assignments; the server enforces exact Class and Academic Year scope.',
-  utcLimitation: 'Future-date validation is authoritative against the server UTC calendar day because School timezone is not modeled.',
+  schoolTimezone: 'Attendance dates and today follow the current School timezone, not this device timezone.',
 } as const;

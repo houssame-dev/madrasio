@@ -38,7 +38,7 @@ describe('role-aware navigation', () => {
 
   it('renders a safe denied state for a directly visited unavailable section', () => {
     render(
-      <AppContextProvider value={{ user: { id: 'user' }, currentSchool: { id: 'school', role: 'PARENT' }, memberships: [] }}>
+      <AppContextProvider value={{ user: { id: 'user' }, currentSchool: { id: 'school', role: 'PARENT', timezone: 'UTC' }, memberships: [] }}>
         <FeaturePlaceholder title="Students" permission="students.read" roles={['SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER']} />
       </AppContextProvider>,
     );

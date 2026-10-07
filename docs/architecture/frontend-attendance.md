@@ -10,7 +10,7 @@ Frontend permission checks are presentation only. Every roster, write, and histo
 
 Daily Attendance requires an explicit Academic Year, Class, and `YYYY-MM-DD` calendar date. There is no global current Academic Year. If exactly one Year is ACTIVE it may be preselected as a local convenience. Changing Year clears Class, and Class choices are filtered to that exact Year. Teacher choices are further narrowed using the Teacher's own ACTIVE profiles and ACTIVE assignments; the Attendance backend remains authoritative and Subject is irrelevant.
 
-The browser preserves the date string directly and never serializes it through a UTC timestamp. It blocks dates obviously later than the browser's local calendar day and dates outside the selected Year. The backend's UTC calendar-day rule remains authoritative. School timezone is not modeled in V1, so a timezone policy is not invented here.
+The browser preserves the date string directly and never serializes it through a UTC timestamp. Task 055 derives today using the authoritative `schools.timezone`: the authenticated `/me.currentSchool.timezone` supplies client presentation, while the backend reads the School row independently. Both use the shared School-time adapter. Future School dates and dates outside the selected Year are rejected. The Teacher dashboard Attendance shortcut uses the same School date. Historical date-only rows are never rewritten when a timezone changes; invalid timezone configuration fails closed.
 
 ## Authoritative roster and historical eligibility
 
@@ -32,6 +32,6 @@ Attendance query keys include current School and exact Class/date/page or Studen
 
 ## Boundaries, responsive behavior, and accessibility
 
-Attendance writes call only the Attendance endpoint. They create no Grade, Result, Homework, Notification, or Outbox request, and the UI calculates no percentages, rates, rankings, or trends. No backend, schema, migration, event, timezone, export, realtime, or Parent portal work is included.
+Attendance writes call only the Attendance endpoint. They create no Grade, Result, Homework, Notification, or Outbox request, and the UI calculates no percentages, rates, rankings, or trends. Task 055 corrects School-date interpretation only: no schema, migration, event, export, realtime, or Parent portal expansion is included.
 
 The roster and history use semantic tables inside horizontal overflow containers, with a sticky Student row-header column for dense screens. Controls carry Student-specific accessible labels, status is always textual, feedback uses status/alert semantics, and all inputs and actions are keyboard operable. The server remains authoritative for all domain decisions.

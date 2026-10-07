@@ -9,7 +9,7 @@ import { ApiErrorState, InlineLoading } from '@/components/ui/states';
 import { academicApi, listAllResource } from '@/lib/frontend/academic/api';
 import { academicKeys } from '@/lib/frontend/academic/queries';
 import type { ClassDto, SubjectDto } from '@/lib/frontend/academic/types';
-import { localCalendarToday } from '@/lib/frontend/attendance/schemas';
+import { schoolCalendarToday } from '@/lib/frontend/attendance/schemas';
 import { dashboardCopy as t } from '@/lib/frontend/dashboard/copy';
 import { dashboardKeys, listSelfActiveAssignments, listSelfTeacherProfiles, selfTeacherListParams } from '@/lib/frontend/dashboard/queries';
 import { assignmentViews, groupTeacherClasses } from '@/lib/frontend/dashboard/types';
@@ -75,7 +75,7 @@ export function TeacherOperationalDashboard() {
       <OverviewCard icon={<BookOpen className="size-5" />} label={t.assignedSubjects} value={uniqueSubjects} />
       <OverviewCard icon={<Bell className="size-5" />} label={t.unreadNotifications} value={unread.isError || unreadCount === undefined ? '—' : unreadCount} />
     </section>
-    <section className="space-y-4" aria-labelledby="teacher-classes-heading"><div><h2 id="teacher-classes-heading" className="text-xl font-semibold">{t.myClasses}</h2><p className="mt-1 text-sm text-muted-foreground">{t.myClassesDescription}</p></div><div className="grid gap-4 lg:grid-cols-2">{groups.map((group) => <TeacherClassCard key={group.key} group={group} today={localCalendarToday()} />)}</div></section>
+    <section className="space-y-4" aria-labelledby="teacher-classes-heading"><div><h2 id="teacher-classes-heading" className="text-xl font-semibold">{t.myClasses}</h2><p className="mt-1 text-sm text-muted-foreground">{t.myClassesDescription}</p></div><div className="grid gap-4 lg:grid-cols-2">{groups.map((group) => <TeacherClassCard key={group.key} group={group} today={schoolCalendarToday(app.currentSchool!.timezone)} />)}</div></section>
     <section className="space-y-4" aria-labelledby="teacher-work-heading"><div><h2 id="teacher-work-heading" className="text-xl font-semibold">{t.myWork}</h2><p className="mt-1 text-sm text-muted-foreground">{t.myWorkDescription}</p></div><div className="grid gap-3 sm:grid-cols-2">
       <Link href="/announcements" className="rounded-lg border bg-card p-4 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="flex items-center gap-2 font-medium"><Megaphone className="size-4" aria-hidden="true" />{t.announcements}</span><span className="mt-2 block text-sm text-muted-foreground">{t.announcementsDescription}</span></Link>
       <Link href="/notifications" className="rounded-lg border bg-card p-4 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="flex items-center gap-2 font-medium"><Bell className="size-4" aria-hidden="true" />{t.notifications}</span><span className="mt-2 block text-sm text-muted-foreground">{t.notificationDescription(unreadCount)}</span></Link>

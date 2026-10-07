@@ -23,13 +23,14 @@ export async function findClassContext(db: AttendanceDb, schoolId: string, class
   const [row] = await db.select({
     class: schema.classes,
     academicYear: schema.academicYears,
+    timezone: schema.schools.timezone,
   }).from(schema.classes).innerJoin(
     schema.academicYears,
     and(
       eq(schema.academicYears.schoolId, schema.classes.schoolId),
       eq(schema.academicYears.id, schema.classes.academicYearId),
     ),
-  ).where(and(
+  ).innerJoin(schema.schools, eq(schema.schools.id, schema.classes.schoolId)).where(and(
     eq(schema.classes.schoolId, schoolId),
     eq(schema.classes.id, classId),
   )).limit(1);

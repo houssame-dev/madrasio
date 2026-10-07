@@ -40,6 +40,19 @@ beforeEach(async () => {
   test = await createAuthTestDb();
 });
 
+it('exposes only the authoritative current School timezone and rejects invalid configuration', async () => {
+  const user = await seedUser(test.seed);
+  const school = await seedSchool(test.seed, 'School timezone');
+  await seedMembership(test.seed, user, school.id, 'SCHOOL_ADMIN');
+  await test.seed.update(schema.schools).set({ timezone: 'Africa/Casablanca' }).where(eq(schema.schools.id, school.id));
+  const resolution = await resolveUserContext(test.db, { userId: user, selectedSchoolId: null });
+  expect(toMeResponse(resolution).currentSchool).toMatchObject({ timezone: 'Africa/Casablanca' });
+  expect(toMeResponse(resolution).memberships[0]).not.toHaveProperty('timezone');
+  await test.seed.update(schema.schools).set({ timezone: 'Invalid/School' }).where(eq(schema.schools.id, school.id));
+  const invalid = await resolveUserContext(test.db, { userId: user, selectedSchoolId: null });
+  expect(() => toMeResponse(invalid)).toThrow('School timezone is invalid');
+});
+
 const identity = (userId: string) => ({
   sessionResolver: async () => ({ id: userId }),
   readSelectedSchoolId: async () => null,
@@ -382,7 +395,7 @@ describe('Task 014 §44 — /me API semantics (resolver + DTO level)', () => {
 
     const payload = toMeResponse(resolution);
     expect(payload.user).toEqual({ id: user });
-    expect(payload.currentSchool).toEqual({ id: school.id, role: 'SCHOOL_ADMIN' });
+    expect(payload.currentSchool).toEqual({ id: school.id, role: 'SCHOOL_ADMIN', timezone: 'UTC' });
     expect(payload.memberships).toEqual([
       { schoolId: school.id, schoolName: 'School A', role: 'SCHOOL_ADMIN', status: 'ACTIVE' },
     ]);
@@ -395,7 +408,7 @@ describe('Task 014 §44 — /me API semantics (resolver + DTO level)', () => {
     const resolution = await resolveUserContext(test.db, { userId: user, selectedSchoolId: null });
 
     const payload = toMeResponse(resolution);
-    expect(payload.currentSchool).toEqual({ id: school.id, role: 'TEACHER' });
+    expect(payload.currentSchool).toEqual({ id: school.id, role: 'TEACHER', timezone: 'UTC' });
   });
 
   it('multiple ACTIVE memberships with no selection → currentSchool null (selection required)', async () => {
@@ -423,7 +436,7 @@ describe('Task 014 §44 — /me API semantics (resolver + DTO level)', () => {
     expect(membership.schoolId).toBe(schoolB.id);
 
     const after = await resolveUserContext(test.db, { userId: user, selectedSchoolId: schoolB.id });
-    expect(toMeResponse(after).currentSchool).toEqual({ id: schoolB.id, role: 'TEACHER' });
+    expect(toMeResponse(after).currentSchool).toEqual({ id: schoolB.id, role: 'TEACHER', timezone: 'UTC' });
   });
 
   it('POST /me/current-school rejects inactive membership', async () => {

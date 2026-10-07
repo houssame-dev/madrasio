@@ -1,11 +1,9 @@
 import { z } from 'zod';
+import { isCalendarDate } from '@school/shared';
 
 export const calendarDateSchema = z.string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected an ISO calendar date (YYYY-MM-DD).')
-  .refine((value) => {
-    const parsed = new Date(`${value}T00:00:00.000Z`);
-    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-  }, 'Expected a valid calendar date.');
+  .refine(isCalendarDate, 'Expected a valid calendar date.');
 
 const uuid = z.string().uuid();
 const note = z.string().trim().min(1).max(1000).nullable().optional();

@@ -16,14 +16,14 @@ import type { ClassDto } from '@/lib/frontend/academic/types';
 import { teacherAttendanceClassIds } from '@/lib/frontend/attendance/api';
 import { attendanceCopy as t } from '@/lib/frontend/attendance/copy';
 import { attendanceKeys } from '@/lib/frontend/attendance/queries';
-import { localCalendarToday } from '@/lib/frontend/attendance/schemas';
+import { schoolCalendarToday } from '@/lib/frontend/attendance/schemas';
 import { can } from '@/lib/frontend/permissions';
 
 export function AttendanceWorkspace() {
   const app = useAppContext(); const schoolId = app.currentSchool?.id; const role = app.currentSchool?.role;
   const searchParams = useSearchParams(); const pathname = usePathname(); const router = useRouter();
   const section = searchParams.get('section') === 'history' ? 'history' : 'daily';
-  const academicYearId = searchParams.get('academicYearId') ?? ''; const classId = searchParams.get('classId') ?? ''; const date = searchParams.get('date') ?? localCalendarToday();
+  const academicYearId = searchParams.get('academicYearId') ?? ''; const classId = searchParams.get('classId') ?? ''; const date = searchParams.get('date') ?? (app.currentSchool ? schoolCalendarToday(app.currentSchool.timezone) : '');
   const [dirty, setDirty] = useState(false);
   const allowed = !!schoolId && !!role && role !== 'PARENT' && can(role, 'attendance.read');
   const updateUrl = useCallback((updates: Record<string, string | undefined>) => { const next = new URLSearchParams(searchParams.toString()); for (const [key, value] of Object.entries(updates)) { if (!value) next.delete(key); else next.set(key, value); } const suffix = next.toString(); router.replace(`${pathname}${suffix ? `?${suffix}` : ''}`, { scroll: false }); }, [pathname, router, searchParams]);
@@ -41,7 +41,6 @@ export function AttendanceWorkspace() {
   return <div className="mx-auto max-w-[110rem] space-y-6">
     <header><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.description}</p></header>
     <nav aria-label={t.title} className="flex gap-2"><Button type="button" variant={section === 'daily' ? 'default' : 'outline'} onClick={() => change({ section: 'daily' })}>{t.daily}</Button><Button type="button" variant={section === 'history' ? 'default' : 'outline'} onClick={() => change({ section: 'history' })}>{t.history}</Button></nav>
-    {section === 'daily' ? <><AttendanceContextControls years={years.data} classes={availableClasses} academicYearId={academicYearId} classId={classId} date={date} teacherScoped={role === 'TEACHER'} onYear={(value) => change({ academicYearId: value || undefined, classId: undefined })} onClass={(value) => change({ classId: value || undefined })} onDate={(value) => change({ date: value || undefined })} /><p className="text-xs text-muted-foreground">{t.utcLimitation}</p><DailyAttendancePanel key={`${academicYearId}:${classId}:${date}`} schoolId={schoolId} academicYear={selectedYear} classId={classId} date={date} onDirtyChange={setDirty} /></> : <AttendanceHistory schoolId={schoolId} years={years.data} classes={historyClasses} />}
+    {section === 'daily' ? <><AttendanceContextControls years={years.data} classes={availableClasses} academicYearId={academicYearId} classId={classId} date={date} teacherScoped={role === 'TEACHER'} onYear={(value) => change({ academicYearId: value || undefined, classId: undefined })} onClass={(value) => change({ classId: value || undefined })} onDate={(value) => change({ date: value || undefined })} /><p className="text-xs text-muted-foreground">{t.schoolTimezone}</p><DailyAttendancePanel key={`${academicYearId}:${classId}:${date}`} schoolId={schoolId} timezone={app.currentSchool!.timezone} academicYear={selectedYear} classId={classId} date={date} onDirtyChange={setDirty} /></> : <AttendanceHistory schoolId={schoolId} years={years.data} classes={historyClasses} />}
   </div>;
 }
-

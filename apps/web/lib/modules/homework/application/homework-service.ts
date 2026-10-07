@@ -1,3 +1,4 @@
+import { schoolDateFromInstant } from '@school/shared';
 import type { Role } from '@/lib/authorization/roles';
 import {
   requireOperation, resolveCurrentContext, resolveTeacherScope, type AuthorizationDb,
@@ -287,21 +288,14 @@ async function authorizeSubmissionManagement(
   }
 }
 
-function schoolDate(now: Date, timezone: string): string {
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
-    }).formatToParts(now);
-    const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    return `${value.year}-${value.month}-${value.day}`;
-  } catch {
-    return now.toISOString().slice(0, 10);
-  }
-}
-
 async function derivedSubmissionState(db: HomeworkDb, schoolId: string, dueDate: string, now: Date) {
   const timezone = await repo.findSchoolTimezone(db, schoolId);
-  return schoolDate(now, timezone) > dueDate ? 'LATE' as const : 'SUBMITTED' as const;
+  try {
+    if (timezone === null) throw new Error('School missing');
+    return schoolDateFromInstant(now, timezone) > dueDate ? 'LATE' as const : 'SUBMITTED' as const;
+  } catch {
+    throw new HomeworkDomainError('INVALID_HOMEWORK_CONTEXT', 'School timezone is invalid. Contact your school administrator.');
+  }
 }
 
 export async function createHomeworkSubmission(

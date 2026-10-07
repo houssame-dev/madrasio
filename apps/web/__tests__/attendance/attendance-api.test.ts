@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '@school/database';
 
 import * as app from '@/lib/modules/attendance/application';
@@ -41,6 +41,29 @@ async function studentInClass(suffix = '') {
 }
 
 describe('Attendance write contracts and historical eligibility', () => {
+  it('uses the stored School day at midnight and leaves historical DATE rows unchanged', async () => {
+    const student = await studentInClass();
+    await context.test.seed.update(schema.schools).set({ timezone: 'America/New_York' }).where(eq(schema.schools.id, context.schoolId));
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2025-10-11T00:30:00Z'));
+    try {
+      await expect(app.putDailyAttendance(db, context.admin, context.classAId, '2025-10-11', {
+        records: [{ studentId: student.id, status: 'PRESENT' }],
+      })).rejects.toMatchObject({ featureCode: 'INVALID_ATTENDANCE_DATE' });
+      const written = await app.putDailyAttendance(db, context.admin, context.classAId, '2025-10-10', {
+        records: [{ studentId: student.id, status: 'PRESENT' }],
+      });
+      expect(written.records[0].attendanceDate).toBe('2025-10-10');
+      await context.test.seed.update(schema.schools).set({ timezone: 'Asia/Tokyo' }).where(eq(schema.schools.id, context.schoolId));
+      expect((await context.test.seed.select().from(schema.attendanceRecords))[0].attendanceDate).toBe('2025-10-10');
+      await expect(app.getDailyAttendance(db, context.admin, context.classAId, '2025-10-11', { page: 1, pageSize: 20 })).resolves.toMatchObject({ data: { attendanceDate: '2025-10-11' } });
+      await context.test.seed.update(schema.schools).set({ timezone: 'Invalid/School' }).where(eq(schema.schools.id, context.schoolId));
+      await expect(app.putDailyAttendance(db, context.admin, context.classAId, '2025-10-10', {
+        records: [{ studentId: student.id, status: 'ABSENT' }],
+      })).rejects.toMatchObject({ featureCode: 'INVALID_ATTENDANCE_DATE' });
+      expect((await context.test.seed.select().from(schema.attendanceRecords))[0].status).toBe('PRESENT');
+    } finally { vi.useRealTimers(); }
+  });
   it('strictly validates statuses, authority fields, note bounds, and duplicate batch Students', () => {
     const studentId = randomUUID();
     for (const status of ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']) {
