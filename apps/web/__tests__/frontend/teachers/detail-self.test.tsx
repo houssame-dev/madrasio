@@ -29,6 +29,7 @@ describe('Teacher detail and self scope', () => {
     detailFetch(); renderTeachers(<TeacherDetailWorkspace teacherId={teacher.id} />);
     expect(await screen.findByRole('heading', { name: 'Leila Amrani' })).toBeInTheDocument(); expect(screen.getByText('Linked to an existing school User')).toBeInTheDocument(); expect(screen.queryByText(teacher.userId)).not.toBeInTheDocument();
     expect(await screen.findByText('Mathematics')).toBeInTheDocument(); expect(screen.getByText('1A')).toBeInTheDocument(); expect(screen.getByText('2026/2027')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send account recovery' })).toBeInTheDocument();
   });
 
   it('provisions an unlinked profile through email without client role or School authority', async () => {
@@ -45,6 +46,7 @@ describe('Teacher detail and self scope', () => {
     });
     renderTeachers(<TeacherDetailWorkspace teacherId={teacher.id} />);
     await userEvent.click(await screen.findByRole('button', { name: 'Invite account' }));
+    expect(screen.queryByRole('button', { name: 'Send account recovery' })).not.toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('Email'), 'new.teacher@example.com');
     await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Invite account' }));
     await waitFor(() => expect(fetchMock.mock.calls.some((call) => String(call[0]).endsWith('/invite-account'))).toBe(true));
@@ -57,6 +59,7 @@ describe('Teacher detail and self scope', () => {
     expect(await screen.findByText('ENDED')).toBeInTheDocument(); expect(screen.getByText('Read-only access')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Teacher' })).not.toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Create Assignment' })).not.toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'End Assignment' })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('all-active'))).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Send account recovery' })).not.toBeInTheDocument();
   });
 
   it('maps another or unavailable Teacher to a controlled state', async () => {

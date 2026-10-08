@@ -20,12 +20,16 @@ export async function recordSchoolAudit(
 ) {
   const parsed = schoolAuditEventSchema.safeParse(event);
   if (!parsed.success) throw new ValidationError('Invalid audit action context.');
-  // Current inventory is academic administration only. Future actions must add their own permission mapping.
+  const value = parsed.data;
   await requireOperation(tx as unknown as AuthorizationDb, actor, {
-    permission: 'academic_structure.manage',
+    permission:
+      value.action === 'AccountRecoveryRequested'
+        ? value.metadata.profileKind === 'TEACHER'
+          ? 'teachers.manage'
+          : 'parents.manage'
+        : 'academic_structure.manage',
     scope: { kind: 'school' },
   });
-  const value = parsed.data;
   try {
     await repository.appendAuditEvent(tx, {
       scope: 'SCHOOL',
@@ -34,7 +38,12 @@ export async function recordSchoolAudit(
       actorUserId: actor.userId!,
       action: value.action,
       resourceId: value.resourceId,
-      resourceType: value.action === 'ClassCurriculumChanged' ? 'Class' : 'CurriculumVersion',
+      resourceType:
+        value.action === 'AccountRecoveryRequested'
+          ? 'User'
+          : value.action === 'ClassCurriculumChanged'
+            ? 'Class'
+            : 'CurriculumVersion',
       metadata: value.metadata,
     });
   } catch {

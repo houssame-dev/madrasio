@@ -13,6 +13,7 @@ import {
   setPasswordSchema, type SetPasswordValues,
 } from '@/lib/frontend/auth/set-password-schema';
 import { getBrowserSupabase } from '@/lib/supabase/browser';
+import { recoveryCopy as t } from '@/lib/frontend/auth/recovery-copy';
 
 export function SetPasswordForm() {
   const router = useRouter();
@@ -30,9 +31,11 @@ export function SetPasswordForm() {
 
   async function submit(values: SetPasswordValues) {
     setError(undefined);
-    const result = await getBrowserSupabase().auth.updateUser({ password: values.password });
-    if (result.error) {
-      setError('Your password could not be set. Request a new invitation from your School administrator.');
+    try {
+      const result = await getBrowserSupabase().auth.updateUser({ password: values.password });
+      if (result.error) throw new Error('Password update failed.');
+    } catch {
+      setError(t.passwordFailure);
       form.setFocus('password');
       return;
     }

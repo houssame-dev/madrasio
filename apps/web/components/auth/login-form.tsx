@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Building2, LoaderCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { recoveryCopy } from '@/lib/frontend/auth/recovery-copy';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
@@ -70,6 +72,7 @@ export function LoginForm() {
             {form.formState.isSubmitting ? <span className="sr-only" role="status">{t.submitting}</span> : null}
           </fieldset>
         </form>
+        <Link className="mt-4 block text-sm text-primary underline" href="/auth/recover">{recoveryCopy.title}</Link>
       </section>
     </main>
   );

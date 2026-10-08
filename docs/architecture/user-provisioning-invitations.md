@@ -53,7 +53,7 @@ The STAGING Invite User template must route its `TokenHash` and fixed type `invi
 {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=invite
 ```
 
-The server route accepts only `type=invite`, calls the cookie-aware SSR client's `verifyOtp`, and redirects to `/auth/set-password`. It ignores arbitrary `next` input and removes the token hash from the next URL. Invalid or expired links receive generic recovery copy.
+The server route accepts `type=invite` and the Task 057 `type=recovery`, calls the cookie-aware SSR client's `verifyOtp`, and redirects to `/auth/set-password` on the configured canonical `APP_URL` origin. It ignores arbitrary `next` input and removes the token hash from the next URL. Invalid or expired links receive generic recovery copy.
 
 The password page requires the cookie-backed invite session. React Hook Form and Zod require matching passwords of 8–128 characters; Supabase remains authoritative for any stronger project password policy. `auth.updateUser({ password })` sets the password. Success clears browser query state, enters `/dashboard`, and lets `/me` resolve role, School, and profile scope from application data. Passwords and token hashes are never logged.
 
@@ -61,7 +61,7 @@ The password page requires the cookie-backed invite session. React Hook Form and
 
 Public signup and anonymous sign-in remain disabled. The trusted Auth Admin invite is the only new-identity production path. STAGING now uses accepted Brevo Custom SMTP with the token-hash template; provider delivery/bounce visibility and credential custody remain operational concerns.
 
-Task 045 does not provide resend. Re-inviting, delete/recreate, or exposing an Auth action link is unsafe as a generic retry policy. Custom SMTP does not change that contract; a future resend flow still requires an explicit idempotent product/operations design.
+Task 045 does not provide resend. Task 057 adds [identity-preserving recovery](safe-account-recovery.md) for existing pending/expired invitations and activated accounts, including scoped administrator assistance. It uses password recovery, not repeated invitation creation. Re-inviting, delete/recreate, or exposing an Auth action link remains unsafe as a generic retry policy. Delivered recovery/template acceptance is separately authorized; initial invitation acceptance evidence does not prove recovery delivery.
 
 ## Deployment handoff
 

@@ -85,4 +85,16 @@ describe('invite password setup', () => {
     expect(JSON.stringify(localStorage).includes(syntheticPassword)).toBe(false);
     expect(JSON.stringify(sessionStorage).includes(syntheticPassword)).toBe(false);
   });
+
+  it('handles thrown recovery-session update errors without leaking them', async () => {
+    mocks.updateUser.mockRejectedValue(new Error('synthetic-private-provider-detail'));
+    renderForm();
+    await userEvent.type(screen.getByLabelText('New password'), 'synthetic-only-123');
+    await userEvent.type(screen.getByLabelText('Confirm password'), 'synthetic-only-123');
+    await userEvent.keyboard('{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not be set/);
+    expect(screen.queryByText(/synthetic-private-provider-detail/)).not.toBeInTheDocument();
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('New password')).toHaveFocus();
+  });
 });

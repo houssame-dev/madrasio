@@ -25,10 +25,12 @@ describe('Parent administrator detail', () => {
     expect(await screen.findByRole('heading', { name: 'Samira Alaoui' })).toBeInTheDocument();
     expect(screen.getByText('Linked to an existing school User')).toBeInTheDocument(); expect(screen.queryByText(parent.userId)).not.toBeInTheDocument();
     expect(await screen.findByText('Nora Alaoui')).toBeInTheDocument(); expect(screen.getAllByText('ACTIVE').length).toBeGreaterThan(1);
+    expect(screen.getByRole('button', { name: 'Send account recovery' })).toBeInTheDocument();
   });
   it('hides link action for INACTIVE Parent without changing ACTIVE relationship status', async () => {
     detailFetch({ ...parent, status: 'INACTIVE' }); renderParents(<ParentDetailWorkspace parentId={parent.id} />);
     expect(await screen.findByText(/Inactive Parent profiles cannot access linked children/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send account recovery' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Link Student' })).not.toBeInTheDocument(); expect(await screen.findByText('Nora Alaoui')).toBeInTheDocument(); expect(screen.getByText('ACTIVE')).toBeInTheDocument();
   });
   it('provisions an unlinked Parent through the separate email action', async () => {

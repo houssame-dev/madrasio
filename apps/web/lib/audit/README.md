@@ -9,6 +9,7 @@ domain snapshots/history and the transactional outbox; it replaces neither.
 | --- | --- | --- |
 | `ClassCurriculumChanged` | Class UUID | previous/new CurriculumVersion UUID |
 | `CurriculumVersionStatusChanged` | CurriculumVersion UUID | previous/new lifecycle status |
+| `AccountRecoveryRequested` | User UUID | Teacher/Parent profile kind and UUID; CONFIRMED/UNCONFIRMED identity state |
 
 These existing academic administration operations demonstrate historical configuration
 accountability without blanket CRUD logging. No-op/name-only edits emit nothing.
@@ -24,6 +25,15 @@ transaction, never request authority. The action inventory is a strict discrimin
 union; clients cannot submit actor, School, arbitrary action, or unrestricted JSON.
 The initial actions require `academic_structure.manage`. Resource type is derived
 from action, and occurrence time/identity use database defaults.
+
+Task 057 recovery intent requires `teachers.manage` or `parents.manage`, derived
+from the server-selected profile kind. The recovery service validates current-School
+profile/membership and exact Auth identity first. It rechecks application eligibility
+under the User lock, commits the intent, then requests external email delivery.
+The event proves an authorized attempt, NOT successful delivery/reset. Audit failure
+prevents delivery; delivery uncertainty retains intent and its 60-second cooldown.
+There is no external-operation rollback, automatic resend or identity mutation.
+See `docs/architecture/safe-account-recovery.md` for the non-atomic boundary.
 
 SCHOOL events require School ID. PLATFORM events forbid School ID. USER events
 require an application User and forbid a system code; SYSTEM events require a bounded

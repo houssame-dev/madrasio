@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ verifyOtp: vi.fn() }));
+vi.mock('@/lib/config/env', () => ({ getServerEnv: () => ({ APP_URL: 'http://localhost:3000' }) }));
 vi.mock('@/lib/supabase/server', () => ({
   getServerSupabase: async () => ({ auth: { verifyOtp: mocks.verifyOtp } }),
 }));

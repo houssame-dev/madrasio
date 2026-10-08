@@ -82,4 +82,20 @@ cross-tab UI replacement.
 - `sms_current_school` remains a selector, never authorization proof.
 - Password values, provider error details, SQL details, and tokens are never logged or rendered.
 - Login and logout use semantic forms/buttons, visible labels, keyboard focus styles, live status/error semantics, and pending-disabled controls.
-- The implementation adds no schema change, migration, RLS, password reset, signup, MFA, impersonation, profile management, or new role.
+- Task 038 added no schema change, migration, RLS, password reset, signup, MFA, impersonation, profile management, or new role.
+
+## Task 057 account recovery
+
+The login screen now links to public `/auth/recover`. Its labeled, keyboard-submitted
+email form gives persistent generic next steps and never reveals account existence.
+The fixed canonical `/auth/confirm` callback also supports `type=recovery`; it
+verifies the provider token hash and establishes the cookie session before redirecting
+to the shared `/auth/set-password` page. Arbitrary redirect query parameters are
+ignored. Invalid/expired links point to recovery without displaying provider details.
+
+The Task 052 password form remains POST and inert before hydration; provider and
+transport errors are sanitized. Existing application identity and membership authority
+remain unchanged after password update. Active linked Teacher/Parent detail views
+offer School-scoped recovery assistance to permitted administrators, with no password
+input or email disclosure. See [safe account recovery](safe-account-recovery.md) for
+audit/cooldown semantics and the separately authorized delivery-template handoff.

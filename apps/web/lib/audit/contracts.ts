@@ -4,6 +4,19 @@ import { z } from 'zod';
 export const schoolAuditEventSchema = z.discriminatedUnion('action', [
   z
     .object({
+      action: z.literal('AccountRecoveryRequested'),
+      resourceId: z.string().uuid(),
+      metadata: z
+        .object({
+          profileKind: z.enum(['TEACHER', 'PARENT']),
+          profileId: z.string().uuid(),
+          identityState: z.enum(['UNCONFIRMED', 'CONFIRMED']),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
       action: z.literal('ClassCurriculumChanged'),
       resourceId: z.string().uuid(),
       metadata: z
