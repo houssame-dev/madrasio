@@ -27,7 +27,11 @@ describe('invite confirmation route', () => {
   ])('rejects malformed or unsupported confirmation input', async (url) => {
     const response = await GET(new Request(url));
     expect(mocks.verifyOtp).not.toHaveBeenCalled();
-    expect(response.headers.get('location')).toBe('http://localhost:3000/auth/set-password?error=invalid-invite');
+    expect(response.headers.get('location')).toBe(
+      new URL(url).searchParams.get('type') === 'invite'
+        ? 'http://localhost:3000/auth/set-password?error=invalid-invite'
+        : '/auth/set-password?error=invalid-invite',
+    );
   });
 
   it('maps provider rejection to a generic invalid-invite state', async () => {

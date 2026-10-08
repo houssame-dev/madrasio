@@ -8,10 +8,20 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const tokenHash = url.searchParams.get('token_hash');
   const type = url.searchParams.get('type');
+  if (type !== 'invite' && type !== 'recovery') {
+    // Invalid types need neither provider configuration nor a caller-supplied origin.
+    return new NextResponse(null, {
+      status: 307,
+      headers: {
+        Location: '/auth/set-password?error=invalid-invite',
+        'Cache-Control': 'private, no-store',
+      },
+    });
+  }
   const destination = new URL('/auth/set-password', recoveryCallbackUrl(getServerEnv().APP_URL));
   const invalidCode = type === 'recovery' ? 'invalid-recovery' : 'invalid-invite';
 
-  if (!tokenHash || tokenHash.length > 2048 || (type !== 'invite' && type !== 'recovery')) {
+  if (!tokenHash || tokenHash.length > 2048) {
     destination.searchParams.set('error', invalidCode);
     return NextResponse.redirect(destination, {
       headers: { 'Cache-Control': 'private, no-store' },

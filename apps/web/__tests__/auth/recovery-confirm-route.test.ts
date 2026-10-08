@@ -35,8 +35,10 @@ it.each([
 ])('rejects missing or malformed recovery context', async (query) => {
   const response = await GET(new Request(`https://app.example.test/auth/confirm?${query}`));
   expect(mocks.verifyOtp).not.toHaveBeenCalled();
-  expect(response.headers.get('location')).toMatch(
-    /^https:\/\/app.example.test\/auth\/set-password\?error=invalid-(invite|recovery)$/,
+  expect(response.headers.get('location')).toBe(
+    new URLSearchParams(query).get('type') === 'recovery'
+      ? 'https://app.example.test/auth/set-password?error=invalid-recovery'
+      : '/auth/set-password?error=invalid-invite',
   );
 });
 it.each(['expired', 'transport', 'missing-session'])(
