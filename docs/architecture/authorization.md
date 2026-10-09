@@ -1,5 +1,10 @@
 # Authorization Foundation
 
+Task 058: independent platform authority now uses `users.is_platform_admin` and
+the dedicated `requirePlatformAuthority` guard (ADR-023). It is not inferred from
+the legacy SUPER_ADMIN membership role and never skips School checks below.
+See [platform administration](platform-school-administration.md).
+
 > Task 005 — reusable, server-side authorization foundation for V1.
 
 This document describes the implemented authorization foundation. It is an

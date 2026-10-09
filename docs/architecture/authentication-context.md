@@ -1,5 +1,11 @@
 # Authentication & Current School Context
 
+Task 058 adds a separate platform boundary: ACTIVE User + explicit
+`users.is_platform_admin`, without a School requirement. `/me` exposes the
+optional `platformAuthority` capability for navigation only. School context and
+role resolution remain membership-derived and unchanged. See
+[platform School administration](platform-school-administration.md) and ADR-023.
+
 > Task 014 — turns the committed Supabase Auth + User + SchoolMembership
 > foundation into a real application/session context used by APIs.
 

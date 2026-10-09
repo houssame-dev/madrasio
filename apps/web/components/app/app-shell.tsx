@@ -59,7 +59,7 @@ export function AppShell({ context, children }: { context: MeResponseDto; childr
             <span className="grid size-9 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground"><Building2 className="size-5" aria-hidden="true" /></span>
             {!collapsed ? <span className="truncate text-sm font-semibold">{copy.productName}</span> : null}
           </div>
-          <div className="flex-1 overflow-y-auto py-4"><NavigationLinks role={context.currentSchool.role} collapsed={collapsed} /></div>
+          <div className="flex-1 overflow-y-auto py-4"><NavigationLinks role={context.currentSchool.role} platformAuthority={context.platformAuthority} collapsed={collapsed} /></div>
           <div className="border-t p-2">
             <Button type="button" variant="ghost" size={collapsed ? 'icon' : 'default'} className={cn(!collapsed && 'w-full justify-start')} aria-label={collapsed ? copy.expandNavigation : copy.collapseNavigation} onClick={() => setCollapsed((value) => !value)}>
               {collapsed ? <ChevronsRight className="size-4" aria-hidden="true" /> : <><ChevronsLeft className="size-4" aria-hidden="true" /><span>{copy.collapseNavigation}</span></>}
@@ -75,7 +75,7 @@ export function AppShell({ context, children }: { context: MeResponseDto; childr
                 <span className="font-semibold">{copy.productName}</span>
                 <Button ref={closeButtonRef} type="button" variant="ghost" size="icon" aria-label={copy.closeNavigation} onClick={() => setMobileOpen(false)}><X className="size-5" aria-hidden="true" /></Button>
               </div>
-              <div className="overflow-y-auto py-4"><NavigationLinks role={context.currentSchool.role} onNavigate={() => setMobileOpen(false)} /></div>
+              <div className="overflow-y-auto py-4"><NavigationLinks role={context.currentSchool.role} platformAuthority={context.platformAuthority} onNavigate={() => setMobileOpen(false)} /></div>
             </aside>
           </div>
         ) : null}

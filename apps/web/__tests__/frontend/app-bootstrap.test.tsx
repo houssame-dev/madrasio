@@ -24,6 +24,12 @@ afterEach(() => {
 });
 
 describe('/me application bootstrap', () => {
+  it('offers the platform workspace without inventing a School context', async () => {
+    renderBootstrap(async () => Response.json({ data: { user: { id: 'operator' }, platformAuthority: 'SUPER_ADMIN', currentSchool: null, memberships: [] } }));
+    expect(await screen.findByRole('link', { name: 'Manage Schools and School Admins' })).toHaveAttribute('href', '/platform/schools');
+    expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('desktop-sidebar')).not.toBeInTheDocument();
+  });
   it('shows loading without flashing protected content', () => {
     renderBootstrap(() => new Promise(() => undefined));
     expect(screen.getByRole('status')).toHaveTextContent('Loading your workspace');

@@ -64,6 +64,7 @@ Current V1 architecture decisions are primarily `Accepted`.
 | ADR-020 | Production Age Identity Custody and Recovery-Point Supersession |
 | ADR-021 | Production Backup Cadence Hardening |
 | ADR-022 | Production Backup Independent Scheduler |
+| ADR-023 | Explicit Platform Authority Separate from School Membership |
 
 ---
 

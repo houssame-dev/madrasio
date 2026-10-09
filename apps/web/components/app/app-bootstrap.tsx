@@ -3,6 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, type ReactNode } from 'react';
+import Link from 'next/link';
 
 import { LogoutButton } from '@/components/auth/logout-button';
 import { ApiClientError } from '@/lib/frontend/api-client';
@@ -42,6 +43,9 @@ export function AppBootstrap({ children }: { children: ReactNode }) {
   }
 
   if (!currentUser.data.currentSchool) {
+    if (currentUser.data.platformAuthority === 'SUPER_ADMIN') {
+      return <main className="space-y-4 p-6"><h1 className="text-2xl font-semibold">Platform administration</h1><Link className="underline" href="/platform/schools">Manage Schools and School Admins</Link><LogoutButton /></main>;
+    }
     if (currentUser.data.memberships.length === 0) {
       return <main className="flex min-h-screen items-center p-4"><NoSchoolState action={<LogoutButton />} /></main>;
     }

@@ -1,5 +1,3 @@
-import type { User } from '@supabase/supabase-js';
-
 import type { AuthAdminPort } from '@/lib/auth/admin';
 import { normalizeEmail } from '@/lib/auth/email';
 import { requireOperation, type AuthorizationDb } from '@/lib/authorization/server';
@@ -10,6 +8,7 @@ import type {
 import * as repo from '../infrastructure/provisioning-repository';
 import type { ProvisioningDb } from '../infrastructure/provisioning-repository';
 import { ProvisioningError } from './provisioning-errors';
+import { verifyApplicationIdentity, withProvisionedIdentity } from './identity';
 
 export interface ProvisioningActor { userId: string | null; schoolId: string }
 export interface ProvisioningDependencies {
@@ -24,10 +23,6 @@ function reconciliation(cause?: unknown): never {
     'Account identity requires operator reconciliation before it can be linked.',
     cause,
   );
-}
-
-function verifiedAuthEmail(user: User | null, expectedEmail: string): void {
-  if (!user?.email || normalizeEmail(user.email) !== expectedEmail) reconciliation();
 }
 
 function mapDbConflict(error: unknown): never {
@@ -45,14 +40,7 @@ async function verifyExisting(
   deps: ProvisioningDependencies,
   user: { id: string; email: string; status: 'ACTIVE' | 'SUSPENDED' | 'DISABLED' },
 ) {
-  if (user.status !== 'ACTIVE') reconciliation();
-  let authUser: User | null;
-  try {
-    authUser = await deps.authAdmin.getUserById(user.id);
-  } catch (error) {
-    reconciliation(error);
-  }
-  verifiedAuthEmail(authUser!, user.email);
+  await verifyApplicationIdentity(deps.authAdmin, user);
 }
 
 export async function provisionProfileAccount(
@@ -91,57 +79,21 @@ export async function provisionProfileAccount(
     }
   }
 
-  const existing = await repo.findUserByEmail(deps.db, email);
-  if (existing) {
-    await verifyExisting(deps, existing);
-    try {
-      const state = await repo.linkExistingIdentity(deps.db, {
-        schoolId: actor.schoolId, profileId, kind, userId: existing.id,
+  try {
+    const outcome = await withProvisionedIdentity(deps, email, async (identity) => {
+      if (identity.created) {
+        await repo.createAndLinkIdentity(deps.db, {
+          schoolId: actor.schoolId, profileId, kind, userId: identity.id, email: identity.email,
+        });
+        return 'INVITED' as const;
+      }
+      return repo.linkExistingIdentity(deps.db, {
+        schoolId: actor.schoolId, profileId, kind, userId: identity.id,
       });
-      return { profileId, userId: existing.id, state };
-    } catch (error) {
-      mapDbConflict(error);
-    }
-  }
-
-  let invited: User;
-  try {
-    invited = await deps.authAdmin.inviteUserByEmail(email, deps.inviteRedirectTo);
-  } catch (error) {
-    throw new ProvisioningError(
-      'ACCOUNT_INVITE_FAILED',
-      'Account invitation could not be initiated. Contact an operator if the address already has an account.',
-      error,
-    );
-  }
-  if (!invited.email || normalizeEmail(invited.email) !== email) {
-    try {
-      await deps.authAdmin.deleteUser(invited.id);
-    } catch (cleanupError) {
-      throw new ProvisioningError(
-        'ACCOUNT_PROVISIONING_COMPENSATION_REQUIRED',
-        'Account provisioning requires operator reconciliation.',
-        cleanupError,
-      );
-    }
-    reconciliation();
-  }
-
-  try {
-    await repo.createAndLinkIdentity(deps.db, {
-      schoolId: actor.schoolId, profileId, kind, userId: invited.id, email,
     });
-  } catch (dbError) {
-    try {
-      await deps.authAdmin.deleteUser(invited.id);
-    } catch (cleanupError) {
-      throw new ProvisioningError(
-        'ACCOUNT_PROVISIONING_COMPENSATION_REQUIRED',
-        'Account provisioning requires operator reconciliation.',
-        { dbError, cleanupError },
-      );
-    }
-    reconciliation(dbError);
+    return { profileId, userId: outcome.userId, state: outcome.result };
+  } catch (error) {
+    if (error instanceof ProvisioningError) throw error;
+    mapDbConflict(error);
   }
-  return { profileId, userId: invited.id, state: 'INVITED' };
 }

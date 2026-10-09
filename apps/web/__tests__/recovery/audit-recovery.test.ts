@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { createPlatformSchool } from '@/lib/modules/platform/service';
 import { createAuthTestDb, seedMembership, seedSchool, seedUser } from '../auth/test-helpers';
 import * as academic from '@/lib/modules/academic-structure/application';
 import type { AcademicStructureDb } from '@/lib/modules/academic-structure/infrastructure/repositories/academic-structure-repository';
@@ -28,6 +29,8 @@ it('replays nonempty audit history in recovery FK order and preserves all 42 fin
     const targetClient = target.client as unknown as QueryClient;
     const school = await seedSchool(source.seed);
     const userId = await seedUser(source.seed);
+    await source.client.query('update public.users set is_platform_admin=true where id=$1', [userId]);
+    await createPlatformSchool(source.db, userId, { name: 'Platform recovery School' });
     await seedMembership(source.seed, userId, school.id, 'SCHOOL_ADMIN');
     await source.client.query('insert into auth.identities values ($1,$1)', [userId]);
     const actor = { userId, schoolId: school.id };
@@ -46,7 +49,7 @@ it('replays nonempty audit history in recovery FK order and preserves all 42 fin
         order.indexOf(dependency as (typeof order)[number]),
       );
     }
-    expect((await fingerprintTable(sourceClient, 'public.audit_events')).rowCount).toBe(1);
+    expect((await fingerprintTable(sourceClient, 'public.audit_events')).rowCount).toBe(2);
     // This is a hermetic row replay, not a claim of pg_dump/age execution.
     for (const table of order) {
       expect(RECOVERY_TABLES).toContain(table);
@@ -64,6 +67,7 @@ it('replays nonempty audit history in recovery FK order and preserves all 42 fin
         await fingerprintTable(sourceClient, table),
       );
     await assertIdentityIntegrity(targetClient);
+    expect((await target.client.query('select is_platform_admin from public.users where id=$1', [userId])).rows).toEqual([{ is_platform_admin: true }]);
     await assertForeignKeyIntegrity(targetClient);
   } finally {
     await source.client.close();

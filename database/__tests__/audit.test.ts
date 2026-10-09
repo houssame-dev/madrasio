@@ -37,7 +37,7 @@ it('fresh replay creates the constrained, indexed, RLS-protected audit table wit
         'select count(*)::int count from drizzle.__drizzle_migrations',
       )
     ).rows[0].count,
-  ).toBe(17);
+  ).toBe(18);
   expect(
     (
       await client.query<{ relrowsecurity: boolean }>(
@@ -111,7 +111,7 @@ it('upgrades populated 0000–0015 unchanged, without fabricated historical even
   await createSupabaseAuth(client);
   await client.exec('create role anon; create role authenticated; create role service_role;');
   for (const file of (await readdir(migrationsFolder))
-    .filter((file) => /^\d{4}_.*\.sql$/.test(file) && !file.startsWith('0016'))
+    .filter((file) => /^\d{4}_.*\.sql$/.test(file) && Number(file.slice(0, 4)) < 16)
     .sort()) {
     for (const sql of (await readFile(join(migrationsFolder, file), 'utf8')).split(
       '--> statement-breakpoint',

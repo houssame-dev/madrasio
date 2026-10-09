@@ -120,6 +120,13 @@
       "when": 1791252143800,
       "tag": "0016_audit-events",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791487099574,
+      "tag": "0017_platform-authority",
+      "breakpoints": true
     }
   ]
 }

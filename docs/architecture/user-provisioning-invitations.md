@@ -1,5 +1,11 @@
 # User Provisioning and Invitations
 
+Task 058 extracts the existing invitation/identity compensation boundary into
+`withProvisionedIdentity`, shared by Teacher/Parent and platform School Admin
+provisioning. Exact Auth UUID/email verification precedes reuse. The separate
+platform flow fixes membership role to SCHOOL_ADMIN and never grants platform
+authority. See [platform administration](platform-school-administration.md).
+
 ## Boundary and identity model
 
 Task 045 adds School-administered account access for existing Teacher and Parent profiles. Supabase Auth remains the authentication authority; Drizzle and the application database remain the authorization authority. The invariant is one `auth.users` identity, the same UUID in one `public.users` row, and zero or more SchoolMembership rows. Students never receive application accounts in V1.

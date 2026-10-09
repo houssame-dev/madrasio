@@ -18,7 +18,7 @@ export const PINNED_TOOLS = {
 } as const;
 export const AGE_RUNTIME_VERSION = `v${PINNED_TOOLS.age}`;
 
-/** One authoritative durable application-data allowlist (migration 0016 parity). */
+/** One authoritative durable application-data allowlist (migration 0017 parity (users platform authority included)). */
 export const APPLICATION_TABLES = [
   'academic_periods',
   'academic_years',

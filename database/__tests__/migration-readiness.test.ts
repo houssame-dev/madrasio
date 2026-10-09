@@ -33,8 +33,8 @@ describe('hosted migration readiness', () => {
     );
     expect(journal.entries.map((entry) => `${entry.tag}.sql`)).toEqual(files);
     expect(new Set(journal.entries.map((entry) => entry.tag)).size).toBe(journal.entries.length);
-    expect(files).toHaveLength(17);
-    expect(files.at(-1)).toBe('0016_audit-events.sql');
+    expect(files).toHaveLength(18);
+    expect(files.at(-1)).toBe('0017_platform-authority.sql');
   });
 
   it('references Supabase Auth without owning its managed schema or table', async () => {

@@ -8,11 +8,12 @@ import type { Role } from '@/lib/authorization/roles';
 import { copy } from '@/lib/frontend/copy';
 import { isActiveNavigationPath, visibleNavigationItems } from '@/lib/frontend/navigation';
 
-export function NavigationLinks({ role, collapsed = false, onNavigate }: { role: Role; collapsed?: boolean; onNavigate?: () => void }) {
+export function NavigationLinks({ role, platformAuthority, collapsed = false, onNavigate }: { role: Role; platformAuthority?: 'SUPER_ADMIN'; collapsed?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
     <nav aria-label={copy.navigation} className="grid gap-1 px-2">
+      {platformAuthority === 'SUPER_ADMIN' ? <Link href="/platform/schools" className="px-3 py-2 text-sm underline" onClick={onNavigate}>Platform Schools</Link> : null}
       {visibleNavigationItems(role).map((item) => {
         const active = isActiveNavigationPath(pathname, item.href);
         const Icon = item.icon;

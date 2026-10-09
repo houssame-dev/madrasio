@@ -80,6 +80,10 @@ Some entities are platform-level rather than school-owned, such as the global id
 
 User represents an authenticated system identity.
 
+Task 058 adds explicit platform-administrator authority to User (ADR-023),
+defaulting to absent. It is separate from SchoolMembership roles and grants only
+dedicated School/Admin platform operations, never implicit tenant access.
+
 Its application-owned `email` is the unique canonical lookup projection of
 the Supabase Auth email: surrounding whitespace is trimmed and letters are
 lowercased. Supabase Auth still owns authentication, credentials, and the

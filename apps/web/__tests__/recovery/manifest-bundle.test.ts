@@ -154,8 +154,8 @@ describe('Production manifest and bundle construction', () => {
       );
       expect(restoredManifest.format).toBe('madrasio-recovery-v1');
       expect(restoredManifest.migrations).toMatchObject({
-        count: 17,
-        latest: '0016_audit-events',
+        count: 18,
+        latest: '0017_platform-authority',
       });
       expect(restoredManifest.fingerprints).toHaveLength(42);
       expect(restoredManifest.fingerprints.every((item) => item.rowCount === rowCount)).toBe(true);
@@ -174,8 +174,8 @@ describe('Production manifest and bundle construction', () => {
       /\/database\/drizzle\/migrations\/?$/,
     );
     await expect(loadMigrationMetadata(migrationsDirectory)).resolves.toMatchObject({
-      count: 17,
-      latest: '0016_audit-events',
+      count: 18,
+      latest: '0017_platform-authority',
     });
     await expect(loadMigrationMetadata(join(tmpdir(), 'missing-migrations'))).rejects.toMatchObject(
       {

@@ -63,6 +63,8 @@ export interface ResolvedMembership {
 
 export interface ResolvedUserContext {
   userId: string;
+  /** Separate capability: never copied into School CurrentContext.role. */
+  platformAuthority?: 'SUPER_ADMIN';
   /** Authoritative global User lifecycle status (users.status). */
   userStatus: UserLifecycleStatus;
   /** All memberships (active + historical/inactive) — never deleted (Task 014 §6). */
@@ -91,7 +93,7 @@ export async function resolveUserContext(
   input: ResolveUserContextInput,
 ): Promise<ResolvedUserContext> {
   const [user] = await db
-    .select({ id: schema.users.id, status: schema.users.status })
+    .select({ id: schema.users.id, status: schema.users.status, isPlatformAdmin: schema.users.isPlatformAdmin })
     .from(schema.users)
     .where(eq(schema.users.id, input.userId))
     .limit(1);
@@ -144,6 +146,7 @@ export async function resolveUserContext(
 
   return {
     userId: input.userId,
+    ...(user.isPlatformAdmin ? { platformAuthority: 'SUPER_ADMIN' as const } : {}),
     userStatus: user.status,
     memberships,
     activeMemberships,

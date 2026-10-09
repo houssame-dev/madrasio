@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, pgEnum, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, pgEnum, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 
 import { authUsers } from './auth';
 
@@ -46,6 +46,8 @@ export const users = pgTable(
       .references(() => authUsers.id, { onDelete: 'cascade' }),
     email: text('email').notNull(),
     status: userStatus('status').notNull().default('ACTIVE'),
+    // Independent platform authority; never inferred from a SchoolMembership or Auth metadata.
+    isPlatformAdmin: boolean('is_platform_admin').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

@@ -44,6 +44,7 @@ export interface MeMembershipDto {
 }
 
 export interface MeResponseDto {
+  platformAuthority?: 'SUPER_ADMIN';
   user: MeUserDto;
   currentSchool: MeCurrentSchoolDto | null;
   memberships: MeMembershipDto[];
@@ -57,6 +58,7 @@ export function toMeResponse(resolution: ResolvedUserContext): MeResponseDto {
   }
   return {
     user: { id: resolution.userId },
+    ...(resolution.platformAuthority ? { platformAuthority: resolution.platformAuthority } : {}),
     currentSchool: resolution.currentSchool
       ? { id: resolution.currentSchool.schoolId, role: resolution.currentSchool.role, timezone: resolution.currentSchool.timezone }
       : null,
