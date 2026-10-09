@@ -164,6 +164,18 @@ export async function createGradebook(
   input: GradebookCreate,
 ) {
   await requireManageScope(db, actor, input);
+  return db.transaction(async (tx) => {
+    await repo.lockConfigurationForSetup(tx, actor.schoolId, input.gradingConfigurationVersionId);
+    return createGradebookWithLockedConfiguration(tx, actor, input);
+  }, { isolationLevel: 'read committed' });
+}
+
+async function createGradebookWithLockedConfiguration(
+  db: GradebooksDb,
+  actor: GradebookActor,
+  input: GradebookCreate,
+) {
+  await requireManageScope(db, actor, input);
   const context = await repo.findAcademicContext(db, actor.schoolId, input);
   if (!context.year || !context.period || !context.klass || !context.subject || !context.configuration) {
     throw new GradebookDomainError(

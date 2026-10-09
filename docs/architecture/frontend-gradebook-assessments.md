@@ -1,5 +1,11 @@
 # Frontend Gradebook and Assessment Setup
 
+Task 059 adds School-scoped `/grades/configuration`, linked from Gradebook setup
+for `grades.manage` actors. It manages named configurations, unused draft rules,
+version activation/archive and logical configuration status. Historical rules
+remain readable and immutable. See [grading configuration administration](grading-configuration-administration.md)
+for the exact fields, authorization, locking and audit contract.
+
 ## Information architecture
 
 `/grades` is the current-School Gradebook setup list. `/grades/[id]` is the exact Gradebook workspace containing an immutable context summary, one-way lifecycle controls, and the nested Assessment setup list. Grade entry, Result calculation/finalization/publication, Parent Results, and analytics remain outside this UI and are deferred to later tasks.

@@ -21,6 +21,17 @@ export interface AssessmentFilters {
   dateTo?: string;
 }
 
+/** Same parent → version lock order as configuration administration. Keep eligibility
+ * reads and the new Gradebook insert in this transaction so archival cannot race them.
+ */
+export async function lockConfigurationForSetup(db: GradebooksDb, schoolId: string, versionId: string) {
+  const condition = and(eq(schema.gradingConfigurationVersions.schoolId, schoolId), eq(schema.gradingConfigurationVersions.id, versionId));
+  const [identity] = await db.select({ configurationId: schema.gradingConfigurationVersions.gradingConfigurationId }).from(schema.gradingConfigurationVersions).where(condition).limit(1);
+  if (!identity) return;
+  await db.select({ id: schema.gradingConfigurations.id }).from(schema.gradingConfigurations).where(and(eq(schema.gradingConfigurations.schoolId, schoolId), eq(schema.gradingConfigurations.id, identity.configurationId))).for('share');
+  await db.select({ id: schema.gradingConfigurationVersions.id }).from(schema.gradingConfigurationVersions).where(condition).for('share');
+}
+
 export async function listEligibleGradingConfigurationVersions(
   db: GradebooksDb,
   schoolId: string,
