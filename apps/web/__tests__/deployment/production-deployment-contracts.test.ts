@@ -57,7 +57,7 @@ function productionEnv(overrides: Partial<NodeJS.ProcessEnv> = {}): NodeJS.Proce
     DEPLOY_EXPECTED_PROJECT_REF: productionRef,
     PRODUCTION_EXPECTED_PROJECT_REF: productionRef,
     PRODUCTION_DEPLOY_CONFIRMATION: PRODUCTION_CONFIRMATION,
-    PRODUCTION_APP_ORIGIN: 'https://madrasio.vercel.app',
+    PRODUCTION_APP_ORIGIN: 'https://app.madrasio.com',
     DEPLOY_EXPECTED_SHA: 'a'.repeat(40),
     DATABASE_SSL_CA: ca,
     DATABASE_URL: `postgresql://postgres.${productionRef}:secret@aws-0-eu-central-1.pooler.supabase.com:6543/postgres`,
@@ -133,8 +133,8 @@ describe('Production deployment target contracts', () => {
   });
 
   it('accepts a provider-confirmed Production origin but rejects STAGING and localhost', () => {
-    expect(parseProductionOrigin('https://madrasio.vercel.app').origin).toBe(
-      'https://madrasio.vercel.app',
+    expect(parseProductionOrigin('https://app.madrasio.com').origin).toBe(
+      'https://app.madrasio.com',
     );
     expect(() => parseProductionOrigin('http://localhost:3000')).toThrow('distinct');
     expect(() =>

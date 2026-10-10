@@ -79,7 +79,7 @@ async function manifestFixture(rowCount: number) {
     providerContract: {
       version: 1,
       region: 'eu-central-1',
-      appOrigin: 'https://madrasio.vercel.app',
+      appOrigin: 'https://app.madrasio.com',
       dataApi: 'disabled',
       sslEnforcement: 'required',
       callbackPath: '/auth/confirm',

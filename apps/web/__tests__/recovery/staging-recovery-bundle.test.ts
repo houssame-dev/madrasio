@@ -49,7 +49,7 @@ function productionEnv(overrides: Partial<NodeJS.ProcessEnv> = {}): NodeJS.Proce
     PRODUCTION_EXPECTED_PROJECT_REF: productionRef,
     MIGRATION_DATABASE_URL: `postgresql://postgres.${productionRef}:secret@aws-0-eu-central-1.pooler.supabase.com:5432/postgres`,
     DATABASE_SSL_CA: ca,
-    PRODUCTION_APP_ORIGIN: 'https://madrasio.vercel.app',
+    PRODUCTION_APP_ORIGIN: 'https://app.madrasio.com',
     RECOVERY_GIT_SHA: gitSha,
     RECOVERY_OUTPUT_PATH: join(tmpdir(), 'production-recovery-test.age'),
     BACKUP_AGE_RECIPIENT: recipient,
@@ -67,7 +67,7 @@ describe('guarded recovery bundle wrappers', () => {
     expect(create).toHaveBeenCalledOnce();
     expect(create.mock.calls[0]![0]).toMatchObject({
       source: { environment: 'production', projectRef: productionRef },
-      providerContract: { appOrigin: 'https://madrasio.vercel.app' },
+      providerContract: { appOrigin: 'https://app.madrasio.com' },
     });
   });
 

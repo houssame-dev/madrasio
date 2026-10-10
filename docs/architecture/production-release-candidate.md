@@ -14,7 +14,7 @@ credential, and tenant row must be Production-specific.
 
 The planned temporary origin is `https://madrasio.vercel.app`, conditional on
 Vercel confirming that generated project domain when the separate Production
-project is created. `https://madrasio.com` is the future custom origin; it is not
+project is created. `https://app.madrasio.com` is the future custom origin; it is not
 owned or configured yet and must not be treated as available.
 
 The pre-client Release Candidate uses Supabase Free in `eu-central-1`. Free has
@@ -162,7 +162,7 @@ and this Invite template:
 Production SMTP uses Brevo Free with a separate SMTP key and preferably a
 separate sender identity on the already authenticated organizational domain.
 The STAGING key is never reused. `madrasio.vercel.app` is not a sender domain.
-After `madrasio.com` is purchased, authenticate it independently, verify DKIM,
+After `app.madrasio.com` is purchased, authenticate it independently, verify DKIM,
 DMARC and provider-required SPF state, and migrate the sender through a reviewed
 provider checkpoint.
 
