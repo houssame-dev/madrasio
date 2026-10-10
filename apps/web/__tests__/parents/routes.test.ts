@@ -27,7 +27,7 @@ import {
   endRelationshipPOST, parentGET, parentPATCH, parentProfilesGET, parentsGET, parentsPOST,
   relationshipsGET, relationshipsPOST,
 } from '@/lib/api/parents';
-import { childAcademicYearsGET, childPlacementGET, childResultsGET } from '@/lib/api/parent-children';
+import { childAcademicYearsGET, childPlacementGET, childResultsGET, childAttendanceGET, childHomeworkGET } from '@/lib/api/parent-children';
 
 let seeded: ParentsTestContext;
 beforeEach(async () => {
@@ -235,6 +235,14 @@ describe('Parents and Relationships HTTP contracts', () => {
     mocks.context = contextFor(parentUser, seeded.schoolId, 'PARENT');
     expect(await (await childAcademicYearsGET(new Request('http://local'), childParams(student.id))).json())
       .toMatchObject({ data: [{ id: seeded.yearId, name: '2025/2026' }] });
+    for (const read of [childAttendanceGET, childHomeworkGET]) {
+      const response = await read(new Request(`http://local?academicYearId=${seeded.yearId}`), childParams(student.id));
+      expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('private, no-store');
+      expect(await response.json()).toEqual({ data: [], meta: { page: 1, pageSize: 50, total: 0 } });
+      for (const field of ['schoolId', 'parentId', 'userId', 'role']) expect((await read(new Request(`http://local?academicYearId=${seeded.yearId}&${field}=forged`), childParams(student.id))).status).toBe(400);
+      expect((await read(new Request(`http://local?academicYearId=${seeded.yearId}`), childParams(crypto.randomUUID()))).status).toBe(404);
+      expect((await read(new Request(`http://local?academicYearId=${seeded.yearId}`), childParams('invalid'))).status).toBe(400);
+    }
     expect((await childPlacementGET(new Request('http://local'), childParams(student.id))).status).toBe(400);
     expect(await (await childPlacementGET(new Request(`http://local?academicYearId=${seeded.yearId}`), childParams(student.id))).json())
       .toMatchObject({ data: { classId: seeded.classAId, academicYearId: seeded.yearId } });
@@ -243,6 +251,15 @@ describe('Parents and Relationships HTTP contracts', () => {
     expect((await childAcademicYearsGET(new Request('http://local'), childParams(crypto.randomUUID()))).status).toBe(404);
     mocks.context = contextFor(seeded.admin.userId!, seeded.schoolId, 'SCHOOL_ADMIN');
     expect((await childAcademicYearsGET(new Request('http://local'), childParams(student.id))).status).toBe(403);
+    for (const read of [childAttendanceGET, childHomeworkGET]) expect((await read(new Request(`http://local?academicYearId=${seeded.yearId}`), childParams(student.id))).status).toBe(403);
+  });
+
+  it('keeps child Attendance/Homework reads authenticated and private on errors', async () => {
+    mocks.authError = new UnauthenticatedError();
+    for (const read of [childAttendanceGET, childHomeworkGET]) {
+      const response = await read(new Request(`http://local?academicYearId=${seeded.yearId}`), childParams(crypto.randomUUID()));
+      expect(response.status).toBe(401); expect(response.headers.get('cache-control')).toBe('private, no-store');
+    }
   });
 
   it('hides foreign-School resources and maps CurrentContext denials', async () => {

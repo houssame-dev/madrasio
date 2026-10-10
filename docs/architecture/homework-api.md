@@ -39,6 +39,12 @@ The committed `homework.read` and `homework.manage` permissions are reused:
 - There is no Student login or `STUDENT` role in V1. Submission entry is an
   administrative Teacher/SchoolAdmin workflow.
 
+Task 060 adds child-scoped Parent discovery through
+`GET /api/v1/parent/children/:studentId/homeworks` (see `parent-child-read-api.md`).
+It uses the same inclusive due-date enrollment/target rule, excludes DRAFT, and
+returns only readable Homework information. Broad staff list and all writes remain
+denied. It neither creates submissions nor adds hand-in authority.
+
 Ending a TeacherAssignment removes current Teacher management access but does
 not rewrite Homework, targets, or submissions.
 

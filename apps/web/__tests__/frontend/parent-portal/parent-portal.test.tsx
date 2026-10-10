@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Dashboard } from '@/components/app/dashboard';
 import { ChildrenWorkspace } from '@/components/children/children-workspace';
@@ -17,6 +18,8 @@ function mockChildAcademic() {
     if (url === '/api/v1/me/parent-profiles') return Response.json({ data: [profile] });
     if (url.endsWith('/academic-years')) return Response.json({ data: [year] });
     if (url.includes('/placement?')) return Response.json({ data: placement });
+    if (url.includes('/attendance?')) return Response.json({ data: [{ id: 'a1', date: '2025-10-10', status: 'LATE', className: 'Old Class' }], meta: { page: 1, pageSize: 20, total: 1 } });
+    if (url.includes('/homeworks?')) return Response.json({ data: [{ id: 'h1', title: 'Reading practice', description: 'Read chapter three.', dueDate: '2025-10-10', status: 'PUBLISHED', subjectName: 'Mathematics', periodName: 'Term 1' }], meta: { page: 1, pageSize: 20, total: 1 } });
     if (url.includes('resultType=SUBJECT')) return Response.json({ data: [{ publicationId: crypto.randomUUID(), resultId: crypto.randomUUID(), resultType: 'SUBJECT', value: '15.50', publicationVersion: 2, publishedAt: new Date().toISOString(), academicYear: { id: year.id, name: year.name }, academicPeriod: { id: crypto.randomUUID(), name: 'Term 1' }, class: { id: placement.classId, name: placement.className }, subject: { id: crypto.randomUUID(), name: 'Mathematics', code: 'MATH' } }], meta: { page: 1, pageSize: 50, total: 1 } });
     if (url.includes('resultType=PERIOD')) return Response.json({ data: [{ publicationId: crypto.randomUUID(), resultId: crypto.randomUUID(), resultType: 'PERIOD', value: '14.00', publicationVersion: 1, publishedAt: new Date().toISOString(), academicYear: { id: year.id, name: year.name }, academicPeriod: { id: crypto.randomUUID(), name: 'Term 1' }, class: { id: placement.classId, name: placement.className }, subject: null }], meta: { page: 1, pageSize: 50, total: 1 } });
     if (url.includes('resultType=ANNUAL')) return Response.json({ data: [{ publicationId: crypto.randomUUID(), resultId: crypto.randomUUID(), resultType: 'ANNUAL', value: '13.00', publicationVersion: 1, publishedAt: new Date().toISOString(), academicYear: { id: year.id, name: year.name }, academicPeriod: null, class: { id: placement.classId, name: placement.className }, subject: null }], meta: { page: 1, pageSize: 50, total: 1 } });
@@ -36,6 +39,19 @@ function mockPortal(data = [profile], unread = 2) {
 afterEach(() => vi.restoreAllMocks());
 
 describe('Parent portal dashboard and children', () => {
+  it('navigates from child overview to attendance and homework details with no staff or hand-in controls', async () => {
+    const fetchMock = mockChildAcademic(); const user = userEvent.setup();
+    renderParents(<ChildDetail studentId={student.id} />, 'PARENT');
+    await screen.findByText('15.50');
+    await user.click(screen.getByRole('button', { name: 'Attendance' }));
+    expect(await screen.findByText(/Old Class/)).toHaveTextContent('2025-10-10');
+    await user.click(screen.getByRole('button', { name: 'Back to child overview' }));
+    screen.getByRole('button', { name: 'Homework' }).focus(); await user.keyboard('{Enter}');
+    const summary = await screen.findByText('Reading practice'); summary.focus(); await user.keyboard('{Enter}');
+    expect(screen.getByText('Read chapter three.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /save|create|submit|review|return homework|upload/i })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/attendance?') || String(url).includes('/homeworks?')).every(([url]) => String(url).startsWith(`/api/v1/parent/children/${student.id}/`))).toBe(true);
+  });
   it('renders the Parent dashboard from self bootstrap, deduplicates children, and reuses unread Notifications', async () => {
     const fetchMock = mockPortal([profile, secondProfile], 5);
     renderParents(<Dashboard />, 'PARENT');
@@ -86,8 +102,8 @@ describe('Parent portal dashboard and children', () => {
     expect(screen.getByRole('heading', { name: 'Period results' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Annual results' })).toBeInTheDocument();
     expect(screen.getByText('15.50')).toBeInTheDocument();
-    expect(screen.getByText('Homework list discovery is not currently available for parent accounts.')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Attendance/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Homework' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Attendance' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /calculate|finalize|publish|revise|edit/i })).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(6);
     expect(fetchMock.mock.calls.every((call) => !String(call[0]).includes('/api/v1/results'))).toBe(true);

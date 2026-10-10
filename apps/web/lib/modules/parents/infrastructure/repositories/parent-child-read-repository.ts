@@ -1,9 +1,53 @@
-import { and, count, desc, eq, max, sql } from 'drizzle-orm';
+import { and, count, desc, eq, max, sql, exists, gte, lte, or, isNull, ne } from 'drizzle-orm';
 import * as schema from '@school/database';
 
 import type { ResultType } from '@/lib/modules/grades/domain';
 
 import type { ParentsDb, Paging } from './parent-repository';
+
+export interface ChildReadFilters {
+  academicYearId: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page: number;
+  pageSize: number;
+}
+
+/** Date-only historical enrollment, not current placement or browser time. */
+export async function listChildAttendance(db: ParentsDb, schoolId: string, studentId: string, input: ChildReadFilters) {
+  const a = schema.attendanceRecords;
+  const e = schema.studentEnrollments;
+  const condition = and(eq(a.schoolId, schoolId), eq(a.studentId, studentId), eq(a.academicYearId, input.academicYearId),
+    input.dateFrom ? gte(a.attendanceDate, input.dateFrom) : undefined,
+    input.dateTo ? lte(a.attendanceDate, input.dateTo) : undefined,
+    exists(db.select({ id: e.id }).from(e).where(and(eq(e.schoolId, schoolId), eq(e.studentId, studentId),
+      eq(e.classId, a.classId), eq(e.academicYearId, a.academicYearId), lte(e.effectiveFrom, a.attendanceDate),
+      or(isNull(e.effectiveUntil), gte(e.effectiveUntil, a.attendanceDate))))));
+  const data = await db.select({ id: a.id, date: a.attendanceDate, status: a.status, className: schema.classes.name })
+    .from(a).innerJoin(schema.classes, and(eq(schema.classes.schoolId, schoolId), eq(schema.classes.id, a.classId)))
+    .where(condition).orderBy(desc(a.attendanceDate), desc(a.id)).limit(input.pageSize).offset((input.page - 1) * input.pageSize);
+  const [total] = await db.select({ value: count() }).from(a).where(condition);
+  return { data, meta: { page: input.page, pageSize: input.pageSize, total: total.value } };
+}
+
+/** Same inclusive due-date eligibility as the existing Homework domain; EXISTS avoids duplicate targets. */
+export async function listChildHomework(db: ParentsDb, schoolId: string, studentId: string, input: ChildReadFilters) {
+  const h = schema.homework;
+  const e = schema.studentEnrollments;
+  const target = schema.homeworkTargets;
+  const condition = and(eq(h.schoolId, schoolId), eq(h.academicYearId, input.academicYearId), ne(h.status, 'DRAFT'),
+    exists(db.select({ id: e.id }).from(e).innerJoin(target, and(eq(target.schoolId, schoolId),
+      eq(target.homeworkId, h.id), eq(target.classId, e.classId), eq(target.academicYearId, e.academicYearId)))
+      .where(and(eq(e.schoolId, schoolId), eq(e.studentId, studentId), eq(e.academicYearId, h.academicYearId),
+        lte(e.effectiveFrom, h.dueDate), or(isNull(e.effectiveUntil), gte(e.effectiveUntil, h.dueDate))))));
+  const data = await db.select({ id: h.id, title: h.title, description: h.description, dueDate: h.dueDate,
+    status: h.status, subjectName: schema.subjects.name, periodName: schema.academicPeriods.name })
+    .from(h).innerJoin(schema.subjects, and(eq(schema.subjects.schoolId, schoolId), eq(schema.subjects.id, h.subjectId)))
+    .innerJoin(schema.academicPeriods, and(eq(schema.academicPeriods.schoolId, schoolId), eq(schema.academicPeriods.id, h.academicPeriodId)))
+    .where(condition).orderBy(desc(h.dueDate), desc(h.id)).limit(input.pageSize).offset((input.page - 1) * input.pageSize);
+  const [total] = await db.select({ value: count() }).from(h).where(condition);
+  return { data, meta: { page: input.page, pageSize: input.pageSize, total: total.value } };
+}
 
 export interface ParentPublishedResultRow {
   publicationId: string;

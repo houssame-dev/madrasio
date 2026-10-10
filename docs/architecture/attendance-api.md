@@ -52,8 +52,8 @@ for the exact date.
 
 ## Date and historical enrollment policy
 
-Attendance is an observed calendar event. V1 rejects future dates using the
-server's UTC calendar day and requires the date to lie inside the start/end
+Attendance is an observed calendar event. Task 055 rejects future dates using the
+authoritative School timezone's calendar day and requires the date to lie inside the start/end
 dates of the Class's exact AcademicYear. The API does not accept a separate
 AcademicYear identifier.
 
@@ -91,7 +91,8 @@ no permission or role identifiers are added.
   scope system exists. Ending the assignment or deactivating the profile removes
   access without touching historical rows.
 - `PARENT` cannot use raw Attendance administration or Student-history routes.
-  A future parent portal requires a dedicated relationship-scoped read model.
+  Task 060 provides a separate relationship-scoped, read-only history route;
+  see `parent-child-read-api.md`. Staff authority is unchanged.
 
 ## Routes, reads, filtering, and bounds
 

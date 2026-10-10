@@ -35,8 +35,6 @@ export const parentPortalCopy = {
   placementUnavailable: 'No active placement is available for this Academic Year.',
   classLabel: 'Class', stageLabel: 'Stage', levelLabel: 'Level', trackLabel: 'Track',
   homework: 'Homework',
-  homeworkUnavailable: 'Homework list discovery is not currently available for parent accounts.',
-  homeworkExplanation: 'A known authorized Homework link remains readable through the existing read-only detail, but this portal does not fetch the staff Homework list.',
   results: 'Published results',
   subjectResults: 'Subject results', periodResults: 'Period results', annualResults: 'Annual results',
   noPublishedResults: 'No published results are available.',

@@ -30,4 +30,30 @@ DTOs omit raw Grades, Assessments, Gradebooks, grading rules/configuration ident
 
 ## Deliberate exclusions
 
-Parent Homework discovery and Parent Attendance APIs remain unavailable. No schema, migration, new current-Year field, new Enrollment uniqueness rule, or duplicated publication cache is introduced.
+No schema, migration, new current-Year field, new Enrollment uniqueness rule, or duplicated publication cache is introduced.
+
+## Task 060 — Attendance and Homework reads
+
+GET `/api/v1/parent/children/:studentId/attendance` and GET
+`/api/v1/parent/children/:studentId/homeworks` require the same active self-owned
+Parent/relationship authorization above, plus an enrolled `academicYearId`.
+Both use strict queries, default page/pageSize 1/50 (maximum size 100, page 10000),
+SQL filtering/counting before pagination, deterministic date/id descending ordering,
+and private/no-store responses including errors. No client School/role/User authority
+is accepted. Ended relationships and inactive profiles lose access on fresh reads.
+
+Attendance returns persisted date, status and historical Class name only; no staff
+note or recorder metadata. Each row must match an enrollment interval for its exact
+Class + Year on its attendance date. ENDED enrollment history remains eligible.
+Optional inclusive `dateFrom`/`dateTo` are validated calendar dates, never timestamps;
+no browser-timezone conversion or new "today" inference is performed. Missing rows
+never imply presence/absence and reads create no rows.
+
+Homework returns title, instructions, due date, lifecycle, Subject and Period labels.
+DRAFT is excluded; PUBLISHED/CLOSED/ARCHIVED remain readable. An EXISTS query joins
+the child's enrollment to a HomeworkTarget on exact School/Class/Year with inclusive
+due-date bounds, preserving the existing Homework domain fallback. Multiple targets
+do not duplicate results. No current-Class shortcut, roster, author identity,
+submission content, attachments or staff metadata is returned. The paginated response
+includes complete readable instructions for an in-page detail disclosure, avoiding
+an alternate unscoped detail endpoint. No hand-in or management authority is granted.

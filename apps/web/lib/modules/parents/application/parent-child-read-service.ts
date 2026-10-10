@@ -1,6 +1,7 @@
 import type { Role } from '@/lib/authorization/roles';
 import { requireOperation, resolveCurrentContext, type AuthorizationDb } from '@/lib/authorization/server';
-import { ForbiddenError } from '@/lib/errors';
+import { ForbiddenError, ValidationError } from '@/lib/errors';
+import { childAttendanceQuery, childHomeworkQuery } from '../domain/child-journeys';
 import type { ResultType } from '@/lib/modules/grades/domain';
 
 import * as repo from '../infrastructure/repositories/parent-child-read-repository';
@@ -26,6 +27,22 @@ async function requireAcademicContext(db: ParentsDb, actor: Actor, studentId: st
 export async function listChildAcademicYears(db: ParentsDb, actor: Actor, studentId: string) {
   await authorizeChild(db, actor, studentId);
   return { data: await repo.listChildAcademicYears(db, actor.schoolId, studentId) };
+}
+
+export async function listChildAttendance(db: ParentsDb, actor: Actor, studentId: string, input: unknown) {
+  await authorizeChild(db, actor, studentId);
+  const parsed = childAttendanceQuery.safeParse(input);
+  if (!parsed.success) throw new ValidationError('Invalid attendance filters.');
+  await requireAcademicContext(db, actor, studentId, parsed.data.academicYearId);
+  return repo.listChildAttendance(db, actor.schoolId, studentId, parsed.data);
+}
+
+export async function listChildHomework(db: ParentsDb, actor: Actor, studentId: string, input: unknown) {
+  await authorizeChild(db, actor, studentId);
+  const parsed = childHomeworkQuery.safeParse(input);
+  if (!parsed.success) throw new ValidationError('Invalid homework filters.');
+  await requireAcademicContext(db, actor, studentId, parsed.data.academicYearId);
+  return repo.listChildHomework(db, actor.schoolId, studentId, parsed.data);
 }
 
 export async function getChildPlacement(db: ParentsDb, actor: Actor, studentId: string, academicYearId: string) {

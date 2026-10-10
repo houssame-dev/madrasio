@@ -4,6 +4,7 @@ import { requireCurrentContext } from '@/lib/auth/require-context';
 import { getDb } from '@/lib/db/client';
 import { ValidationError } from '@/lib/errors';
 import * as service from '@/lib/modules/parents/application';
+import { childAttendanceQuery, childHomeworkQuery } from '@/lib/modules/parents/domain/child-journeys';
 
 import { toApiErrorResponse } from './errors';
 
@@ -26,7 +27,24 @@ async function actor() {
   return { db, actor: { userId: context.userId, schoolId: context.schoolContext!.schoolId } };
 }
 async function run(operation: () => Promise<Response>) {
-  try { return await operation(); } catch (error) { return toApiErrorResponse(error); }
+  let response: Response;
+  try { response = await operation(); } catch (error) { response = toApiErrorResponse(error); }
+  response.headers.set('Cache-Control', 'private, no-store');
+  return response;
+}
+
+export function childAttendanceGET(request: Request, context: Params) {
+  return run(async () => {
+    const value = await actor();
+    return Response.json(await service.listChildAttendance(value.db, value.actor, await studentId(context), query(request, childAttendanceQuery)));
+  });
+}
+
+export function childHomeworkGET(request: Request, context: Params) {
+  return run(async () => {
+    const value = await actor();
+    return Response.json(await service.listChildHomework(value.db, value.actor, await studentId(context), query(request, childHomeworkQuery)));
+  });
 }
 
 export function childAcademicYearsGET(_request: Request, context: Params) {

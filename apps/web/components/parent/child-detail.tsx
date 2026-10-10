@@ -1,7 +1,8 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, BookOpen, GraduationCap } from 'lucide-react';
+import { ArrowLeft, GraduationCap } from 'lucide-react';
+import { ChildJourneys } from './child-journeys';
 import Link from 'next/link';
 import { selectClassName } from '@/components/academic/ui';
 import { useAppContext } from '@/components/app/app-context';
@@ -57,6 +58,6 @@ export function ChildDetail({ studentId, academicYearId }: { studentId: string; 
         <div id="results" className="grid gap-4 lg:grid-cols-3"><ResultsSection title={t.subjectResults} type="SUBJECT" rows={subjectResults.data?.data ?? []} /><ResultsSection title={t.periodResults} type="PERIOD" rows={periodResults.data?.data ?? []} /><ResultsSection title={t.annualResults} type="ANNUAL" rows={annualResults.data?.data ?? []} /></div>
       </> : null}
     </>}
-    <section id="homework" className="rounded-lg border bg-card p-5"><div className="flex items-center gap-2"><BookOpen className="size-5 text-muted-foreground" aria-hidden="true" /><h2 className="text-lg font-semibold">{t.homework}</h2></div><p className="mt-3 font-medium">{t.homeworkUnavailable}</p><p className="mt-1 text-sm text-muted-foreground">{t.homeworkExplanation}</p></section>
+    <ChildJourneys key={`${schoolId}:${studentId}:${selectedYearId}`} schoolId={schoolId} studentId={studentId} yearId={selectedYearId} />
   </div>;
 }

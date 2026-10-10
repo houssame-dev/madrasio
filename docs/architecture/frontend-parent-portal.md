@@ -18,7 +18,7 @@ No active profile and active profiles with no related children are distinct empt
 
 Child cards display only the bootstrap DTO's name and optional Student code. `/children/[studentId]` first resolves the Student ID against the authoritative self-bootstrap collection. A guessed, foreign, ended-relationship, or otherwise unrelated ID renders the same controlled unavailable state and triggers no Student, Result, Homework, Attendance, or directory probe.
 
-The route contains read-only Overview, explicit Academic Year selection, Academic placement, Homework, and published Result sections. It exposes no staff management actions or sensitive administrative metadata.
+The route contains read-only Overview, explicit Academic Year selection, Academic placement, Attendance, Homework, and published Result sections. It exposes no staff management actions or sensitive administrative metadata.
 
 ## Explicit Academic Year and placement
 
@@ -28,7 +28,11 @@ The selected context is explicit in `?academicYearId=...`. Exactly one eligible 
 
 ## Homework decision and read-only boundary
 
-**Parent child-specific Homework list API is not exposed; Parent Homework discovery remains unavailable.** The portal does not call the broad staff `/homeworks` list, infer targets from Class, or probe known identifiers. It displays the required controlled limitation.
+Task 060 adds the Homework button on the authorized child page. After Year selection,
+it loads only `/api/v1/parent/children/:studentId/homeworks`, never the broad staff list.
+The server resolves historical due-date eligibility. Paginated cards use keyboard-native
+details disclosures for instructions, Subject/Period, status and date-only due date.
+No submission or staff controls are shown. Back to child overview preserves context.
 
 The existing `/homework/[id]` behavior remains unchanged: when a Parent already has a known authorized Homework URL, the backend permits non-DRAFT detail and filters Submissions to the related child. Parent target administration, roster, other Students, creation, submission writes, resubmission, review, and return controls remain unavailable.
 
@@ -46,7 +50,17 @@ The Parent portal never calls the staff Announcement list or detail routes and o
 
 ## Attendance decision
 
-**Parent Attendance read API is not exposed; Attendance is intentionally absent from the Parent portal.** Existing Attendance endpoints are staff administration contracts and explicitly deny Parent access. The portal does not reuse `/attendance` or calculate attendance summaries.
+Task 060 adds the Attendance button on the authorized child page, loading only
+`/api/v1/parent/children/:studentId/attendance` for the selected enrolled Year.
+History displays persisted School calendar dates, statuses and historical Class labels,
+with inclusive date filters and pagination. Date strings are never converted to browser
+timestamps. Missing rows are not interpreted as a status. Staff `/attendance` and its
+raw APIs remain denied; no summaries, corrections or management controls are added.
+
+Both journeys are lazy-loaded through ordinary child navigation, use READING_CONTENT,
+shared loading/empty/retry feedback and pagination, and include School/child/Year/page
+(plus Attendance dates) in query keys. Context changes remount pagination/filter state.
+Authorization remains server-side on every fetch; failed reads do not render stale data.
 
 ## Data, tenancy, performance, and UX
 
@@ -56,4 +70,4 @@ Child cards and sections stack on narrow screens and use larger keyboard-focusab
 
 ## Deliberate exclusions
 
-No new permission, schema, migration, Parent authorization model, Student login, raw Grade surface, Result mutation, Homework write, staff roster, Attendance portal, Announcement management, Notification creation, payment, timetable, transport, messaging, realtime, analytics, export, or PDF behavior is introduced. The server remains authoritative.
+No new permission, schema, migration, Parent authorization model, Student login, raw Grade surface, Result mutation, Homework write, staff roster, Attendance management, Announcement management, Notification creation, payment, timetable, transport, messaging, realtime, analytics, export, or PDF behavior is introduced. The server remains authoritative.

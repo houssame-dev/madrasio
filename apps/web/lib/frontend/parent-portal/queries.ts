@@ -17,6 +17,15 @@ export const parentChildKeys = {
   results: (schoolId: string, studentId: string, academicYearId: string, resultType: ParentResultType) => [...parentChildKeys.all(schoolId, studentId), 'results', academicYearId, resultType] as const,
 };
 
+export const childAttendanceQuery = (schoolId: string, studentId: string, yearId: string, page: number, dateFrom?: string, dateTo?: string) => ({
+  queryKey: [...parentChildKeys.all(schoolId, studentId), 'attendance', yearId, page, dateFrom, dateTo],
+  queryFn: () => parentChildApi.attendance(studentId, yearId, page, dateFrom, dateTo),
+});
+export const childHomeworkQuery = (schoolId: string, studentId: string, yearId: string, page: number) => ({
+  queryKey: [...parentChildKeys.all(schoolId, studentId), 'homework', yearId, page],
+  queryFn: () => parentChildApi.homework(studentId, yearId, page),
+});
+
 export const childAcademicYearsQuery = (schoolId: string, studentId: string) => ({ queryKey: parentChildKeys.academicYears(schoolId, studentId), queryFn: () => parentChildApi.academicYears(studentId) });
 export const childPlacementQuery = (schoolId: string, studentId: string, academicYearId: string) => ({ queryKey: parentChildKeys.placement(schoolId, studentId, academicYearId), queryFn: () => parentChildApi.placement(studentId, academicYearId) });
 export const childResultsQuery = (schoolId: string, studentId: string, academicYearId: string, resultType: ParentResultType) => ({ queryKey: parentChildKeys.results(schoolId, studentId, academicYearId, resultType), queryFn: () => parentChildApi.results(studentId, academicYearId, resultType) });
