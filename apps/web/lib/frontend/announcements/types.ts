@@ -3,9 +3,10 @@ import type { PageResponse, Timestamps } from '@/lib/frontend/academic/types';
 export type AnnouncementStatus = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'ARCHIVED';
 export type AnnouncementAudience = 'PARENTS' | 'TEACHERS';
 export type AnnouncementTargetType = 'SCHOOL' | 'CLASS';
-export type AnnouncementPublicationStatus = 'SCHEDULED' | 'PUBLISHED';
+export type AnnouncementPublicationStatus = 'SCHEDULED' | 'PUBLISHED' | 'CANCELLED';
 
 export interface AnnouncementVersionDto extends Timestamps {
+  bodyFormat?: 'PLAIN_TEXT' | 'HTML';
   id: string; announcementId: string; versionNumber: number; title: string; body: string; createdBy: string;
 }
 export interface AnnouncementDto extends Timestamps {
@@ -21,6 +22,7 @@ export interface AnnouncementTargetDto {
   id: string; announcementVersionId: string; audience: AnnouncementAudience; targetType: AnnouncementTargetType; academicYearId: string; classId: string | null;
 }
 export interface AnnouncementPublicationDto {
+  versionNumber?: number;
   id: string; announcementId: string; announcementVersionId: string; publicationVersion: number; status: AnnouncementPublicationStatus; scheduledAt: string | null; publishedAt: string | null; publishedBy: string; createdAt: string; recipientCount: number;
 }
 export interface AnnouncementPublishDto {
@@ -33,3 +35,7 @@ export interface AnnouncementTargetInput { audience: AnnouncementAudience; targe
 export type AnnouncementPage = PageResponse<AnnouncementDto>;
 export type AnnouncementVersionPage = PageResponse<AnnouncementVersionDto>;
 export type AnnouncementPublicationPage = PageResponse<AnnouncementPublicationDto>;
+export interface RecipientAnnouncementDto {
+  id: string; announcementId: string; publicationVersion: number; versionNumber: number;
+  title: string; publishedAt: string; body: string; bodyFormat: 'PLAIN_TEXT' | 'HTML';
+}

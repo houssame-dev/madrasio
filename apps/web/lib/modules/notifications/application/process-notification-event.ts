@@ -83,8 +83,8 @@ export interface ProcessNotificationEventResult {
 
 /**
  * Shape of the announcement outbox payload produced by the announcements
- * module's publish use case. Both `AnnouncementPublished` (sequence 1) and
- * `AnnouncementRevisionPublished` (sequence > 1) share this contract
+ * module's publish use case. Both the first completed publication and
+ * `AnnouncementRevisionPublished` (a later completed publication) share this contract
  * (`domain/announcement-events.ts`).
  */
 export type AnnouncementPublishedPayload = AnnouncementEventPayload;
@@ -232,7 +232,7 @@ async function processAnnouncementPublished(
   // School-scoped lookup: a publication from another School can never resolve
   // (tenant isolation is server-side, PRD.md §13).
   const publication = await repo.findAnnouncementPublication(db, schoolId, payload.publicationId);
-  if (!publication) {
+  if (!publication || publication.status !== 'PUBLISHED') {
     throw new NotificationProcessingError(
       'PUBLICATION_NOT_FOUND',
       `Announcement publication ${payload.publicationId} was not found in this school.`,

@@ -134,6 +134,13 @@
       "when": 1791665436362,
       "tag": "0018_result-publication-context",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791730250181,
+      "tag": "0019_announcement-lifecycle-content",
+      "breakpoints": true
     }
   ]
 }

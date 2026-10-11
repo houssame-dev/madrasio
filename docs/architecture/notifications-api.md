@@ -61,7 +61,7 @@ Supported filters are:
 
 The list DTO contains only `id`, `notificationType`, `sourceType`,
 `sourceId`, `title`, `body`, `readAt`, and `createdAt`. Detail and mark-one add
-`destination` (authorized relative Result path or null). The DTO omits `schoolId`,
+`destination` (authorized relative Result/Announcement path or null). The DTO omits `schoolId`,
 `recipientUserId`, `sourceEventId`, `updatedAt`, Outbox payload/status/errors,
 and all database metadata.
 
@@ -87,7 +87,7 @@ source access yields a null destination without rewriting or hiding the message.
 
 `sourceType` and `sourceId` are references, not capabilities. Owning a
 Notification never bypasses the Announcement or Result module's authorization
-when the client later requests the source resource.
+when the client later requests the source resource. Task 062 computes Announcement destinations from the exact PUBLISHED publication and its immutable User/School recipient snapshot, using the same repository check as recipient detail. No current ParentStudent/TeacherAssignment re-resolution rewrites that history. Missing, foreign, unpublished, cancelled or nonrecipient destinations are null; the owned notification remains readable. The only Announcement destination shape is `/announcements/inbox/<publication UUID>`, never a payload-provided URL. Existing announcement payloads need no new fields. Processing retains event/recipient uniqueness and rejects non-PUBLISHED publication sources.
 
 Read actions mutate only `notifications.read_at`. They do not change source
 publications, recipient snapshots, results, relationships, assignments,

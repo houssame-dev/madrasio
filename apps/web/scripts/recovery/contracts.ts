@@ -18,7 +18,7 @@ export const PINNED_TOOLS = {
 } as const;
 export const AGE_RUNTIME_VERSION = `v${PINNED_TOOLS.age}`;
 
-/** One authoritative durable application-data allowlist (migration 0017 parity (users platform authority included)). */
+/** Durable allowlist through 0019. Full-row fingerprints include announcement body_format and CANCELLED intent state. */
 export const APPLICATION_TABLES = [
   'academic_periods',
   'academic_years',

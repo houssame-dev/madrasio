@@ -30,5 +30,5 @@ export type AnnouncementTargetType = (typeof ANNOUNCEMENT_TARGET_TYPES)[number];
  * V1 publication lifecycle — mirrors the `announcement_publication_status`
  * database enum. Deliberately SEPARATE from Announcement status (Task 009 §2/§38).
  */
-export const ANNOUNCEMENT_PUBLICATION_STATUSES = ['SCHEDULED', 'PUBLISHED'] as const;
+export const ANNOUNCEMENT_PUBLICATION_STATUSES = ['SCHEDULED', 'PUBLISHED', 'CANCELLED'] as const;
 export type AnnouncementPublicationStatus = (typeof ANNOUNCEMENT_PUBLICATION_STATUSES)[number];

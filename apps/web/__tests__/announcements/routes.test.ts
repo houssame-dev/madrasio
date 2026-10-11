@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '@school/database';
 
 import type { CurrentContext } from '@/lib/authorization/context';
@@ -23,6 +23,7 @@ import {
   announcementGET, announcementPATCH, announcementPublicationsGET, announcementPublishPOST,
   announcementTargetsGET, announcementTargetsPOST, announcementVersionsGET,
   announcementVersionsPOST, announcementsGET, announcementsPOST,
+  announcementTargetsDELETE, announcementPublicationPATCH, recipientAnnouncementsGET, recipientAnnouncementGET,
 } from '@/lib/api/announcements';
 
 let test: AnnouncementsTestDb;
@@ -60,7 +61,40 @@ async function create() {
   };
 }
 
+afterEach(async () => { await test?.client.close(); });
+
 describe('Announcement management HTTP contracts', () => {
+  it('rejects authority injection on lifecycle and recipient routes, requiring current context', async () => {
+    const id = crypto.randomUUID(); const publicationId = crypto.randomUUID();
+    const publicationParams = { params: Promise.resolve({ id, publicationId }) };
+    for (const field of ['schoolId', 'userId', 'role', 'recipientUserIds']) {
+      expect((await announcementPublicationPATCH(json({ action: 'cancel', [field]: id }, 'PATCH'), publicationParams)).status).toBe(400);
+      expect((await announcementTargetsDELETE(json({ announcementVersionId: id, targetId: id, [field]: id }, 'DELETE'), params(id))).status).toBe(400);
+      expect((await recipientAnnouncementsGET(new Request(`http://local?${field}=${id}`))).status).toBe(400);
+    }
+    expect((await announcementPublicationPATCH(json({ action: 'reschedule', scheduledAt: '2035-01-01T12:00' }, 'PATCH'), publicationParams)).status).toBe(400);
+    mocks.error = new UnauthenticatedError();
+    expect((await recipientAnnouncementsGET(new Request('http://local'))).status).toBe(401);
+    expect((await recipientAnnouncementGET(new Request('http://local'), params(id))).status).toBe(401);
+    expect((await announcementPublicationPATCH(json({ action: 'cancel' }, 'PATCH'), publicationParams)).status).toBe(401);
+    expect((await announcementTargetsDELETE(json({ announcementVersionId: id, targetId: id }, 'DELETE'), params(id))).status).toBe(401);
+  });
+
+  it('serves recipient routes to the frozen Teacher recipient without granting management access', async () => {
+    const created = await create();
+    const userId = await seedUser(test.seed, school.schoolId, 'TEACHER');
+    await seedTeacher(test.seed, school.schoolId, userId);
+    await announcementTargetsPOST(json({ announcementVersionId: created.version.id, targets: [{ audience: 'TEACHERS', targetType: 'SCHOOL', academicYearId: school.yearId }] }), params(created.announcement.id));
+    const published = await announcementPublishPOST(json({ announcementVersionId: created.version.id, idempotencyKey: crypto.randomUUID() }), params(created.announcement.id));
+    const { data } = await published.json();
+    mocks.context = current(userId, school.schoolId, 'TEACHER');
+    const list = await recipientAnnouncementsGET(new Request('http://local?page=1&pageSize=1'));
+    expect(await list.json()).toMatchObject({ data: [{ id: data.publicationId, title: 'API notice' }], meta: { total: 1 } });
+    const detail = await recipientAnnouncementGET(new Request('http://local'), params(data.publicationId));
+    expect(await detail.json()).toMatchObject({ data: { body: 'Complete body.', bodyFormat: 'PLAIN_TEXT' } });
+    expect((await announcementGET(new Request('http://local'), params(created.announcement.id))).status).toBe(403);
+    expect((await recipientAnnouncementGET(new Request('http://local'), params(crypto.randomUUID()))).status).toBe(404);
+  });
   it('creates, lists, reads, archives, and strictly rejects authoritative input', async () => {
     const created = await create();
     let response = await announcementsGET(new Request('http://local?page=1&pageSize=10&status=DRAFT&search=notice'));

@@ -276,6 +276,6 @@ describe('resolveAnnouncementRecipients (Task 009 §46 / Task 009.1)', () => {
     expect(ANNOUNCEMENT_AUDIENCES).toEqual(['PARENTS', 'TEACHERS']);
     expect(ANNOUNCEMENT_TARGET_TYPES).toEqual(['SCHOOL', 'CLASS']);
     expect(ANNOUNCEMENT_STATUSES).toEqual(['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED']);
-    expect(ANNOUNCEMENT_PUBLICATION_STATUSES).toEqual(['SCHEDULED', 'PUBLISHED']);
+    expect(ANNOUNCEMENT_PUBLICATION_STATUSES).toEqual(['SCHEDULED', 'PUBLISHED', 'CANCELLED']);
   });
 });

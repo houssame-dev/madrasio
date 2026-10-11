@@ -1226,14 +1226,14 @@ describe('snapshot and restore orchestration', () => {
 });
 
 describe('manifest, reconciliation, cleanup and future transport boundary', () => {
-  it('captures the exact ordered 0000-0018 repository migration contract', async () => {
+  it('captures the exact ordered 0000-0019 repository migration contract', async () => {
     const metadata = await loadMigrationMetadata(
       resolve(process.cwd(), '../../database/drizzle/migrations'),
     );
-    expect(metadata.count).toBe(19);
-    expect(metadata.latest).toBe('0018_result-publication-context');
-    expect(Object.keys(metadata.fileSha256)).toHaveLength(19);
-    expect(metadata.createdAt).toHaveLength(19);
+    expect(metadata.count).toBe(20);
+    expect(metadata.latest).toBe('0019_announcement-lifecycle-content');
+    expect(Object.keys(metadata.fileSha256)).toHaveLength(20);
+    expect(metadata.createdAt).toHaveLength(20);
   });
 
   it('canonicalizes objects without locale-dependent key order and rejects unknown manifests', () => {

@@ -3,7 +3,7 @@ import { schoolWallTimeToInstant } from '@school/shared';
 export const announcementStatuses = ['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED'] as const;
 export const announcementAudiences = ['PARENTS', 'TEACHERS'] as const;
 export const announcementTargetTypes = ['SCHOOL', 'CLASS'] as const;
-export const announcementContentSchema = z.object({ title: z.string().trim().min(1, 'Title is required.').max(300), body: z.string().trim().min(1, 'Body is required.').max(50_000) });
+export const announcementContentSchema = z.object({ bodyFormat: z.enum(['PLAIN_TEXT', 'HTML']).optional(), title: z.string().trim().min(1, 'Title is required.').max(300), body: z.string().trim().min(1, 'Body is required.').max(50_000) });
 export type AnnouncementContentValues = z.infer<typeof announcementContentSchema>;
 export const announcementTargetSchema = z.object({ audience: z.enum(announcementAudiences), targetType: z.enum(announcementTargetTypes), academicYearId: z.string().uuid('Choose a valid Academic Year.'), classId: z.string().optional() }).superRefine((value, context) => {
   if (value.targetType === 'CLASS' && !z.string().uuid().safeParse(value.classId).success) context.addIssue({ code: z.ZodIssueCode.custom, path: ['classId'], message: 'Choose a valid Class.' });

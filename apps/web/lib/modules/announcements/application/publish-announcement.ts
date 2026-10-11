@@ -26,9 +26,9 @@
  * duplicates that slip between a read and an insert are resolved by catching
  * the 23505 unique violation and re-reading.
  *
- * CONCURRENCY (Task 009 §19): no Redis locks (ADR-015). The per-Announcement
- * `(announcement_id, publication_version)` unique + the idempotency unique are
- * the protection; a lost race surfaces as a controlled `PUBLICATION_CONFLICT`.
+ * CONCURRENCY: canonical writers lock the logical Announcement row first.
+ * Due workers re-read intent after locking, then CAS status AND due instant.
+ * Per-Announcement sequence and idempotency uniqueness remain backstops.
  *
  * SCHEDULING (Task 009 §18, BR-ANNOUNCEMENT-011/012, Task 011.1): a future
  * `scheduledAt` creates a SCHEDULED publication (publication intent persisted,
@@ -52,7 +52,7 @@
  *
  * MODULE OWNERSHIP (PRD.md §17): this use case writes ONLY
  * `announcement_publications`, `publication_recipient_snapshots`, the
- * Announcement status, and the shared outbox event. It NEVER writes
+ * Announcement status, atomic audit metadata, and the shared outbox event. It NEVER writes
  * Notifications/Grades/Attendance/Homework rows — the Notifications processor
  * consumes the outbox event.
  */
@@ -60,6 +60,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { persistOutboxEvent } from '@/lib/events/outbox';
+import { recordAnnouncementAudit } from '@/lib/audit/announcements';
+import { requireManagement } from './announcement-management';
 
 import type { AnnouncementEventPayload, AnnouncementEventName } from '../domain/announcement-events';
 import {
@@ -89,7 +91,7 @@ export interface PublishAnnouncementView {
   announcementId: string;
   announcementVersionId: string;
   publicationVersion: number;
-  status: 'SCHEDULED' | 'PUBLISHED';
+  status: 'SCHEDULED' | 'PUBLISHED' | 'CANCELLED';
   scheduledAt: string | null;
   publishedAt: string | null;
   publishedBy: string;
@@ -138,6 +140,9 @@ export async function publishAnnouncement(
   db: AnnouncementsDb,
   input: PublishAnnouncementInput,
 ): Promise<PublishAnnouncementView> {
+  return repo.withAnnouncementLock(db, input.schoolId, input.announcementId, (tx) => publishAnnouncementLocked(tx, input));
+}
+async function publishAnnouncementLocked(db: AnnouncementsDb, input: PublishAnnouncementInput): Promise<PublishAnnouncementView> {
   const auth = await requireAnnouncementPublishOperation(db, {
     userId: input.userId,
     schoolId: input.schoolId,
@@ -166,6 +171,8 @@ export async function publishAnnouncement(
     );
   }
 
+  await requireManagement(db, input, announcement, 'announcements.publish', input.announcementVersionId);
+
   // Load the EXACT Version the caller asked to publish.
   const version = await repo.findVersionForAnnouncement(
     db,
@@ -183,13 +190,13 @@ export async function publishAnnouncement(
   // Idempotent replay: the same key always maps to the SAME publication row.
   const replay = await repo.findPublicationByIdempotencyKey(db, input.schoolId, input.idempotencyKey);
   if (replay) {
-    if (replay.announcementId !== input.announcementId) {
+    if (replay.announcementId !== input.announcementId || replay.announcementVersionId !== input.announcementVersionId) {
       throw new AnnouncementDomainError(
         'PUBLICATION_CONFLICT',
         'The idempotency key was already used for a different announcement.',
       );
     }
-    return toView(replay, replay.status === 'PUBLISHED');
+    return toView(replay, false);
   }
 
   // Load targets and enforce the academic-scope half of BR-ANNOUNCEMENT-006.
@@ -218,7 +225,7 @@ export async function publishAnnouncement(
 
   const latest = await repo.findLatestPublication(db, input.schoolId, input.announcementId);
   const nextPublicationVersion = latest ? latest.publicationVersion + 1 : 1;
-  const isRevision = latest !== null;
+  const isRevision = await repo.hasPublishedPublication(db, input.schoolId, input.announcementId);
 
   const scheduledAt = input.scheduledAt ? new Date(input.scheduledAt) : null;
   const immediate = scheduledAt === null || scheduledAt.getTime() <= Date.now();
@@ -283,6 +290,7 @@ export async function publishAnnouncement(
         };
         await persistOutboxEvent(tx, eventType, payload as unknown as Record<string, unknown>);
         await repo.updateAnnouncementStatus(tx, input.schoolId, announcement.id, 'PUBLISHED');
+        await recordAnnouncementAudit(tx, input, { action: isRevision ? 'AnnouncementRevised' : 'AnnouncementPublished', resourceId: announcement.id, metadata: { versionId: version.id, publicationId: publication.id } });
         return toView(publication, true);
       }
 
@@ -293,6 +301,7 @@ export async function publishAnnouncement(
       // Announcement stays PUBLISHED); DRAFT moves to SCHEDULED.
       const nextStatus: AnnouncementRowStatus = announcement.status === 'DRAFT' ? 'SCHEDULED' : announcement.status;
       await repo.updateAnnouncementStatus(tx, input.schoolId, announcement.id, nextStatus);
+      await recordAnnouncementAudit(tx, input, { action: 'AnnouncementScheduled', resourceId: announcement.id, metadata: { versionId: version.id, publicationId: publication.id, scheduledAt: scheduledAt!.toISOString() } });
       return toView(publication, false);
     });
   } catch (error) {
@@ -300,8 +309,8 @@ export async function publishAnnouncement(
     // read) was committed first. Re-read the canonical row.
     if (isUniqueViolation(error)) {
       const concurrent = await repo.findPublicationByIdempotencyKey(db, input.schoolId, input.idempotencyKey);
-      if (concurrent && concurrent.announcementId === input.announcementId) {
-        return toView(concurrent, concurrent.status === 'PUBLISHED');
+      if (concurrent && concurrent.announcementId === input.announcementId && concurrent.announcementVersionId === input.announcementVersionId) {
+        return toView(concurrent, false);
       }
       throw new AnnouncementDomainError(
         'PUBLICATION_CONFLICT',
@@ -335,6 +344,12 @@ export async function publishDueAnnouncement(
   db: AnnouncementsDb,
   input: PublishDueAnnouncementInput,
 ): Promise<PublishDueAnnouncementResult> {
+  // Discovery locates only the immutable parent key. Never act on discovered schedule state.
+  const discovered = await repo.findPublication(db, input.publicationId);
+  if (!discovered) throw new AnnouncementDomainError('PUBLICATION_NOT_FOUND', 'Publication was not found.');
+  return repo.withAnnouncementLock(db, discovered.schoolId, discovered.announcementId, (tx) => publishDueAnnouncementLocked(tx, input));
+}
+async function publishDueAnnouncementLocked(db: AnnouncementsDb, input: PublishDueAnnouncementInput): Promise<PublishDueAnnouncementResult> {
   const publication = await repo.findPublication(db, input.publicationId);
   if (!publication) {
     throw new AnnouncementDomainError(
@@ -342,7 +357,7 @@ export async function publishDueAnnouncement(
       `Publication ${input.publicationId} was not found.`,
     );
   }
-  if (publication.status === 'PUBLISHED') {
+  if (publication.status !== 'SCHEDULED') {
     return { publicationId: publication.id, announcementId: publication.announcementId, eventEmitted: false };
   }
   if (publication.scheduledAt === null || publication.scheduledAt.getTime() > Date.now()) {
@@ -352,8 +367,8 @@ export async function publishDueAnnouncement(
     );
   }
 
-  const eventType: AnnouncementEventName =
-    publication.publicationVersion > 1 ? 'AnnouncementRevisionPublished' : 'AnnouncementPublished';
+  const isRevision = await repo.hasPublishedPublication(db, publication.schoolId, publication.announcementId);
+  const eventType: AnnouncementEventName = isRevision ? 'AnnouncementRevisionPublished' : 'AnnouncementPublished';
 
   const eventEmitted = await db.transaction(async (tx) => {
     const updated = await repo.markPublicationPublished(tx, publication.id);
@@ -427,6 +442,10 @@ export async function publishDueAnnouncement(
     };
     await persistOutboxEvent(tx, eventType, payload as unknown as Record<string, unknown>);
     await repo.updateAnnouncementStatus(tx, publication.schoolId, publication.announcementId, 'PUBLISHED');
+    await recordAnnouncementAudit(tx, { schoolId: publication.schoolId, userId: null }, {
+      action: isRevision ? 'AnnouncementRevised' : 'AnnouncementPublished', resourceId: publication.announcementId,
+      metadata: { versionId: version.id, publicationId: publication.id },
+    });
     return true;
   });
 

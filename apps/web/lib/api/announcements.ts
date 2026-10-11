@@ -13,6 +13,7 @@ import { requireCurrentContext } from '@/lib/auth/require-context';
 import { getDb } from '@/lib/db/client';
 import { ValidationError } from '@/lib/errors';
 import * as service from '@/lib/modules/announcements/application';
+import { announcementScheduleChangeSchema } from '@/lib/modules/announcements/domain/contracts';
 import {
   announcementCreateSchema, announcementPatchSchema, announcementPublishSchema,
   announcementTargetsCreateSchema, announcementVersionCreateSchema,
@@ -60,7 +61,7 @@ export function announcementsGET(request: Request) {
       audience: z.enum(['PARENTS', 'TEACHERS']).optional(),
       targetType: z.enum(['SCHOOL', 'CLASS']).optional(),
       classId: uuid.optional(),
-      publicationStatus: z.enum(['SCHEDULED', 'PUBLISHED']).optional(),
+      publicationStatus: z.enum(['SCHEDULED', 'PUBLISHED', 'CANCELLED']).optional(),
       createdFrom: z.string().datetime({ offset: true }).transform((value) => new Date(value)).optional(),
       createdTo: z.string().datetime({ offset: true }).transform((value) => new Date(value)).optional(),
       search: z.string().trim().min(1).max(100).optional(),
@@ -127,6 +128,39 @@ export function announcementTargetsPOST(request: Request, context: Params) {
     const input = await parseBody(request, announcementTargetsCreateSchema);
     const value = await actor();
     return one(await service.addAnnouncementTargets(value.db, value.actor, await id(context), input), 201);
+  });
+}
+
+export function announcementTargetsDELETE(request: Request, context: Params) {
+  return run(async () => {
+    const input = await parseBody(request, z.object({ announcementVersionId: uuid, targetId: uuid }).strict());
+    const value = await actor();
+    return one(await service.removeAnnouncementTarget(value.db, value.actor, await id(context), input.announcementVersionId, input.targetId));
+  });
+}
+
+export function announcementPublicationPATCH(request: Request, context: Params) {
+  return run(async () => {
+    const input = await parseBody(request, announcementScheduleChangeSchema);
+    const parsed = uuid.safeParse((await context.params).publicationId);
+    if (!parsed.success) throw new ValidationError('Invalid publication identifier.');
+    const value = await actor();
+    return one(await service.changeAnnouncementSchedule(value.db, value.actor, await id(context), parsed.data, input));
+  });
+}
+
+export function recipientAnnouncementsGET(request: Request) {
+  return run(async () => {
+    const input = query(request, z.object(baseQuery).strict());
+    const value = await actor();
+    return Response.json(await service.listRecipientAnnouncements(value.db, value.actor, input));
+  });
+}
+
+export function recipientAnnouncementGET(_request: Request, context: Params) {
+  return run(async () => {
+    const value = await actor();
+    return one(await service.getRecipientAnnouncement(value.db, value.actor, await id(context)));
   });
 }
 

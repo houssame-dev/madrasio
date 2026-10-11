@@ -7,10 +7,10 @@
  * a committed publication can never be lost if delivery fails afterwards.
  *
  * Event naming (BR-ANNOUNCEMENT-014, Task 009 §36):
- * - `AnnouncementPublished`         — publication sequence 1 (the first
- *   publication of a logical Announcement)
- * - `AnnouncementRevisionPublished` — publication sequence > 1 (a NEW Version
- *   of an already-published Announcement)
+ * - `AnnouncementPublished` — first completed publication of an Announcement
+ * - `AnnouncementRevisionPublished` — a NEW Version of an already-published
+ *   Announcement. Cancelled/pending intents reserve sequence numbers, so sequence
+ *   alone does not determine whether the completed publication is a revision.
  *
  * The payload is the stable contract consumed by the Notifications processor.
  * `announcementVersionId` identifies the EXACT Version that was published

@@ -9,15 +9,18 @@ function query(path: `/api/v1/${string}`, params: object = {}): `/api/v1/${strin
   const suffix = values.toString(); return `${path}${suffix ? `?${suffix}` : ''}` as `/api/v1/${string}`;
 }
 async function data<T>(path: `/api/v1/${string}`, init?: RequestInit): Promise<T> { return (await apiRequest<{ data: T }>(path, init)).data; }
-const write = (method: 'POST' | 'PATCH', value: unknown): RequestInit => ({ method, body: JSON.stringify(value) });
+const write = (method: 'POST' | 'PATCH' | 'DELETE', value: unknown): RequestInit => ({ method, body: JSON.stringify(value) });
 
 export const announcementsApi = {
+  removeTarget: (id: string, announcementVersionId: string, targetId: string) => data<{ removed: boolean }>(`/api/v1/announcements/${id}/targets`, write('DELETE', { announcementVersionId, targetId })),
+  cancel: (id: string, publicationId: string) => data<unknown>(`/api/v1/announcements/${id}/publications/${publicationId}`, write('PATCH', { action: 'cancel' })),
+  reschedule: (id: string, publicationId: string, scheduledAt: string) => data<unknown>(`/api/v1/announcements/${id}/publications/${publicationId}`, write('PATCH', { action: 'reschedule', scheduledAt })),
   list: (params: AnnouncementListParams) => apiRequest<AnnouncementPage>(query('/api/v1/announcements', params)),
-  create: (input: { title: string; body: string }) => data<{ announcement: Omit<AnnouncementDto, 'latestVersion'>; version: AnnouncementVersionDto }>('/api/v1/announcements', write('POST', input)),
+  create: (input: { title: string; body: string; bodyFormat?: 'PLAIN_TEXT' | 'HTML' }) => data<{ announcement: Omit<AnnouncementDto, 'latestVersion'>; version: AnnouncementVersionDto }>('/api/v1/announcements', write('POST', input)),
   detail: (id: string) => data<AnnouncementDetailDto>(`/api/v1/announcements/${id}`),
   archive: (id: string) => data<Omit<AnnouncementDto, 'latestVersion'>>(`/api/v1/announcements/${id}`, write('PATCH', { status: 'ARCHIVED' })),
   versions: (id: string, page = 1) => apiRequest<AnnouncementVersionPage>(query(`/api/v1/announcements/${id}/versions`, { page, pageSize: 50 })),
-  createVersion: (id: string, input: { title: string; body: string }) => data<AnnouncementVersionDto>(`/api/v1/announcements/${id}/versions`, write('POST', input)),
+  createVersion: (id: string, input: { title: string; body: string; bodyFormat?: 'PLAIN_TEXT' | 'HTML' }) => data<AnnouncementVersionDto>(`/api/v1/announcements/${id}/versions`, write('POST', input)),
   targets: (id: string, announcementVersionId?: string) => data<AnnouncementTargetDto[]>(query(`/api/v1/announcements/${id}/targets`, { announcementVersionId })),
   addTargets: (id: string, announcementVersionId: string, targets: AnnouncementTargetInput[]) => data<AnnouncementTargetDto[]>(`/api/v1/announcements/${id}/targets`, write('POST', { announcementVersionId, targets })),
   publications: (id: string, page = 1, pageSize = 20) => apiRequest<AnnouncementPublicationPage>(query(`/api/v1/announcements/${id}/publications`, { page, pageSize })),

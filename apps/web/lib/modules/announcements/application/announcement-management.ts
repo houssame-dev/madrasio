@@ -1,4 +1,6 @@
 import { ForbiddenError } from '@/lib/errors';
+import { recordAnnouncementAudit } from '@/lib/audit/announcements';
+import { acceptedAnnouncementContent } from '../domain/content';
 
 import type {
   AnnouncementCreateInput, AnnouncementListInput, AnnouncementPatchInput,
@@ -43,11 +45,11 @@ function teacherCoversTargets(
       && assignment.academicYearId === target.academicYearId));
 }
 
-async function requireManagement(
+export async function requireManagement(
   db: AnnouncementsDb,
   actor: AnnouncementActor,
   announcement: AnnouncementRow,
-  permission: 'announcements.read' | 'announcements.create' = 'announcements.create',
+  permission: 'announcements.read' | 'announcements.create' | 'announcements.publish' = 'announcements.create',
   versionId?: string,
 ) {
   const auth = await requireAnnouncementOperation(db, actor, permission);
@@ -93,10 +95,10 @@ export async function createAnnouncement(
       schoolId: actor.schoolId,
       announcementId: created.id,
       versionNumber: 1,
-      title: input.title,
-      body: input.body,
+      ...acceptedAnnouncementContent(input),
       createdBy: actor.userId!,
     });
+    await recordAnnouncementAudit(tx, actor, { action: 'AnnouncementCreated', resourceId: created.id, metadata: { versionId: version.id } });
     return { announcement: view(created), version: view(version) };
   });
 }
@@ -163,6 +165,12 @@ export async function patchAnnouncement(
   id: string,
   input: AnnouncementPatchInput,
 ) {
+  return repo.withAnnouncementLock(db, actor.schoolId, id, async (tx) => {
+    const result = await patchAnnouncementLocked(tx, actor, id, input);
+    return result;
+  });
+}
+async function patchAnnouncementLocked(db: AnnouncementsDb, actor: AnnouncementActor, id: string, input: AnnouncementPatchInput) {
   const row = await announcement(db, actor, id);
   await requireManagement(db, actor, row);
   if (input.status !== 'ARCHIVED') {
@@ -175,10 +183,11 @@ export async function patchAnnouncement(
   if (await repo.hasScheduledPublication(db, actor.schoolId, row.id)) {
     throw new AnnouncementDomainError(
       'ANNOUNCEMENT_NOT_EDITABLE',
-      'An Announcement with a scheduled publication cannot be archived because cancellation is not modeled.',
+      'Cancel scheduled publications before archiving this Announcement.',
     );
   }
   await repo.updateAnnouncementStatus(db, actor.schoolId, row.id, 'ARCHIVED');
+  await db.transaction((tx) => recordAnnouncementAudit(tx, actor, { action: 'AnnouncementArchived', resourceId: row.id, metadata: {} }));
   return view((await repo.findAnnouncement(db, actor.schoolId, row.id))!);
 }
 
@@ -188,6 +197,9 @@ export async function createAnnouncementVersion(
   id: string,
   input: AnnouncementVersionCreateInput,
 ) {
+  return repo.withAnnouncementLock(db, actor.schoolId, id, (tx) => createAnnouncementVersionLocked(tx, actor, id, input));
+}
+async function createAnnouncementVersionLocked(db: AnnouncementsDb, actor: AnnouncementActor, id: string, input: AnnouncementVersionCreateInput) {
   const row = await announcement(db, actor, id);
   await requireManagement(db, actor, row);
   if (row.status === 'ARCHIVED') {
@@ -202,10 +214,10 @@ export async function createAnnouncementVersion(
         schoolId: actor.schoolId,
         announcementId: row.id,
         versionNumber: latest.versionNumber + 1,
-        title: input.title,
-        body: input.body,
+        ...acceptedAnnouncementContent(input),
         createdBy: actor.userId!,
       });
+      await recordAnnouncementAudit(tx, actor, { action: 'AnnouncementVersionCreated', resourceId: row.id, metadata: { versionId: version.id } });
       return view(version);
     });
   } catch (error) {
@@ -255,6 +267,13 @@ export async function addAnnouncementTargets(
   id: string,
   input: AnnouncementTargetsCreateInput,
 ) {
+  return repo.withAnnouncementLock(db, actor.schoolId, id, async (tx) => {
+    const result = await addAnnouncementTargetsLocked(tx, actor, id, input);
+    await recordAnnouncementAudit(tx, actor, { action: 'AnnouncementTargetsChanged', resourceId: id, metadata: { versionId: input.announcementVersionId, change: 'ADD' } });
+    return result;
+  });
+}
+async function addAnnouncementTargetsLocked(db: AnnouncementsDb, actor: AnnouncementActor, id: string, input: AnnouncementTargetsCreateInput) {
   const row = await announcement(db, actor, id);
   const version = await repo.findVersionForAnnouncement(
     db, actor.schoolId, row.id, input.announcementVersionId,

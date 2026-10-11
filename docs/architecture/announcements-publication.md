@@ -1,5 +1,8 @@
 # Announcements — Application & Publication Flow
 
+Current extension: [Task 062 publication and recipient experience](announcement-publication-recipient-experience.md).
+It supersedes the historical Task 011 scope exclusions and plain-text-only/concurrency notes below with draft management, cancel/reschedule intent state, shared row locking and audit, sanitized rich content and recipient navigation. The original producer/snapshot/Outbox model remains authoritative. Task 062 validation is pending; the original milestone evidence below is preserved.
+
 Status: **Approved** (Task 011; recipient-timing hardening in Task 011.1)
 Module: Announcements
 Dependencies: Outbox (ADR-012), Notifications (ADR-013), Authorization foundation (Task 005), Announcements foundation schema (Task 009)

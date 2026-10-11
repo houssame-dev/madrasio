@@ -4,13 +4,18 @@ const uuid = z.string().uuid();
 const title = z.string().trim().min(1).max(300);
 const body = z.string().trim().min(1).max(50_000);
 
-export const announcementCreateSchema = z.object({ title, body }).strict();
+const bodyFormat = z.enum(['PLAIN_TEXT', 'HTML']).optional();
+export const announcementCreateSchema = z.object({ title, body, bodyFormat }).strict();
 
 export const announcementPatchSchema = z.object({
   status: z.enum(['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED']),
 }).strict();
 
-export const announcementVersionCreateSchema = z.object({ title, body }).strict();
+export const announcementVersionCreateSchema = announcementCreateSchema;
+export const announcementScheduleChangeSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('cancel') }).strict(),
+  z.object({ action: z.literal('reschedule'), scheduledAt: z.string().datetime({ offset: true }) }).strict(),
+]);
 
 const target = z.object({
   audience: z.enum(['PARENTS', 'TEACHERS']),
@@ -60,7 +65,7 @@ export interface AnnouncementListInput extends PageInput {
   audience?: 'PARENTS' | 'TEACHERS';
   targetType?: 'SCHOOL' | 'CLASS';
   classId?: string;
-  publicationStatus?: 'SCHEDULED' | 'PUBLISHED';
+  publicationStatus?: 'SCHEDULED' | 'PUBLISHED' | 'CANCELLED';
   createdFrom?: Date;
   createdTo?: Date;
   search?: string;

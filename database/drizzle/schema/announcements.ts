@@ -29,7 +29,7 @@ import { users } from './users';
  * Announcement status is NOT a replacement for Publication state (Task 009 §2):
  * the Announcement tracks the logical object's lifecycle while each
  * AnnouncementPublication carries its own publication state
- * (SCHEDULED → PUBLISHED). Historical publications are never converted when
+ * (SCHEDULED → PUBLISHED or CANCELLED). Historical publications are never converted when
  * the current Announcement status changes.
  */
 export const announcementStatus = pgEnum('announcement_status', ['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED']);
@@ -63,6 +63,7 @@ export const announcementTargetType = pgEnum('announcement_target_type', ['SCHOO
  * Announcement status.
  *
  * - SCHEDULED — a future `scheduled_at` exists; NOT yet published
+ * - CANCELLED — retained unpublished intent, with no recipients or event
  * - PUBLISHED — `published_at` set; the AnnouncementVersion + recipient
  *               snapshot are live and historical
  *
@@ -70,7 +71,7 @@ export const announcementTargetType = pgEnum('announcement_target_type', ['SCHOO
  * (Task 009 §38). Publication state, Announcement status and version content
  * are kept as distinct concepts.
  */
-export const announcementPublicationStatus = pgEnum('announcement_publication_status', ['SCHEDULED', 'PUBLISHED']);
+export const announcementPublicationStatus = pgEnum('announcement_publication_status', ['SCHEDULED', 'PUBLISHED', 'CANCELLED']);
 
 /**
  * Announcement — the logical communication object (domain-model §47,
@@ -135,10 +136,10 @@ export const announcements = pgTable(
  * Version remains a distinct, reconstructable content snapshot.
  *
  * `title` + `body` are both required (NOT NULL): a Version represents a
- * complete publishable state (PRD.md §11). Body is stored as PLAIN TEXT —
- * there is no shared rich-text/sanitization pipeline in the project yet, so
- * rich-text rendering is deferred (Task 009 §5/§34). Raw user HTML must never
- * be rendered as trusted content without sanitization.
+ * complete publishable state (PRD.md §11). Task 062 adds explicit body_format:
+ * PLAIN_TEXT for all legacy bodies, HTML for server-sanitized rich content.
+ * Title remains plain text. HTML rendering repeats the same sanitizer allowlist;
+ * no raw submitted HTML is trusted.
  *
  * `created_by` is the authenticated User who authored this Version (Task 009 §6).
  *
@@ -159,6 +160,7 @@ export const announcementVersions = pgTable(
     versionNumber: integer('version_number').notNull(),
     title: text('title').notNull(),
     body: text('body').notNull(),
+    bodyFormat: text('body_format').$type<'PLAIN_TEXT' | 'HTML'>().notNull().default('PLAIN_TEXT'),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
@@ -177,6 +179,7 @@ export const announcementVersions = pgTable(
     // `(announcement_id, version_number)` lookup is served by this constraint.
     unique('announcement_versions_announcement_version_unique').on(table.announcementId, table.versionNumber),
     index('announcement_versions_announcement_idx').on(table.schoolId, table.announcementId),
+    check('announcement_versions_body_format_check', sql`${table.bodyFormat} IN ('PLAIN_TEXT', 'HTML')`),
   ],
 );
 
@@ -298,11 +301,10 @@ export const announcementTargets = pgTable(
  * that retrying the same logical publish request never creates a duplicate
  * publication row.
  *
- * CONCURRENCY (Task 009 §19): two concurrent workers attempting to publish the
- * same scheduled Announcement are protected by the idempotency unique + the
- * per-Announcement `(announcement_id, publication_version)` unique. No Redis
- * locks (ADR-015); the Application use case resolves races the same way the
- * Grades publication use case does (catch 23505 + re-read canonical row).
+ * CONCURRENCY: canonical writers first lock the logical Announcement row.
+ * Due processing re-reads intent after that lock and uses a status/due-time CAS.
+ * Sequence/idempotency uniqueness remains the database backstop; cancellation,
+ * rescheduling and publication cannot independently win for the same intent.
  *
  * SCHEDULING (Task 009 §18): `scheduled_at` in the future means not yet
  * published (status SCHEDULED); once due, processing publishes it (status
@@ -362,7 +364,7 @@ export const announcementPublications = pgTable(
       'announcement_publications_status_timestamps_check',
       sql`(
         (${table.status} = 'PUBLISHED' AND ${table.publishedAt} IS NOT NULL) OR
-        (${table.status} = 'SCHEDULED' AND ${table.publishedAt} IS NULL AND ${table.scheduledAt} IS NOT NULL)
+        (${table.status}::text IN ('SCHEDULED', 'CANCELLED') AND ${table.publishedAt} IS NULL AND ${table.scheduledAt} IS NOT NULL)
       )`,
     ),
     check(

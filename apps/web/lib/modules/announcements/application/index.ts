@@ -1,4 +1,5 @@
 export { AnnouncementDomainError, ANNOUNCEMENT_ERROR_CODES } from './announcement-errors';
+export { changeAnnouncementSchedule, removeAnnouncementTarget, listRecipientAnnouncements, getRecipientAnnouncement } from './announcement-experience';
 export type { AnnouncementErrorCode } from './announcement-errors';
 export {
   publishAnnouncement,

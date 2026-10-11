@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const STAGING_PROJECT_REF = 'cqeaxlttezunirsmkrxz';
-export const EXPECTED_MIGRATION_COUNT = 19;
+export const EXPECTED_MIGRATION_COUNT = 20;
 export const EXPECTED_TABLE_COUNT = 40;
-export const EXPECTED_LATEST_MIGRATION = '0018_result-publication-context';
+export const EXPECTED_LATEST_MIGRATION = '0019_announcement-lifecycle-content';
 export const STAGING_VERCEL_PROJECT = 'madrasio-staging';
 export const CRON_SCHEDULE = '* * * * *';
 

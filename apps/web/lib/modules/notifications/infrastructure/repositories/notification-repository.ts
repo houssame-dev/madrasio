@@ -62,7 +62,7 @@ export interface AnnouncementPublicationRow {
   announcementId: string;
   announcementVersionId: string;
   publicationVersion: number;
-  status: 'SCHEDULED' | 'PUBLISHED';
+  status: 'SCHEDULED' | 'PUBLISHED' | 'CANCELLED';
   publishedAt: Date | null;
 }
 

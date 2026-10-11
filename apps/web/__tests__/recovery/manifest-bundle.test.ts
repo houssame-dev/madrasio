@@ -154,8 +154,8 @@ describe('Production manifest and bundle construction', () => {
       );
       expect(restoredManifest.format).toBe('madrasio-recovery-v1');
       expect(restoredManifest.migrations).toMatchObject({
-        count: 19,
-        latest: '0018_result-publication-context',
+        count: 20,
+        latest: '0019_announcement-lifecycle-content',
       });
       expect(restoredManifest.fingerprints).toHaveLength(42);
       expect(restoredManifest.fingerprints.every((item) => item.rowCount === rowCount)).toBe(true);
@@ -174,8 +174,8 @@ describe('Production manifest and bundle construction', () => {
       /\/database\/drizzle\/migrations\/?$/,
     );
     await expect(loadMigrationMetadata(migrationsDirectory)).resolves.toMatchObject({
-      count: 19,
-      latest: '0018_result-publication-context',
+      count: 20,
+      latest: '0019_announcement-lifecycle-content',
     });
     await expect(loadMigrationMetadata(join(tmpdir(), 'missing-migrations'))).rejects.toMatchObject(
       {

@@ -39,6 +39,7 @@ export const navigationItems: readonly NavigationItem[] = [
   { label: copy.attendance, href: '/attendance', icon: CalendarCheck, permission: 'attendance.read', roles: STAFF_ROLES },
   { label: copy.homework, href: '/homework', icon: BookOpen, permission: 'homework.read', roles: STAFF_ROLES },
   { label: copy.announcements, href: '/announcements', icon: Megaphone, permission: 'announcements.read', roles: STAFF_ROLES },
+  { label: 'School announcements', href: '/announcements/inbox', icon: Megaphone, permission: 'announcements.read', roles: ['PARENT', 'TEACHER'] },
   { label: copy.notifications, href: '/notifications', icon: Bell, permission: 'notifications.read' },
 ] as const;
 
@@ -52,5 +53,6 @@ export function visibleNavigationItems(role: Role): NavigationItem[] {
 }
 
 export function isActiveNavigationPath(pathname: string, href: string): boolean {
+  if (href === '/announcements' && pathname.startsWith('/announcements/inbox')) return false;
   return pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
 }

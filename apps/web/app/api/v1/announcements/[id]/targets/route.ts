@@ -1,1 +1,1 @@
-export { announcementTargetsGET as GET, announcementTargetsPOST as POST } from '@/lib/api/announcements';
+export { announcementTargetsGET as GET, announcementTargetsPOST as POST, announcementTargetsDELETE as DELETE } from '@/lib/api/announcements';

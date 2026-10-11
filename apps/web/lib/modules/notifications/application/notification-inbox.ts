@@ -1,6 +1,7 @@
 import { requireOperation, resolveCurrentContext, type AuthorizationDb } from '@/lib/authorization/server';
 import { findPublishedSnapshot } from '@/lib/modules/grades/infrastructure/repositories/publication-history';
 import { parentCanReadChild, childHasAcademicYear } from '@/lib/modules/parents/infrastructure/repositories/parent-child-read-repository';
+import { recipientPublications } from '@/lib/modules/announcements/infrastructure/repositories/announcement-repository';
 
 import type {
   NotificationInboxQuery, NotificationPage, NotificationView,
@@ -51,6 +52,10 @@ export async function getNotification(
   const row = await repo.findNotification(db, notificationId, actor.schoolId, userId);
   if (!row) return notFound();
   let destination: string | null = null;
+  if (row.sourceType === 'ANNOUNCEMENT_PUBLICATION') {
+    const result = await recipientPublications(db, actor.schoolId, userId, { limit: 1, offset: 0 }, row.sourceId);
+    if (result.rows.length) destination = `/announcements/inbox/${result.rows[0].id}`;
+  }
   if (row.sourceType === 'RESULT_PUBLICATION' && (await resolveCurrentContext(db as unknown as AuthorizationDb, actor)).role === 'PARENT') {
     const publication = await findPublishedSnapshot(db, actor.schoolId, row.sourceId);
     if (publication && await parentCanReadChild(db, actor.schoolId, userId, publication.studentId)

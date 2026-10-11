@@ -37,7 +37,7 @@ it('fresh replay creates the constrained, indexed, RLS-protected audit table wit
         'select count(*)::int count from drizzle.__drizzle_migrations',
       )
     ).rows[0].count,
-  ).toBe(19);
+  ).toBe(20);
   expect(
     (
       await client.query<{ relrowsecurity: boolean }>(

@@ -41,6 +41,56 @@ import type {
 /** The minimal typed Drizzle surface the Announcements module needs. */
 export type AnnouncementsDb = PgDatabase<PgQueryResultHKT, typeof schema>;
 
+/** All lifecycle writers acquire this parent lock before reading mutable state. */
+export async function withAnnouncementLock<T>(db: AnnouncementsDb, schoolId: string, id: string,
+  operation: (tx: Parameters<Parameters<AnnouncementsDb['transaction']>[0]>[0]) => Promise<T>) {
+  return db.transaction(async (tx) => {
+    await tx.select({ id: schema.announcements.id }).from(schema.announcements)
+      .where(and(eq(schema.announcements.schoolId, schoolId), eq(schema.announcements.id, id))).for('update');
+    return operation(tx);
+  });
+}
+
+export async function changeSchedule(db: AnnouncementsDb, schoolId: string, id: string, scheduledAt: Date | null) {
+  const [row] = await db.update(schema.announcementPublications)
+    .set(scheduledAt ? { scheduledAt, updatedAt: new Date() } : { status: 'CANCELLED', updatedAt: new Date() })
+    .where(and(eq(schema.announcementPublications.schoolId, schoolId), eq(schema.announcementPublications.id, id), eq(schema.announcementPublications.status, 'SCHEDULED'))).returning();
+  return row;
+}
+
+export async function removeTarget(db: AnnouncementsDb, schoolId: string, versionId: string, targetId: string) {
+  return db.delete(schema.announcementTargets).where(and(eq(schema.announcementTargets.schoolId, schoolId),
+    eq(schema.announcementTargets.announcementVersionId, versionId), eq(schema.announcementTargets.id, targetId))).returning();
+}
+
+export async function hasPublishedPublication(db: AnnouncementsDb, schoolId: string, announcementId: string) {
+  const [row] = await db.select({ id: schema.announcementPublications.id }).from(schema.announcementPublications)
+    .where(and(eq(schema.announcementPublications.schoolId, schoolId), eq(schema.announcementPublications.announcementId, announcementId), eq(schema.announcementPublications.status, 'PUBLISHED'))).limit(1);
+  return !!row;
+}
+
+/** Snapshot identity, not today's mutable ParentStudent/TeacherAssignment, grants historical access. */
+export async function recipientPublications(db: AnnouncementsDb, schoolId: string, userId: string,
+  paging: Paging, publicationId?: string) {
+  const condition = and(eq(schema.announcementPublications.schoolId, schoolId),
+    eq(schema.announcementPublications.status, 'PUBLISHED'),
+    publicationId ? eq(schema.announcementPublications.id, publicationId) : undefined,
+    exists(db.select({ id: schema.publicationRecipientSnapshots.id }).from(schema.publicationRecipientSnapshots)
+      .where(and(eq(schema.publicationRecipientSnapshots.schoolId, schoolId), eq(schema.publicationRecipientSnapshots.recipientUserId, userId),
+        eq(schema.publicationRecipientSnapshots.publicationId, schema.announcementPublications.id)))));
+  const [rows, totals] = await Promise.all([
+    db.select({ id: schema.announcementPublications.id, announcementId: schema.announcementPublications.announcementId,
+      publicationVersion: schema.announcementPublications.publicationVersion, publishedAt: schema.announcementPublications.publishedAt,
+      versionNumber: schema.announcementVersions.versionNumber, title: schema.announcementVersions.title,
+      body: schema.announcementVersions.body, bodyFormat: schema.announcementVersions.bodyFormat })
+      .from(schema.announcementPublications).innerJoin(schema.announcementVersions,
+        and(eq(schema.announcementVersions.schoolId, schema.announcementPublications.schoolId), eq(schema.announcementVersions.id, schema.announcementPublications.announcementVersionId)))
+      .where(condition).orderBy(desc(schema.announcementPublications.publishedAt), desc(schema.announcementPublications.id)).limit(paging.limit).offset(paging.offset),
+    db.select({ value: count() }).from(schema.announcementPublications).where(condition),
+  ]);
+  return { rows, total: totals[0]?.value ?? 0 };
+}
+
 export interface AnnouncementRow {
   id: string;
   schoolId: string;
@@ -57,6 +107,7 @@ export interface AnnouncementVersionRow {
   versionNumber: number;
   title: string;
   body: string;
+  bodyFormat: 'PLAIN_TEXT' | 'HTML';
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -78,7 +129,7 @@ export interface AnnouncementPublicationRow {
   announcementId: string;
   announcementVersionId: string;
   publicationVersion: number;
-  status: 'SCHEDULED' | 'PUBLISHED';
+  status: 'SCHEDULED' | 'PUBLISHED' | 'CANCELLED';
   scheduledAt: Date | null;
   publishedAt: Date | null;
   publishedBy: string;
@@ -310,6 +361,7 @@ export async function findVersionForAnnouncement(
         versionNumber: row.versionNumber,
         title: row.title,
         body: row.body,
+        bodyFormat: row.bodyFormat,
         createdBy: row.createdBy,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -419,14 +471,18 @@ export async function listPublications(
       publishedAt: schema.announcementPublications.publishedAt,
       publishedBy: schema.announcementPublications.publishedBy,
       createdAt: schema.announcementPublications.createdAt,
+      versionNumber: schema.announcementVersions.versionNumber,
       recipientCount: count(schema.publicationRecipientSnapshots.id),
-    }).from(schema.announcementPublications).leftJoin(
+    }).from(schema.announcementPublications).innerJoin(schema.announcementVersions, and(
+      eq(schema.announcementVersions.id, schema.announcementPublications.announcementVersionId),
+      eq(schema.announcementVersions.schoolId, schema.announcementPublications.schoolId),
+    )).leftJoin(
       schema.publicationRecipientSnapshots,
       and(
         eq(schema.publicationRecipientSnapshots.schoolId, schema.announcementPublications.schoolId),
         eq(schema.publicationRecipientSnapshots.publicationId, schema.announcementPublications.id),
       ),
-    ).where(condition).groupBy(schema.announcementPublications.id)
+    ).where(condition).groupBy(schema.announcementPublications.id, schema.announcementVersions.versionNumber)
       .orderBy(desc(schema.announcementPublications.publicationVersion), desc(schema.announcementPublications.id))
       .limit(paging.limit).offset(paging.offset),
     db.select({ value: count() }).from(schema.announcementPublications).where(condition),
@@ -638,6 +694,7 @@ export async function markPublicationPublished(
       and(
         eq(schema.announcementPublications.id, publicationId),
         eq(schema.announcementPublications.status, 'SCHEDULED'),
+        lte(schema.announcementPublications.scheduledAt, new Date()),
       ),
     )
     .returning();
