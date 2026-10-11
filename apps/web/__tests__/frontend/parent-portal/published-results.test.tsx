@@ -19,15 +19,15 @@ it('reaches all 55 published results with independent page keys and bounded requ
   const user = userEvent.setup(); renderParents(<PublishedResults {...props} />, 'PARENT');
   await screen.findByText('Subject 50');
   expect(screen.getAllByRole('listitem')).toHaveLength(50);
-  await user.click(screen.getByRole('button', { name: 'Next', exact: true }));
+  await user.click(screen.getByRole('button', { name: /^Next$/ }));
   await screen.findByText('Subject 55');
   expect(screen.getAllByRole('listitem')).toHaveLength(5);
   expect(screen.getByText('Subject 51')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /^Next$/ })).toBeDisabled();
   expect(screen.getAllByRole('link')[4]).toHaveAttribute('href', `/children/${student.id}/results/publication-55`);
   expect(fetch.mock.calls.every(([url]) => String(url).includes('pageSize=50'))).toBe(true);
   expect(childResultsQuery(schoolId, student.id, 'year-1', 'SUBJECT', 1).queryKey).not.toEqual(childResultsQuery(schoolId, student.id, 'year-1', 'SUBJECT', 2).queryKey);
-  await user.click(screen.getByRole('button', { name: 'Previous', exact: true }));
+  await user.click(screen.getByRole('button', { name: /^Previous$/ }));
   await screen.findByText('Subject 1');
 });
 
@@ -37,7 +37,7 @@ it('resets result pagination when the owning child/Year component remounts', asy
     return Response.json({ data: [], meta: { page, pageSize: 50, total: 55 } });
   });
   const user = userEvent.setup(); const view = renderParents(<PublishedResults key="year-1" {...props} />, 'PARENT');
-  await user.click(await screen.findByRole('button', { name: 'Next', exact: true }));
+  await user.click(await screen.findByRole('button', { name: /^Next$/ }));
   await screen.findByText('Page 2 / 2 · 55');
   view.rerender(<QueryClientProvider client={view.queryClient}><PublishedResults key="year-2" {...props} yearId="year-2" /></QueryClientProvider>);
   await screen.findByText('Page 1 / 2 · 55');
@@ -66,7 +66,7 @@ it('keeps the exact selected publication visible while paginating immutable hist
   expect(screen.getByText(/Revised publication/)).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Next' }));
   await screen.findByText('Page 2 / 2 · 21');
-  expect(within(selected).getByText('Published value: 14.00')).toBeInTheDocument();
+  expect(within(screen.getByRole('region', { name: 'Selected publication' })).getByText('Published value: 14.00')).toBeInTheDocument();
   expect(fetch.mock.calls.some(([url]) => String(url).endsWith('?page=2'))).toBe(true);
 });
 

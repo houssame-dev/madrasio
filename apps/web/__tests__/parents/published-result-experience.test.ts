@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import * as schema from '@school/database';
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { z } from 'zod';
+import type { ResultEventPayload } from '@/lib/modules/grades/domain/results';
 import { publishResult } from '@/lib/modules/grades/application/publish-result';
 import { getResult } from '@/lib/modules/grades/application/result-read-service';
 import { getChildPublicationHistory, listChildPublishedResults } from '@/lib/modules/parents/application/parent-child-read-service';
@@ -13,6 +15,30 @@ import { seedSchool, seedMembership } from '../auth/test-helpers';
 import { fingerprintTable } from '@/scripts/recovery/inventory';
 import { APPLICATION_TABLES, RECOVERY_TABLES } from '@/scripts/recovery/contracts';
 import type { QueryClient } from '@/scripts/recovery/snapshot';
+
+// Outbox JSON is unknown at the persistence boundary. Validate the fixture before
+// reading it or deliberately deriving malformed/legacy variants from it.
+const resultPayloadSchema = z.object({
+  eventId: z.string(),
+  eventType: z.enum(['ResultPublished', 'ResultRevisionPublished']),
+  schoolId: z.string(), studentId: z.string(),
+  resultType: z.enum(['SUBJECT', 'PERIOD', 'ANNUAL']),
+  subjectResultId: z.string().nullable(),
+  periodResultId: z.string().nullable(),
+  annualResultId: z.string().nullable(),
+  resultValue: z.string(), publicationId: z.string(),
+  publicationVersion: z.number().int().positive(), publishedAt: z.string(),
+  recipientUserIds: z.array(z.string()),
+  displayContext: z.object({
+    schemaVersion: z.literal(1), studentName: z.string(),
+    academicYearName: z.string(), academicPeriodName: z.string().nullable(),
+    subjectName: z.string().nullable(),
+  }).strict().optional(),
+}).strict() satisfies z.ZodType<ResultEventPayload>;
+
+function resultPayload(value: unknown): ResultEventPayload {
+  return resultPayloadSchema.parse(value);
+}
 
 let c: Awaited<ReturnType<typeof createParentsTestContext>>;
 beforeEach(async () => { c = await createParentsTestContext(); });
@@ -88,7 +114,7 @@ it('denies unrelated, ended, foreign-School and forged identifiers, including no
   const otherSchool = await seedSchool(c.test.seed, 'Other School');
   await seedMembership(c.test.seed, f.actor.userId!, otherSchool.id, 'PARENT');
   await expect(getChildPublicationHistory(c.parentDb, { ...f.actor, schoolId: otherSchool.id }, f.child.id, publication.publicationId, 1)).rejects.toMatchObject({ featureCode: 'CHILD_NOT_AVAILABLE' });
-  const event = (await c.test.seed.select().from(schema.outboxEvents)).find((item) => item.payload.publicationId === publication.publicationId)!;
+  const event = (await c.test.seed.select().from(schema.outboxEvents)).find((item) => resultPayload(item.payload).publicationId === publication.publicationId)!;
   await processNotificationEvent(c.db, { outboxEventId: event.id });
   const [notification] = await c.test.seed.select().from(schema.notifications);
   await c.test.seed.update(schema.notifications).set({ sourceId: outsiderPublication.publicationId }).where(eq(schema.notifications.id, notification.id));
@@ -139,7 +165,7 @@ it('captures Period/Annual context without inventing an Annual period or Subject
 it('rejects malformed new notification context without persisting a misleading notification', async () => {
   const f = await fixture(); await f.publish();
   const [event] = await c.test.seed.select().from(schema.outboxEvents);
-  await c.test.seed.update(schema.outboxEvents).set({ payload: { ...event.payload, displayContext: { schemaVersion: 999, studentName: 'Unsupported' } } }).where(eq(schema.outboxEvents.id, event.id));
+  await c.test.seed.update(schema.outboxEvents).set({ payload: { ...resultPayload(event.payload), displayContext: { schemaVersion: 999, studentName: 'Unsupported' } } }).where(eq(schema.outboxEvents.id, event.id));
   await expect(processNotificationEvent(c.db, { outboxEventId: event.id })).rejects.toMatchObject({ featureCode: 'EVENT_PAYLOAD_INVALID' });
   expect(await c.test.seed.select().from(schema.notifications)).toHaveLength(0);
 });
@@ -167,7 +193,7 @@ it('keeps legacy snapshots truthful and excludes unpublished result IDs/history'
   // Simulate a legacy persisted record, not an application update path.
   await c.test.seed.update(schema.resultPublications).set({ displayContext: null });
   const [event] = await c.test.seed.select().from(schema.outboxEvents);
-  const { displayContext: _legacyMissing, ...legacyPayload } = event.payload;
+  const { displayContext: _legacyMissing, ...legacyPayload } = resultPayload(event.payload);
   await c.test.seed.update(schema.outboxEvents).set({ payload: legacyPayload });
   await processNotificationEvent(c.db, { outboxEventId: event.id });
   const [notification] = await c.test.seed.select().from(schema.notifications);
