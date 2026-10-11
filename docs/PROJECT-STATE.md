@@ -1,174 +1,10 @@
 # Madrasio — Current Project State
 
-## Current Task
-
-`Task 061 — Published Result Understanding and Navigation`
-
-## Current Stage
-
-Tasks **050–060 are complete**.
-
-Task 060 — Parent Attendance and Homework Journeys passed:
-
-- focused implementation acceptance
-- canonical local validation
-- production build
-- local E2E
-- CI
-- Deploy STAGING
-
-The repository is ready to begin:
-
-`TASK_061_PUBLISHED_RESULT_EXPERIENCE`
-
----
-
-# Task 060 — Parent Attendance and Homework Journeys
+# Task 061 — Published Result Understanding and Navigation
 
 Status:
 
-`TASK_060_PARENT_ATTENDANCE_HOMEWORK_JOURNEYS_PASS`
-
-Base SHA before Task 060 implementation:
-
-`fe6c1287578fea438a9857641ca08a08d92d6a82`
-
-Final Task 060 commit:
-
-Use the current accepted Task 060 commit SHA from:
-
-```bash
-git rev-parse HEAD
-```
-
-Task 060 completed the two missing Parent child-scoped read journeys.
-
-## Attendance Journey
-
-Parents can navigate through the ordinary Parent portal:
-
-Parent
-→ My children
-→ Child
-→ Attendance
-
-The Attendance experience includes:
-
-- child-scoped history
-- inclusive date filtering
-- pagination
-- historical Class context
-- School-local calendar dates
-- loading state
-- empty state
-- retry/error behavior
-- navigation back to the child context
-
-Task 055 School-time semantics remain authoritative.
-
-Browser/device timezone does not redefine Attendance business dates.
-
-## Homework Journey
-
-Parents can navigate through the ordinary Parent portal:
-
-Parent
-→ My children
-→ Child
-→ Homework
-
-The Homework experience includes:
-
-- child-targeted discovery
-- paginated read-only Homework lists
-- expandable/readable Homework detail
-- targeting/enrollment eligibility
-- due-date eligibility
-- loading state
-- empty state
-- retry/error behavior
-
-Draft Homework is not exposed to Parents.
-
-## Authorization
-
-Every Parent read independently validates:
-
-- current School
-- authenticated Parent identity
-- active Parent profile
-- active Parent/child relationship
-- relevant Academic Year/context
-
-The following fail closed:
-
-- unrelated child
-- foreign-School child
-- ended Parent relationship
-- raw Student UUID substitution
-- forged authority/context identifiers
-
-A Student UUID alone never grants authority.
-
-## Authority Boundaries
-
-Task 060 does NOT grant Parents:
-
-- Attendance management authority
-- Homework management authority
-- Homework authoring authority
-- Homework submission/hand-in functionality
-
-Actual Homework hand-in remains owned by:
-
-`Task 065 — Homework Delivery and Actual Hand-In`
-
-## Persistence
-
-Task 060 introduced:
-
-- migrations: `0`
-- schema changes: `0`
-- dependency changes: `0`
-- lockfile changes: `0`
-
-Accepted repository inventory remains:
-
-- migrations: `18`
-- application tables: `40`
-- recovery tables: `42`
-
-## Validation
-
-Focused A1:
-
-- `189` tests passed
-- `16` files
-- `0` failures
-- lint: PASS
-- typecheck: PASS
-- `git diff --check`: PASS
-
-Canonical A2:
-
-- database: `364 passed / 0 failed / 0 skipped`
-- application suite: PASS
-- production build: PASS
-- local E2E: PASS
-- final `git diff --check`: PASS
-
-Hosted acceptance:
-
-- CI: PASS
-- Deploy STAGING: PASS
-
----
-
-# Next Task — Task 061
-
-Next:
-
-`Task 061 — Published Result Understanding and Navigation`
+`TASK_061_PUBLISHED_RESULT_EXPERIENCE_PASS`
 
 Task 061 owns:
 
@@ -176,34 +12,143 @@ Task 061 owns:
 - `V1-AUDIT-011`
 - `V1-AUDIT-030`
 
-Primary goals:
+## Verification-first finding
 
-- minimal published-result history
-- Parent result reachability
-- contextual result notifications
-- authorized published-result navigation
-
-Task 061 has a mandatory verification-first subgate:
+The mandatory:
 
 `TASK_061_V_PARENT_RESULTS_OVER_50_VERIFICATION`
 
-Before implementing any result-pagination remediation:
+reproduced the Parent result reachability defect.
 
-- use isolated local synthetic data with more than 50 authorized published results;
-- test the ordinary Parent navigation path;
-- do not remediate before recording whether the issue reproduces.
+Synthetic authorized fixture:
 
-Outcome rules:
+- 55 published results
+- active Parent–Child relationship
+- valid School/Academic context
 
-- reproduced → include the demonstrated fix in Task 061
-- not reproduced → close audit finding 011 with evidence; do not invent pagination work
-- inconclusive → report the missing evidence and stop the remediation decision
+Observed before remediation:
 
-Task 061 depends on accepted foundations from:
+- Parent UI reached exactly 50 results
+- backend reported total 55
+- remaining 5 existed on page 2
+- frontend had no pagination/load-more traversal
 
-- Task 053 — Historical Academic Binding Integrity
-- Task 054 — Important-Action Audit Foundation
-- Task 055 — School Business-Time Consistency
-- Task 056 — Shared Accessible Management UX
-- Task 059 — Grading Configuration Administration
-- Task 060 — Parent Attendance and Homework Journeys
+Therefore:
+
+`V1-AUDIT-011 = REPRODUCED_AND_FIXED`
+
+## Parent Result Reachability
+
+The Parent published-result journey now supports traversal beyond the original 50-result boundary using normal application navigation.
+
+The fix uses the existing paginated backend contract rather than increasing a hard-coded page size.
+
+Authorization remains child- and School-scoped.
+
+The following fail closed:
+
+- unrelated child
+- ended Parent relationship
+- foreign School
+- forged Student/result identifiers
+- raw UUID substitution
+
+## Published Result History
+
+Task 061 exposes the approved minimal result publication/history experience.
+
+Users can distinguish supported states including:
+
+- calculated
+- finalized
+- published
+- revised
+
+Historical publication context is preserved using immutable/reconstructable publication data.
+
+The implementation does not create an elaborate analytics/history system.
+
+Historical display must not be reconstructed dishonestly from mutable current records.
+
+Legacy records without immutable historical context remain truthful rather than being backfilled from current names/configuration.
+
+## Notification Context
+
+Published-result notifications now carry enough context to understand the result event where applicable, including:
+
+- Student
+- result/subject context
+- Academic Year / Period
+- result value/state
+- initial vs revised publication state
+- authorized published-result destination
+
+Class remains optional.
+
+Teacher identity is not required notification context.
+
+Notification replay remains idempotent.
+
+Legacy notification payloads remain safely readable.
+
+Malformed new contextual payloads fail safely rather than persisting misleading notification data.
+
+## Authorization-Safe Navigation
+
+Notification destinations authorize the current recipient before result access.
+
+A notification cannot be used to bypass:
+
+- Parent-child relationship rules
+- School scope
+- publication visibility
+- active profile requirements
+
+Unpublished result identifiers/history are not exposed to Parent users.
+
+## Persistence
+
+Task 061 introduced migration:
+
+`0018_result-publication-context`
+
+The migration adds the narrow nullable publication display-context persistence required for immutable historical presentation.
+
+Legacy rows are not populated with unverifiable current-state data.
+
+Accepted inventory remains:
+
+- application tables: `40`
+- recovery tables: `42`
+
+The new publication context is included in recovery fingerprint coverage.
+
+## Hosted Typecheck Remediation
+
+Initial CI and Deploy STAGING failed during `pnpm typecheck` because new Task 061 tests contained:
+
+- unsupported Testing Library `ByRoleOptions.exact`
+- notification payload values typed as `unknown` without narrowing
+
+The remediation changed test typing/query code only.
+
+Production result behavior, migration, authorization, and notification implementation were unchanged.
+
+Local remediation validation:
+
+- `pnpm typecheck`: PASS
+- focused published-result tests: `14 passed`
+- `git diff --check`: PASS
+
+Final hosted validation:
+
+- CI: PASS
+- Deploy STAGING: PASS
+
+## Task 061 Closure
+
+Task 061 is complete.
+
+Next:
+
+`Task 062 — Announcement Publication and Recipient Experience`
