@@ -70,12 +70,14 @@ confirmation remains open reuse the key; closing it and starting a new
 intentional revision creates a new key. Previous publications are described as
 immutable.
 
-The current API does not expose ResultPublication history reads or a published
-flag on Result DTOs. Consequently the detail can execute initial publication
-and revision, with controlled backend conflicts if the wrong action is chosen,
-but cannot browse historical snapshots or determine the latest publication
-before acting. No speculative history endpoint or client-side publication
-state was added.
+Task 061 detail reads include paginated immutable ResultPublication history
+(`historyPage`, 20 snapshots per page). The working Result's CALCULATED/FINALIZED
+status is separate from initial/revised publication state. History shows stored
+values, publication timestamps, exact rules-version IDs, and publication-time
+display labels when recorded. Legacy labels are explicitly unavailable, never
+filled from current lookup lists. Existing publication/revision actions retain
+their backend conflict/idempotency contracts. See
+[Published result experience](published-result-experience.md).
 
 ## Authorization and tenant boundary
 

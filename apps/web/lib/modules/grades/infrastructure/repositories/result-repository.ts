@@ -16,7 +16,7 @@
  * guarantee (PRD.md §13/§19).
  */
 
-import { and, count, desc, eq, exists, inArray, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, exists, inArray, sql, type SQL } from 'drizzle-orm';
 import * as schema from '@school/database';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 
@@ -30,6 +30,22 @@ import type { ResultRecipientCandidate } from '../../domain/result-recipients';
 
 /** The minimal typed Drizzle surface the repository needs (driver-agnostic). */
 export type GradesDb = PgDatabase<PgQueryResultHKT, typeof schema>;
+
+/** One statement captures publication-time labels consistently, inside the publication transaction. */
+export async function publicationDisplayContext(db: GradesDb, schoolId: string, result: {
+  studentId: string; academicYearId: string; academicPeriodId: string | null; subjectId: string | null;
+}): Promise<schema.ResultDisplayContext> {
+  const [row] = await db.select({ firstName: schema.students.firstName, lastName: schema.students.lastName,
+    academicYearName: schema.academicYears.name, academicPeriodName: schema.academicPeriods.name,
+    subjectName: schema.subjects.name }).from(schema.students)
+    .innerJoin(schema.academicYears, and(eq(schema.academicYears.schoolId, schoolId), eq(schema.academicYears.id, result.academicYearId)))
+    .leftJoin(schema.academicPeriods, result.academicPeriodId ? and(eq(schema.academicPeriods.schoolId, schoolId), eq(schema.academicPeriods.academicYearId, result.academicYearId), eq(schema.academicPeriods.id, result.academicPeriodId)) : sql`false`)
+    .leftJoin(schema.subjects, result.subjectId ? and(eq(schema.subjects.schoolId, schoolId), eq(schema.subjects.id, result.subjectId)) : sql`false`)
+    .where(and(eq(schema.students.schoolId, schoolId), eq(schema.students.id, result.studentId))).limit(1);
+  if (!row) throw new Error('Publication context unavailable');
+  return { schemaVersion: 1, studentName: `${row.firstName} ${row.lastName}`, academicYearName: row.academicYearName,
+    academicPeriodName: row.academicPeriodName, subjectName: row.subjectName };
+}
 
 export interface ResultPaging { limit: number; offset: number }
 export interface ResultFilters {
@@ -912,6 +928,7 @@ export async function findPublication(
 }
 
 export interface PublicationInsert {
+  displayContext?: schema.ResultDisplayContext;
   schoolId: string;
   resultType: ResultType;
   subjectResultId: string | null;
@@ -945,6 +962,7 @@ export async function insertPublication(
       academicPeriodId: input.academicPeriodId,
       classId: input.classId,
       resultValue: input.resultValue,
+      displayContext: input.displayContext,
       gradingConfigurationVersionId: input.gradingConfigurationVersionId,
       publicationVersion: input.publicationVersion,
       publishedBy: input.publishedBy,

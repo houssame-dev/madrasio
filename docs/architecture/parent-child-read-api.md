@@ -22,15 +22,31 @@ There is no global current Academic Year, no default/latest flag, and no automat
 
 Visibility comes exclusively from immutable `ResultPublication` rows. A FINALIZED or CALCULATED Result without a publication is absent. For each logical Result, the visible snapshot is the row with the greatest `publicationVersion`; this is revision ordering for that one Result and never Academic Year selection. Historical publication rows remain immutable.
 
-- Subject responses contain the published snapshot value plus Year, Period, Class, and Subject labels.
-- Period responses contain the authoritative PeriodResult publication plus Year, Period, and Class.
-- Annual responses contain the authoritative AnnualResult publication plus Year and Class; `academicPeriod` is null.
+- Subject responses contain the published snapshot value plus recorded Year, Period, and Subject labels.
+- Period responses contain the authoritative PeriodResult publication plus recorded Year and Period labels.
+- Annual responses contain the authoritative AnnualResult publication plus recorded Year; `academicPeriod` is null.
+- Legacy missing labels and all Class labels are explicitly unrecorded. Current mutable names are not substituted for publication context.
 
 DTOs omit raw Grades, Assessments, Gradebooks, grading rules/configuration identifiers, publisher identity, idempotency keys, and mutation state. The routes expose GET only and cannot calculate, finalize, publish, or revise Results.
 
-## Deliberate exclusions
+## Publication history (Task 061)
 
-No schema, migration, new current-Year field, new Enrollment uniqueness rule, or duplicated publication cache is introduced.
+`GET /api/v1/parent/children/:studentId/publications/:publicationId?page=1`
+returns `{ selected, data, meta }`. UUIDs and the strict positive integer `page`
+are validated; page size is fixed at 20. Authentication, current PARENT role,
+ACTIVE owned profile/relationship, tenant-bound publication and enrolled Year
+are all required. History is limited to the selected child's same logical Result,
+ordered by publication version descending. The selected exact snapshot is always
+included separately, even when outside the requested history page. Raw/unpublished
+Result UUIDs are not publication IDs and cannot resolve here. All responses,
+including denials, are private/no-store.
+
+Snapshot output includes recorded display context (or null), immutable value,
+version/time, result/Student/Year/Period identifiers and exact rules-version ID
+(not editable rules or publisher/recipient metadata). Version 1 is PUBLISHED;
+later versions are REVISED. No new authorization model or duplicated history
+system is introduced. Migration 0018 and legacy behavior are documented in
+[Published result experience](published-result-experience.md).
 
 ## Task 060 — Attendance and Homework reads
 

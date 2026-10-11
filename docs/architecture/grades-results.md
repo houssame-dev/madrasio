@@ -6,6 +6,11 @@
 
 This document defines how Results are **calculated**, **finalized**, **published** and **revised** in V1, and how historical integrity is preserved. It complements the storage foundation already defined by Task 006C.
 
+Task 061 adds nullable immutable display context to the existing publication
+snapshot, paginated reads and contextual notifications without changing the
+calculation/revision rules below. See [Published result experience](published-result-experience.md)
+for migration 0018, truthful legacy rendering and Parent navigation authority.
+
 ---
 
 ## 1. Concepts

@@ -8,6 +8,15 @@ import * as repo from '../infrastructure/repositories/parent-child-read-reposito
 import type { ParentsDb } from '../infrastructure/repositories/parent-repository';
 import type { Actor } from './parent-service';
 import { ParentDomainError } from './parent-errors';
+import { findPublishedSnapshot, publicationHistory } from '@/lib/modules/grades/infrastructure/repositories/publication-history';
+
+export async function getChildPublicationHistory(db: ParentsDb, actor: Actor, studentId: string, publicationId: string, page: number) {
+  await authorizeChild(db, actor, studentId);
+  const selected = await findPublishedSnapshot(db, actor.schoolId, publicationId);
+  if (!selected || selected.studentId !== studentId) throw new ParentDomainError('CHILD_NOT_AVAILABLE', 'Published result is not available.');
+  await requireAcademicContext(db, actor, studentId, selected.academicYearId);
+  return publicationHistory(db, actor.schoolId, selected, page);
+}
 
 async function authorizeChild(db: ParentsDb, actor: Actor, studentId: string) {
   await requireOperation(db as unknown as AuthorizationDb, actor, { permission: 'parents.read', scope: { kind: 'school' } });
@@ -73,10 +82,11 @@ export async function listChildPublishedResults(
       value: row.resultValue,
       publicationVersion: row.publicationVersion,
       publishedAt: row.publishedAt.toISOString(),
-      academicYear: { id: row.academicYearId, name: row.academicYearName },
-      academicPeriod: row.academicPeriodId && row.academicPeriodName ? { id: row.academicPeriodId, name: row.academicPeriodName } : null,
-      class: { id: row.classId, name: row.className },
-      subject: row.subjectId && row.subjectName ? { id: row.subjectId, name: row.subjectName, code: row.subjectCode } : null,
+      displayContext: row.displayContext,
+      academicYear: { id: row.academicYearId, name: row.displayContext?.academicYearName ?? 'Historical year label not recorded' },
+      academicPeriod: row.academicPeriodId ? { id: row.academicPeriodId, name: row.displayContext?.academicPeriodName ?? 'Historical period label not recorded' } : null,
+      class: { id: row.classId, name: 'Historical class label not recorded' },
+      subject: row.subjectId ? { id: row.subjectId, name: row.displayContext?.subjectName ?? 'Historical subject label not recorded', code: null } : null,
     })),
     meta: { page: input.page, pageSize: input.pageSize, total: result.total },
   };

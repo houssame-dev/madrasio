@@ -15,7 +15,7 @@ function setupResults() {
     if (url === '/api/v1/results/subjects?page=1&pageSize=20') return Response.json(page([subjectResult]));
     if (url === '/api/v1/results/periods?page=1&pageSize=20') return Response.json(page([{ ...subjectResult, resultType: 'PERIOD', subjectId: null }]));
     if (url === '/api/v1/results/annual?page=1&pageSize=20') return Response.json(page([{ ...subjectResult, resultType: 'ANNUAL', subjectId: null, academicPeriodId: null }]));
-    if (url === `/api/v1/results/${resultId}?resultType=SUBJECT`) return Response.json({ data: subjectResult });
+    if (url === `/api/v1/results/${resultId}?resultType=SUBJECT&historyPage=1`) return Response.json({ data: subjectResult });
     if (url === '/api/v1/academic-years?page=1&pageSize=100') return Response.json(page([year], 1, 100));
     if (url === '/api/v1/classes?page=1&pageSize=100') return Response.json(page([klass], 1, 100));
     if (url === '/api/v1/subjects?page=1&pageSize=100') return Response.json(page([subject], 1, 100));
@@ -68,7 +68,7 @@ describe('Results workspace roles and separation', () => {
     setupResults(); renderGrades(<ResultsWorkspace />); await screen.findByText('12.25');
     await userEvent.click(screen.getByRole('button', { name: 'View Result' }));
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('Result publication history read API is not currently exposed.')).toBeInTheDocument();
+    expect(within(dialog).getByText('Not published. No publication history exists.')).toBeInTheDocument();
     expect(within(dialog).getByText('CALCULATED')).toBeInTheDocument();
     expect(within(dialog).queryByText(/outbox|recipient|idempotency/i)).not.toBeInTheDocument();
   });

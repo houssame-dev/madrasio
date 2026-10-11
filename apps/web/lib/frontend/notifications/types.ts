@@ -7,6 +7,7 @@ export type NotificationSourceType = (typeof notificationSourceTypes)[number];
 export type NotificationReadStatus = (typeof notificationReadStatuses)[number];
 
 export interface NotificationDto {
+  destination?: string | null;
   id: string;
   notificationType: NotificationType;
   sourceType: NotificationSourceType;

@@ -55,6 +55,7 @@ export type ResultEventName = (typeof RESULT_EVENTS)[number];
 
 /** Shared shape of the outbox payload for both result events. */
 export interface ResultEventPayload {
+  displayContext?: import('@school/database').ResultDisplayContext;
   eventId: string;
   eventType: ResultEventName;
   schoolId: string;

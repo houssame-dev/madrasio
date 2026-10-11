@@ -2,7 +2,8 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotificationsWorkspace } from '@/components/notifications/notifications-workspace';
-import { notification, page, renderNotifications } from './test-helpers';
+import { NotificationDetail } from '@/components/notifications/notification-detail';
+import { notification, page, renderNotifications, schoolId } from './test-helpers';
 
 const navigation = vi.hoisted(() => ({ pathname: '/notifications', search: new URLSearchParams(), replace: vi.fn() }));
 vi.mock('next/navigation', () => ({
@@ -20,6 +21,28 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('NotificationsWorkspace', () => {
+  it('renders an authorized publication destination and retains it after marking read', async () => {
+    const destination = '/children/00000000-0000-4000-8000-000000000910/results/00000000-0000-4000-8000-000000000911';
+    let read = false;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (String(input).endsWith('/read')) read = true;
+      return json({ data: { ...notification, sourceType: 'RESULT_PUBLICATION', notificationType: 'RESULT_PUBLISHED', destination, readAt: read ? '2026-08-20T11:00:00.000Z' : null } });
+    });
+    renderNotifications(<NotificationDetail schoolId={schoolId} notificationId={notification.id} onClose={vi.fn()} />);
+    expect(await screen.findByRole('link', { name: 'View published result and history' })).toHaveAttribute('href', destination);
+    await userEvent.click(screen.getByRole('button', { name: 'Mark as read' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Mark as read' })).not.toBeInTheDocument());
+    expect(screen.getByRole('link', { name: 'View published result and history' })).toHaveAttribute('href', destination);
+  });
+
+  it.each([undefined, null, 'https://example.com/results', '//example.com/results', '/results/forged'])('keeps old or inaccessible result content readable without an unsafe destination (%s)', async (destination) => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ data: { ...notification, sourceType: 'RESULT_PUBLICATION', destination } }));
+    renderNotifications(<NotificationDetail schoolId={schoolId} notificationId={notification.id} onClose={vi.fn()} />);
+    expect(await screen.findByText(notification.body)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'View published result and history' })).not.toBeInTheDocument();
+    expect(screen.getByText('Published result navigation is unavailable for your current access.')).toBeInTheDocument();
+  });
+
   it.each(['SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'SUPER_ADMIN'] as const)('allows %s to read only the returned self-owned inbox projection', async (role) => {
     const requests: string[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {

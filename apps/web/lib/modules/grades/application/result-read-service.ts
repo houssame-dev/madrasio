@@ -10,6 +10,7 @@ import type {
   GradesDb, ResultFilters,
 } from '../infrastructure/repositories/result-repository';
 import { ResultDomainError } from './result-errors';
+import { findPublishedSnapshot, publicationHistory } from '../infrastructure/repositories/publication-history';
 
 export interface ResultReadActor { userId: string | null; schoolId: string }
 export interface ResultReadInput extends ResultFilters { page: number; pageSize: number }
@@ -55,10 +56,11 @@ export async function getResult(
   actor: ResultReadActor,
   resultType: ResultType,
   resultId: string,
+  historyPage = 1,
 ) {
+  const role = await readRole(db, actor);
   const result = await repo.findResultRow(db, actor.schoolId, resultType, resultId);
   if (!result) throw new ResultDomainError('RESULT_NOT_FOUND', 'Result was not found.');
-  const role = await readRole(db, actor);
   if (role === 'TEACHER') {
     if (resultType !== 'SUBJECT' || !result.subjectId) throw new ForbiddenError();
     await requireOperation(db as unknown as AuthorizationDb, actor, {
@@ -69,6 +71,8 @@ export async function getResult(
       },
     });
   }
-  return view(result, resultType);
+  const latest = await repo.findLatestPublication(db, actor.schoolId, resultType, resultId);
+  const selected = latest ? await findPublishedSnapshot(db, actor.schoolId, latest.id) : null;
+  return { ...view(result, resultType), publicationHistory: selected ? await publicationHistory(db, actor.schoolId, selected, historyPage) : null };
 }
 

@@ -183,7 +183,9 @@ export async function publishResultInTransaction(
 
   const nextVersion = input.revision ? latest!.publicationVersion + 1 : 1;
   const eventType = input.revision ? 'ResultRevisionPublished' : 'ResultPublished';
+  const displayContext = await repo.publicationDisplayContext(db, input.schoolId, result);
   const publication = await repo.insertPublication(db, {
+    displayContext,
     schoolId: input.schoolId,
     resultType: input.resultType,
     subjectResultId: input.resultType === 'SUBJECT' ? result.id : null,
@@ -205,6 +207,7 @@ export async function publishResultInTransaction(
     await repo.findResultNotificationRecipientCandidates(db, input.schoolId, result.studentId),
   );
   const payload: ResultEventPayload = {
+    displayContext,
     eventId,
     eventType,
     schoolId: input.schoolId,

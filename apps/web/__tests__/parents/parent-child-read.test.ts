@@ -115,8 +115,8 @@ describe('Parent child academic read model', () => {
     const subject = await app.listChildPublishedResults(context.parentDb, actor, student.id, { academicYearId: context.yearId, resultType: 'SUBJECT', page: 1, pageSize: 1 });
     const period = await app.listChildPublishedResults(context.parentDb, actor, student.id, { academicYearId: context.yearId, resultType: 'PERIOD', page: 1, pageSize: 50 });
     const annual = await app.listChildPublishedResults(context.parentDb, actor, student.id, { academicYearId: context.yearId, resultType: 'ANNUAL', page: 1, pageSize: 50 });
-    expect(subject).toMatchObject({ data: [{ value: '15.50', publicationVersion: 2, subject: { name: 'Mathematics' } }], meta: { pageSize: 1, total: 1 } });
-    expect(period.data[0]).toMatchObject({ value: '13.00', academicPeriod: { name: 'Term 1' }, subject: null });
+    expect(subject).toMatchObject({ data: [{ value: '15.50', publicationVersion: 2, subject: { name: 'Historical subject label not recorded' } }], meta: { pageSize: 1, total: 1 } });
+    expect(period.data[0]).toMatchObject({ value: '13.00', academicPeriod: { name: 'Historical period label not recorded' }, subject: null });
     expect(annual.data[0]).toMatchObject({ value: '12.00', academicPeriod: null, subject: null });
     for (const row of [...subject.data, ...period.data, ...annual.data]) {
       expect(row).not.toHaveProperty('grades');

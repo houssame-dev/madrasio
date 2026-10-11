@@ -10,7 +10,11 @@ The frontend never sends `schoolId`, `recipientUserId`, role, relationship, assi
 
 The inbox uses server-side page/pageSize pagination and the exact read-status and source-type filters exposed by the API. Default ordering remains the backend's `created_at DESC, id DESC`; the client does not re-sort or load an unbounded list.
 
-List and detail render only the safe Notification DTO: id, notification type, source type/id, title, body, read timestamp, and creation timestamp. Notification text is the historical persisted snapshot. Opening a Notification does not fetch an Announcement, Result, ParentStudent relationship, TeacherAssignment, StudentEnrollment, recipient snapshot, or Outbox row. A source reference is displayed as context and never treated as an authorization capability.
+List and detail render the safe Notification DTO: id, notification type, source type/id, title, body, read timestamp, and creation timestamp. Detail/mark-one also return an optional server-authorized relative Result destination. Historical text remains the persisted snapshot. The browser does not probe source or relationship APIs to construct a link. The server independently checks current Parent/child/School/Year access before offering it; the destination API checks again on navigation. Unavailable or legacy destinations leave the message readable. No external URL is rendered and a source reference is never an authorization capability.
+
+Task 061 new Result messages use captured Student, Subject/type, Year/Period,
+value and initial/revised state. Legacy events retain their original generic
+value-only body. See [Published result experience](published-result-experience.md).
 
 ## Read state and cache coherence
 

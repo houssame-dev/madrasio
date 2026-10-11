@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, LoaderCircle } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@school/ui';
 import { Modal } from '@/components/academic/ui';
 import { ApiErrorState, InlineLoading } from '@/components/ui/states';
@@ -37,6 +38,7 @@ export function NotificationDetail({ schoolId, notificationId, onClose }: { scho
             <p className="mt-2 text-xs text-muted-foreground">{notificationSourceLabels[value.sourceType]} · {t.received} <time dateTime={value.createdAt}>{new Date(value.createdAt).toLocaleString()}</time></p>
           </div>
           <p className="whitespace-pre-wrap break-words text-sm leading-6">{value.body}</p>
+          {value.destination && /^\/children\/[0-9a-f-]{36}\/results\/[0-9a-f-]{36}$/.test(value.destination) ? <Link className="inline-flex min-h-10 items-center underline focus-visible:ring-2" href={value.destination}>View published result and history</Link> : value.sourceType === 'RESULT_PUBLICATION' ? <p>Published result navigation is unavailable for your current access.</p> : null}
           {markRead.isError ? <p role="alert" className="text-sm text-destructive">{notificationErrorMessage(markRead.error)}</p> : null}
           <div className="flex justify-end gap-2 border-t pt-4">
             <Button type="button" variant="outline" onClick={onClose}>{t.close}</Button>

@@ -7,9 +7,20 @@ import * as service from '@/lib/modules/parents/application';
 import { childAttendanceQuery, childHomeworkQuery } from '@/lib/modules/parents/domain/child-journeys';
 
 import { toApiErrorResponse } from './errors';
+import { getChildPublicationHistory } from '@/lib/modules/parents/application/parent-child-read-service';
 
 type Params = { params: Promise<Record<string, string>> };
 const uuid = z.string().uuid();
+
+export function childPublicationGET(request: Request, context: Params) {
+  return run(async () => {
+    const id = uuid.safeParse((await context.params).publicationId);
+    if (!id.success) throw new ValidationError('Invalid publication identifier.');
+    const input = query(request, z.object({ page: z.coerce.number().int().positive().default(1) }).strict());
+    const value = await actor();
+    return Response.json(await getChildPublicationHistory(value.db, value.actor, await studentId(context), id.data, input.page));
+  });
+}
 
 async function studentId(context: Params) {
   const parsed = uuid.safeParse((await context.params).studentId);

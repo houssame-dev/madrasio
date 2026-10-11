@@ -136,8 +136,8 @@ export const annualResultsGET = (request: Request) => resultsGET(request, 'ANNUA
 
 export function resultGET(request: Request, context: Params) {
   return run(async () => {
-    const input = query(request, z.object({ resultType }).strict());
+    const input = query(request, z.object({ resultType, historyPage: z.coerce.number().int().positive().default(1) }).strict());
     const value = await actor();
-    return one(await service.getResult(value.db, value.actor, input.resultType, await id(context)));
+    return one(await service.getResult(value.db, value.actor, input.resultType, await id(context), input.historyPage));
   });
 }

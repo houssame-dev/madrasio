@@ -28,4 +28,4 @@ export const childHomeworkQuery = (schoolId: string, studentId: string, yearId: 
 
 export const childAcademicYearsQuery = (schoolId: string, studentId: string) => ({ queryKey: parentChildKeys.academicYears(schoolId, studentId), queryFn: () => parentChildApi.academicYears(studentId) });
 export const childPlacementQuery = (schoolId: string, studentId: string, academicYearId: string) => ({ queryKey: parentChildKeys.placement(schoolId, studentId, academicYearId), queryFn: () => parentChildApi.placement(studentId, academicYearId) });
-export const childResultsQuery = (schoolId: string, studentId: string, academicYearId: string, resultType: ParentResultType) => ({ queryKey: parentChildKeys.results(schoolId, studentId, academicYearId, resultType), queryFn: () => parentChildApi.results(studentId, academicYearId, resultType) });
+export const childResultsQuery = (schoolId: string, studentId: string, academicYearId: string, resultType: ParentResultType, page = 1) => ({ queryKey: [...parentChildKeys.results(schoolId, studentId, academicYearId, resultType), page], queryFn: () => parentChildApi.results(studentId, academicYearId, resultType, page) });

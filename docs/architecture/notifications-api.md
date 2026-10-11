@@ -59,8 +59,9 @@ Supported filters are:
 - optional `sourceId`;
 - offset-aware `createdFrom` and `createdTo`, with `createdFrom <= createdTo`.
 
-The public DTO contains only `id`, `notificationType`, `sourceType`,
-`sourceId`, `title`, `body`, `readAt`, and `createdAt`. It omits `schoolId`,
+The list DTO contains only `id`, `notificationType`, `sourceType`,
+`sourceId`, `title`, `body`, `readAt`, and `createdAt`. Detail and mark-one add
+`destination` (authorized relative Result path or null). The DTO omits `schoolId`,
 `recipientUserId`, `sourceEventId`, `updatedAt`, Outbox payload/status/errors,
 and all database metadata.
 
@@ -77,10 +78,12 @@ Unread count applies the identical User+School boundary and `read_at IS NULL`.
 
 ## Historical and source boundaries
 
-Inbox reads never re-run ParentStudent, Announcement target, TeacherAssignment,
-StudentEnrollment, or Result recipient resolution. Publication-time recipient
-resolution already decided delivery; the persisted Notification remains
-historically stable while the User retains a valid current-School context.
+Inbox content does not re-run publication-time recipient resolution. Delivery
+was already decided, so the owned persisted message remains historically stable
+while the User retains a valid current-School context. Task 061 separately
+checks active Parent profile/relationship, School-scoped ResultPublication and
+enrolled Year when computing the optional detail destination. Missing or revoked
+source access yields a null destination without rewriting or hiding the message.
 
 `sourceType` and `sourceId` are references, not capabilities. Owning a
 Notification never bypasses the Announcement or Result module's authorization

@@ -27,7 +27,7 @@ import {
   endRelationshipPOST, parentGET, parentPATCH, parentProfilesGET, parentsGET, parentsPOST,
   relationshipsGET, relationshipsPOST,
 } from '@/lib/api/parents';
-import { childAcademicYearsGET, childPlacementGET, childResultsGET, childAttendanceGET, childHomeworkGET } from '@/lib/api/parent-children';
+import { childAcademicYearsGET, childPlacementGET, childResultsGET, childAttendanceGET, childHomeworkGET, childPublicationGET } from '@/lib/api/parent-children';
 
 let seeded: ParentsTestContext;
 beforeEach(async () => {
@@ -56,6 +56,31 @@ const params = (id: string) => ({ params: Promise.resolve({ id }) });
 const childParams = (studentId: string) => ({ params: Promise.resolve({ studentId }) });
 
 describe('Parents and Relationships HTTP contracts', () => {
+  it('keeps publication history authenticated, Parent-only, strictly validated and private', async () => {
+    const route = (studentId = crypto.randomUUID(), publicationId = crypto.randomUUID()) => ({ params: Promise.resolve({ studentId, publicationId }) });
+    mocks.authError = new UnauthenticatedError();
+    const unauthenticated = await childPublicationGET(new Request('http://local?page=1'), route());
+    expect(unauthenticated.status).toBe(401);
+    expect(unauthenticated.headers.get('cache-control')).toBe('private, no-store');
+    mocks.authError = null;
+    const staff = await childPublicationGET(new Request('http://local?page=1'), route());
+    expect(staff.status).toBe(403);
+    for (const query of ['page=0', 'page=-1', 'page=1.5', 'page=abc', 'page=1&schoolId=forged', 'role=PARENT', 'userId=forged', 'pageSize=100']) {
+      const invalid = await childPublicationGET(new Request(`http://local?${query}`), route());
+      expect(invalid.status).toBe(400);
+      expect(invalid.headers.get('cache-control')).toBe('private, no-store');
+    }
+    expect((await childPublicationGET(new Request('http://local'), route('invalid'))).status).toBe(400);
+    expect((await childPublicationGET(new Request('http://local'), route(crypto.randomUUID(), 'invalid'))).status).toBe(400);
+    const parentUser = await seedUser(seeded.test.seed);
+    await seedMembership(seeded.test.seed, parentUser, seeded.schoolId, 'PARENT');
+    mocks.context = contextFor(parentUser, seeded.schoolId, 'PARENT');
+    const unavailable = await childPublicationGET(new Request('http://local'), route());
+    expect(unavailable.status).toBe(404);
+    expect(unavailable.headers.get('cache-control')).toBe('private, no-store');
+    expect(await unavailable.json()).toMatchObject({ error: { featureCode: 'CHILD_NOT_AVAILABLE' } });
+  });
+
   it('covers Parent create/list/detail/patch envelopes', async () => {
     const createdResponse = await parentsPOST(json('POST', {
       firstName: 'Sara', lastName: 'Benali', parentCode: 'P-1',

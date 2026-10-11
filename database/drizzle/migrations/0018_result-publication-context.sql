@@ -1,0 +1,1 @@
+ALTER TABLE "result_publications" ADD COLUMN "display_context" jsonb;

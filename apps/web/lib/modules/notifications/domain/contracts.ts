@@ -22,6 +22,7 @@ export const notificationInboxQuerySchema = z.object({
 export type NotificationInboxQuery = z.output<typeof notificationInboxQuerySchema>;
 
 export interface NotificationView {
+  destination?: string | null;
   id: string;
   notificationType: (typeof NOTIFICATION_TYPES)[number];
   sourceType: (typeof NOTIFICATION_SOURCE_TYPES)[number];

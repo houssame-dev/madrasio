@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, foreignKey, index, integer, numeric, pgEnum, pgTable, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { check, foreignKey, index, integer, jsonb, numeric, pgEnum, pgTable, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { academicPeriods } from './academic-periods';
 import { academicYears } from './academic-years';
@@ -18,6 +18,15 @@ import { users } from './users';
  * foreign keys below enforce referential + same-School integrity.
  */
 export const resultType = pgEnum('result_type', ['SUBJECT', 'PERIOD', 'ANNUAL']);
+
+/** Publication-time labels only; null on legacy rows, never reconstructed from current names. */
+export interface ResultDisplayContext {
+  schemaVersion: 1;
+  studentName: string;
+  academicYearName: string;
+  academicPeriodName: string | null;
+  subjectName: string | null;
+}
 
 /**
  * ResultPublication — the immutable historical snapshot of a published Result
@@ -80,6 +89,7 @@ export const resultPublications = pgTable(
     academicPeriodId: uuid('academic_period_id'),
     classId: uuid('class_id').notNull(),
     resultValue: numeric('result_value', { precision: 6, scale: 2 }).notNull(),
+    displayContext: jsonb('display_context').$type<ResultDisplayContext>(),
     gradingConfigurationVersionId: uuid('grading_configuration_version_id').notNull(),
     publicationVersion: integer('publication_version').notNull(),
     publishedBy: uuid('published_by')

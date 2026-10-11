@@ -50,6 +50,7 @@ export async function listChildHomework(db: ParentsDb, schoolId: string, student
 }
 
 export interface ParentPublishedResultRow {
+  displayContext: schema.ResultDisplayContext | null;
   publicationId: string;
   resultId: string;
   resultType: ResultType;
@@ -153,6 +154,7 @@ export async function findChildPlacement(
 
 function publishedResultSelection() {
   return {
+    displayContext: schema.resultPublications.displayContext,
     publicationId: schema.resultPublications.id,
     resultValue: schema.resultPublications.resultValue,
     publicationVersion: schema.resultPublications.publicationVersion,

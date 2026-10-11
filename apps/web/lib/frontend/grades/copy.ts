@@ -96,7 +96,6 @@ export const gradeCopy = {
   resultRevised: 'Result revision published. Previous publications remain unchanged; notifications are processed asynchronously.',
   resultFinalized: 'Result finalized.',
   publicationVersion: 'Publication version', publishedAt: 'Published at',
-  publicationHistoryUnavailable: 'Result publication history read API is not currently exposed.',
   teacherResultsDescription: 'Subject Results are limited by your exact active Class, Subject, and Academic Year assignments. Period and Annual administration is unavailable to Teachers.',
   resultTypeLabels: { SUBJECT: 'Subject', PERIOD: 'Period', ANNUAL: 'Annual' },
   viewResult: 'View Result',

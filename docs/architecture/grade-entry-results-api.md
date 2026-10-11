@@ -121,11 +121,17 @@ Administrative reads added by Task 020:
 - `GET /api/v1/results/subjects`
 - `GET /api/v1/results/periods`
 - `GET /api/v1/results/annual`
-- `GET /api/v1/results/:id?resultType=SUBJECT|PERIOD|ANNUAL`
+- `GET /api/v1/results/:id?resultType=SUBJECT|PERIOD|ANNUAL&historyPage=1`
 
 Lists use bounded page/pageSize pagination and deterministic created-time/ID
 ordering. Teacher SQL scope is applied before SubjectResult count/pagination.
 Period and Annual administrative reads remain SchoolAdmin-only.
+
+Task 061 detail adds `publicationHistory` (null if unpublished, otherwise
+selected latest snapshot plus 20-entry history page and total). This remains
+behind the same School/Teacher exact-assignment authorization; Parents use the
+dedicated child publication route. Working status is not inferred from history.
+See [Published result experience](published-result-experience.md).
 
 ## Finalization, publication, and revision
 

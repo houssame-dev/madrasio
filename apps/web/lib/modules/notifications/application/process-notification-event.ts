@@ -44,6 +44,7 @@
 
 import type { AnnouncementEventPayload } from '@/lib/modules/announcements/domain/announcement-events';
 import type { ResultEventPayload } from '@/lib/modules/grades/domain/results';
+import { z } from 'zod';
 
 import {
   createAnnouncementPublishedNotificationContent,
@@ -59,6 +60,14 @@ import {
 import type { NotificationInsert, NotificationsDb } from '../infrastructure/repositories/notification-repository';
 import * as repo from '../infrastructure/repositories/notification-repository';
 import { NotificationProcessingError } from './notification-errors';
+
+const resultContextSchema = z.object({
+  schemaVersion: z.literal(1),
+  studentName: z.string().min(1).max(1000),
+  academicYearName: z.string().min(1).max(1000),
+  academicPeriodName: z.string().min(1).max(1000).nullable(),
+  subjectName: z.string().min(1).max(1000).nullable(),
+}).strict();
 
 export interface ProcessNotificationEventInput {
   outboxEventId: string;
@@ -110,6 +119,9 @@ function validateAnnouncementEventPayload(payload: Record<string, unknown>): Ann
  * explicit FAILED outcome — never PROCESSED, never silently dropped.
  */
 function validateResultEventPayload(payload: Record<string, unknown>): ResultEventPayload {
+  if (payload.displayContext !== undefined && !resultContextSchema.safeParse(payload.displayContext).success) {
+    throw new NotificationProcessingError('EVENT_PAYLOAD_INVALID', 'The result display context is malformed.');
+  }
   if (
     !isNonEmptyString(payload.eventId) ||
     (payload.eventType !== 'ResultPublished' && payload.eventType !== 'ResultRevisionPublished') ||
@@ -308,8 +320,8 @@ async function processResultPublished(
 
   const content =
     event.eventType === 'ResultRevisionPublished'
-      ? createResultRevisedNotificationContent({ resultValue: payload.resultValue })
-      : createResultPublishedNotificationContent({ resultValue: payload.resultValue });
+      ? createResultRevisedNotificationContent(payload)
+      : createResultPublishedNotificationContent(payload);
 
   // Defensive deduplication (Task 012 §11 step 3) — the frozen payload is
   // already deduplicated at publication time, but a tampered/legacy event must

@@ -42,9 +42,17 @@ The existing `/homework/[id]` behavior remains unchanged: when a Parent already 
 
 Subject, Period, and Annual are requested and rendered separately. Subject rows include Subject and Period context, Period rows use authoritative PeriodResult publications, and Annual rows have no invented AcademicPeriod. The frontend does not call staff Result lists, use Gradebooks/Grades/Assessments, reconstruct Results from Notifications, calculate averages or coefficients, derive Annual from Period, or expose calculate/finalize/publish/revise/edit controls.
 
+Task 061 gives each result type independent Previous/Next pagination with the
+existing size 50, total count and page-specific query key. School/child/Year
+changes reset paging. Each row links to `/children/:studentId/results/:publicationId`:
+the exact selected snapshot stays visible while its logical Result's publication
+history pages independently (20 per page). Only immutable publication labels are
+used; legacy missing labels are stated explicitly. See
+[Published result experience](published-result-experience.md).
+
 ## Notifications and Announcements
 
-Dashboard reuses the persisted Task 035 unread-count query and links to `/notifications`. The inbox remains the recipient-facing consumption surface, including persisted Announcement and Result Notification content. Opening historical Notification content does not re-check ParentStudent and does not fetch its source; Notification ownership remains authoritative.
+Dashboard reuses the persisted Task 035 unread-count query and links to `/notifications`. Notification ownership remains authoritative for historical content. Task 061 detail reads separately authorize an optional Result destination against the current Parent profile, active child relationship, School and enrolled Year. Revoked source access removes the link, not the owned historical message. Following the link rechecks authorization.
 
 The Parent portal never calls the staff Announcement list or detail routes and offers no creation, targeting, publication, or School-wide broadcast control.
 
@@ -70,4 +78,4 @@ Child cards and sections stack on narrow screens and use larger keyboard-focusab
 
 ## Deliberate exclusions
 
-No new permission, schema, migration, Parent authorization model, Student login, raw Grade surface, Result mutation, Homework write, staff roster, Attendance management, Announcement management, Notification creation, payment, timetable, transport, messaging, realtime, analytics, export, or PDF behavior is introduced. The server remains authoritative.
+No new permission, Parent authorization model, Student login, raw Grade surface, Result mutation, Homework write, staff roster, Attendance management, Announcement management, client Notification creation, payment, timetable, transport, messaging, realtime, analytics, export, or PDF behavior is introduced. Task 061's single nullable publication-context column is documented separately; the server remains authoritative.

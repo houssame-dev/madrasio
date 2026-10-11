@@ -55,7 +55,7 @@ export const gradesApi = {
   },
   putAssessmentGrades: (assessmentId: string, grades: GradeEntryInput[]) => data<{ grades: import('./types').GradeDto[] }>(`/api/v1/assessments/${assessmentId}/grades`, put({ grades })),
   results: (resultType: ResultType, params: ResultListParams) => apiRequest<PageResponse<ResultDto>>(query(`/api/v1/results/${resultType === 'SUBJECT' ? 'subjects' : resultType === 'PERIOD' ? 'periods' : 'annual'}`, params)),
-  result: (resultType: ResultType, resultId: string) => data<ResultDto>(query(`/api/v1/results/${resultId}`, { resultType })),
+  result: (resultType: ResultType, resultId: string, historyPage = 1) => data<ResultDto>(query(`/api/v1/results/${resultId}`, { resultType, historyPage })),
   calculateSubject: (input: { gradebookId: string; studentId: string }) => data<ResultDto>('/api/v1/results/subjects/calculate', post(input)),
   calculatePeriod: (input: { studentId: string; academicYearId: string; academicPeriodId: string; classId: string }) => data<ResultDto>('/api/v1/results/periods/calculate', post(input)),
   calculateAnnual: (input: { studentId: string; academicYearId: string; classId: string }) => data<ResultDto>('/api/v1/results/annual/calculate', post(input)),

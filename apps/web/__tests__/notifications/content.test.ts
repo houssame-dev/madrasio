@@ -60,6 +60,20 @@ describe('vocabulary mirrors the database enums (Task 010 §3/§4)', () => {
 });
 
 describe('notification content (Task 010 §21/§22)', () => {
+  it('describes initial/revised publication from recorded context without inventing Annual fields', () => {
+    const input = { resultValue: '15.50', resultType: 'ANNUAL', publicationVersion: 1, displayContext: {
+      schemaVersion: 1 as const, studentName: 'Recorded Student', academicYearName: 'Recorded year', academicPeriodName: null, subjectName: null,
+    } };
+    expect(createResultPublishedNotificationContent(input)).toEqual({
+      title: 'Result published',
+      body: 'Recorded Student · ANNUAL · Recorded year · Result value: 15.50 · Initial publication',
+    });
+    expect(createResultRevisedNotificationContent({ ...input, publicationVersion: 2 })).toEqual({
+      title: 'Result updated',
+      body: 'Recorded Student · ANNUAL · Recorded year · Result value: 15.50 · Revised publication 2',
+    });
+  });
+
   it('announcement content uses the immutable version title', () => {
     expect(createAnnouncementPublishedNotificationContent('Reunion')).toEqual({
       title: 'Reunion',

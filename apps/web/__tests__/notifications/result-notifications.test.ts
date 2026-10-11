@@ -277,7 +277,7 @@ describe('Result notification processing (Task 012 §25)', () => {
       expect(notification.sourceId).toBe(payloadOf(event).publicationId);
       expect(notification.sourceEventId).toBe(event.id);
       expect(notification.title).toBe('Result published');
-      expect(notification.body).toBe('Result value: 17.00');
+      expect(notification.body).toBe('Amine Benali · Mathematics · 2025/2026 · Term 1 · Result value: 17.00 · Initial publication');
       expect(notification.readAt).toBeNull();
     }
   });

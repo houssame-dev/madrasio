@@ -116,6 +116,7 @@ export interface GradeEntryInput {
 }
 
 export interface ResultDto {
+  publicationHistory?: import('./publications').PublicationHistoryPage | null;
   id: string;
   resultType: ResultType;
   studentId: string;

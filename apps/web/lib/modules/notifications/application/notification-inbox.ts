@@ -1,4 +1,6 @@
-import { requireOperation, type AuthorizationDb } from '@/lib/authorization/server';
+import { requireOperation, resolveCurrentContext, type AuthorizationDb } from '@/lib/authorization/server';
+import { findPublishedSnapshot } from '@/lib/modules/grades/infrastructure/repositories/publication-history';
+import { parentCanReadChild, childHasAcademicYear } from '@/lib/modules/parents/infrastructure/repositories/parent-child-read-repository';
 
 import type {
   NotificationInboxQuery, NotificationPage, NotificationView,
@@ -47,7 +49,16 @@ export async function getNotification(
 ): Promise<NotificationView> {
   const userId = await authorizeInbox(db, actor);
   const row = await repo.findNotification(db, notificationId, actor.schoolId, userId);
-  return row ?? notFound();
+  if (!row) return notFound();
+  let destination: string | null = null;
+  if (row.sourceType === 'RESULT_PUBLICATION' && (await resolveCurrentContext(db as unknown as AuthorizationDb, actor)).role === 'PARENT') {
+    const publication = await findPublishedSnapshot(db, actor.schoolId, row.sourceId);
+    if (publication && await parentCanReadChild(db, actor.schoolId, userId, publication.studentId)
+      && await childHasAcademicYear(db, actor.schoolId, publication.studentId, publication.academicYearId)) {
+      destination = `/children/${publication.studentId}/results/${publication.id}`;
+    }
+  }
+  return { ...row, destination };
 }
 
 export async function markInboxNotificationRead(
@@ -57,7 +68,9 @@ export async function markInboxNotificationRead(
 ): Promise<NotificationView> {
   const userId = await authorizeInbox(db, actor);
   const row = await markReadState(db, { userId, schoolId: actor.schoolId, notificationId });
-  return row ?? notFound();
+  if (!row) return notFound();
+  // Detail-cache replacement must retain (and reauthorize) the optional destination.
+  return getNotification(db, actor, notificationId);
 }
 
 export async function markNotificationInboxRead(
