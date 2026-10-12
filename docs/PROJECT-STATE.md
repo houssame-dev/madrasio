@@ -4,26 +4,141 @@ Last updated: **2026-10-12**
 
 ## Current task and release status
 
-**Current roadmap task:** **Task 064 — Student DOB** (next to plan/implement; **not yet started**).
+**Current roadmap task:** **Task 065 — Homework Delivery & Actual Hand-In** (next to plan/implement; **not yet started**).
 
-**Latest accepted milestone:** **Task 063 — Private Application Files & Attachments**.
+**Latest accepted milestone:** **Task 064 — Student Date of Birth**.
 
-**Status:** `TASK_063_PRIVATE_APPLICATION_FILES_AND_ATTACHMENTS_PASS`
+**Status:** `TASK_064_STUDENT_DATE_OF_BIRTH_PASS`
 
-Task 063 implementation, manual local verification, commit, GitHub push, and reported GitHub CI / Deploy STAGING acceptance are complete. Task 063 is closed. No further Task 063 engineering or validation is currently pending under the agreed scope.
+Task 064 implementation, manual local verification, implementation commit, and user-reported GitHub **CI / Deploy STAGING SUCCESS** are complete. This full replacement state file records Task 064 acceptance; **its repository documentation synchronization must be committed manually** after copying it to `docs/PROJECT-STATE.md`. Do not treat preparation of this file as proof that the documentation commit has already occurred.
 
 - **Repository:** `houssame-dev/madrasio`
 - **Branch:** `main`
-- **Accepted commit:** `b049a41188d647528dadca7b41fb8d82c0c7a454`
-- **Commit subject:** `feat(files): add private application files and announcement attachments`
-- **Previous accepted HEAD:** `914828112279038c4a454362ea5ccb0e92db3776`
-- **Push:** successful; remote `main` verified at the exact Task 063 commit; local branch synchronized and working tree clean immediately after push.
-- **CI / Deploy STAGING:** **SUCCESS**, per the user's manual GitHub Actions inspection; workflow run IDs were not provided. These outcomes are recorded as user-verified, not independently re-queried in this documentation update.
-- **Production:** no Production deployment or hosted Production storage action was authorized/performed as part of Task 063 acceptance. Existing Production customer-onboarding and backup/recovery gates remain separate and are not waived by this milestone.
+- **Task 064 implementation commit:** `55cd860` (`feat(students): implement school-local date of birth`)
+- **Task 064 starting HEAD:** `5060033504fbf6f9af2a26a176da93ed5d87940c`
+- **Implementation commit:** 44 files (39 modified and 5 newly added), with **8,209 insertions and 68 deletions**. Git reported a clean local working tree and `main` one commit ahead of `origin/main` immediately after the commit.
+- **CI / Deploy STAGING:** **SUCCESS / SUCCESS**, confirmed by the user after the implementation push step. Workflow IDs, exact remote post-push SHA readback, and separate live Student-DOB application checks were not provided; do not invent them.
+- **Production:** no Production deployment, direct hosted database migration verification, or Production customer-data operation is asserted by this Task 064 record. Existing Production customer-onboarding and backup/recovery obligations remain separate and are not waived.
+- **Documentation status:** replacement prepared; commit/push of this revised `docs/PROJECT-STATE.md` remains the user-operated final documentation step.
 
-**Next step:** prepare and authorize **Task 064 — Student DOB** under the established implementation workflow. Do not roll Task 065 homework actual hand-in functionality into Task 064 or retroactively into Task 063. This state-document synchronization itself is documentation work and does not authorize any hosted or Production operation.
+**Next step:** complete the `PROJECT-STATE.md` documentation commit, then begin planning **Task 065 — Homework Delivery & Actual Hand-In** under its own approved audit scope. Task 064 does not add real Homework hand-in, new Student login, or unrelated Student demographics.
 
 ---
+
+## Task 064 — Student Date of Birth
+
+**Accepted implementation status:** `TASK_064_STUDENT_DATE_OF_BIRTH_PASS`
+
+**Owned audit finding:** `V1-AUDIT-025` (`OWNER-04`).
+
+**Scope:** Student DOB only; no broader demographics or Homework changes.
+
+### Functional behavior and privacy boundary
+
+Task 064 adds Student date of birth end-to-end to the existing School Admin management workflow:
+
+- A **normal new Student creation** requires a valid DOB.
+- Existing Students with an unknown DOB continue to store **NULL**; no birth dates are invented or retroactively required when updating unrelated fields.
+- Authorized corrections may set a valid DOB without disturbing Student identity, lifecycle, placement, enrollment history, or School ownership.
+- DOB is a **calendar date**, not a timestamp/instant. The application rejects invalid real dates (including incorrect leap days) and dates after the **authoritative School-local today**, using the previously accepted Task 055 School Business-Time contract.
+- DOB handling does not shift calendar dates through browser or UTC timezone conversion, does not introduce universal minimum/maximum-age business rules, and fails safely when required School-time configuration is invalid.
+- **School Admin** create/edit and management detail/mutation responses expose DOB as authorized. Broad Student lists, Teacher/Parent DTOs, notification payloads, and unrelated academic projections do not gain DOB fields simply because the column exists.
+- Existing tenant, current-School membership, and role access controls remain in force. No new Student user/account role is introduced.
+- The Student management forms/detail preserve Task 056 frontend conventions, including validation and feedback behavior.
+
+**Explicitly out of scope:** Student sex/gender, medical data, national identifiers, Teacher DOB, age-derived rules, Student login, and Task 065 Homework Delivery & Actual Hand-In.
+
+### Persistence and migration
+
+New Drizzle migration:
+
+`database/drizzle/migrations/0021_student-date-of-birth.sql`
+
+```sql
+ALTER TABLE "students" ADD COLUMN "date_of_birth" date;
+```
+
+- Column is **nullable DATE**, with no default and **no backfill**.
+- Fresh and populated migration replay passed, including a populated upgrade from migration `0020` that preserves Student identity, related historical rows, and legacy `NULL` DOB.
+- Generated Drizzle journal/snapshot were included in the implementation commit.
+- RLS policies, application grants, and School tenant ownership were not widened.
+
+**Current persistence inventory after Task 064:**
+
+- **22 migrations** (through `0021`)
+- **42 application / RLS-enabled tables**
+- **44 recovery tables/fingerprints** (42 application tables + `auth.users` + `auth.identities`)
+
+The migration and recovery fingerprints were included in deployment/security/recovery compatibility regression coverage. The unit/in-memory replay tests do **not** independently prove that a hosted STAGING or Production database has applied migration `0021`.
+
+### Recovery and historical compatibility
+
+- Full-row Student recovery now preserves **both populated DOB values and unknown (`NULL`) DOB**, with the existing **44-table** recovery format unchanged.
+- Updated deployment/security/backup/operator fixtures and inventory contracts account for `0021` without creating new tables or authorizing new roles.
+- Historical `0000–0017` publication-migration upgrade fixtures continue to represent their original older database schema faithfully; later migrations are not assumed to exist before the upgrade step.
+- The separate Task 063 caveat remains: database recovery covers private application-file metadata/associations, **not the Cloudflare R2 binary bytes**.
+
+### Manual local validation evidence
+
+Every required Task 064 local gate completed successfully after one narrow test-fixture remediation.
+
+| Validation gate | Verified result |
+| --- | --- |
+| Gate 1 — Student / frontend / Parent focused tests | **13 files passed; 128 tests passed** |
+| Gate 2 — database migrations / security (complete rerun) | **8 files passed; 21 tests passed** |
+| Gate 3 — recovery / security / deployment / operator | **19 files passed, 3 files skipped; 491 tests passed, 8 skipped** |
+| Gate 4 — `pnpm lint` | **PASS** |
+| Gate 4 — `pnpm typecheck` | **PASS** |
+| Gate 4 — `git diff --check` / `git diff --cached --check` | **PASS** |
+| Gate 5 — canonical database suite | **19 files passed; 372 tests passed** |
+| Gate 5 — canonical web suite | **168 files passed, 4 files skipped; 1,755 tests passed, 13 skipped** |
+| Gate 5 — combined canonical suites | **2,127 tests passed; 13 skipped; 0 failed** |
+| Gate 6 — `pnpm build` | **PASS** — Next.js 15.5.23; production compilation; 38/38 static pages generated |
+| Gate 7 — local Playwright (Chromium) | **6 tests passed, 5 conditionally skipped; 0 failed** |
+| Gate 8 — repository review | **PASS** — 44 expected files; migration SQL verified; no staged/unrelated changes; clean whitespace checks |
+| GitHub CI | **SUCCESS**, user-confirmed |
+| Deploy STAGING | **SUCCESS**, user-confirmed |
+
+The web canonical 13 skipped tests and Playwright 5 skipped tests concern conditional integration/hosted or browser opt-in coverage. Do not report these skips as independently run checks; the local Playwright tests do not constitute an end-to-end hosted DOB-management exercise.
+
+The local Git LF → CRLF messages were line-ending warnings, not whitespace/test failures.
+
+### Narrow Gate 2 remediation
+
+The first Gate 2 database run completed **20 passing tests and one failing test** across eight files. The failing case was:
+
+`database/__tests__/publication-context-migration.test.ts` — populated historical `0000–0017` publication upgrade.
+
+**Confirmed root cause:** the fixture applied only migrations `0000–0017` but used the current Drizzle Student model to insert/return a Student, which implicitly referenced `date_of_birth` introduced later in `0021`.
+
+**Correction:** the historical Student insert was changed to parameterized SQL listing only columns actually present in the older schema. It does not fabricate a DOB. Publication-preservation assertions, NULL historical publication context, current fresh-chain replay, and application code remained unchanged.
+
+- Targeted remediation retest: **1 file, 2 tests passed**.
+- Full Gate 2 rerun: **8 files, 21 tests passed**.
+- Full canonical database and web suites subsequently passed.
+- **No production-code changes** were required for this regression remediation.
+
+### Implementation, release, and remaining boundaries
+
+- **Code commit:** `55cd860` — `feat(students): implement school-local date of birth`.
+- **Change inventory:** 39 modified + 5 new = **44 files**; 8,209 insertions, 68 deletions (including the generated Drizzle migration snapshot).
+- **No dependency/lockfile changes** were reported in A1 and the final change inventory.
+- Implementation commit was created manually following the 8 local gates; immediately afterward the user saw a clean working tree and `main...origin/main [ahead 1]` before the instructed push.
+- The user subsequently confirmed **CI SUCCESS** and **Deploy STAGING SUCCESS**. Their post-push exact SHA readback and workflow IDs were not supplied, so these remain reported release outcomes rather than a separately verified provider audit.
+- No direct hosted School Admin DOB journey or hosted applied-migration inspection was supplied. No Production acceptance should be inferred.
+- Existing Production backup/recovery and customer-data onboarding gate remains in force.
+
+**Acceptance:** Task 064 satisfies the approved Student DOB-only scope, preserves unknown legacy DOB and School/role privacy, and passed all eight local validation gates plus user-reported GitHub CI and Deploy STAGING checks.
+
+`TASK_064_STUDENT_DATE_OF_BIRTH_PASS`
+
+**Documentation closeout:** save this **entire** file as `docs/PROJECT-STATE.md` and commit/push that documentation change manually. Until then, this acceptance record is prepared but not synchronized into the repository.
+
+---
+
+## Historical accepted milestone — Task 063
+
+The Task 063 record below is retained as accepted historical context. References to its then-current inventory and next roadmap milestone are historical; Task 064 is the current latest accepted implementation.
 
 ## Task 063 — Private Application Files & Attachments
 
