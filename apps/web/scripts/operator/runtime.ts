@@ -19,6 +19,7 @@ import type {
   SeedDbState,
 } from './contracts';
 import { OperatorError } from './contracts';
+import { EXPECTED_MIGRATION_COUNT, EXPECTED_TABLE_COUNT } from '../deployment/contracts';
 
 type Db = NodePgDatabase<typeof schema>;
 
@@ -915,8 +916,8 @@ export async function runHostedPreflight(config: BootstrapConfig, db: Db): Promi
     !row ||
     row.database !== 'postgres' ||
     row.auth_users !== 'auth.users' ||
-    row.migration_count !== 18 ||
-    row.public_table_count !== 40
+    row.migration_count !== EXPECTED_MIGRATION_COUNT ||
+    row.public_table_count !== EXPECTED_TABLE_COUNT
   ) {
     throw new OperatorError(
       'HOSTED_PREFLIGHT_FAILED',

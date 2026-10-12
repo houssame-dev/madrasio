@@ -104,6 +104,14 @@ be checked after linking to confirm Root Directory, outside-root sources, Node
 
 ## Environment matrix
 
+Task 063 adds an optional server-only private application storage configuration:
+`R2_ACCOUNT_ID`, `R2_ENDPOINT`, `R2_BUCKET` (server config), `R2_ACCESS_KEY_ID` and
+`R2_SECRET_ACCESS_KEY` (server secrets). Use environment-isolated, application-bucket-scoped
+credentials, never backup/recovery credentials. No browser variables or GitHub migration
+secrets are required for this storage adapter. It performs no build-time I/O. Hosted bucket
+privacy/jurisdiction and runtime activation require a separate operator checkpoint; they have
+not been verified here. [Storage contract](private-application-files-and-attachments.md).
+
 | Location                     | Classification     | Names/purpose                                                                                        |
 | ---------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
 | Vercel                       | Public             | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_APP_URL`            |

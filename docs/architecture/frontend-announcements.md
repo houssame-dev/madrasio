@@ -4,7 +4,7 @@
 
 Task 034 replaces the `/announcements` placeholder with the staff management workspace and adds `/announcements/[id]` for one logical Announcement. The list uses the Task 024.4 optimized `latestVersion` row and never performs per-row Version requests. Detail composes the current Version, immutable Version history, exact-Version targets, publication actions, and bounded publication metadata.
 
-Task 062 extends this workspace with correction/cancellation/rescheduling and sanitized rich HTML authoring. It also adds the separate recipient inbox at `/announcements/inbox` and exact-publication detail at `/announcements/inbox/[id]`. There is still no recipient directory, Outbox console, in-browser processor, attachment workflow, or general messaging system.
+Task 062 extends this workspace with correction/cancellation/rescheduling and sanitized rich HTML authoring. It also adds the separate recipient inbox at `/announcements/inbox` and exact-publication detail at `/announcements/inbox/[id]`. Task 063 adds exact-Version private attachments to management detail/history and recipient publication detail; see [private application files](private-application-files-and-attachments.md). There is still no recipient directory, Outbox console, in-browser processor, or general messaging system.
 
 ## Authorization and tenancy
 

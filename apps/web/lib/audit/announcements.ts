@@ -6,11 +6,11 @@ import { AuditPersistenceError } from './service';
 const eventSchema = z.object({
   action: z.enum(['AnnouncementCreated', 'AnnouncementVersionCreated', 'AnnouncementTargetsChanged',
     'AnnouncementScheduled', 'AnnouncementRescheduled', 'AnnouncementCancelled', 'AnnouncementPublished',
-    'AnnouncementRevised', 'AnnouncementArchived']),
+    'AnnouncementRevised', 'AnnouncementArchived', 'AnnouncementAttachmentAdded', 'AnnouncementAttachmentRemoved']),
   resourceId: z.string().uuid(),
   metadata: z.object({ versionId: z.string().uuid().optional(), publicationId: z.string().uuid().optional(),
     scheduledAt: z.string().datetime().optional(), previousScheduledAt: z.string().datetime().optional(),
-    targetId: z.string().uuid().optional(), change: z.enum(['ADD', 'REMOVE']).optional() }).strict(),
+    targetId: z.string().uuid().optional(), attachmentId: z.string().uuid().optional(), fileId: z.string().uuid().optional(), change: z.enum(['ADD', 'REMOVE']).optional() }).strict(),
 }).strict();
 
 /** Called only after service authorization, inside the same locked mutation transaction. */

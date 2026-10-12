@@ -8,13 +8,13 @@ let client: PGlite;
 afterEach(async () => {
   await client?.close();
 });
-it('fresh replay has 20 migrations, 40 protected tables and no implicit platform grant', async () => {
+it('fresh replay has 21 migrations, 42 protected tables and no implicit platform grant', async () => {
   const test = await createTestDb();
   client = test.client;
   expect(
     (await client.query<{ n: number }>('select count(*)::int n from drizzle.__drizzle_migrations'))
       .rows[0].n,
-  ).toBe(20);
+  ).toBe(21);
   const [column] = (
     await client.query<{ is_nullable: string; column_default: string; data_type: string }>(
       "select is_nullable,column_default,data_type from information_schema.columns where table_schema='public' and table_name='users' and column_name='is_platform_admin'",
@@ -31,7 +31,7 @@ it('fresh replay has 20 migrations, 40 protected tables and no implicit platform
         "select count(*)::int n from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity",
       )
     ).rows[0].n,
-  ).toBe(40);
+  ).toBe(42);
   expect(
     (
       await client.query<{ n: number }>(
@@ -73,8 +73,34 @@ it('upgrades populated users with false even for SUPER_ADMIN memberships; preser
   await expect(client.query('update users set is_platform_admin=null')).rejects.toThrow();
   await client.query('update users set is_platform_admin=true where id=$1', [id]);
   expect((await client.query('select is_platform_admin from users')).rows).toEqual([
-    { is_platform_admin: true },
-  ]);
-  const audit = await client.query<{ violation: string }>(applicationSecurityAuditSql);
-  expect(() => assertApplicationSecurity(audit.rows)).not.toThrow();
+  { is_platform_admin: true },
+]);
+
+/*
+ * The assertions above verify the historical 0017 platform-authority upgrade
+ * itself. The shared application security audit describes the CURRENT schema,
+ * so replay the later migrations before applying that repository-wide audit.
+ */
+for (const file of (await readdir(migrationsFolder))
+  .filter(
+    (p) =>
+      /^\d{4}_.+\.sql$/.test(p) &&
+      Number(p.slice(0, 4)) > 17,
+  )
+  .sort()) {
+  for (const statement of (
+    await readFile(join(migrationsFolder, file), 'utf8')
+  ).split('--> statement-breakpoint')) {
+    if (statement.trim()) {
+      await client.exec(statement);
+    }
+  }
+}
+
+const audit = await client.query<{ violation: string }>(
+  applicationSecurityAuditSql,
+);
+
+expect(audit.rows).toEqual([]);
+expect(() => assertApplicationSecurity(audit.rows)).not.toThrow();
 }, 30000);

@@ -37,6 +37,7 @@ const ServerEnvSchema = z.object({
   R2_ACCESS_KEY_ID: optionalString(z.string()),
   R2_SECRET_ACCESS_KEY: optionalString(z.string()),
   R2_BUCKET: optionalString(z.string()),
+  R2_ENDPOINT: optionalString(z.string().url()),
 
   // Observability
   SENTRY_DSN: optionalString(z.string().url()),

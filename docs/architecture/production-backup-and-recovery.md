@@ -1,5 +1,16 @@
 # Production backup and recovery
 
+## Task 063 metadata extension
+
+The current repository inventory through `0020_private-application-files` is 42 application
+tables plus 2 durable Auth tables (44 recovery tables), with 21 migrations. This extends the
+historical inventory described below with `files` and `announcement_attachments`. Full-row
+fingerprints/FK replay include their metadata; **R2 attachment bytes are not in the database
+archive**. Existing Task 050 acceptance does not prove recovery of later application files.
+See [private application files](private-application-files-and-attachments.md) for deployment,
+reconciliation and the separate object-retention/restore acceptance boundary. Historical
+milestone evidence below is retained; canonical accepted project status lives in PROJECT-STATE.
+
 Status: Task 050 Stage 5 Production-to-isolated-local restore readiness. Stage 6 STAGING/local recovery acceptance remains complete through reconstructed evidence, and Task 050 Stage 4.2 has now accepted one real encrypted Production recovery point with immutable R2 upload, remote verification, independent ciphertext readback, successful monitoring, and cleanup evidence. Recurring Production backup automation remains intentionally disabled. Customer onboarding remains blocked until the timed Production restore and remaining Production backup-cadence gates are accepted.
 
 ## Recovery objective and authority

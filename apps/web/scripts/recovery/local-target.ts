@@ -1,3 +1,4 @@
+import { EXPECTED_MIGRATION_COUNT } from '../deployment/contracts';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -594,7 +595,7 @@ export async function verifyLocalRecoveryTarget(
     if (options.expectMigrated) {
       if (
         row.application_tables !== APPLICATION_TABLES.length ||
-        migrations !== 18 ||
+        migrations !== EXPECTED_MIGRATION_COUNT ||
         row.rls_tables !== APPLICATION_TABLES.length ||
         row.policies !== 0
       ) {

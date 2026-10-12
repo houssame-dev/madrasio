@@ -2,6 +2,13 @@
 
 Drizzle ORM foundation.
 
+Task 063 adds `0020_private-application-files`: 21 migrations, 42 application tables.
+`files` stores private object metadata; `announcement_attachments` enforces exact-Version,
+same-School association. Both are RLS-enabled with no Data API grants. Existing rows are
+not backfilled with invented attachments. Recovery now inventories 44 tables including
+durable Auth, but does not archive R2 object bytes. See
+[private application files](../docs/architecture/private-application-files-and-attachments.md).
+
 This package owns:
 
 - `drizzle.config.ts` — Drizzle Kit configuration

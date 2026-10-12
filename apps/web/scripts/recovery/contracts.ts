@@ -18,10 +18,11 @@ export const PINNED_TOOLS = {
 } as const;
 export const AGE_RUNTIME_VERSION = `v${PINNED_TOOLS.age}`;
 
-/** Durable allowlist through 0019. Full-row fingerprints include announcement body_format and CANCELLED intent state. */
+/** Durable allowlist through 0020. Full rows include private File metadata and exact-Version associations, not R2 bytes. */
 export const APPLICATION_TABLES = [
   'academic_periods',
   'academic_years',
+  'announcement_attachments',
   'announcement_publications',
   'announcement_targets',
   'announcement_versions',
@@ -34,6 +35,7 @@ export const APPLICATION_TABLES = [
   'curricula',
   'curriculum_subjects',
   'curriculum_versions',
+  'files',
   'gradebooks',
   'grades',
   'grading_configuration_versions',

@@ -57,6 +57,7 @@
  * consumes the outbox event.
  */
 
+import { assertAnnouncementAttachmentsReady } from './announcement-attachments';
 import { randomUUID } from 'node:crypto';
 
 import { persistOutboxEvent } from '@/lib/events/outbox';
@@ -198,6 +199,8 @@ async function publishAnnouncementLocked(db: AnnouncementsDb, input: PublishAnno
     }
     return toView(replay, false);
   }
+
+  await assertAnnouncementAttachmentsReady(db, input.schoolId, version.id);
 
   // Load targets and enforce the academic-scope half of BR-ANNOUNCEMENT-006.
   const targets = await repo.findTargets(db, input.schoolId, version.id);
@@ -389,6 +392,8 @@ async function publishDueAnnouncementLocked(db: AnnouncementsDb, input: PublishD
         `Announcement version ${publication.announcementVersionId} was not found.`,
       );
     }
+
+    await assertAnnouncementAttachmentsReady(tx, publication.schoolId, version.id);
 
     // A scheduled publication stays bound to the EXACT Version that was
     // scheduled (Task 011.1 §5) — a newer Version created before the due date

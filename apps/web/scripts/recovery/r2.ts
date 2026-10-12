@@ -1,4 +1,5 @@
-import { createHash, createHmac } from 'node:crypto';
+import { createHash } from 'node:crypto';
+import { signR2Request } from '../../lib/storage/r2-signing';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 
@@ -9,21 +10,6 @@ type Fetch = typeof fetch;
 
 function sha256(value: string | Buffer): string {
   return createHash('sha256').update(value).digest('hex');
-}
-
-function hmac(key: string | Buffer, value: string): Buffer {
-  return createHmac('sha256', key).update(value).digest();
-}
-
-function encodeSegment(value: string): string {
-  return encodeURIComponent(value).replace(
-    /[!'()*]/g,
-    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
-}
-
-function objectPath(bucket: string, key: string): string {
-  return `/${encodeSegment(bucket)}/${key.split('/').map(encodeSegment).join('/')}`;
 }
 
 function assertR2Configuration(env: NodeJS.ProcessEnv) {
@@ -64,36 +50,7 @@ export class R2RecoveryObjectStore implements RecoveryObjectStore {
     payloadSha256: string,
     extraHeaders: Record<string, string> = {},
   ): { url: URL; headers: Record<string, string> } {
-    const { endpoint, bucket, accessKeyId, secretAccessKey } = this.configuration;
-    const path = objectPath(bucket, key);
-    const url = new URL(path, endpoint);
-    const instant = this.now()
-      .toISOString()
-      .replace(/[:-]|\.\d{3}/g, '');
-    const date = instant.slice(0, 8);
-    const headers: Record<string, string> = {
-      host: endpoint.host,
-      'x-amz-content-sha256': payloadSha256,
-      'x-amz-date': instant,
-      ...Object.fromEntries(
-        Object.entries(extraHeaders).map(([name, value]) => [name.toLowerCase(), value.trim()]),
-      ),
-    };
-    const names = Object.keys(headers).sort();
-    const canonicalHeaders = names.map((name) => `${name}:${headers[name]}\n`).join('');
-    const signed = names.join(';');
-    const request = [method, path, '', canonicalHeaders, signed, payloadSha256].join('\n');
-    const scope = `${date}/auto/s3/aws4_request`;
-    const toSign = ['AWS4-HMAC-SHA256', instant, scope, sha256(request)].join('\n');
-    const signingKey = hmac(
-      hmac(hmac(hmac(`AWS4${secretAccessKey}`, date), 'auto'), 's3'),
-      'aws4_request',
-    );
-    headers.authorization =
-      `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${scope}, SignedHeaders=${signed}, ` +
-      `Signature=${createHmac('sha256', signingKey).update(toSign).digest('hex')}`;
-    delete headers.host;
-    return { url, headers };
+    return signR2Request(this.configuration, method, key, payloadSha256, extraHeaders, this.now());
   }
 
   async putImmutable(input: EncryptedBackupObject & { bodyPath: string }): Promise<void> {

@@ -120,7 +120,7 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
       RECOVERY_POSTGRES_CONTAINER_IMAGE: PINNED_POSTGRES_CONTAINER,
     });
     expect(bundle.authUserCount).toBe(1);
-    expect(bundle.applicationTableCount).toBe(40);
+    expect(bundle.applicationTableCount).toBe(42);
 
     await cleanupLocalRecoveryTarget(target.statePath);
     target = await createLocalRecoveryTarget();
@@ -137,7 +137,7 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
         RECOVERY_REPOSITORY_GIT_SHA: gitSha,
         RECOVERY_POSTGRES_CONTAINER_IMAGE: PINNED_POSTGRES_CONTAINER,
       }),
-    ).resolves.toMatchObject({ tables: 42 });
+    ).resolves.toMatchObject({ tables: 44 });
     const restoredPool = new Pool({ connectionString: restoredUrl, ssl: false });
     try {
       await expect(

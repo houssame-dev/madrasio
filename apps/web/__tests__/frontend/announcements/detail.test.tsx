@@ -10,6 +10,7 @@ import { announcementId, classId, detail, page, publicationId, renderAnnouncemen
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 afterEach(() => vi.restoreAllMocks());
 function setup() { return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => { const url = String(input); const method = (init as RequestInit | undefined)?.method;
+  if (url.endsWith('/attachments') && !method) return Response.json({ data: [] });
   if (url === `/api/v1/announcements/${announcementId}` && !method) return Response.json({ data: detail });
   if (url === `/api/v1/announcements/${announcementId}/versions?page=1&pageSize=50` && !method) return Response.json(page([version], 1, 50));
   if ((url === `/api/v1/announcements/${announcementId}/publications?page=1&pageSize=20` || url === `/api/v1/announcements/${announcementId}/publications?page=1&pageSize=100`) && !method) return Response.json(page([], 1, url.endsWith('100') ? 100 : 20));

@@ -126,3 +126,4 @@ export * from './homework';
 export * from './announcements';
 export * from './notifications';
 export * from './audit';
+export * from './files';

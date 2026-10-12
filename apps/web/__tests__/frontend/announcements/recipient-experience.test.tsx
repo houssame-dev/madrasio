@@ -51,7 +51,7 @@ describe('recipient announcement journey', () => {
     expect(screen.queryByRole('button', { name: /publish|reschedule|create|cancel publication/i })).not.toBeInTheDocument();
   });
   it('reads exact publication context and sanitized content with a safe back link', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: published }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => Response.json({ data: String(input).endsWith('/attachments') ? [] : published }));
     const { container } = renderAnnouncements(<RecipientAnnouncement publicationId={publicationId} />, 'PARENT', 'America/New_York');
     expect(await screen.findByRole('heading', { name: published.title })).toBeInTheDocument();
     expect(screen.getByText(/Content v3/)).toHaveTextContent('2026-06-15 12:00 (America/New_York)');
@@ -78,6 +78,7 @@ describe('recipient announcement journey', () => {
 describe('schedule and target controls', () => {
   it('traverses immutable Version history beyond the first page', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (String(input).endsWith('/attachments')) return Response.json({ data: [] });
       const page = new URL(String(input), 'http://local').searchParams.get('page');
       return Response.json({ data: [{ ...version, title: page === '2' ? 'Earlier immutable version' : version.title }], meta: { page: Number(page), pageSize: 50, total: 51 } });
     });

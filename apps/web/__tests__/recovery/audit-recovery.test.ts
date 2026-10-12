@@ -16,7 +16,7 @@ import {
 } from '@/scripts/recovery/restore';
 import type { QueryClient } from '@/scripts/recovery/snapshot';
 
-it('replays nonempty audit history in recovery FK order and preserves all 42 fingerprints', async () => {
+it('replays nonempty audit history in recovery FK order and preserves all 44 fingerprints', async () => {
   const source = await createAuthTestDb();
   const target = await createAuthTestDb();
   try {
@@ -43,7 +43,7 @@ it('replays nonempty audit history in recovery FK order and preserves all 42 fin
     await assertRecoveryInventory(sourceClient);
     await assertRecoveryInventory(targetClient);
     const order = buildRestoreOrder(await loadForeignKeys(sourceClient));
-    expect(order).toHaveLength(42);
+    expect(order).toHaveLength(44);
     for (const dependency of ['public.users', 'public.schools', 'public.school_memberships']) {
       expect(order.indexOf('public.audit_events')).toBeGreaterThan(
         order.indexOf(dependency as (typeof order)[number]),

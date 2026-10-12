@@ -12,6 +12,7 @@ import { apiRequest } from '@/lib/frontend/api-client';
 import { can } from '@/lib/frontend/permissions';
 import type { PageResponse } from '@/lib/frontend/academic/types';
 import type { RecipientAnnouncementDto } from '@/lib/frontend/announcements/types';
+import { AnnouncementAttachments } from './announcement-attachments';
 import { AnnouncementBody } from './announcement-body';
 
 export function RecipientAnnouncements() {
@@ -48,6 +49,7 @@ export function RecipientAnnouncement({ publicationId }: { publicationId: string
       <h1 className="text-2xl font-semibold">{item.title}</h1>
       <p>Publication #{item.publicationVersion} · Content v{item.versionNumber} · <time dateTime={item.publishedAt}>{formatSchoolInstant(item.publishedAt, school.timezone)}</time></p>
       <AnnouncementBody body={item.body} bodyFormat={item.bodyFormat} />
+      <AnnouncementAttachments publicationId={publicationId} />
       <p className="text-sm text-muted-foreground">This is the content of this exact publication. Later corrections appear as separate publications in your inbox when sent to you.</p>
     </article> : null}
   </PageContainer>;

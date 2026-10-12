@@ -83,7 +83,7 @@ describe('Task 047 security contracts', () => {
     expect(template).not.toContain('.Data');
   });
   it('requires the reviewed security migration before deployment', () => {
-    expect(EXPECTED_MIGRATION_COUNT).toBe(20);
-    expect(EXPECTED_LATEST_MIGRATION).toBe('0019_announcement-lifecycle-content');
+    expect(EXPECTED_MIGRATION_COUNT).toBe(21);
+    expect(EXPECTED_LATEST_MIGRATION).toBe('0020_private-application-files');
   });
 });
