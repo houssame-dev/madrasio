@@ -394,6 +394,26 @@ Archiving a Student must not delete:
 
 ---
 
+### BR-STUDENT-009 — Date of Birth Is a School-Validated Calendar Date
+
+Normal Student creation requires a strict real YYYY-MM-DD date of birth,
+including Gregorian leap-year validation. The supported representation is a
+four-digit positive year, not a timestamp. DOB must not exceed today derived
+server-side from the current School's stored timezone (Task 055). There is no
+device/UTC fallback and no universal age restriction.
+
+Legacy Student NULL DOB remains valid. Omission during unrelated updates
+preserves it; setting/correcting DOB requires a valid date. Blank/null mutation
+input is rejected rather than silently erasing a recorded DOB. The application
+does not invent missing dates or modify Student identity, relationships,
+enrollment, grades or historical publications as a consequence of a DOB edit.
+
+Existing `students.manage` authority governs writes and management detail
+presentation. Scoped Teacher/Parent reads and general Student lists do not
+include DOB. Student authentication remains outside V1.
+
+---
+
 # 10. Teacher Rules
 
 ### BR-TEACHER-001 — Teacher Is School-Scoped

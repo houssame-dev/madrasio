@@ -30,7 +30,7 @@ The implementation lives under `apps/web/lib/modules/students`:
 
 `Student` stores identity and lifecycle only. It does not store Class, Level,
 Track, Stage, AcademicYear, CurriculumVersion, or coefficient. PATCH input is
-limited to names, optional Student code, and Student status.
+limited to names, optional Student code, Student status, and an optional DOB correction.
 
 `StudentEnrollment` is the only source of truth for a Student's placement. An
 enrollment binds exactly one Student, AcademicYear, and Class, and the Class
@@ -151,6 +151,30 @@ The shared API error envelope is reused. Controlled feature codes include
 `INVALID_STUDENT_STATUS_TRANSITION`, `STUDENT_NOT_ENROLLABLE`,
 `SAME_CLASS_TRANSFER`, `INVALID_TRANSFER_DATE`, and `ENROLLMENT_CONFLICT`.
 Database constraint names and raw SQL errors are not exposed.
+
+## Student DOB (Task 064 / V1-AUDIT-025, OWNER-04)
+
+`POST /students` requires `dateOfBirth` as a strict real YYYY-MM-DD string;
+timestamps, impossible dates, blank, null and missing values are rejected.
+`PATCH /students/:id` may omit it, preserving legacy NULL or an existing DOB.
+A supplied correction must be valid; null/blank do not clear a recorded date.
+Both service and HTTP boundaries enforce date validity. The service derives
+today from the School row's timezone using Task 055's shared calendar adapter;
+future dates return field-mapped VALIDATION_ERROR and invalid School timezone
+fails closed with INVALID_SCHOOL_TIMEZONE. No age limits are imposed.
+
+DOB is returned only in authorized School-management detail and mutation
+responses (including existing membership-scoped SUPER_ADMIN semantics).
+General lists, Teacher/Parent detail, relationship DTOs and academic projections
+retain their prior fields. No notification payload or event expansion is added.
+
+Migration `0021_student-date-of-birth` adds nullable `students.date_of_birth DATE`
+with string-mode Drizzle mapping and no default/backfill. Existing rows remain
+valid; identifiers, tenant constraints and history are unchanged. RLS and grants
+are unchanged. The chain now has 22 migrations, with 42 application tables and
+44 recovery tables. Full-row recovery includes DOB/null in Student fingerprints;
+old bundles retain their original migration metadata and are not relabeled as
+current-schema artifacts. No hosted migration or validation was run in A1.
 
 ## Schema boundary
 

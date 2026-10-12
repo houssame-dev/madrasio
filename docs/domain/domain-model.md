@@ -395,6 +395,14 @@ Student is **NOT** equivalent to a User.
 
 A Student can exist without having an authentication account in V1.
 
+Student `dateOfBirth` is an optional persisted calendar date (PostgreSQL DATE,
+wire format YYYY-MM-DD), never an instant. Normal new-Student creation requires
+a real DOB; legacy NULL values remain unknown, with no backfill. Management
+edits may omit DOB to preserve an unknown value, or supply a valid correction.
+No age-based placement rule is inferred. DOB presentation is restricted to
+authorized Student management detail/mutation responses, not Teacher/Parent
+projections, notifications, or academic publication context.
+
 ---
 
 # 20. StudentStatus

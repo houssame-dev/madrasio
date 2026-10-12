@@ -8,19 +8,21 @@ import { Field, FormActions, InlineFeedback, inputClassName } from '@/components
 import { studentCopy as t } from '@/lib/frontend/students/copy';
 import { studentsApi } from '@/lib/frontend/students/api';
 import { mapStudentValidation, studentErrorMessage } from '@/lib/frontend/students/errors';
-import { studentFormSchema, type StudentFormValues } from '@/lib/frontend/students/schemas';
+import { studentFormSchemaFor, type StudentFormValues } from '@/lib/frontend/students/schemas';
 import type { StudentDto } from '@/lib/frontend/students/types';
 
 export function StudentForm({ initial, onCancel, onSaved }: { initial?: StudentDto; onCancel: () => void; onSaved: (student: StudentDto) => Promise<void> | void }) {
   const [error, setError] = useState<string>();
   const form = useForm<StudentFormValues>({
-    resolver: zodResolver(studentFormSchema),
-    defaultValues: { firstName: initial?.firstName ?? '', lastName: initial?.lastName ?? '', studentCode: initial?.studentCode ?? '' },
+    resolver: zodResolver(studentFormSchemaFor(!!initial, !!initial?.dateOfBirth)),
+    defaultValues: { dateOfBirth: initial?.dateOfBirth ?? '', firstName: initial?.firstName ?? '', lastName: initial?.lastName ?? '', studentCode: initial?.studentCode ?? '' },
   });
   const mutation = useMutation({
     mutationFn: (values: StudentFormValues) => {
       const input = { firstName: values.firstName, lastName: values.lastName, studentCode: values.studentCode?.trim() || null };
-      return initial ? studentsApi.patch(initial.id, input) : studentsApi.create(input);
+      return initial
+        ? studentsApi.patch(initial.id, { ...input, ...(values.dateOfBirth ? { dateOfBirth: values.dateOfBirth } : {}) })
+        : studentsApi.create({ ...input, dateOfBirth: values.dateOfBirth });
     },
     onSuccess: async (student) => { setError(undefined); await onSaved(student); },
     onError: (value) => { if (!mapStudentValidation(value, form.setError)) setError(studentErrorMessage(value)); },
@@ -31,6 +33,7 @@ export function StudentForm({ initial, onCancel, onSaved }: { initial?: StudentD
       <Field required label={t.firstName} htmlFor="student-first-name" error={form.formState.errors.firstName?.message}><input id="student-first-name" className={inputClassName} aria-invalid={!!form.formState.errors.firstName} {...form.register('firstName')} /></Field>
       <Field required label={t.lastName} htmlFor="student-last-name" error={form.formState.errors.lastName?.message}><input id="student-last-name" className={inputClassName} aria-invalid={!!form.formState.errors.lastName} {...form.register('lastName')} /></Field>
     </div>
+    <Field required={!initial || !!initial.dateOfBirth} label={t.dateOfBirth} htmlFor="student-date-of-birth" hint={t.dateOfBirthHint} error={form.formState.errors.dateOfBirth?.message}><input id="student-date-of-birth" type="date" className={inputClassName} aria-invalid={!!form.formState.errors.dateOfBirth} {...form.register('dateOfBirth')} /></Field>
     <Field label={`${t.studentCode} (${t.optional})`} htmlFor="student-code" error={form.formState.errors.studentCode?.message}><input id="student-code" className={inputClassName} aria-invalid={!!form.formState.errors.studentCode} {...form.register('studentCode')} /></Field>
     <p className="text-sm text-muted-foreground">{t.noLogin}</p>
     <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={initial ? t.save : t.create} />

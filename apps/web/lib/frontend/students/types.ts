@@ -8,6 +8,8 @@ export interface StudentDto extends Timestamps {
   firstName: string;
   lastName: string;
   studentCode: string | null;
+  /** Present only on authorized management detail/mutation responses. */
+  dateOfBirth?: string | null;
   status: StudentStatus;
 }
 

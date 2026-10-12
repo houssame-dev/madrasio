@@ -1,4 +1,7 @@
 export const studentCopy = {
+  dateOfBirth: 'Date of birth',
+  dateOfBirthHint: 'Use a calendar date, no later than today in the School timezone. An unknown legacy date may remain blank.',
+  dateOfBirthUnknown: 'Not recorded',
   title: 'Students', description: 'Manage Student identity and year-specific enrollment history.',
   readOnly: 'Read-only access', readOnlyDescription: 'Your current role can inspect assigned Students but cannot manage Student or Enrollment records.',
   createStudent: 'Create Student', editStudent: 'Edit Student', studentCreated: 'Student created. Add an Enrollment separately when placement is ready.',

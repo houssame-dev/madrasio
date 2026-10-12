@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isCalendarDate } from '@school/shared';
 
 const name = z.string().trim().min(1).max(200);
 const uuid = z.string().uuid();
@@ -9,14 +10,22 @@ export const calendarDateSchema = z.string()
     return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
   }, 'Expected a valid calendar date.');
 
+export const dateOfBirthSchema = z.string().refine(
+  (value) => isCalendarDate(value) && !value.startsWith('0000-'),
+  'Choose a valid date of birth (YYYY-MM-DD).',
+);
+
 export const studentCreateSchema = z.object({
   firstName: name,
+  dateOfBirth: dateOfBirthSchema,
   lastName: name,
   studentCode: z.string().trim().min(1).max(100).nullable().optional(),
 }).strict();
 
 export const studentPatchSchema = z.object({
   firstName: name.optional(),
+  // Omission preserves legacy NULL; a recorded DOB cannot be cleared to an invented unknown.
+  dateOfBirth: dateOfBirthSchema.optional(),
   lastName: name.optional(),
   studentCode: z.string().trim().min(1).max(100).nullable().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'WITHDRAWN', 'ARCHIVED']).optional(),

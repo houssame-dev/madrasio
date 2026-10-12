@@ -27,7 +27,7 @@ async function enroll(studentId: string, classId = context.classAId, effectiveFr
 describe('Student identity and lifecycle', () => {
   it('creates, lists, searches, safely patches, and hides foreign School students', async () => {
     const student = await app.createStudent(context.db, context.admin, {
-      firstName: 'Amine', lastName: 'Benali', studentCode: 'S-001',
+      dateOfBirth: '2015-02-28', firstName: 'Amine', lastName: 'Benali', studentCode: 'S-001',
     });
     expect(student).not.toHaveProperty('classId');
     expect((await app.listStudents(context.db, context.admin, { page: 1, pageSize: 50, search: 'amine' })).data).toHaveLength(1);
@@ -44,10 +44,10 @@ describe('Student identity and lifecycle', () => {
   });
 
   it('surfaces duplicate optional Student codes and preserves NULL-code semantics', async () => {
-    await app.createStudent(context.db, context.admin, { firstName: 'A', lastName: 'One', studentCode: 'S-1' });
-    await expect(app.createStudent(context.db, context.admin, { firstName: 'B', lastName: 'Two', studentCode: 'S-1' })).rejects.toMatchObject({ featureCode: 'DUPLICATE_STUDENT_CODE' });
-    await app.createStudent(context.db, context.admin, { firstName: 'C', lastName: 'Three' });
-    await app.createStudent(context.db, context.admin, { firstName: 'D', lastName: 'Four' });
+    await app.createStudent(context.db, context.admin, { dateOfBirth: '2015-02-28', firstName: 'A', lastName: 'One', studentCode: 'S-1' });
+    await expect(app.createStudent(context.db, context.admin, { dateOfBirth: '2015-02-28', firstName: 'B', lastName: 'Two', studentCode: 'S-1' })).rejects.toMatchObject({ featureCode: 'DUPLICATE_STUDENT_CODE' });
+    await app.createStudent(context.db, context.admin, { dateOfBirth: '2015-02-28', firstName: 'C', lastName: 'Three' });
+    await app.createStudent(context.db, context.admin, { dateOfBirth: '2015-02-28', firstName: 'D', lastName: 'Four' });
   });
 
   it('uses the conservative lifecycle graph without mutating enrollment history', async () => {
@@ -165,7 +165,7 @@ describe('Teacher and Parent read policy', () => {
     expect(list.data.map((student) => student.id)).toEqual([inScope.id]);
     expect(await app.getStudent(context.db, teacher, inScope.id)).toMatchObject({ id: inScope.id });
     await expect(app.getStudent(context.db, teacher, outOfScope.id)).rejects.toMatchObject({ featureCode: 'STUDENT_NOT_FOUND' });
-    await expect(app.createStudent(context.db, teacher, { firstName: 'No', lastName: 'Write' })).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(app.createStudent(context.db, teacher, { dateOfBirth: '2015-02-28', firstName: 'No', lastName: 'Write' })).rejects.toBeInstanceOf(ForbiddenError);
   });
 
   it('removes all Student scope when the Teacher profile is inactive and restores it on reactivation', async () => {

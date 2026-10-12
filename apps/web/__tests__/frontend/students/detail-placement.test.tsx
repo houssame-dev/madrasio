@@ -9,10 +9,10 @@ vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(n
 
 afterEach(() => { vi.restoreAllMocks(); navigation.search = `academicYearId=${yearId}`; navigation.replace.mockReset(); });
 
-function detailFetch(options: { placement?: EnrollmentDto | null; history?: EnrollmentDto[] } = {}) {
+function detailFetch(options: { placement?: EnrollmentDto | null; history?: EnrollmentDto[]; dateOfBirth?: string | null } = {}) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
-    if (url === `/api/v1/students/${student.id}`) return Response.json({ data: student });
+    if (url === `/api/v1/students/${student.id}`) return Response.json({ data: { ...student, dateOfBirth: options.dateOfBirth ?? null } });
     if (url.includes('/academic-years')) return Response.json(page([year], 1, 100));
     if (url.includes('/classes')) return Response.json(page([klass], 1, 100));
     if (url.includes('/enrollments/current')) return Response.json({ data: options.placement === undefined ? enrollment : options.placement });
@@ -22,6 +22,19 @@ function detailFetch(options: { placement?: EnrollmentDto | null; history?: Enro
 }
 
 describe('Student detail and explicit-Year placement', () => {
+  it('shows a literal date only in management detail and unknown legacy dates without invention', async () => {
+    detailFetch({ dateOfBirth: '2012-02-29' });
+    renderStudents(<StudentDetailWorkspace studentId={student.id} />);
+    expect(await screen.findByText('2012-02-29')).toBeInTheDocument();
+    expect(screen.getByText('Date of birth')).toBeInTheDocument();
+  });
+
+  it('shows Not recorded for a legacy Student', async () => {
+    detailFetch();
+    renderStudents(<StudentDetailWorkspace studentId={student.id} />);
+    expect(await screen.findByText('Not recorded')).toBeInTheDocument();
+  });
+
   it('requests current placement with the explicit academicYearId and labels only that Year', async () => {
     const fetchMock = detailFetch();
     renderStudents(<StudentDetailWorkspace studentId={student.id} />);
@@ -50,10 +63,12 @@ describe('Student detail and explicit-Year placement', () => {
   });
 
   it('keeps Teacher detail read-only and never requests administrator history', async () => {
-    const fetchMock = detailFetch();
+    const fetchMock = detailFetch({ dateOfBirth: '2012-02-29' });
     renderStudents(<StudentDetailWorkspace studentId={student.id} />, 'TEACHER');
     expect(await screen.findByText('Placement for 2026/2027')).toBeInTheDocument();
     expect(screen.getByText('Read-only access')).toBeInTheDocument();
+    expect(screen.queryByText('Date of birth')).not.toBeInTheDocument();
+    expect(screen.queryByText('2012-02-29')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Student' })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('/enrollments?page='))).toBe(false);
   });

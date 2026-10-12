@@ -12,7 +12,7 @@ afterEach(async () => { await client?.close(); });
 
 it('replays the current chain from zero and retains the nullable JSONB schema snapshot', async () => {
   ({ client } = await createTestDb());
-  expect((await client.query<{ count: number }>('select count(*)::int as count from drizzle.__drizzle_migrations')).rows[0].count).toBe(21);
+  expect((await client.query<{ count: number }>('select count(*)::int as count from drizzle.__drizzle_migrations')).rows[0].count).toBe(22);
   expect((await client.query("select data_type,is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='result_publications' and column_name='display_context'")).rows).toEqual([{ data_type: 'jsonb', is_nullable: 'YES', column_default: null }]);
   const snapshot = JSON.parse(await readFile(join(migrationsFolder, 'meta/0018_snapshot.json'), 'utf8'));
   expect(snapshot.tables['public.result_publications'].columns.display_context).toMatchObject({ type: 'jsonb', notNull: false });
@@ -38,7 +38,13 @@ it('upgrades a populated 0000–0017 publication without inventing historical la
   const [curriculum] = await db.insert(schema.curricula).values({ schoolId, name: 'Curriculum' }).returning();
   const [curriculumVersion] = await db.insert(schema.curriculumVersions).values({ schoolId, curriculumId: curriculum.id, name: 'Version' }).returning();
   const [klass] = await db.insert(schema.classes).values({ schoolId, academicYearId: year.id, levelId: level.id, curriculumVersionId: curriculumVersion.id, name: 'Class' }).returning();
-  const [student] = await db.insert(schema.students).values({ schoolId, firstName: 'Current', lastName: 'Name' }).returning();
+  // This fixture is intentionally pre-0018: avoid current-schema INSERT/RETURNING
+  // columns such as date_of_birth, which is introduced only by migration 0021.
+  const student = { id: randomUUID() };
+  await client.query(
+    'insert into students(id,school_id,first_name,last_name) values ($1,$2,$3,$4)',
+    [student.id, schoolId, 'Current', 'Name'],
+  );
   const [config] = await db.insert(schema.gradingConfigurations).values({ schoolId, name: 'Configuration' }).returning();
   const [version] = await db.insert(schema.gradingConfigurationVersions).values({ schoolId, gradingConfigurationId: config.id, versionNumber: 1, rules: { schemaVersion: 1 } }).returning();
   const [result] = await db.insert(schema.annualResults).values({ schoolId, studentId: student.id, academicYearId: year.id, classId: klass.id, gradingConfigurationVersionId: version.id, value: '14.00', status: 'FINALIZED' }).returning();

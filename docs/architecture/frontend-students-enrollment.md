@@ -12,9 +12,24 @@ Frontend checks only remove inappropriate controls. Every request remains subjec
 
 ## Student identity and lifecycle
 
-Student forms submit only `firstName`, `lastName`, and optional `studentCode`. Student creation does not create an Enrollment, and Student has no Class, Academic Year, current-placement, or User/login field. V1 has no Student login account.
+Student forms submit `firstName`, `lastName`, optional `studentCode`, and `dateOfBirth` (required for create, optional correction for legacy edit). Student creation does not create an Enrollment, and Student has no Class, Academic Year, current-placement, or User/login field. V1 has no Student login account.
 
 The UI exposes only the committed lifecycle graph: `ACTIVE -> INACTIVE/WITHDRAWN`, `INACTIVE -> ACTIVE/WITHDRAWN/ARCHIVED`, and `WITHDRAWN -> ARCHIVED`; `ARCHIVED` is terminal. Withdrawal and archive require confirmation. Student lifecycle and Enrollment lifecycle are displayed as separate statuses, and changing Student status never automatically ends or rewrites an Enrollment.
+
+## Date of birth (Task 064)
+
+The create/edit form reuses Task 056 Field, associated helper/error descriptions,
+first-invalid focus, pending FormActions, feedback, and responsive layout.
+A native date input sends a literal YYYY-MM-DD string; no Date/UTC conversion
+is used. New Students require DOB. Unknown legacy dates can remain blank on
+unrelated edits (DOB is omitted from PATCH); an existing date cannot be cleared.
+The server's authoritative School-local future-date check maps feedback to this
+field; browser timezone is not used to decide today.
+
+Only management detail renders DOB, or “Not recorded” for legacy NULL.
+Teacher detail has neither DOB presentation nor DOB editing. Lists and Parent
+journeys are not expanded. There is no age display/calculation, age-based rule,
+Student login, or additional demographic field.
 
 ## Explicit Academic Year placement
 

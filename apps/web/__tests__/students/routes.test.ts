@@ -5,7 +5,7 @@ import type { CurrentContext } from '@/lib/authorization/context';
 import { UnauthenticatedError } from '@/lib/errors';
 
 import { seedMembership, seedSchool, seedUser } from '../auth/test-helpers';
-import { createStudentsTestContext, type StudentsTestContext } from './test-helpers';
+import { createActor, createStudentsTestContext, seedParentRelationship, seedStudent, type StudentsTestContext } from './test-helpers';
 
 const mocks = vi.hoisted(() => ({ db: null as unknown, context: null as unknown, authError: null as unknown }));
 vi.mock('@/lib/db/client', () => ({ getDb: () => mocks.db }));
@@ -42,9 +42,28 @@ const json = (method: string, body: unknown) => new Request('http://local', {
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 
 describe('Students and Enrollment HTTP contracts', () => {
+  it('enforces DOB through HTTP, preserves legacy NULL, and hides it from Parent reads', async () => {
+    for (const value of [undefined, null, '', '2023-02-29', '9999-01-01']) {
+      expect((await studentsPOST(json('POST', { firstName: 'A', lastName: 'B', dateOfBirth: value }))).status).toBe(400);
+    }
+    const legacy = await seedStudent(seeded.test, seeded.schoolId);
+    expect(await (await studentPATCH(json('PATCH', { firstName: 'Corrected' }), params(legacy.id))).json()).toMatchObject({ data: { dateOfBirth: null } });
+    expect(await (await studentPATCH(json('PATCH', { dateOfBirth: '2012-02-29' }), params(legacy.id))).json()).toMatchObject({ data: { dateOfBirth: '2012-02-29' } });
+    const parent = await createActor(seeded.test, seeded.schoolId, 'PARENT');
+    await seedParentRelationship(seeded, parent, legacy.id);
+    mocks.context = { ...(mocks.context as CurrentContext), userId: parent.userId!, role: 'PARENT' };
+    const detail = await studentGET(new Request('http://local'), params(legacy.id));
+    expect(detail.status).toBe(200);
+    expect((await detail.json()).data).not.toHaveProperty('dateOfBirth');
+    expect((await studentPATCH(json('PATCH', { dateOfBirth: '2010-01-01' }), params(legacy.id))).status).toBe(403);
+    expect((await studentsPOST(json('POST', { firstName: 'A', lastName: 'B', dateOfBirth: '2010-01-01' }))).status).toBe(403);
+    mocks.authError = new UnauthenticatedError();
+    expect((await studentsPOST(json('POST', { firstName: 'A', lastName: 'B', dateOfBirth: '2010-01-01' }))).status).toBe(401);
+  });
+
   it('covers Student create/list/detail/patch envelopes', async () => {
     const createdResponse = await studentsPOST(json('POST', {
-      firstName: 'Amine', lastName: 'Benali', studentCode: 'S-1',
+      dateOfBirth: '2012-02-29', firstName: 'Amine', lastName: 'Benali', studentCode: 'S-1',
     }));
     expect(createdResponse.status).toBe(201);
     const student = (await createdResponse.json()).data;
@@ -57,7 +76,7 @@ describe('Students and Enrollment HTTP contracts', () => {
   });
 
   it('covers initial enrollment, controlled duplicate, transfer, current, history, and end', async () => {
-    const student = (await (await studentsPOST(json('POST', { firstName: 'A', lastName: 'B' }))).json()).data;
+    const student = (await (await studentsPOST(json('POST', { dateOfBirth: '2012-02-29', firstName: 'A', lastName: 'B' }))).json()).data;
     const enrollmentResponse = await enrollmentsPOST(json('POST', {
       academicYearId: seeded.yearId, classId: seeded.classAId, effectiveFrom: '2025-09-01',
     }), params(student.id));
@@ -90,13 +109,13 @@ describe('Students and Enrollment HTTP contracts', () => {
 
   it('rejects malformed/authoritative placement fields', async () => {
     expect((await studentsPOST(new Request('http://local', { method: 'POST', body: '{' }))).status).toBe(400);
-    expect((await studentsPOST(json('POST', { firstName: 'A', lastName: 'B', schoolId: crypto.randomUUID() }))).status).toBe(400);
-    const created = (await (await studentsPOST(json('POST', { firstName: 'A', lastName: 'B' }))).json()).data;
+    expect((await studentsPOST(json('POST', { dateOfBirth: '2012-02-29', firstName: 'A', lastName: 'B', schoolId: crypto.randomUUID() }))).status).toBe(400);
+    const created = (await (await studentsPOST(json('POST', { dateOfBirth: '2012-02-29', firstName: 'A', lastName: 'B' }))).json()).data;
     expect((await studentPATCH(json('PATCH', { classId: seeded.classAId }), params(created.id))).status).toBe(400);
   });
 
   it('hides foreign-School Student detail', async () => {
-    const student = (await (await studentsPOST(json('POST', { firstName: 'A', lastName: 'B' }))).json()).data;
+    const student = (await (await studentsPOST(json('POST', { dateOfBirth: '2012-02-29', firstName: 'A', lastName: 'B' }))).json()).data;
     const otherSchool = await seedSchool(seeded.test.seed, 'Other');
     const otherUser = await seedUser(seeded.test.seed);
     await seedMembership(seeded.test.seed, otherUser, otherSchool.id, 'SCHOOL_ADMIN');

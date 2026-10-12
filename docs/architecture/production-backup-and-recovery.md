@@ -1,8 +1,19 @@
 # Production backup and recovery
 
+## Task 064 date-only metadata extension
+
+Current repository migration head is `0021_student-date-of-birth` (22 migrations).
+The inventory remains 42 application + 2 durable Auth tables (44 recovery tables).
+Existing full-row Student archives/fingerprints include `date_of_birth`, including
+NULL for legacy records, with no timezone conversion. DOB is private application
+data within the existing encrypted database recovery boundary. Migration
+compatibility still compares exact source metadata: older backups are not
+silently reclassified against the new schema. A1 authors local replay/fingerprint
+tests only; it does not claim a hosted restore or change Task 050 acceptance.
+
 ## Task 063 metadata extension
 
-The current repository inventory through `0020_private-application-files` is 42 application
+The Task 063 repository inventory through `0020_private-application-files` is 42 application
 tables plus 2 durable Auth tables (44 recovery tables), with 21 migrations. This extends the
 historical inventory described below with `files` and `announcement_attachments`. Full-row
 fingerprints/FK replay include their metadata; **R2 attachment bytes are not in the database

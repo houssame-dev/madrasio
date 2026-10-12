@@ -115,6 +115,12 @@ export async function listTeacherStudents(
   return { rows, total: totals[0]?.value ?? 0 };
 }
 
+export async function findSchoolTimezone(db: StudentsDb, schoolId: string) {
+  const [row] = await db.select({ timezone: schema.schools.timezone }).from(schema.schools)
+    .where(eq(schema.schools.id, schoolId)).limit(1);
+  return row?.timezone;
+}
+
 export async function findStudent(db: StudentsDb, schoolId: string, id: string) {
   const [row] = await db.select().from(schema.students)
     .where(and(eq(schema.students.schoolId, schoolId), eq(schema.students.id, id))).limit(1);

@@ -9,10 +9,10 @@ import { applicationSecurityAuditSql } from '../security';
 let client: PGlite;
 afterEach(async () => { await client?.close(); });
 
-it('replays 0000–0020 with 21 migrations, 42 private RLS tables, no policies and empty file metadata', async () => {
+it('replays 0000–0021 with 22 migrations, 42 private RLS tables, no policies and empty file metadata', async () => {
   ({ client } = await createTestDb());
   await client.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;');
-  expect((await client.query<{ count: number }>('select count(*)::int count from drizzle.__drizzle_migrations')).rows[0]!.count).toBe(21);
+  expect((await client.query<{ count: number }>('select count(*)::int count from drizzle.__drizzle_migrations')).rows[0]!.count).toBe(22);
   expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
   expect((await client.query('select * from files')).rows).toEqual([]);
   expect((await client.query('select * from announcement_attachments')).rows).toEqual([]);

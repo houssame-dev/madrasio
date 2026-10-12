@@ -2,6 +2,7 @@ import type { FieldValues, Path, UseFormSetError } from 'react-hook-form';
 import { ApiClientError } from '@/lib/frontend/api-client';
 
 const messages: Record<string, string> = {
+  INVALID_SCHOOL_TIMEZONE: 'School timezone is invalid. Contact your school administrator.',
   STUDENT_NOT_FOUND: 'This Student is unavailable or outside your current access.',
   ENROLLMENT_NOT_FOUND: 'This enrollment is no longer available.',
   DUPLICATE_STUDENT_CODE: 'That Student code is already used in this School.',
@@ -26,7 +27,7 @@ export function mapStudentValidation<T extends FieldValues>(error: unknown, setE
   let mapped = false;
   for (const issue of details?.issues ?? []) {
     if (issue.path && issue.message) {
-      setError(issue.path as Path<T>, { type: 'server', message: issue.message });
+      setError(issue.path as Path<T>, { type: 'server', message: issue.message }, { shouldFocus: !mapped });
       mapped = true;
     }
   }

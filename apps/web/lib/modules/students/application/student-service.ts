@@ -1,13 +1,15 @@
+import { schoolDateFromInstant } from '@school/shared';
 import type { Role } from '@/lib/authorization/roles';
 import {
   requireOperation, resolveCurrentContext, type AuthorizationDb,
 } from '@/lib/authorization/server';
-import { ForbiddenError } from '@/lib/errors';
+import { ForbiddenError, ValidationError } from '@/lib/errors';
 
 import type {
   EndEnrollment, EnrollmentCreate, PageInput, PageResult, StudentCreate,
   StudentPatch, TransferStudent,
 } from '../domain/contracts';
+import { dateOfBirthSchema } from '../domain/contracts';
 import { assertStudentStatusTransition, previousCalendarDay } from '../domain/lifecycle';
 import * as repo from '../infrastructure/repositories/student-repository';
 import type { StudentFilters, StudentsDb } from '../infrastructure/repositories/student-repository';
@@ -25,6 +27,33 @@ function view<T extends { schoolId?: string }>(row: T): Omit<T, 'schoolId'> {
   const { schoolId: _schoolId, ...data } = row;
   return data;
 }
+// Explicit public projection: adding a Student column must not expand scoped reads.
+function studentView(row: NonNullable<Awaited<ReturnType<typeof repo.findStudent>>>, includeDob = false) {
+  return {
+    id: row.id, firstName: row.firstName, lastName: row.lastName,
+    studentCode: row.studentCode, status: row.status,
+    createdAt: row.createdAt, updatedAt: row.updatedAt,
+    ...(includeDob ? { dateOfBirth: row.dateOfBirth } : {}),
+  };
+}
+
+async function assertDateOfBirth(db: StudentsDb, actor: Actor, value: unknown) {
+  const parsed = dateOfBirthSchema.safeParse(value);
+  const invalid = (message: string): never => {
+    throw new ValidationError(message, { issues: [{ path: 'dateOfBirth', message }] });
+  };
+  if (!parsed.success) return invalid('Choose a valid date of birth (YYYY-MM-DD).');
+  const timezone = await repo.findSchoolTimezone(db, actor.schoolId);
+  let today: string;
+  try {
+    if (!timezone) throw new Error('Missing School timezone');
+    today = schoolDateFromInstant(new Date(), timezone);
+  } catch {
+    throw new StudentDomainError('INVALID_SCHOOL_TIMEZONE', 'School timezone is invalid. Contact your school administrator.');
+  }
+  if (parsed.data > today) invalid('Date of birth cannot be after today in the School timezone.');
+}
+
 function studentNotFound(): never {
   throw new StudentDomainError('STUDENT_NOT_FOUND', 'Student was not found.');
 }
@@ -87,18 +116,23 @@ export async function listStudents(
   const result = role === 'TEACHER'
     ? await repo.listTeacherStudents(db, actor.userId!, actor.schoolId, paging(input), input)
     : await repo.listStudents(db, actor.schoolId, paging(input), input);
-  return page(result.rows.map(view), result.total, input);
+  return page(result.rows.map((row) => ({
+    id: row.id, firstName: row.firstName, lastName: row.lastName,
+    studentCode: row.studentCode, status: row.status, createdAt: row.createdAt, updatedAt: row.updatedAt,
+  })), result.total, input);
 }
 
 export async function getStudent(db: StudentsDb, actor: Actor, id: string) {
-  const student = await assertStudentReadable(db, actor, id);
-  return view(student);
+  const role = await readRole(db, actor);
+  const student = await assertStudentReadable(db, actor, id, role);
+  return studentView(student, role === 'SCHOOL_ADMIN' || role === 'SUPER_ADMIN');
 }
 
 export async function createStudent(db: StudentsDb, actor: Actor, input: StudentCreate) {
   await manage(db, actor);
+  await assertDateOfBirth(db, actor, input.dateOfBirth);
   try {
-    return view(await repo.insertStudent(db, actor.schoolId, input));
+    return studentView(await repo.insertStudent(db, actor.schoolId, input), true);
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw new StudentDomainError(
@@ -115,8 +149,9 @@ export async function patchStudent(db: StudentsDb, actor: Actor, id: string, inp
   const current = await repo.findStudent(db, actor.schoolId, id);
   if (!current) studentNotFound();
   if (input.status) assertStudentStatusTransition(current.status, input.status);
+  if (input.dateOfBirth !== undefined) await assertDateOfBirth(db, actor, input.dateOfBirth);
   try {
-    return view((await repo.updateStudent(db, actor.schoolId, id, input)) ?? studentNotFound());
+    return studentView((await repo.updateStudent(db, actor.schoolId, id, input)) ?? studentNotFound(), true);
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw new StudentDomainError(

@@ -1,4 +1,4 @@
-import { index, pgEnum, pgTable, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { date, index, pgEnum, pgTable, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { schools } from './schools';
 
@@ -45,6 +45,8 @@ export const students = pgTable(
     firstName: text('first_name').notNull(),
     lastName: text('last_name').notNull(),
     studentCode: text('student_code'),
+    // Calendar date; NULL preserves legacy records. Normal creates require DOB in the application.
+    dateOfBirth: date('date_of_birth', { mode: 'string' }),
     status: studentStatus('status').notNull().default('ACTIVE'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

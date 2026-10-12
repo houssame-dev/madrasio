@@ -2,6 +2,13 @@
 
 Drizzle ORM foundation.
 
+Task 064 adds `0021_student-date-of-birth`: the current chain has 22 migrations
+and still 42 application tables. Nullable `students.date_of_birth DATE` has no
+default/backfill; Drizzle reads/writes a YYYY-MM-DD string, not a JS timestamp.
+Normal application creation requires DOB; legacy rows and unrelated updates
+remain valid without one. Server School-local validation owns the dynamic
+not-in-the-future rule. RLS, tenant constraints and grants remain unchanged.
+
 Task 063 adds `0020_private-application-files`: 21 migrations, 42 application tables.
 `files` stores private object metadata; `announcement_attachments` enforces exact-Version,
 same-School association. Both are RLS-enabled with no Data API grants. Existing rows are

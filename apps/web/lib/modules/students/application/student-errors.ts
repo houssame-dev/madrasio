@@ -1,6 +1,7 @@
 import { AppError, type AppErrorCode } from '@/lib/errors';
 
 export type StudentFeatureCode =
+  | 'INVALID_SCHOOL_TIMEZONE'
   | 'STUDENT_NOT_FOUND'
   | 'ENROLLMENT_NOT_FOUND'
   | 'DUPLICATE_STUDENT_CODE'
@@ -13,6 +14,7 @@ export type StudentFeatureCode =
   | 'INVALID_STUDENT_STATUS_TRANSITION';
 
 const genericCode: Record<StudentFeatureCode, AppErrorCode> = {
+  INVALID_SCHOOL_TIMEZONE: 'BUSINESS_RULE_VIOLATION',
   STUDENT_NOT_FOUND: 'NOT_FOUND',
   ENROLLMENT_NOT_FOUND: 'NOT_FOUND',
   DUPLICATE_STUDENT_CODE: 'CONFLICT',

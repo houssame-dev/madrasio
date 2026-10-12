@@ -149,7 +149,7 @@ describe.skipIf(!live)('live local recovery target', () => {
       verifyLocalRecoveryTarget(state.statePath, { expectMigrated: true }),
     ).resolves.toMatchObject({
       applicationTables: 42,
-      migrations: 21,
+      migrations: 22,
       rlsTables: 42,
       applicationPolicies: 0,
       security: 'accepted',
@@ -380,7 +380,7 @@ describe.skipIf(!live)('live local recovery target', () => {
       authUsers: 0,
       authIdentities: 0,
       applicationTables: 42,
-      migrations: 21,
+      migrations: 22,
       rlsTables: 42,
       applicationPolicies: 0,
       security: 'accepted',

@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/frontend/api-client';
+import type { StudentCreate, StudentPatch } from '@/lib/modules/students/domain/contracts';
 import type {
   DataResponse, EnrollmentDto, EnrollmentListParams, PageResponse, StudentDto,
   StudentListParams, TransferResult,
@@ -28,8 +29,8 @@ export const studentsApi = {
     return rows;
   },
   detail: (studentId: string) => data<StudentDto>(`/api/v1/students/${studentId}`),
-  create: (input: { firstName: string; lastName: string; studentCode?: string | null }) => data<StudentDto>('/api/v1/students', body('POST', input)),
-  patch: (studentId: string, input: Partial<Pick<StudentDto, 'firstName' | 'lastName' | 'studentCode' | 'status'>>) => data<StudentDto>(`/api/v1/students/${studentId}`, body('PATCH', input)),
+  create: (input: StudentCreate) => data<StudentDto>('/api/v1/students', body('POST', input)),
+  patch: (studentId: string, input: StudentPatch) => data<StudentDto>(`/api/v1/students/${studentId}`, body('PATCH', input)),
   enrollments: (studentId: string, params: EnrollmentListParams) => apiRequest<PageResponse<EnrollmentDto>>(query(`/api/v1/students/${studentId}/enrollments`, params)),
   currentEnrollment: (studentId: string, academicYearId: string) => data<EnrollmentDto | null>(query(`/api/v1/students/${studentId}/enrollments/current`, { academicYearId })),
   createEnrollment: (studentId: string, input: { academicYearId: string; classId: string; effectiveFrom: string }) => data<EnrollmentDto>(`/api/v1/students/${studentId}/enrollments`, body('POST', input)),
