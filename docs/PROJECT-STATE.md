@@ -1,5 +1,145 @@
 # Madrasio — Current Project State
 
+Last updated: **2026-10-12**
+
+## Current task and release status
+
+**Current roadmap task:** **Task 064 — Student DOB** (next to plan/implement; **not yet started**).
+
+**Latest accepted milestone:** **Task 063 — Private Application Files & Attachments**.
+
+**Status:** `TASK_063_PRIVATE_APPLICATION_FILES_AND_ATTACHMENTS_PASS`
+
+Task 063 implementation, manual local verification, commit, GitHub push, and reported GitHub CI / Deploy STAGING acceptance are complete. Task 063 is closed. No further Task 063 engineering or validation is currently pending under the agreed scope.
+
+- **Repository:** `houssame-dev/madrasio`
+- **Branch:** `main`
+- **Accepted commit:** `b049a41188d647528dadca7b41fb8d82c0c7a454`
+- **Commit subject:** `feat(files): add private application files and announcement attachments`
+- **Previous accepted HEAD:** `914828112279038c4a454362ea5ccb0e92db3776`
+- **Push:** successful; remote `main` verified at the exact Task 063 commit; local branch synchronized and working tree clean immediately after push.
+- **CI / Deploy STAGING:** **SUCCESS**, per the user's manual GitHub Actions inspection; workflow run IDs were not provided. These outcomes are recorded as user-verified, not independently re-queried in this documentation update.
+- **Production:** no Production deployment or hosted Production storage action was authorized/performed as part of Task 063 acceptance. Existing Production customer-onboarding and backup/recovery gates remain separate and are not waived by this milestone.
+
+**Next step:** prepare and authorize **Task 064 — Student DOB** under the established implementation workflow. Do not roll Task 065 homework actual hand-in functionality into Task 064 or retroactively into Task 063. This state-document synchronization itself is documentation work and does not authorize any hosted or Production operation.
+
+---
+
+## Task 063 — Private Application Files & Attachments
+
+**Final status:** `TASK_063_PRIVATE_APPLICATION_FILES_AND_ATTACHMENTS_PASS`
+
+### Scope completed
+
+Task 063 establishes a reusable, private application-file foundation and integrates it with **exact `AnnouncementVersion` attachments**. It does not introduce a public media library or a generic file manager.
+
+Implemented capabilities include:
+
+- private R2-backed application file storage with server-generated opaque object keys;
+- School-owned file metadata and explicit `AnnouncementVersion` attachment associations;
+- announcement management upload, list, logical removal, and authorized download routes;
+- recipient announcement attachment listing and download routes;
+- announcement management and recipient UI integration;
+- pre-storage file validation, bounded upload/download handling, immutable digests, idempotency, and deterministic failure behavior;
+- audit attribution and transactional mutation/audit handling;
+- database migration, recovery inventory, security/deployment compatibility, and regression tests.
+
+**Explicitly deferred:** Task 065 owns Homework Delivery & Actual Hand-In, including any real homework submission/attachment/review semantics. No new Student login role, generalized media management, antivirus service, file search, OCR/AI processing, or operator-wide object reconciliation workflow was introduced.
+
+### Security, authorization, and attachment history
+
+- Application objects remain private; no public bucket policy or permanent public object URLs are used as the authorization mechanism.
+- Application-mediated downloads authorize the current authenticated User and active School context before reading storage.
+- Management authority is derived server-side from normal School roles/resource scope; clients cannot supply authoritative School IDs, object keys, or attachment ownership.
+- Recipient attachment access follows Task 062's **immutable publication-recipient snapshot** authorization, not reconstructed current ParentStudent/Teacher relationships or possession of an attachment ID.
+- A Version with **any publication history**, including scheduled or cancelled publication intent, has its attachments frozen. A later corrected/new Version has its own independent attachment history.
+- Existing published publication and recipient evidence is not rewritten by later content, target, or relationship changes.
+- Removing an eligible pre-publication attachment is a logical operation; historical associations remain preserved rather than destructively rewritten.
+- Download responses are bounded and private, use no-store behavior, and do not expose bucket keys, secrets, or permanent R2 links.
+
+### File acceptance and storage consistency
+
+- V1 accepted formats: **PDF, PNG, JPEG**.
+- Maximum file size: **2 MiB** per file.
+- Maximum active associations: **10 attachments** per AnnouncementVersion.
+- Validation checks filename safety, declared type/extension, content signatures, length bounds, and a SHA-256 digest.
+- Metadata reservation precedes R2 writes; only finalized/ready attachments can be downloaded, and incomplete attachment state blocks publication as appropriate.
+- Idempotency prevents duplicated successful upload effects; uncertain storage/database outcomes fail conservatively and may require reconciliation.
+- Compensation is limited to operation-owned objects when safe; ambiguous finalization does not trigger unsafe blind object deletion.
+- The application R2 target is separate from the Production backup storage boundary. Existing recovery R2 request-signing functionality was refactored into a reusable shared helper without making application files part of the backup bucket.
+
+### Persistence and recovery
+
+New migration:
+
+`database/drizzle/migrations/0020_private-application-files.sql`
+
+New application entities:
+
+- `files`
+- `announcement_attachments`
+
+Database constraints and security include School ownership / same-School associations, uniqueness/check constraints, conservative deletion, RLS enabled, and Data API privilege hardening. Legacy publication history is retained without fabricating historical attachment rows.
+
+**Current inventory after Task 063:**
+
+- **21 migrations** (through `0020`)
+- **42 public application / RLS-enabled tables**
+- **44 recovery tables/fingerprints** (42 application + `auth.users` + `auth.identities`)
+
+Recovery testing validates exact private-file **metadata and association** replay and all 44 fingerprints. **Database recovery does not restore or verify the underlying R2 binary object bytes**; backing up/restoring those bytes is a separate storage recovery obligation. Do not represent metadata-only recovery as full file-content disaster recovery.
+
+### Validation completed
+
+All required **local** Task 063 gates passed after focused test-only remediation.
+
+| Validation gate | Accepted result |
+| --- | --- |
+| Focused web files/announcements/notifications tests | **26 files passed; 279 tests passed** |
+| Database/migration/audit/security gate | **7 files passed; 19 tests passed** |
+| Recovery/security/deployment/operator/jobs gate | **19 files passed, 3 files skipped; 496 tests passed, 8 skipped** |
+| `pnpm lint` | **PASS** |
+| `pnpm typecheck` | **PASS** |
+| `git diff --check` and staged `git diff --cached --check` | **PASS** |
+| Canonical database suite | **18 files passed; 370 tests passed** |
+| Canonical web suite | **166 files passed, 4 skipped; 1,725 tests passed, 13 skipped** |
+| Combined canonical database + web | **2,095 tests passed** |
+| `pnpm build` | **PASS** — Next.js 15.5.23; optimized production build; 38/38 static pages generated |
+| Local Playwright E2E | **6 passed, 5 conditionally skipped; 0 failed** |
+| GitHub CI | **SUCCESS**, manually inspected by user |
+| Deploy STAGING | **SUCCESS**, manually inspected by user |
+
+The 5 skipped Playwright cases require conditional hosted STAGING integration and do not constitute independent proof of hosted application-file/R2 behavior.
+
+### Narrow test-only remediation
+
+1. **Attachment HTTP route test fixture:** Vitest/jsdom did not preserve a synthetic browser-managed `Content-Length` header. The invalid-size test now supplies an actually oversized body; cross-origin behavior is exercised through an explicitly server-visible header fixture. Production request handling was not weakened.
+2. **Platform authority historical migration fixture:** A legacy test applied only through migration `0017` but checked the current **42-table** application security inventory. It now verifies the `0017` upgrade semantics first, replays subsequent migrations, and then runs the current global security audit.
+3. **TypeScript test fixtures:** An invalid-byte test uses `Buffer.alloc(0)` instead of a mismatched `Uint8Array` type; R2 test environment fixtures supply `NODE_ENV: 'test'`. No production behavior was changed for these typing corrections.
+
+The affected tests and full suites subsequently passed.
+
+### Commit, release evidence, and known boundaries
+
+- The completed implementation comprises **62 files**: **40 modified** and **22 newly added**.
+- The validated local commit changed 9,227 inserted lines and 116 deleted lines, including the generated Drizzle migration snapshot.
+- No dependency or lockfile changes were required for Task 063.
+- Final validated code commit: `b049a41188d647528dadca7b41fb8d82c0c7a454`.
+- The commit was pushed to `origin/main`, with the exact remote SHA confirmed and a clean synchronized local working tree.
+- The user manually confirmed **CI and Deploy STAGING SUCCESS** after this push; no hosted CI run IDs are asserted here.
+- No hosted private R2 bucket setup, real object upload/download, or object-byte disaster-recovery acceptance was independently evidenced in this Task 063 local validation record. Such claims must be supported by separate provider/hosted evidence.
+- There were no Task 063 Production operations.
+
+**Acceptance:** Task 063 delivers the approved private-file foundation plus AnnouncementVersion attachments, preserves historical publication/recipient semantics and School isolation, and passes the agreed local repository gates and reported CI/STAGING release gate.
+
+`TASK_063_PRIVATE_APPLICATION_FILES_AND_ATTACHMENTS_PASS`
+
+---
+
+## Historical accepted milestone — Task 062
+
+The following Task 062 record is preserved from the supplied `PROJECT-STATE.md`. Its final “Next roadmap task” refers to the **historical next step at Task 062 closure**, not the current roadmap position; Task 063 has now been completed above.
+
 ## Task 062 — Announcement Publication & Recipient Experience
 
 **Status:** `TASK_062_ANNOUNCEMENT_PUBLICATION_RECIPIENT_EXPERIENCE_PASS`
