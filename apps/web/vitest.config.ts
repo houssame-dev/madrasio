@@ -10,6 +10,9 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['**/*.test.ts', '**/*.test.tsx'],
     exclude: ['**/node_modules/**', '**/.next/**', '**/dist/**', 'e2e/**'],
+    // Process next-intl's ESM server imports so focused RSC-boundary tests can
+    // supply the request-config alias and React cache outside the Next runtime.
+    server: { deps: { inline: ['next-intl'] } },
   },
   resolve: {
     alias: {

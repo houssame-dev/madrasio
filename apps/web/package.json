@@ -51,6 +51,7 @@
     "drizzle-orm": "^0.36.1",
     "lucide-react": "^0.460.0",
     "next": "^15.0.3",
+    "next-intl": "4.14.9",
     "pg": "^8.13.1",
     "postgres": "^3.4.5",
     "react": "^18.3.1",
