@@ -7,3 +7,5 @@ allowBuilds:
   esbuild: true
   sharp: true
   unrs-resolver: true
+  '@parcel/watcher@2.6.0': false
+  '@swc/core@1.16.18': false
