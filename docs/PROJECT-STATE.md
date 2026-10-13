@@ -1,29 +1,124 @@
 # Madrasio — Current Project State
 
-Last updated: **2026-10-12**
+Last updated: **2026-10-13**
 
 ## Current task and release status
 
-**Current roadmap task:** **Task 065 — Homework Delivery & Actual Hand-In** (next to plan/implement; **not yet started**).
+**Current roadmap task:** **Task 066 — Multilingual and Responsive V1 Completion** (**NEXT; not yet started**).
 
-**Latest accepted milestone:** **Task 064 — Student Date of Birth**.
+**Latest accepted implementation milestone:** **Task 065 — Homework Delivery & Actual Hand-In**.
 
-**Status:** `TASK_064_STUDENT_DATE_OF_BIRTH_PASS`
+**Status:** `TASK_065_HOMEWORK_DELIVERY_ACTUAL_HANDIN_PASS`
 
-Task 064 implementation, manual local verification, implementation commit, and user-reported GitHub **CI / Deploy STAGING SUCCESS** are complete. This full replacement state file records Task 064 acceptance; **its repository documentation synchronization must be committed manually** after copying it to `docs/PROJECT-STATE.md`. Do not treat preparation of this file as proof that the documentation commit has already occurred.
+Task 065 implementation and all ten local manual validation gates are complete. The implementation commit was created with a clean working tree. Following the instructed GitHub push step, the user reported **GitHub CI SUCCESS** and **Deploy STAGING SUCCESS** on 2026-10-13. The actual push transcript, remote SHA readback, CI run IDs and hosted applied-migration evidence were **not supplied**; do not represent them as independently verified.
 
 - **Repository:** `houssame-dev/madrasio`
 - **Branch:** `main`
-- **Task 064 implementation commit:** `55cd860` (`feat(students): implement school-local date of birth`)
-- **Task 064 starting HEAD:** `5060033504fbf6f9af2a26a176da93ed5d87940c`
-- **Implementation commit:** 44 files (39 modified and 5 newly added), with **8,209 insertions and 68 deletions**. Git reported a clean local working tree and `main` one commit ahead of `origin/main` immediately after the commit.
-- **CI / Deploy STAGING:** **SUCCESS / SUCCESS**, confirmed by the user after the implementation push step. Workflow IDs, exact remote post-push SHA readback, and separate live Student-DOB application checks were not provided; do not invent them.
-- **Production:** no Production deployment, direct hosted database migration verification, or Production customer-data operation is asserted by this Task 064 record. Existing Production customer-onboarding and backup/recovery obligations remain separate and are not waived.
-- **Documentation status:** replacement prepared; commit/push of this revised `docs/PROJECT-STATE.md` remains the user-operated final documentation step.
+- **Implementation commit:** `d658f4fe52c2f5ac30f900792ded3521b8ff5794`
+- **Parent/base commit:** `4ad5fcd18188cbab5924417476feb3ceacc0b993`
+- **Commit subject:** `feat(homework): implement delivery and actual hand-in`
+- **Commit inventory:** 71 files (51 modified, 20 added); **9,213 insertions, 147 deletions**. The user-provided local post-commit checks confirmed 71 committed files and a clean working tree.
+- **Release reports:** CI **SUCCESS**; Deploy STAGING **SUCCESS** (user confirmation). No workflow IDs or hosted database migration-readback evidence were supplied.
+- **Production:** No Production deployment, Production database migration, hosted R2 upload/recovery, or Production customer-data operation is claimed. The existing backup/recovery customer-onboarding block remains separate.
+- **Documentation synchronization:** **PENDING user-operated replacement and commit/push** of this full project-state document. This file records the Task 065 acceptance evidence; its preparation does not by itself synchronize the repository.
 
-**Next step:** complete the `PROJECT-STATE.md` documentation commit, then begin planning **Task 065 — Homework Delivery & Actual Hand-In** under its own approved audit scope. Task 064 does not add real Homework hand-in, new Student login, or unrelated Student demographics.
+**Exact next step:** synchronize `docs/PROJECT-STATE.md` in a separate documentation-only commit, verify CI/STAGING as applicable, then begin **Task 066 — Multilingual and Responsive V1 Completion** under its separately approved scope. Task 067 (V1 Regression & Documentation Closure) and Task 068 (V1 Release Readiness) remain subsequent roadmap work.
 
 ---
+
+## Task 065 — Homework Delivery & Actual Hand-In
+
+**Owned finding:** `V1-AUDIT-027` (`OWNER-06`).
+
+**Accepted implementation status:** `TASK_065_HOMEWORK_DELIVERY_ACTUAL_HANDIN_PASS` (**repository documentation synchronization pending**).
+
+**Scope:** reconcile actual physical Homework hand-in, recorded submission/lateness, status presentation, and narrowly scoped private Homework submission attachments without introducing Student login, new grading, or unrelated review functionality.
+
+### Functional semantics and historical accountability
+
+- **No submission row** is presented as **Not delivered**. An existing recorded submission row is presented as **Delivered**, while preserving the detailed `SUBMITTED`, `LATE`, `REVIEWED`, and `RETURNED` lifecycle and clear returned-work revision follow-up.
+- A Teacher may record an **optional actual physical hand-in timestamp**. It is distinct from the **server-owned submission recording time**; a supplied valid actual time controls lateness. When actual time is absent or `NULL`, the supported authoritative recording time determines lateness.
+- Due-date lateness uses the authoritative **School-local business-time** rule from Task 055. A DATE due-date boundary is not silently treated as an arbitrary browser-local or UTC instant.
+- Invalid, impossible or future actual instants are rejected. Recording timestamps and lifecycle status are not writable as arbitrary client authority.
+- Review, return and resubmission retain the **same logical Submission**. The first recording remains historically available; `submitted_at` represents the latest server recording. Review updates do not falsify physical hand-in or overwrite historical recording accountability.
+- Teacher on-behalf-of-Student recording remains the authorized workflow. There is **no Student account/login role**. No new coupled Grade, Assessment, Result, Attendance, Notification, or Outbox behavior is introduced.
+- Parent Homework access remains **child-scoped and read-only**; School Admin and Teacher writing authority still depends on current School membership, active assignment where relevant, correct target eligibility, and School isolation.
+
+### Private submission attachments
+
+Task 065 uses Task 063's private application-file service and adds attachments associated with an eligible Homework Submission.
+
+- Server-mediated upload, bounded metadata reads, and **authorized private, no-store downloads**; no public bucket/object URL or permanent download key.
+- Each attachment retains its association with the same logical Submission and the **specific server recording instant** when it was added; a later review, return or resubmission does not silently relink it to a new recording.
+- Same-School resource/file ownership, authenticated role and relationship checks, content constraints, idempotency, safe audit attribution, and transactional failure behavior are enforced.
+- **Ten lifetime attachment intents per Submission**; no arbitrary removal, reassignment, antivirus/malware-scanning service, public media library, or generalized file manager added in Task 065.
+- Ambiguous PUT/finalization outcomes fail closed and can require **operator reconciliation**. They do not produce a false Delivered/READY claim; unsafe blind retry/deletion is forbidden. Pending/uncertain upload state can block review where required by the lifecycle contract.
+- Database recovery covers private-file metadata and association rows **only**. **Cloudflare R2 binary object bytes remain outside the database recovery guarantee** and require separate object-storage recovery arrangements.
+
+### Persistence, migration, security and recovery
+
+**New migration:**
+`database/drizzle/migrations/0022_homework-actual-handin-attachments.sql`
+
+- Adds nullable `homework_submissions.actual_handed_in_at` as `timestamptz` **without backfill**. Historical unknown values remain `NULL`; legacy `submitted_at`, status and history are not rewritten.
+- Adds `homework_submission_attachments` with School ownership, Submission and File references, an immutable-style submission-recording snapshot field, a unique File association, same-School composite foreign keys, restricted deletion and an indexed School/Submission lookup.
+- Enables RLS on the attachment table and revokes broad application-role table grants, preserving the server-authoritative database access boundary.
+- Drizzle journal and schema registrations were committed with migration `0022`. Both fresh-chain and populated-`0021` upgrade fixtures passed.
+
+**Current persistence inventory after Task 065:**
+
+- **23 migrations** (`0000`–`0022`)
+- **43 application / RLS-enabled tables**
+- **45 recovery tables/fingerprints** (43 application tables + `auth.users` + `auth.identities`)
+
+Recovery tests validated truthful known/unknown hand-in restoration, attachment association ordering, the expanded table fingerprint inventory, and compatibility with earlier file and publication history. Neither local replay nor a successful CI/STAGING workflow by itself proves the live hosted database has applied `0022` or that R2 binary bytes can be restored.
+
+### Manual local validation evidence
+
+All **ten** Task 065 local gates passed. Focused test executions overlap the full canonical suites and must not be added to the canonical count as unique tests.
+
+| Gate | Verified evidence |
+| --- | --- |
+| 1 — Focused Homework domain and frontend | **11 files, 91 tests passed** |
+| 2 — Private-file / Announcement attachment / Parent integration | **4 files, 50 tests passed** |
+| 3 — Database, migration and security | **6 files, 17 tests passed** |
+| 4 — Recovery compatibility | **5 files, 111 passed, 5 skipped** |
+| 5 — Security and published-result regression | **2 files, 20 tests passed** |
+| 6 — Static validation | `pnpm lint`, `pnpm typecheck`, `git diff --check`, staged whitespace checks **PASS** |
+| 7 — Canonical database | **20 files, 374 tests passed** |
+| 7 — Canonical web | **173 files passed, 4 files skipped; 1,806 tests passed, 13 skipped** |
+| 7 — Combined canonical | **2,180 passed, 13 skipped, 0 failed** |
+| 8 — Production build (local) | **PASS** — Next.js 15.5.23, compile/type checks, 38/38 static pages, optimized build |
+| 9 — Local Chromium Playwright | **6 passed, 5 conditionally skipped, 0 failed** |
+| 10 — Repository / migration / staged scope review | **PASS** — expected 71 files, migration `0022` and journal, six required regression files, protected files unchanged |
+
+The 13 skipped canonical tests and five skipped Playwright cases were not run and are **not** evidence of hosted integration success. The enabled Playwright suite did **not** independently exercise a Homework-specific browser journey.
+
+A pre-commit staged whitespace check initially identified one extra terminal blank line in migration `0022`. It was removed without changing SQL statements, the 71 files were restaged, and `git diff --cached --check` passed. Initial LF/CRLF conversion messages were Windows line-ending warnings. A first PowerShell remediation attempted a relative .NET file path and stopped before modifying the file; the corrected absolute-path remediation succeeded. No broad code rework was needed.
+
+### Commit, reported release and remaining obligations
+
+- **Code commit:** `d658f4fe52c2f5ac30f900792ded3521b8ff5794`
+- **Parent:** `4ad5fcd18188cbab5924417476feb3ceacc0b993`
+- **Subject:** `feat(homework): implement delivery and actual hand-in`
+- **Commit verified locally:** 71 files, 51 modified + 20 new, 9,213 insertions, 147 deletions, clean working tree.
+- **No package manifest or lockfile changes** and `docs/PROJECT-STATE.md` was intentionally left unchanged in the implementation commit.
+- **GitHub CI:** SUCCESS, per user report following the instructed implementation push.
+- **Deploy STAGING:** SUCCESS, per user report. No exact remote SHA, workflow IDs, hosted migration inspection, or live Homework/R2 journey evidence was provided.
+- **Known limitations:** operator reconciliation for ambiguous uploads; ten lifetime attachment intents per Submission; no removal/reassociation or malware scanning; private R2 bytes excluded from DB-only restore; skipped hosted integration tests; no hosted Homework browser acceptance asserted.
+- **Production:** no release authorization or removal of the separate customer-data backup/RPO gate is inferred.
+
+**Task 065 functional acceptance and CI/STAGING report:** the approved `V1-AUDIT-027` scope is implemented and all ten local gates passed, with successful GitHub CI and Deploy STAGING reported by the user.
+
+`TASK_065_HOMEWORK_DELIVERY_ACTUAL_HANDIN_PASS`
+
+**Documentation closeout:** copy this **entire** replacement to `docs/PROJECT-STATE.md` and commit/push only that documentation change after validating the local repository source. Until that is performed, this newly prepared record is not itself synchronized into `main`.
+
+---
+
+## Historical accepted milestone — Task 064
+
+The following Task 064 record is retained as historical accepted context. Its then-current inventory and Task 065 roadmap statements are historical; Task 065 is the latest accepted implementation. The user previously reported successful CI and Deploy STAGING for Task 064 documentation synchronization, but the exact documentation commit SHA was not supplied.
 
 ## Task 064 — Student Date of Birth
 
@@ -132,13 +227,13 @@ The first Gate 2 database run completed **20 passing tests and one failing test*
 
 `TASK_064_STUDENT_DATE_OF_BIRTH_PASS`
 
-**Documentation closeout:** save this **entire** file as `docs/PROJECT-STATE.md` and commit/push that documentation change manually. Until then, this acceptance record is prepared but not synchronized into the repository.
+**Historical documentation note:** the Task 064 full replacement state was prepared separately and the user later confirmed CI / Deploy STAGING success following documentation synchronization. No exact documentation commit SHA was provided. The latest Task 065 state appears above.
 
 ---
 
 ## Historical accepted milestone — Task 063
 
-The Task 063 record below is retained as accepted historical context. References to its then-current inventory and next roadmap milestone are historical; Task 064 is the current latest accepted implementation.
+The Task 063 record below is retained as accepted historical context. Its then-current inventory and roadmap references are historical; Task 065 is the current latest accepted implementation.
 
 ## Task 063 — Private Application Files & Attachments
 
