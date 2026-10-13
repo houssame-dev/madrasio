@@ -1,6 +1,6 @@
-# Private application Files and AnnouncementVersion attachments
+# Private application Files and attachments
 
-Task 063 implementation handoff; validation and hosted activation are not claimed. Extends ADR-006 (R2), ADR-007 (School ownership), the domain File/AnnouncementAttachment contracts, Task 054 audit, and Task 062 immutable publication recipients. Homework delivery/hand-in remains Task 065.
+Task 063 implementation handoff; validation and hosted activation are not claimed. Extends ADR-006 (R2), ADR-007 (School ownership), the domain File/AnnouncementAttachment contracts, Task 054 audit, and Task 062 immutable publication recipients. Task 065 extends this foundation with private HomeworkSubmission attachments; see [the hand-in contract](homework-delivery-actual-handin.md).
 
 ## Authority and persistence
 
@@ -8,7 +8,7 @@ PostgreSQL owns identity, School ownership, metadata and associations. R2 stores
 
 Migration `0020_private-application-files` adds `files` and `announcement_attachments`. The former stores UUID, authoritative School/creator, upload request UUID, validated display name/media type/size, SHA-256, opaque object key, lifecycle and timestamps. The latter binds one File to one exact AnnouncementVersion and records logical removal. Composite foreign keys enforce same-School Version/File association; File association is unique and deletes are restricted. The request tuple `(school_id, created_by, request_id)` and object key are unique. Both tables enable RLS with zero application policies and explicitly revoke Data API grants, following 0015/0016. No historical rows are fabricated.
 
-Current repository inventory: **21 migrations (0000–0020), 42 application/RLS tables, 44 recovery tables** including the two durable Auth tables. Recovery format remains `madrasio-recovery-v1`. Snapshot/journal, migration readiness, security/deployment expectations, operator preflight and local recovery contracts are updated. No prior migration is changed.
+Current repository inventory: **23 migrations (0000–0022), 43 application/RLS tables, 45 recovery tables** including the two durable Auth tables. Recovery format remains `madrasio-recovery-v1`. Snapshot/journal, migration readiness, security/deployment expectations, operator preflight and local recovery contracts are updated. No prior migration is changed.
 
 ## Private storage and deployment boundary
 
@@ -67,7 +67,7 @@ Operator reconciliation must inspect the exact File/association and publication 
 
 Successful finalization and logical removal append `AnnouncementAttachmentAdded` / `AnnouncementAttachmentRemoved` using Task 054's transaction-bound writer, authoritative actor/School and exact Version/attachment/File IDs. No filenames, bytes, keys, URLs or credentials enter audit metadata. Audit failure rolls back the successful DB mutation; R2 compensation remains outside that transaction. Operational reservation/cleanup states are not falsely audited as successful uploads.
 
-Announcement detail provides upload/removal only on the mutable latest Version, with accessible labels, constrained file chooser, pending/duplicate protection, controlled feedback and removal confirmation. Version history is read-only. Parent/Teacher inbox publication detail exposes private download links and no upload controls. Homework, submissions, avatars and general file management are not integrated.
+Announcement detail provides upload/removal only on the mutable latest Version, with accessible labels, constrained file chooser, pending/duplicate protection, controlled feedback and removal confirmation. Version history is read-only. Parent/Teacher inbox publication detail exposes private download links and no upload controls. Task 065 adds append-only Submission upload/list/download, with current active Teacher assignment or SchoolAdmin authority and scoped Parent reads. It reuses the same File metadata, policy, storage port and download protections. Upload is restricted to unreviewed PUBLISHED Homework; files retain their original recording association across resubmission. No removal/reassignment, avatars or general file management are introduced.
 
 ## Recovery limitation
 

@@ -12,11 +12,11 @@ afterEach(async () => { await client?.close(); });
 
 it('replays the current chain from zero and retains the nullable JSONB schema snapshot', async () => {
   ({ client } = await createTestDb());
-  expect((await client.query<{ count: number }>('select count(*)::int as count from drizzle.__drizzle_migrations')).rows[0].count).toBe(22);
+  expect((await client.query<{ count: number }>('select count(*)::int as count from drizzle.__drizzle_migrations')).rows[0].count).toBe(23);
   expect((await client.query("select data_type,is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='result_publications' and column_name='display_context'")).rows).toEqual([{ data_type: 'jsonb', is_nullable: 'YES', column_default: null }]);
   const snapshot = JSON.parse(await readFile(join(migrationsFolder, 'meta/0018_snapshot.json'), 'utf8'));
   expect(snapshot.tables['public.result_publications'].columns.display_context).toMatchObject({ type: 'jsonb', notNull: false });
-  expect((await client.query<{ count: number }>("select count(*)::int as count from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity")).rows[0].count).toBe(42);
+  expect((await client.query<{ count: number }>("select count(*)::int as count from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity")).rows[0].count).toBe(43);
 });
 
 it('upgrades a populated 0000–0017 publication without inventing historical labels or changing existing fields', async () => {

@@ -21,18 +21,7 @@ export async function insertUploadIntent(db: AnnouncementsDb, input: typeof file
   const [attachment] = await db.insert(announcementAttachments).values({ schoolId: input.schoolId, announcementVersionId: versionId, fileId: file!.id }).returning();
   return { file: file!, attachment: attachment! };
 }
-export async function markFileReady(db: AnnouncementsDb, schoolId: string, fileId: string) {
-  const [row] = await db.update(files).set({ state: 'READY', updatedAt: new Date() })
-    .where(and(eq(files.schoolId, schoolId), eq(files.id, fileId), eq(files.state, 'UPLOADING'))).returning();
-  return row;
-}
-export async function findFile(db: AnnouncementsDb, schoolId: string, fileId: string) {
-  const [row] = await db.select().from(files).where(and(eq(files.schoolId, schoolId), eq(files.id, fileId)));
-  return row;
-}
-export async function markFileRejected(db: AnnouncementsDb, schoolId: string, fileId: string) {
-  await db.update(files).set({ state: 'REJECTED', updatedAt: new Date() }).where(and(eq(files.schoolId, schoolId), eq(files.id, fileId), eq(files.state, 'UPLOADING')));
-}
+export { markFileReady, findFile, markFileRejected } from '@/lib/files/repository';
 export async function findAttachment(db: AnnouncementsDb, schoolId: string, versionId: string, id: string) {
   const [row] = await db.select().from(announcementAttachments).where(and(eq(announcementAttachments.schoolId, schoolId),
     eq(announcementAttachments.announcementVersionId, versionId), eq(announcementAttachments.id, id)));

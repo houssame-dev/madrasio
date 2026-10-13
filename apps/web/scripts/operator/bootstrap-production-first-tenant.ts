@@ -9,8 +9,8 @@ async function main(): Promise<void> {
     consoleLogger.info('production_bootstrap_preflight_started', { target: 'production' });
     await runtime.preflight();
     consoleLogger.info('production_bootstrap_preflight_passed', {
-      migrationCount: 22,
-      applicationTableCount: 42,
+      migrationCount: 23,
+      applicationTableCount: 43,
     });
     const result = await runFirstTenantBootstrap(config, {
       auth: runtime.auth,

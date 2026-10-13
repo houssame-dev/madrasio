@@ -155,6 +155,13 @@
       "when": 1791829195012,
       "tag": "0021_student-date-of-birth",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791854797599,
+      "tag": "0022_homework-actual-handin-attachments",
+      "breakpoints": true
     }
   ]
 }

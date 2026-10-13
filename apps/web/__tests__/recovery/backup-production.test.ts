@@ -31,7 +31,7 @@ const bundle: ProductionRecoveryBundle = {
   outputPath: 'cipher.age',
   bytes: 6,
   ciphertextSha256: sha,
-  applicationTableCount: 42,
+  applicationTableCount: 43,
   authUserCount: 0,
 };
 

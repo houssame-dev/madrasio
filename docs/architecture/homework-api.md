@@ -9,8 +9,9 @@ and map shared errors. The application service owns authorization, lifecycle,
 academic-context checks, historical eligibility, and submission state. The
 repository owns School-scoped Drizzle reads and writes.
 
-No UI, schema change, migration, file foundation, notification event, or
-Homework-to-Grade integration is part of this API.
+Task 065 extends this boundary with nullable actual hand-in time, attributable
+Submission operations and private Submission attachments. No notification event
+or Homework-to-Grade integration is introduced.
 
 ## Tenant and permission boundary
 
@@ -59,6 +60,8 @@ The plural resource spelling follows ADR-017 and the existing API convention.
 - `GET /api/v1/homeworks/:id/students`
 - `GET|PATCH /api/v1/homework-submissions/:id`
 - `POST /api/v1/homework-submissions/:id/review`
+- `GET|POST /api/v1/homework-submissions/:id/attachments`
+- `GET /api/v1/homework-submissions/:id/attachments/:attachmentId/download`
 
 There are no DELETE routes.
 
@@ -101,15 +104,19 @@ publication timestamp, the product should revisit this documented fallback.
 
 ## Submission behavior
 
-The absence of a `HomeworkSubmission` row represents `NOT_SUBMITTED`. The
+The absence of a `HomeworkSubmission` row is presented as **Not delivered**;
+any existing row is **Delivered**, independently of detailed lifecycle status. The
 `/students` read model returns `submission: null`; it never writes placeholder
 rows. One logical row is preserved per Homework + Student.
 
 Only `PUBLISHED` Homework accepts a new Submission. `studentId` is accepted for
 the administrative workflow, while `submittedAt` and initial status are always
-server-derived. The server compares the School's configured calendar date to
-the DATE-valued due date: after the due date the status is `LATE`, otherwise
-`SUBMITTED`. The client cannot submit a timestamp or status.
+server-derived. Optional `actualHandedInAt` accepts a strict real ISO instant
+with explicit offset, never a bare wall time; malformed/future values are rejected.
+Lateness uses actual time if provided, otherwise recording time. The server compares
+that instant in the School timezone to the DATE-valued due date: after the due date
+is `LATE`, otherwise `SUBMITTED`. The entire School-local due date is inclusive.
+Clients cannot choose `submittedAt`, `createdAt`, `updatedAt` or status.
 
 Review transitions are explicit:
 
@@ -117,7 +124,9 @@ Review transitions are explicit:
 - `REVIEWED → RETURNED`
 - PATCHing content is a resubmission operation allowed only from `RETURNED`
   while the Homework is still `PUBLISHED`; it reuses the same row, refreshes
-  the server timestamp, and derives `SUBMITTED`/`LATE` again.
+  the server recording timestamp, and derives `SUBMITTED`/`LATE` again. Optional
+  actual time belongs to this new hand-in, cannot precede a known previous actual
+  time, and resets to unknown if omitted/null. `createdAt` remains unchanged.
 
 Submission identity (`schoolId`, `homeworkId`, `studentId`) is immutable.
 Duplicate create attempts return `DUPLICATE_HOMEWORK_SUBMISSION`.
@@ -138,5 +147,7 @@ submission state. SQL constraint names and details are never returned.
 
 Creating, publishing, closing, submitting, reviewing, returning, or archiving
 Homework does not create or mutate Assessment, Grade, Result, Attendance,
-ParentStudent, Notification, or Outbox records. Attachments remain deferred.
+ParentStudent, Notification, or Outbox records. Private attachments use Task 063;
+see [Homework hand-in](homework-delivery-actual-handin.md) for locking, audit,
+attachment failure semantics, persistence and recovery boundaries.
 No destructive delete or automatic cascading lifecycle mutation is exposed.

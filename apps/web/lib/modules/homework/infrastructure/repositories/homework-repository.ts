@@ -8,6 +8,7 @@ import * as schema from '@school/database';
 import type { HomeworkListInput, SubmissionListInput } from '../../domain/contracts';
 
 export type HomeworkDb = PgDatabase<PgQueryResultHKT, typeof schema>;
+export type HomeworkTransaction = Parameters<Parameters<HomeworkDb['transaction']>[0]>[0];
 export interface Paging { limit: number; offset: number }
 
 function where(conditions: (SQL | undefined)[]): SQL | undefined {
@@ -249,6 +250,23 @@ export async function findSchoolTimezone(db: HomeworkDb, schoolId: string) {
   return row?.timezone ?? null;
 }
 
+/** Serialize Homework lifecycle, submission transitions and attachment finalization together. */
+export async function withHomeworkLock<T>(db: HomeworkDb, schoolId: string, id: string,
+  operation: (tx: Parameters<Parameters<HomeworkDb['transaction']>[0]>[0]) => Promise<T>) {
+  return db.transaction(async (tx) => {
+    await tx.select({ id: schema.homework.id }).from(schema.homework)
+      .where(and(eq(schema.homework.schoolId, schoolId), eq(schema.homework.id, id))).for('update');
+    return operation(tx);
+  });
+}
+export async function hasPendingAttachments(db: HomeworkDb, schoolId: string, submissionId: string) {
+  const [row] = await db.select({ id: schema.files.id }).from(schema.homeworkSubmissionAttachments)
+    .innerJoin(schema.files, eq(schema.files.id, schema.homeworkSubmissionAttachments.fileId))
+    .where(and(eq(schema.homeworkSubmissionAttachments.schoolId, schoolId),
+      eq(schema.homeworkSubmissionAttachments.submissionId, submissionId), eq(schema.files.state, 'UPLOADING'))).limit(1);
+  return !!row;
+}
+
 export async function insertSubmission(
   db: HomeworkDb,
   input: typeof schema.homeworkSubmissions.$inferInsert,
@@ -359,6 +377,8 @@ export async function listEligibleStudents(
       studentStatus: schema.students.status,
       submissionId: schema.homeworkSubmissions.id,
       submittedAt: schema.homeworkSubmissions.submittedAt,
+      actualHandedInAt: schema.homeworkSubmissions.actualHandedInAt,
+      submissionCreatedAt: schema.homeworkSubmissions.createdAt,
       content: schema.homeworkSubmissions.content,
       submissionStatus: schema.homeworkSubmissions.status,
       submissionUpdatedAt: schema.homeworkSubmissions.updatedAt,

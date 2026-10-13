@@ -30,13 +30,13 @@ export const homework = { id: homeworkId, teacherId, subjectId, academicYearId: 
 export const publishedHomework = { ...homework, status: 'PUBLISHED' as const };
 export const target = { id: targetId, homeworkId, targetType: 'CLASS' as const, academicYearId: yearId, classId: classAId, ...timestamps };
 export const student = { id: studentId, firstName: 'Sara', lastName: 'Amrani', studentCode: 'S-01', status: 'INACTIVE' as const, ...timestamps };
-export const submission = { id: submissionId, homeworkId, studentId, submittedAt: '2025-10-11T09:00:00.000Z', content: 'My answer', status: 'LATE' as const, ...timestamps };
-export const rosterSubmission = { id: submission.id, submittedAt: submission.submittedAt, content: submission.content, status: submission.status, updatedAt: submission.updatedAt };
+export const submission = { id: submissionId, homeworkId, studentId, actualHandedInAt: null, submittedAt: '2025-10-11T09:00:00.000Z', content: 'My answer', status: 'LATE' as const, ...timestamps };
+export const rosterSubmission = { id: submission.id, actualHandedInAt: null, createdAt: submission.createdAt, submittedAt: submission.submittedAt, content: submission.content, status: submission.status, updatedAt: submission.updatedAt };
 export const roster = (value: HomeworkRosterSubmissionDto | null = null) => ({ data: [{ student, submission: value }], meta: { page: 1, pageSize: 50, total: 1 } });
 export const page = <T,>(data: T[], pageNumber = 1, pageSize = 20, total = data.length) => ({ data, meta: { page: pageNumber, pageSize, total } });
 
-export function renderHomework(ui: ReactElement, role: Role = 'SCHOOL_ADMIN'): RenderResult & { queryClient: QueryClient } {
+export function renderHomework(ui: ReactElement, role: Role = 'SCHOOL_ADMIN', timezone = 'UTC'): RenderResult & { queryClient: QueryClient } {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  const result = render(<QueryClientProvider client={queryClient}><AppContextProvider value={{ user: { id: userId }, currentSchool: { id: schoolId, role, timezone: 'UTC' }, memberships: [{ schoolId, schoolName: 'Atlas School', role, status: 'ACTIVE' }] }}>{ui}</AppContextProvider></QueryClientProvider>);
+  const result = render(<QueryClientProvider client={queryClient}><AppContextProvider value={{ user: { id: userId }, currentSchool: { id: schoolId, role, timezone }, memberships: [{ schoolId, schoolName: 'Atlas School', role, status: 'ACTIVE' }] }}>{ui}</AppContextProvider></QueryClientProvider>);
   return Object.assign(result, { queryClient });
 }

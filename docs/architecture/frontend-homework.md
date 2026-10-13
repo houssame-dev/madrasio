@@ -4,7 +4,7 @@
 
 `/homework` is the staff Homework workspace and `/homework/:id` is its lifecycle, targeting, roster, and Submission detail. The UI consumes the committed Task 022 APIs and creates no parallel Homework model. `SCHOOL_ADMIN`, membership-scoped `SUPER_ADMIN`, and `TEACHER` can enter the workspace; Teacher results and writes remain constrained by server authorization and exact active assignment scope.
 
-Parents do not receive the broad Homework navigation or list because V1 has no child-specific Homework discovery endpoint. A Parent may open a known `/homework/:id` resource in a deliberately read-only view. That view requests only the server-filtered Homework detail and related-child Submissions. The future child portal is responsible for discovery and is outside Task 033.
+Parents discover eligible Homework through Task 060 Children → Child → Homework and open `/homework/:id` read-only. This view requests only server-filtered Homework detail, related-child Submissions and authorized private attachments. Broad staff management remains unavailable.
 
 Frontend permission checks are presentation only. Every request remains subject to authentication, active User state, authoritative current School context, permission checks, Teacher scope, Parent relationship, historical Enrollment eligibility, and safe cross-tenant not-found behavior.
 
@@ -26,13 +26,17 @@ Targets use only `GET/POST /api/v1/homeworks/:id/targets` with an exact `classId
 
 `GET /api/v1/homeworks/:id/students` is the only staff roster source. The UI never builds a Homework roster from the generic Student list, current Class membership, or current Student status. The backend resolves StudentEnrollment eligibility on the inclusive Homework `dueDate`, so historically eligible Students remain visible even after transfer or deactivation.
 
-Each roster row contains the server-returned Student and nullable Submission. A null Submission is displayed as **Not submitted**, but that label is not persisted and is not a fifth status. The roster is paginated and preserves backend metadata.
+Each roster row contains the server-returned Student and nullable Submission. A null Submission is displayed as **Not delivered**, but that label is not persisted and is not a fifth status. Every existing row is **Delivered**, including LATE, REVIEWED and RETURNED. Detailed status is preserved; RETURNED explicitly requires revision/follow-up. The roster is paginated and preserves backend metadata.
 
 ## Submission and review lifecycle
 
-Staff can record exactly one Submission for an eligible roster Student only while Homework is PUBLISHED. Creation sends `studentId` and optional plain-text `content`; status and `submittedAt` are server derived. The UI displays the returned `SUBMITTED` or `LATE` value and never calculates lateness in the browser.
+Staff can record exactly one Submission for an eligible roster Student only while Homework is PUBLISHED. Creation sends `studentId`, optional plain-text `content` and optional `actualHandedInAt`; status and `submittedAt` are server derived. The UI displays the returned `SUBMITTED` or `LATE` value and never calculates lateness in the browser.
 
-Review uses the dedicated action endpoint. `SUBMITTED` or `LATE` may become `REVIEWED`, and `REVIEWED` may become `RETURNED`. Returned work on PUBLISHED Homework is resubmitted through PATCH of the same logical Submission row with `content` only. The UI does not create a replacement row, accept client timestamps, or provide arbitrary status editing. Submission review has no grade, score, rubric, result, feedback, notification, or outbox side effect in this task.
+Review uses the dedicated action endpoint. `SUBMITTED` or `LATE` may become `REVIEWED`, and `REVIEWED` may become `RETURNED`. Returned work on PUBLISHED Homework is resubmitted through PATCH of the same logical Submission row with `content` and an independently entered optional actual hand-in. The UI does not create a replacement row, accept client recording timestamps, or provide arbitrary status editing. Submission review has no grade, score, rubric, result, feedback, notification, or outbox side effect in this task.
+
+The optional datetime-local control explicitly uses current School timezone and the shared Task 055 wall-time adapter, rejecting nonexistent/ambiguous times. Blank means unknown, never a fabricated physical time. The server validates future times and determines lateness. Detail/roster show latest recording, first recording and actual hand-in separately using explicit School-time formatting, never browser-local formatting.
+
+Private attachments use accessible labelled bounded file input, explicit upload, pending/duplicate protection and controlled feedback. Upload is available only on an unreviewed Submission while Homework is PUBLISHED; review/returned/closed history is read-only. Parent has downloads only. Files remain on the same logical Submission, labelled with their original recording time. There is no removal/reassignment control. Attachment query keys include School, User and Submission.
 
 ## Errors, caching, and stale scope
 
@@ -44,4 +48,4 @@ All Homework query keys include authoritative current School plus the exact reso
 
 Lists and rosters use semantic tables inside responsive overflow containers, forms have explicit labels and validation feedback, lifecycle actions require confirmation, statuses remain textual, and all actions are keyboard operable. Narrow screens preserve usable stacked filters and dialogs without inventing separate mobile workflows.
 
-No backend, schema, migration, attachment storage, rich-text editor, bulk import, export, realtime, Student portal, Parent discovery, Gradebook, Results, Attendance, Notification, or Outbox work is included. The server remains authoritative for every domain and authorization decision.
+No rich-text editor, bulk import/export, realtime, Student portal, Gradebook, Results, Attendance, Notification or Outbox work is introduced by Task 065. Attachments reuse Task 063 and physical-time recording is staff-only; see [the hand-in contract](homework-delivery-actual-handin.md). The server remains authoritative for every domain and authorization decision.

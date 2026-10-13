@@ -29,6 +29,6 @@ export const targetFormSchema = z.object({ classIds: z.array(uuid).min(1, 'Choos
   if (new Set(classIds).size !== classIds.length) context.addIssue({ code: z.ZodIssueCode.custom, path: ['classIds'], message: 'Each Class may be selected only once.' });
 });
 
-export const submissionFormSchema = z.object({ content: z.string().max(50_000, 'Content must contain at most 50,000 characters.') });
+export const submissionFormSchema = z.object({ actualHandedInAt: z.string().optional(), content: z.string().max(50_000, 'Content must contain at most 50,000 characters.') });
 export type SubmissionFormValues = z.infer<typeof submissionFormSchema>;
 

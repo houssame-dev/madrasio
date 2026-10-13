@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isCalendarDate } from '@school/shared';
 
 import { HOMEWORK_STATUSES } from './homework-vocabulary';
 
@@ -41,12 +42,18 @@ export const homeworkTargetsCreateSchema = z.object({
   });
 });
 
+export const actualHandInSchema = z.string().datetime({ offset: true }).refine(
+  (value) => isCalendarDate(value.slice(0, 10)) && !value.startsWith('0000-') && Number.isFinite(Date.parse(value)),
+  'Choose a valid actual hand-in time with an explicit timezone.',
+);
 export const homeworkSubmissionCreateSchema = z.object({
   studentId: uuid,
+  actualHandedInAt: actualHandInSchema.nullable().optional(),
   content: z.string().trim().max(50_000).nullable().optional(),
 }).strict();
 
 export const homeworkSubmissionPatchSchema = z.object({
+  actualHandedInAt: actualHandInSchema.nullable().optional(),
   content: z.string().trim().max(50_000).nullable(),
 }).strict();
 

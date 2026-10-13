@@ -148,9 +148,9 @@ describe.skipIf(!live)('live local recovery target', () => {
     await expect(
       verifyLocalRecoveryTarget(state.statePath, { expectMigrated: true }),
     ).resolves.toMatchObject({
-      applicationTables: 42,
-      migrations: 22,
-      rlsTables: 42,
+      applicationTables: 43,
+      migrations: 23,
+      rlsTables: 43,
       applicationPolicies: 0,
       security: 'accepted',
     });
@@ -303,12 +303,12 @@ describe.skipIf(!live)('live local recovery target', () => {
           (select count(*)::int from pg_policies where schemaname='public') policies`,
       );
       expect(counts.rows[0]).toEqual({
-        application_tables: 42,
+        application_tables: 43,
         auth_identities: 1,
         auth_users: 1,
         memberships: 1,
         policies: 0,
-        rls_tables: 42,
+        rls_tables: 43,
         schools: 1,
         users: 1,
       });
@@ -379,9 +379,9 @@ describe.skipIf(!live)('live local recovery target', () => {
       authIdentitiesColumns: 9,
       authUsers: 0,
       authIdentities: 0,
-      applicationTables: 42,
-      migrations: 22,
-      rlsTables: 42,
+      applicationTables: 43,
+      migrations: 23,
+      rlsTables: 43,
       applicationPolicies: 0,
       security: 'accepted',
       nonLoopbackBindings: 0,

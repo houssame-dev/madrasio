@@ -1,9 +1,24 @@
 # Production backup and recovery
 
+## Task 065 Homework metadata extension
+
+Current repository migration head is `0022_homework-actual-handin-attachments`
+(23 migrations): 43 application + 2 durable Auth tables, **45 recovery tables**.
+Full-row fingerprints include nullable physical hand-in timestamps and the new
+`homework_submission_attachments` recording associations. FK ordering restores
+Files and Submissions before associations. Existing UUID/history/School integrity
+checks and the `madrasio-recovery-v1` format remain unchanged. Older migration
+metadata is not silently accepted as the current schema.
+
+Database recovery does **not** include private R2 attachment bytes. This repository
+extension does not claim new hosted recovery acceptance or provider activation.
+Fresh/populated migration and local metadata replay tests are authored, not run
+during Task 065 A1. Historical Task 050 evidence below remains historical.
+
 ## Task 064 date-only metadata extension
 
-Current repository migration head is `0021_student-date-of-birth` (22 migrations).
-The inventory remains 42 application + 2 durable Auth tables (44 recovery tables).
+Task 064 migration head was `0021_student-date-of-birth` (22 migrations).
+That inventory was 42 application + 2 durable Auth tables (44 recovery tables).
 Existing full-row Student archives/fingerprints include `date_of_birth`, including
 NULL for legacy records, with no timezone conversion. DOB is private application
 data within the existing encrypted database recovery boundary. Migration

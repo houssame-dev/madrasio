@@ -47,6 +47,21 @@ admin, or the existing permitted SuperAdmin membership model). Teacher/Parent ha
 no grant. It queries SCHOOL rows for that School only, ordered by timestamp then UUID
 descending; page size is 1–100 and page is 1–10000. No UI or generic audit API exists.
 
+## Task 065 Homework hand-in coverage
+
+The strict `recordHomeworkAudit` producer records `HomeworkSubmissionRecorded`,
+`HomeworkSubmissionResubmitted`, `HomeworkSubmissionReviewed`,
+`HomeworkSubmissionReturned` and `HomeworkSubmissionAttachmentAdded`. Resource is
+the logical Submission UUID. Metadata is limited to Homework/Student UUIDs,
+current/previous lifecycle and recording/actual-time values (`UNKNOWN` for null),
+and exact attachment/File UUIDs where relevant. No content, display filename,
+object key, provider error or credential is captured. Current-School
+`homework.manage`, active Teacher scope/target eligibility (or existing admin
+permission) is checked by the service; Parents cannot produce these events.
+Mutation and audit share the Homework-locked transaction. Audit failure rolls back
+the recording/review/READY state; attachment I/O reconciliation remains explicit.
+No events or physical hand-in times are invented for legacy rows.
+
 ## Atomicity, privacy and append-only history
 
 Business mutation and audit insert use the same transaction. Failure rolls back both

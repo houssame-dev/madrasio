@@ -228,10 +228,11 @@ export const homeworkSubmissionStatus = pgEnum('homework_submission_status', [
  *   (school_id, homework_id) → homework(school_id, id)
  *   (school_id, student_id)  → students(school_id, id)
  *
- * `submitted_at` is a precise timestamptz instant (Task 008 §13). On-time/late
- * determination (submitted_at vs due_date) is an Application-layer concern and
- * is NOT encoded as a database CHECK (timestamps vs dates). The status may
- * represent LATE when the business operation determines it.
+ * `submitted_at` is the latest server recording instant; `created_at` retains
+ * the first recording, and `updated_at` also includes review actions. Task 065
+ * adds nullable `actual_handed_in_at` for known physical hand-in time. Legacy
+ * NULL stays unknown. Lateness uses actual time when supplied, otherwise latest
+ * recording time, against the School-local due date (application validation).
  *
  * Student eligibility for the target Class (enrollment in the Homework's
  * target Class, Task 008 §14) is an Application-layer invariant: it is NOT
@@ -253,6 +254,8 @@ export const homeworkSubmissions = pgTable(
     homeworkId: uuid('homework_id').notNull(),
     studentId: uuid('student_id').notNull(),
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
+    // Optional physical hand-in; legacy NULL means unknown, not an inferred recording time.
+    actualHandedInAt: timestamp('actual_handed_in_at', { withTimezone: true }),
     content: text('content'),
     status: homeworkSubmissionStatus('status').notNull().default('SUBMITTED'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -269,6 +272,7 @@ export const homeworkSubmissions = pgTable(
       columns: [table.schoolId, table.studentId],
       foreignColumns: [students.schoolId, students.id],
     }).onDelete('restrict'),
+    unique('homework_submissions_school_id_unique').on(table.schoolId, table.id),
     // Logical submission identity: one current submission per Homework + Student.
     unique('homework_submissions_school_homework_student_unique').on(
       table.schoolId,

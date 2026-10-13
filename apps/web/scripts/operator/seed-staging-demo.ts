@@ -10,8 +10,8 @@ async function main(): Promise<void> {
     consoleLogger.info('demo_seed_preflight_started', { target: 'staging' });
     await runtime.preflight();
     consoleLogger.info('demo_seed_preflight_passed', {
-      migrationCount: 22,
-      applicationTableCount: 42,
+      migrationCount: 23,
+      applicationTableCount: 43,
     });
     const result = await runStagingDemoSeed(config, {
       auth: runtime.auth,

@@ -8,9 +8,9 @@ export type FileErrorCode = 'FILE_INVALID' | 'FILE_UNAVAILABLE' | 'FILE_VERSION_
 const messages: Record<FileErrorCode, string> = {
   FILE_INVALID: 'Choose a nonempty PDF, PNG or JPEG up to 2 MiB with a simple filename.',
   FILE_UNAVAILABLE: 'Attachment is unavailable.', FILE_VERSION_FROZEN: 'Attachments can only change on the latest never-scheduled Version.',
-  FILE_LIMIT_REACHED: 'A Version supports at most ten attachments.', FILE_REQUEST_CONFLICT: 'Upload request conflicts with an earlier request.',
+  FILE_LIMIT_REACHED: 'This resource supports at most ten attachment intents.', FILE_REQUEST_CONFLICT: 'Upload request conflicts with an earlier request.',
   FILE_RECONCILIATION_REQUIRED: 'Upload could not be completed safely. Refresh attachments and contact an operator before retrying.',
-  FILE_STORAGE_UNAVAILABLE: 'Private file storage is unavailable.', FILE_NOT_READY: 'Remove or resolve incomplete attachments before publication.',
+  FILE_STORAGE_UNAVAILABLE: 'Private file storage is unavailable.', FILE_NOT_READY: 'Resolve incomplete attachments before continuing.',
 };
 export class FileError extends AppError {
   constructor(public readonly featureCode: FileErrorCode) {

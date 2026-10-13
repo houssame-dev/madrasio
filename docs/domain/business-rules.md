@@ -666,11 +666,30 @@ Draft Homework is not equivalent to published Homework.
 
 ### BR-HOMEWORK-005 — Submission Belongs to the Correct Student/Assignment Context
 
-A Student cannot submit Homework for another Student.
+Authorized staff record delivery for an eligible Student within the Homework target
+and inclusive due-date enrollment context. There is no Student login. One logical
+Submission is retained; no row is Not delivered, and every existing row is Delivered.
+RETURNED still requires follow-up. Parent read access requires the active related
+child and eligibility; Parents cannot record, review or upload.
 
 ### BR-HOMEWORK-006 — Review Is Teacher-Scoped
 
-Only an authorized Teacher may review/manage a Submission.
+An authorized Teacher within active assignment scope, or a School Admin with existing
+School management authority, may review/manage an eligible Submission. Parents
+remain read-only.
+
+Task 065 hand-in timing: `submittedAt` is server recording, `createdAt` preserves
+the first recording, and nullable `actualHandedInAt` is independently provided.
+Strict real offset-bearing instants only; no future hand-in. On returned work, a
+new known hand-in cannot precede the previous known hand-in. Unknown values stay
+NULL, including legacy data; omission on resubmission does not copy the old time.
+Lateness uses actual time when known, otherwise recording time, against the end
+of the School-local due date. No arbitrary age/earliest date rule is invented.
+
+Private Submission files reuse Task 063 and require the same resource/School
+scope. Uploads are append-only on unreviewed PUBLISHED work; history is retained,
+not silently replaced or made public. Audit attribution and state change commit
+atomically; external storage failures require explicit reconciliation.
 
 ### BR-HOMEWORK-007 — Homework-to-Grade Integration Is Explicit
 

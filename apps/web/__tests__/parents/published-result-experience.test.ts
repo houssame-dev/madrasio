@@ -170,9 +170,9 @@ it('rejects malformed new notification context without persisting a misleading n
   expect(await c.test.seed.select().from(schema.notifications)).toHaveLength(0);
 });
 
-it('keeps the current 44-table recovery inventory and fingerprints the new publication context', async () => {
+it('keeps the current 45-table recovery inventory and fingerprints the new publication context', async () => {
   const f = await fixture(); await f.publish();
-  expect(APPLICATION_TABLES).toHaveLength(42); expect(RECOVERY_TABLES).toHaveLength(44);
+  expect(APPLICATION_TABLES).toHaveLength(43); expect(RECOVERY_TABLES).toHaveLength(45);
   expect(RECOVERY_TABLES).toContain('public.result_publications');
   const client = c.test.client as unknown as QueryClient;
   const [publication] = await c.test.seed.select().from(schema.resultPublications);

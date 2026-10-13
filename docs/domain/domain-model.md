@@ -805,12 +805,20 @@ The target model must remain explicit.
 
 HomeworkSubmission represents a Student's submission for Homework.
 
-It may contain:
+One logical row per School + Homework + Student is retained through SUBMITTED,
+LATE, REVIEWED and RETURNED. No row means **Not delivered**; a row means
+**Delivered**, even when returned for follow-up. This presentation is not persisted.
 
-- Submission state
-- Submitted timestamp
-- Attachments
-- Teacher review information
+- `submittedAt`: server-owned latest recording instant.
+- `createdAt`: original recording instant; `updatedAt` also changes on review.
+- `actualHandedInAt`: optional known physical hand-in instant; legacy NULL is unknown.
+- Plain-text content and detailed lifecycle, independent of grading.
+- `HomeworkSubmissionAttachment`: same-School private File association with the
+  original Submission recording instant; retained across resubmissions.
+
+Authorized staff record/review/return; Parents have scoped reads only. No Student
+login or attempt table is introduced. Important actions preserve attributable
+semantic history in AuditEvent, not new review-comment/reviewer-display fields.
 
 ---
 

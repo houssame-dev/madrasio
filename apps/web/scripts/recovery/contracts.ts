@@ -18,7 +18,7 @@ export const PINNED_TOOLS = {
 } as const;
 export const AGE_RUNTIME_VERSION = `v${PINNED_TOOLS.age}`;
 
-/** Durable allowlist through 0021. Full rows include Student DOB and private File metadata, not R2 bytes. */
+/** Durable allowlist through 0022. Full rows include actual hand-in and private submission attachment metadata, not R2 bytes. */
 export const APPLICATION_TABLES = [
   'academic_periods',
   'academic_years',
@@ -41,6 +41,7 @@ export const APPLICATION_TABLES = [
   'grading_configuration_versions',
   'grading_configurations',
   'homework',
+  'homework_submission_attachments',
   'homework_submissions',
   'homework_targets',
   'levels',

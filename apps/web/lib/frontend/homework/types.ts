@@ -29,13 +29,16 @@ export interface HomeworkSubmissionDto extends Timestamps {
   homeworkId: string;
   studentId: string;
   submittedAt: string;
+  actualHandedInAt: string | null;
   content: string | null;
   status: HomeworkSubmissionStatus;
 }
 
 export interface HomeworkRosterSubmissionDto {
+  createdAt: string;
   id: string;
   submittedAt: string;
+  actualHandedInAt: string | null;
   content: string | null;
   status: HomeworkSubmissionStatus;
   updatedAt: string;

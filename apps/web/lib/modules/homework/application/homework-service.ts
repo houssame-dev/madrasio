@@ -3,7 +3,10 @@ import type { Role } from '@/lib/authorization/roles';
 import {
   requireOperation, resolveCurrentContext, resolveTeacherScope, type AuthorizationDb,
 } from '@/lib/authorization/server';
-import { ForbiddenError } from '@/lib/errors';
+import { recordHomeworkAudit } from '@/lib/audit/homework';
+import { actualHandInSchema } from '../domain/contracts';
+import { FileError } from '@/lib/files/policy';
+import { ForbiddenError, ValidationError } from '@/lib/errors';
 
 import type {
   HomeworkCreateInput, HomeworkListInput, HomeworkPatchInput, HomeworkSubmissionCreateInput,
@@ -11,7 +14,7 @@ import type {
   PageInput, SubmissionListInput,
 } from '../domain/contracts';
 import * as repo from '../infrastructure/repositories/homework-repository';
-import type { HomeworkDb } from '../infrastructure/repositories/homework-repository';
+import type { HomeworkDb, HomeworkTransaction } from '../infrastructure/repositories/homework-repository';
 import { HomeworkDomainError, isUniqueViolation } from './homework-errors';
 
 export interface HomeworkActor { userId: string | null; schoolId: string }
@@ -180,7 +183,7 @@ export async function getHomework(db: HomeworkDb, actor: HomeworkActor, id: stri
   return view(homework);
 }
 
-export async function patchHomework(
+async function patchHomeworkLocked(
   db: HomeworkDb,
   actor: HomeworkActor,
   id: string,
@@ -230,7 +233,7 @@ export async function listHomeworkTargets(db: HomeworkDb, actor: HomeworkActor, 
   return (await repo.listTargets(db, actor.schoolId, homework.id)).map(view);
 }
 
-export async function addHomeworkTargets(
+async function addHomeworkTargetsLocked(
   db: HomeworkDb,
   actor: HomeworkActor,
   homeworkId: string,
@@ -278,14 +281,26 @@ async function authorizeSubmissionManagement(
   studentId: string,
 ) {
   const role = await authorizeHomework(db, actor, homework, 'manage');
-  if (role !== 'TEACHER') return;
   const classes = await repo.eligibleTargetClassIds(db, {
     schoolId: actor.schoolId, homeworkId: homework.id, studentId, dueDate: homework.dueDate,
   });
+  if (!classes.length) throw new HomeworkDomainError('STUDENT_NOT_ELIGIBLE_FOR_HOMEWORK', 'Student was not enrolled in a target Class on the Homework due date.');
+  if (role !== 'TEACHER') return;
   const assignments = await teacherAssignments(db, actor);
   if (!classes.some((item) => assignmentMatches(assignments, homework, item.classId))) {
     throw new ForbiddenError('Submission is outside the Teacher assignment scope.');
   }
+}
+
+function actualHandIn(value: string | null | undefined, now: Date, previous: Date | null = null) {
+  if (value == null) return null;
+  const parsed = actualHandInSchema.safeParse(value);
+  const invalid = (message: string): never => { throw new ValidationError(message, { issues: [{ path: 'actualHandedInAt', message }] }); };
+  if (!parsed.success) return invalid('Choose a valid actual hand-in time with an explicit timezone.');
+  const instant = new Date(parsed.data);
+  if (instant > now) return invalid('Actual hand-in cannot be in the future.');
+  if (previous && instant < previous) return invalid('A resubmission cannot precede the previous actual hand-in.');
+  return instant;
 }
 
 async function derivedSubmissionState(db: HomeworkDb, schoolId: string, dueDate: string, now: Date) {
@@ -298,8 +313,8 @@ async function derivedSubmissionState(db: HomeworkDb, schoolId: string, dueDate:
   }
 }
 
-export async function createHomeworkSubmission(
-  db: HomeworkDb,
+async function createHomeworkSubmissionLocked(
+  db: HomeworkTransaction,
   actor: HomeworkActor,
   homeworkId: string,
   input: HomeworkSubmissionCreateInput,
@@ -320,15 +335,18 @@ export async function createHomeworkSubmission(
   }
   await authorizeSubmissionManagement(db, actor, homework, input.studentId);
   const now = new Date();
+  const actualHandedInAt = actualHandIn(input.actualHandedInAt, now);
   try {
     const row = await repo.insertSubmission(db, {
       schoolId: actor.schoolId,
       homeworkId,
       studentId: input.studentId,
       content: input.content ?? null,
-      submittedAt: now,
-      status: await derivedSubmissionState(db, actor.schoolId, homework.dueDate, now),
+      submittedAt: now, actualHandedInAt, createdAt: now, updatedAt: now,
+      status: await derivedSubmissionState(db, actor.schoolId, homework.dueDate, actualHandedInAt ?? now),
     });
+    await recordHomeworkAudit(db, actor, { action: 'HomeworkSubmissionRecorded', resourceId: row.id,
+      metadata: { homeworkId, studentId: row.studentId, status: row.status, recordedAt: row.submittedAt.toISOString(), actualHandedInAt: row.actualHandedInAt?.toISOString() ?? null } });
     return view(row);
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -384,8 +402,8 @@ export async function getHomeworkSubmission(db: HomeworkDb, actor: HomeworkActor
   return view(value.submission);
 }
 
-export async function patchHomeworkSubmission(
-  db: HomeworkDb,
+async function patchHomeworkSubmissionLocked(
+  db: HomeworkTransaction,
   actor: HomeworkActor,
   id: string,
   input: HomeworkSubmissionPatchInput,
@@ -398,18 +416,25 @@ export async function patchHomeworkSubmission(
       'Only a returned Submission on published Homework may be resubmitted.',
     );
   }
+  if (await repo.hasPendingAttachments(db, actor.schoolId, id)) throw new FileError('FILE_NOT_READY');
   const now = new Date();
+  const actualHandedInAt = actualHandIn(input.actualHandedInAt, now, value.submission.actualHandedInAt);
   const row = await repo.updateSubmission(db, actor.schoolId, id, {
     content: input.content,
-    submittedAt: now,
-    status: await derivedSubmissionState(db, actor.schoolId, value.homework.dueDate, now),
+    submittedAt: now, actualHandedInAt,
+    status: await derivedSubmissionState(db, actor.schoolId, value.homework.dueDate, actualHandedInAt ?? now),
   });
   if (!row) submissionNotFound();
+  await recordHomeworkAudit(db, actor, { action: 'HomeworkSubmissionResubmitted', resourceId: id,
+    metadata: { homeworkId: row.homeworkId, studentId: row.studentId, status: row.status,
+      recordedAt: row.submittedAt.toISOString(), actualHandedInAt: row.actualHandedInAt?.toISOString() ?? null,
+      previousStatus: value.submission.status, previousRecordedAt: value.submission.submittedAt.toISOString(),
+      previousActualHandedInAt: value.submission.actualHandedInAt?.toISOString() ?? null } });
   return view(row);
 }
 
-export async function reviewHomeworkSubmission(
-  db: HomeworkDb,
+async function reviewHomeworkSubmissionLocked(
+  db: HomeworkTransaction,
   actor: HomeworkActor,
   id: string,
   input: HomeworkSubmissionReviewInput,
@@ -425,8 +450,12 @@ export async function reviewHomeworkSubmission(
   if (!valid) {
     throw new HomeworkDomainError('INVALID_HOMEWORK_SUBMISSION_STATE', 'Submission state transition is invalid.');
   }
+  if (await repo.hasPendingAttachments(db, actor.schoolId, id)) throw new FileError('FILE_NOT_READY');
   const row = await repo.updateSubmission(db, actor.schoolId, id, { status: input.status });
   if (!row) submissionNotFound();
+  await recordHomeworkAudit(db, actor, { action: input.status === 'REVIEWED' ? 'HomeworkSubmissionReviewed' : 'HomeworkSubmissionReturned', resourceId: id,
+    metadata: { homeworkId: row.homeworkId, studentId: row.studentId, status: row.status, previousStatus: value.submission.status,
+      recordedAt: row.submittedAt.toISOString(), actualHandedInAt: row.actualHandedInAt?.toISOString() ?? null } });
   return view(row);
 }
 
@@ -456,6 +485,8 @@ export async function listHomeworkStudents(
       submission: row.submissionId === null ? null : {
         id: row.submissionId,
         submittedAt: row.submittedAt,
+        actualHandedInAt: row.actualHandedInAt,
+        createdAt: row.submissionCreatedAt,
         content: row.content,
         status: row.submissionStatus,
         updatedAt: row.submissionUpdatedAt,
@@ -463,4 +494,36 @@ export async function listHomeworkStudents(
     })),
     meta: { page: input.page, pageSize: input.pageSize, total: result.total },
   };
+}
+
+export async function addHomeworkTargets(db: HomeworkDb, actor: HomeworkActor, id: string, input: HomeworkTargetsCreateInput) {
+  return repo.withHomeworkLock(db, actor.schoolId, id, (tx) => addHomeworkTargetsLocked(tx, actor, id, input));
+}
+export async function patchHomework(db: HomeworkDb, actor: HomeworkActor, id: string, input: HomeworkPatchInput) {
+  return repo.withHomeworkLock(db, actor.schoolId, id, (tx) => patchHomeworkLocked(tx, actor, id, input));
+}
+export async function createHomeworkSubmission(db: HomeworkDb, actor: HomeworkActor, id: string, input: HomeworkSubmissionCreateInput) {
+  return repo.withHomeworkLock(db, actor.schoolId, id, (tx) => createHomeworkSubmissionLocked(tx, actor, id, input));
+}
+export async function patchHomeworkSubmission(db: HomeworkDb, actor: HomeworkActor, id: string, input: HomeworkSubmissionPatchInput) {
+  const value = await submissionContext(db, actor, id);
+  return repo.withHomeworkLock(db, actor.schoolId, value.homework.id, (tx) => patchHomeworkSubmissionLocked(tx, actor, id, input));
+}
+export async function reviewHomeworkSubmission(db: HomeworkDb, actor: HomeworkActor, id: string, input: HomeworkSubmissionReviewInput) {
+  const value = await submissionContext(db, actor, id);
+  return repo.withHomeworkLock(db, actor.schoolId, value.homework.id, (tx) => reviewHomeworkSubmissionLocked(tx, actor, id, input));
+}
+
+/** Reuses exact submission/child scope. Attachments never authorize by File ID. */
+export async function requireSubmissionAttachmentAccess(db: HomeworkDb, actor: HomeworkActor, id: string, writable = false) {
+  const submission = await getHomeworkSubmission(db, actor, id);
+  const homework = await repo.findHomework(db, actor.schoolId, submission.homeworkId);
+  if (!homework) submissionNotFound();
+  if (writable) {
+    await authorizeSubmissionManagement(db, actor, homework, submission.studentId);
+    if (homework.status !== 'PUBLISHED' || !['SUBMITTED', 'LATE'].includes(submission.status)) {
+      throw new HomeworkDomainError('INVALID_HOMEWORK_SUBMISSION_STATE', 'Attachments can only be added to an unreviewed submission on published Homework.');
+    }
+  }
+  return submission;
 }

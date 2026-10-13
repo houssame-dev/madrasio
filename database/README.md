@@ -2,7 +2,18 @@
 
 Drizzle ORM foundation.
 
-Task 064 adds `0021_student-date-of-birth`: the current chain has 22 migrations
+Task 065 adds `0022_homework-actual-handin-attachments`: **23 migrations,
+43 application/RLS tables, 45 recovery tables** including durable Auth.
+`homework_submissions.actual_handed_in_at` is nullable TIMESTAMPTZ, with no
+backfill/default. The existing server recording timestamps retain their meaning.
+`homework_submission_attachments` binds a private File to a same-School logical
+Submission and its recording instant. Composite FKs/RESTRICT, unique File binding,
+RLS and explicit public/Data API revocation protect the new association. Recovery
+includes full metadata rows, never R2 bytes. Application validation owns dynamic
+future-time and School-local lateness rules. Fresh and populated migration tests
+are authored; A1 does not claim executed validation.
+
+Task 064 adds `0021_student-date-of-birth`: its chain had 22 migrations
 and still 42 application tables. Nullable `students.date_of_birth DATE` has no
 default/backfill; Drizzle reads/writes a YYYY-MM-DD string, not a JS timestamp.
 Normal application creation requires DOB; legacy rows and unrelated updates
@@ -12,7 +23,7 @@ not-in-the-future rule. RLS, tenant constraints and grants remain unchanged.
 Task 063 adds `0020_private-application-files`: 21 migrations, 42 application tables.
 `files` stores private object metadata; `announcement_attachments` enforces exact-Version,
 same-School association. Both are RLS-enabled with no Data API grants. Existing rows are
-not backfilled with invented attachments. Recovery now inventories 44 tables including
+not backfilled with invented attachments. That migration introduced an inventory of 44 tables including
 durable Auth, but does not archive R2 object bytes. See
 [private application files](../docs/architecture/private-application-files-and-attachments.md).
 

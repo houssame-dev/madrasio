@@ -28,9 +28,9 @@ export const homeworkApi = {
   addTargets: (id: string, classIds: string[]) => data<HomeworkTargetDto[]>(`/api/v1/homeworks/${id}/targets`, body('POST', { classIds })),
   roster: (id: string, page: number) => apiRequest<HomeworkRosterResponse>(query(`/api/v1/homeworks/${id}/students`, { page, pageSize: 50 })),
   submissions: (id: string, params: HomeworkSubmissionListParams) => apiRequest<PageResponse<HomeworkSubmissionDto>>(query(`/api/v1/homeworks/${id}/submissions`, params)),
-  createSubmission: (id: string, input: { studentId: string; content: string | null }) => data<HomeworkSubmissionDto>(`/api/v1/homeworks/${id}/submissions`, body('POST', input)),
+  createSubmission: (id: string, input: { studentId: string; content: string | null; actualHandedInAt?: string | null }) => data<HomeworkSubmissionDto>(`/api/v1/homeworks/${id}/submissions`, body('POST', input)),
   submission: (id: string) => data<HomeworkSubmissionDto>(`/api/v1/homework-submissions/${id}`),
-  resubmit: (id: string, content: string | null) => data<HomeworkSubmissionDto>(`/api/v1/homework-submissions/${id}`, body('PATCH', { content })),
+  resubmit: (id: string, content: string | null, actualHandedInAt?: string | null) => data<HomeworkSubmissionDto>(`/api/v1/homework-submissions/${id}`, body('PATCH', { content, actualHandedInAt })),
   review: (id: string, status: 'REVIEWED' | 'RETURNED') => data<HomeworkSubmissionDto>(`/api/v1/homework-submissions/${id}/review`, body('POST', { status })),
 };
 
