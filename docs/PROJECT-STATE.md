@@ -1,30 +1,89 @@
 # Madrasio — Current Project State
 
-Last updated: **2026-10-13**
+Last updated: **2026-10-14**
 
 ## Current task and release status
 
-**Current roadmap task:** **Task 066 — Multilingual and Responsive V1 Completion** (**NEXT; not yet started**).
+**Current roadmap task:** **Task 066 — Multilingual and Responsive V1 Completion** (**IN PROGRESS — TASK_066_03 complete**).
 
-**Latest accepted implementation milestone:** **Task 065 — Homework Delivery & Actual Hand-In**.
+**Latest accepted implementation milestone:** **TASK_066_03 — Multilingual Foundation**.
 
-**Status:** `TASK_065_HOMEWORK_DELIVERY_ACTUAL_HANDIN_PASS`
+**Status:** TASK_066_03 implementation, local validation and operator-confirmed CI/STAGING validation are complete.
 
-Task 065 implementation and all ten local manual validation gates are complete. The implementation commit was created with a clean working tree. Following the instructed GitHub push step, the user reported **GitHub CI SUCCESS** and **Deploy STAGING SUCCESS** on 2026-10-13. The actual push transcript, remote SHA readback, CI run IDs and hosted applied-migration evidence were **not supplied**; do not represent them as independently verified.
+GitHub CI and Deploy STAGING were manually confirmed **SUCCESS** by the operator after dependency-policy remediation. Exact successful run IDs and deployed-SHA readback have not been provided; no independent inspection of successful workflow logs or deployment SHA is claimed.
 
 - **Repository:** `houssame-dev/madrasio`
 - **Branch:** `main`
-- **Implementation commit:** `d658f4fe52c2f5ac30f900792ded3521b8ff5794`
-- **Parent/base commit:** `4ad5fcd18188cbab5924417476feb3ceacc0b993`
-- **Commit subject:** `feat(homework): implement delivery and actual hand-in`
-- **Commit inventory:** 71 files (51 modified, 20 added); **9,213 insertions, 147 deletions**. The user-provided local post-commit checks confirmed 71 committed files and a clean working tree.
-- **Release reports:** CI **SUCCESS**; Deploy STAGING **SUCCESS** (user confirmation). No workflow IDs or hosted database migration-readback evidence were supplied.
-- **Production:** No Production deployment, Production database migration, hosted R2 upload/recovery, or Production customer-data operation is claimed. The existing backup/recovery customer-onboarding block remains separate.
-- **Documentation synchronization:** **PENDING user-operated replacement and commit/push** of this full project-state document. This file records the Task 065 acceptance evidence; its preparation does not by itself synchronize the repository.
+- **Implementation commit:** `5e6c8fb0933c20b826dcab6d98deef13be2fc0bc`
+- **Dependency-policy remediation commit:** `7aae8b76eeb730631d7791014be3d6a862a238c2`
+- **GitHub CI:** **SUCCESS**, manually confirmed by the operator.
+- **Deploy STAGING:** **SUCCESS**, manually confirmed by the operator.
+- **Production:** No Production release is claimed. Existing backup, recovery, deployment and customer-onboarding restrictions remain unchanged.
 
-**Exact next step:** synchronize `docs/PROJECT-STATE.md` in a separate documentation-only commit, verify CI/STAGING as applicable, then begin **Task 066 — Multilingual and Responsive V1 Completion** under its separately approved scope. Task 067 (V1 Regression & Documentation Closure) and Task 068 (V1 Release Readiness) remain subsequent roadmap work.
+**Next roadmap activity:** prepare and separately authorize **TASK_066_04** scope and implementation. TASK_066_04 implementation is not authorized or started by this closeout. Task 067 (V1 Regression & Documentation Closure) and Task 068 (V1 Release Readiness) remain subsequent roadmap work.
 
 ---
+
+## TASK_066_03 — Multilingual Foundation
+
+**Accepted scope:** the typed multilingual foundation for supported V1 locales **English (`en`), French (`fr`) and Arabic (`ar`)**, with **English default** and **English fallback** for unsupported locale values.
+
+### Foundation delivered
+
+- **`next-intl@4.14.9`** Next.js App Router plugin/request integration and server/client translation availability.
+- Three typed message catalogs with six equivalent foundation keys: `foundation.appName`, `foundation.actions.save`, `foundation.actions.cancel`, `foundation.actions.close`, `foundation.actions.retry`, and `foundation.greeting`.
+- Real French/Arabic translations, ICU interpolation, strict namespace/key typing, required greeting interpolation values, catalog completeness checks and compile-only type regression coverage.
+- Shared locale validation, safe fallback and direction utilities: **English/French LTR; Arabic RTL**.
+- One translation provider around the preserved existing Query provider; existing application URLs and routes unchanged, with **no locale-prefixed routes or middleware**.
+
+**Current activation boundary:** English remains the active request locale. The root HTML document remains **`lang=en` and `dir=ltr`**. TASK_066_03 does not deliver full application translation, complete Arabic RTL switching, theme completion or responsive V1 completion. Expansion beyond the three V1 locales remains deferred.
+
+### Accepted operator validation evidence
+
+All local validation gates passed. The following results are operator evidence; no validation execution by Codex is claimed here.
+
+| Validation | Accepted result |
+| --- | --- |
+| Focused i18n tests | **29 passed** |
+| Canonical database suite | **374 passed** |
+| Canonical web suite | **1,835 passed, 13 skipped** |
+| Combined canonical total | **2,209 passed, 13 skipped** |
+| Lint | **PASS** |
+| Typecheck | **PASS** |
+| Production build (local) | **PASS** |
+| Static page generation | **38/38** |
+
+Focused executions overlap canonical suites and must not be counted again as unique tests. Skipped tests are not passing or independently exercised hosted evidence. Production build and native dependency compatibility were also validated locally after the dependency-policy remediation.
+
+### Dependency-policy remediation and reported release
+
+Initial GitHub CI and Deploy STAGING workflows failed during `pnpm install --frozen-lockfile` with `ERR_PNPM_IGNORED_BUILDS` because two dependency lifecycle scripts were unreviewed.
+
+Remediation commit **`7aae8b76eeb730631d7791014be3d6a862a238c2`** records exact-version explicit denials in `pnpm-workspace.yaml`:
+
+```yaml
+'@parcel/watcher@2.6.0': false
+'@swc/core@1.16.18': false
+```
+
+Existing approvals remain intact and strict dependency-build protection remains enabled. Subsequent **GitHub CI SUCCESS** and **Deploy STAGING SUCCESS** were manually confirmed by the operator. Successful run IDs, successful run-log inspection and deployed-SHA readback have not been independently provided or verified here.
+
+### Deferred TASK_066_04 responsibilities
+
+The following capabilities were **not implemented** by TASK_066_03:
+
+- Authenticated User language preference and preference persistence.
+- Cross-device synchronization.
+- Language selection UI and language switching.
+- Request-specific document `lang`/`dir`.
+
+TASK_066_04 requires separate scope and implementation authorization. This foundation introduces no database/schema migration or change to authentication, authorization, School-local business time, domain workflows or recovery contracts.
+
+---
+
+## Historical accepted milestones — Tasks 065 and earlier
+
+The records below preserve their original acceptance evidence, architecture and task references. Older statements such as “latest”, “next” and “documentation pending” belong to their original historical closure context, not the current status above. Task 065 project-state documentation was committed in **`d87913fdfad0d0fb999f5b323505fba089b5212d`**. Its acceptance record and all earlier milestone records are retained unchanged.
 
 ## Task 065 — Homework Delivery & Actual Hand-In
 
