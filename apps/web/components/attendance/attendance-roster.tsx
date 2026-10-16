@@ -1,11 +1,12 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useDomainText } from '@/i18n/use-domain-text';
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCheck } from 'lucide-react';
 import { Button } from '@school/ui';
 import { InlineFeedback, Pagination, inputClassName } from '@/components/academic/ui';
-import { attendanceCopy as t } from '@/lib/frontend/attendance/copy';
+import { useAttendanceCopy } from '@/i18n/use-domain-copy';
 import { attendanceErrorMessage } from '@/lib/frontend/attendance/errors';
 import { saveDailyAttendance } from '@/lib/frontend/attendance/mutations';
 import { attendanceBatchSchema } from '@/lib/frontend/attendance/schemas';
@@ -23,6 +24,8 @@ export function AttendanceRoster({ schoolId, classId, date, roster, onRefetch, o
   onDirtyChange: (dirty: boolean) => void;
   onPage: (page: number) => void;
 }) {
+  const text = useDomainText();
+  const t = useAttendanceCopy();
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
@@ -55,7 +58,7 @@ export function AttendanceRoster({ schoolId, classId, date, roster, onRefetch, o
   });
   const save = () => {
     const parsed = attendanceBatchSchema.safeParse({ records });
-    if (!parsed.success || records.length !== dirty.size) { setValidationError(parsed.error?.issues[0]?.message ?? 'Choose a status for every changed Student.'); return; }
+    if (!parsed.success || records.length !== dirty.size) { setValidationError(parsed.error?.issues[0]?.message ?? text("Choose a status for every changed Student.")); return; }
     mutation.mutate(parsed.data.records);
   };
   const markAll = () => {
@@ -71,11 +74,11 @@ export function AttendanceRoster({ schoolId, classId, date, roster, onRefetch, o
     {!inactiveClass ? <p className="text-xs text-muted-foreground">{t.markAllPresentHint}</p> : <InlineFeedback kind="error">{t.closedClass}</InlineFeedback>}
     {dirty.size > 0 ? <InlineFeedback kind="error">{t.unsaved}: {dirty.size}</InlineFeedback> : null}
     {notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}
-    {validationError ? <InlineFeedback kind="error">{validationError}</InlineFeedback> : null}
-    {mutation.isError ? <InlineFeedback kind="error">{attendanceErrorMessage(mutation.error)}</InlineFeedback> : null}
+    {validationError ? <InlineFeedback kind="error">{text(validationError)}</InlineFeedback> : null}
+    {mutation.isError ? <InlineFeedback kind="error">{text(attendanceErrorMessage(mutation.error))}</InlineFeedback> : null}
     <div className="overflow-x-auto rounded-lg border"><table className="w-full min-w-[52rem] text-sm"><thead className="border-b bg-muted/60"><tr><th className="sticky start-0 z-10 bg-muted px-4 py-3 text-start">{t.student}</th><th className="px-4 py-3 text-start">{t.status}</th><th className="px-4 py-3 text-start">{t.note}</th></tr></thead><tbody className="divide-y">{rows.map(({ student, attendance }) => {
       const name = `${student.firstName} ${student.lastName}`; const draft = drafts[student.id] ?? { status: attendance?.status ?? '', note: attendance?.note ?? '' }; const creationLocked = inactiveClass && attendance === null;
-      return <tr key={student.id}><th scope="row" className="sticky start-0 bg-background px-4 py-3 text-start font-medium">{name}<span className="block text-xs font-normal text-muted-foreground">{student.studentCode ?? '—'} · {attendance ? t.statuses[attendance.status] : t.notMarked}</span></th><td className="min-w-48 px-4 py-3"><AttendanceStatusControl name={name} value={draft.status} disabled={creationLocked} onChange={(status) => update(student.id, { status })} /></td><td className="min-w-80 px-4 py-3"><label className="sr-only" htmlFor={`attendance-note-${student.id}`}>{t.noteFor(name)}</label><input id={`attendance-note-${student.id}`} aria-label={t.noteFor(name)} className={inputClassName} maxLength={1000} disabled={creationLocked || !draft.status} value={draft.note} onChange={(event) => update(student.id, { note: event.target.value })} /></td></tr>;
+      return <tr key={student.id}><th dir="auto" scope="row" className="sticky start-0 bg-background px-4 py-3 text-start font-medium">{name}<span className="block text-xs font-normal text-muted-foreground">{student.studentCode ?? '—'} · {attendance ? t.statuses[attendance.status] : t.notMarked}</span></th><td dir="auto" className="min-w-48 px-4 py-3"><AttendanceStatusControl name={name} value={draft.status} disabled={creationLocked} onChange={(status) => update(student.id, { status })} /></td><td dir="auto" className="min-w-80 px-4 py-3"><label className="sr-only" htmlFor={`attendance-note-${student.id}`}>{t.noteFor(name)}</label><input id={`attendance-note-${student.id}`} aria-label={t.noteFor(name)} className={inputClassName} maxLength={1000} disabled={creationLocked || !draft.status} value={draft.note} onChange={(event) => update(student.id, { note: event.target.value })} /></td></tr>;
     })}</tbody></table></div>
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Pagination {...roster.meta} onPage={(page) => { if (dirty.size > 0 && !window.confirm(t.unsavedPrompt)) return; onDirtyChange(false); onPage(page); }} /><Button type="button" disabled={dirty.size === 0 || mutation.isPending} onClick={save}>{t.save}</Button></div>
   </div>;

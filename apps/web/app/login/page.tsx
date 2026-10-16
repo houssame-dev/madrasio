@@ -2,11 +2,13 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { LoginForm } from '@/components/auth/login-form';
+import { LanguageSelector } from '@/components/language/language-selector';
 import { getServerSupabase } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = { title: 'Sign in' };
+// Locale-neutral metadata cannot introduce a different server preference on refresh.
+export const metadata: Metadata = { title: { absolute: 'Madrasio' } };
 
 export default async function LoginPage() {
   try {
@@ -19,5 +21,5 @@ export default async function LoginPage() {
     // A failed anonymous session check must not make the public login route unusable.
   }
 
-  return <LoginForm />;
+  return <><div className="flex justify-end p-3"><LanguageSelector /></div><LoginForm /></>;
 }

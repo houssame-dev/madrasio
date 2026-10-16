@@ -29,7 +29,7 @@ it('upgrades a populated 0000–0017 publication without inventing historical la
   const db = drizzle(client, { schema });
   const userId = randomUUID();
   await client.query('insert into auth.users(id,email) values ($1,$2)', [userId, 'migration@example.test']);
-  await db.insert(schema.users).values({ id: userId, email: 'migration@example.test' });
+  await client.query('insert into users(id,email) values ($1,$2)', [userId, 'migration@example.test']);
   const [school] = await db.insert(schema.schools).values({ name: 'Current school' }).returning();
   const schoolId = school.id;
   const [year] = await db.insert(schema.academicYears).values({ schoolId, name: 'Current year label', startDate: '2025-09-01', endDate: '2026-07-01' }).returning();

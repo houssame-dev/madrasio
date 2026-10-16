@@ -1,3 +1,4 @@
+import { EnglishTestMessages } from './i18n/render-localized';
 // @vitest-environment node
 // Opt in with RUN_AUTH_NATIVE_BROWSER_TESTS=1; requires an installed Playwright
 // browser (or PLAYWRIGHT_CHANNEL, e.g. msedge). No Next server or Auth credentials.
@@ -15,7 +16,7 @@ vi.mock('@/lib/supabase/browser', () => ({
 
 it('renders inert native controls and POST semantics before effects/hydration', () => {
   const queryClient = new QueryClient();
-  const html = renderToString(<QueryClientProvider client={queryClient}><SetPasswordForm /></QueryClientProvider>);
+  const html = renderToString(<EnglishTestMessages><QueryClientProvider client={queryClient}><SetPasswordForm /></QueryClientProvider></EnglishTestMessages>);
   expect(html).toMatch(/<form\b[^>]*method="post"/);
   expect(html).toMatch(/<fieldset\b[^>]*disabled=""/);
   expect(html.match(/autoComplete="new-password"/g)).toHaveLength(2);
@@ -32,7 +33,7 @@ describe.runIf(process.env.RUN_AUTH_NATIVE_BROWSER_TESTS === '1')('password setu
 
   it.each([false, true])('fails safe with JavaScript enabled=%s but no hydration', async (javaScriptEnabled) => {
     const queryClient = new QueryClient();
-    const html = renderToString(<QueryClientProvider client={queryClient}><SetPasswordForm /></QueryClientProvider>);
+    const html = renderToString(<EnglishTestMessages><QueryClientProvider client={queryClient}><SetPasswordForm /></QueryClientProvider></EnglishTestMessages>);
     queryClient.clear();
     const context = await browser.newContext({ javaScriptEnabled, serviceWorkers: 'block' });
     const page = await context.newPage();

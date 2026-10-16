@@ -1,4 +1,5 @@
 'use client';
+import { usePeopleText } from '@/i18n/use-people-text';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -6,12 +7,15 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Field, FormActions, InlineFeedback, inputClassName } from '@/components/academic/ui';
 import { teachersApi } from '@/lib/frontend/teachers/api';
-import { teacherCopy as t } from '@/lib/frontend/teachers/copy';
+import { useTeacherCopy } from '@/i18n/use-people-copy';
 import { mapTeacherValidation, teacherErrorMessage } from '@/lib/frontend/teachers/errors';
 import { teacherFormSchema, type TeacherFormValues } from '@/lib/frontend/teachers/schemas';
 import type { TeacherDto } from '@/lib/frontend/teachers/types';
 
 export function TeacherForm({ initial, onCancel, onSaved }: { initial?: TeacherDto; onCancel: () => void; onSaved: (teacher: TeacherDto) => Promise<void> | void }) {
+  const t = useTeacherCopy();
+  const text = usePeopleText();
+
   const [error, setError] = useState<string>();
   const form = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherFormSchema),
@@ -23,15 +27,15 @@ export function TeacherForm({ initial, onCancel, onSaved }: { initial?: TeacherD
       return initial ? teachersApi.patch(initial.id, input) : teachersApi.create(input);
     },
     onSuccess: async (teacher) => { setError(undefined); await onSaved(teacher); },
-    onError: (value) => { if (!mapTeacherValidation(value, form.setError)) setError(teacherErrorMessage(value)); },
+    onError: (value) => { if (!mapTeacherValidation(value, form.setError)) setError(text(teacherErrorMessage(value))); },
   });
   return <form className="space-y-4" noValidate onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
     {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field required label={t.firstName} htmlFor="teacher-first-name" error={form.formState.errors.firstName?.message}><input id="teacher-first-name" className={inputClassName} aria-invalid={!!form.formState.errors.firstName} {...form.register('firstName')} /></Field>
-      <Field required label={t.lastName} htmlFor="teacher-last-name" error={form.formState.errors.lastName?.message}><input id="teacher-last-name" className={inputClassName} aria-invalid={!!form.formState.errors.lastName} {...form.register('lastName')} /></Field>
+      <Field required label={t.firstName} htmlFor="teacher-first-name" error={text(form.formState.errors.firstName?.message)}><input id="teacher-first-name" dir="auto" className={inputClassName} aria-invalid={!!form.formState.errors.firstName} {...form.register('firstName')} /></Field>
+      <Field required label={t.lastName} htmlFor="teacher-last-name" error={text(form.formState.errors.lastName?.message)}><input id="teacher-last-name" dir="auto" className={inputClassName} aria-invalid={!!form.formState.errors.lastName} {...form.register('lastName')} /></Field>
     </div>
-    <Field label={`${t.teacherCode} (${t.optional})`} htmlFor="teacher-code" error={form.formState.errors.teacherCode?.message}><input id="teacher-code" className={inputClassName} aria-invalid={!!form.formState.errors.teacherCode} {...form.register('teacherCode')} /></Field>
+    <Field label={`${t.teacherCode} (${t.optional})`} htmlFor="teacher-code" error={text(form.formState.errors.teacherCode?.message)}><input id="teacher-code" dir="ltr" className={inputClassName} aria-invalid={!!form.formState.errors.teacherCode} {...form.register('teacherCode')} /></Field>
     <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={initial ? t.save : t.create} />
   </form>;
 }

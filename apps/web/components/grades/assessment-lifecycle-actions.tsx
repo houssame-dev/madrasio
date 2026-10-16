@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
+import { useDomainText } from '@/i18n/use-domain-text';
 import { useState } from 'react';
 import { Button } from '@school/ui';
 import { ConfirmDialog } from '@/components/academic/ui';
@@ -20,7 +21,8 @@ export function assessmentTransitions(status: AssessmentStatus): Transition[] {
 }
 
 export function AssessmentLifecycleActions({ assessment, onSaved }: { assessment: AssessmentDto; onSaved: (value: AssessmentDto) => Promise<void> | void }) {
+  const text = useDomainText();
   const [selected, setSelected] = useState<Transition>();
   const mutation = useMutation({ mutationFn: (transition: Transition) => gradesApi.patchAssessment(assessment.id, { status: transition.status }), onSuccess: async (value) => { setSelected(undefined); await onSaved(value); } });
-  return <div className="flex flex-wrap justify-end gap-2">{assessmentTransitions(assessment.status).map((transition) => <Button key={transition.status} type="button" variant="outline" size="sm" onClick={() => setSelected(transition)}>{transition.label}</Button>)}<ConfirmDialog open={!!selected} title={selected?.title ?? ''} description={selected?.description ?? ''} pending={mutation.isPending} error={mutation.isError ? gradeErrorMessage(mutation.error) : undefined} onClose={() => { setSelected(undefined); mutation.reset(); }} onConfirm={() => selected && mutation.mutate(selected)} /></div>;
+  return <div className="flex flex-wrap justify-end gap-2">{assessmentTransitions(assessment.status).map((transition) => <Button key={transition.status} type="button" variant="outline" size="sm" onClick={() => setSelected(transition)}>{text(transition.label)}</Button>)}<ConfirmDialog open={!!selected} title={text(selected?.title ?? '')} description={text(selected?.description ?? '')} pending={mutation.isPending} error={mutation.isError ? text(gradeErrorMessage(mutation.error)) : undefined} onClose={() => { setSelected(undefined); mutation.reset(); }} onConfirm={() => selected && mutation.mutate(selected)} /></div>;
 }

@@ -3,22 +3,25 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Building2, LoaderCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { recoveryCopy } from '@/lib/frontend/auth/recovery-copy';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@school/ui';
 import { Field, InlineFeedback, inputClassName } from '@/components/academic/ui';
-import { authCopy as t } from '@/lib/frontend/auth/copy';
+import { useTranslations } from 'next-intl';
 import { loginSchema, type LoginValues } from '@/lib/frontend/auth/schemas';
-import { copy } from '@/lib/frontend/copy';
 import { getBrowserSupabase } from '@/lib/supabase/browser';
+import { navigateAfterAuth } from '@/lib/frontend/language/auth-navigation';
+import { useBeginAccountTransition } from '@/components/language/account-lifetime-host';
 
 export function LoginForm() {
+  const t = useTranslations('auth');
+  const recovery = useTranslations('recovery');
+  const validation = useTranslations('validation');
+  const foundation = useTranslations('foundation');
   const queryClient = useQueryClient();
-  const router = useRouter();
+  const beginAccountTransition = useBeginAccountTransition();
   const [isHydrated, setIsHydrated] = useState(false);
   const [formError, setFormError] = useState<string>();
   const form = useForm<LoginValues>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } });
@@ -28,20 +31,22 @@ export function LoginForm() {
   }, []);
 
   async function submit(values: LoginValues) {
+    const finishTransition = beginAccountTransition();
     setFormError(undefined);
     try {
       const { error } = await getBrowserSupabase().auth.signInWithPassword(values);
       if (error) {
-        setFormError(error.status === 400 ? t.invalidCredentials : t.signInUnavailable);
+        setFormError(error.status === 400 ? t('invalidCredentials') : t('signInUnavailable'));
         form.setFocus('email');
         return;
       }
       queryClient.clear();
-      router.replace('/dashboard');
-      router.refresh();
+      navigateAfterAuth('/dashboard');
     } catch {
-      setFormError(t.signInUnavailable);
+      setFormError(t('signInUnavailable'));
       form.setFocus('email');
+    } finally {
+      finishTransition();
     }
   }
 
@@ -51,28 +56,28 @@ export function LoginForm() {
         <div className="mb-6 flex items-start gap-3">
           <span className="rounded-md bg-primary p-2 text-primary-foreground" aria-hidden="true"><Building2 className="size-5" /></span>
           <div>
-            <p className="text-sm font-medium text-muted-foreground">{copy.productName}</p>
-            <h1 id="login-title" className="text-2xl font-semibold">{t.loginTitle}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{t.loginDescription}</p>
+            <p className="text-sm font-medium text-muted-foreground">{foundation('appName')}</p>
+            <h1 id="login-title" className="text-2xl font-semibold">{t('loginTitle')}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t('loginDescription')}</p>
           </div>
         </div>
         <form method="post" noValidate onSubmit={form.handleSubmit(submit)}>
           <fieldset className="space-y-4" disabled={!isHydrated}>
             {formError ? <InlineFeedback kind="error">{formError}</InlineFeedback> : null}
-            <Field label={t.email} htmlFor="login-email" error={form.formState.errors.email?.message}>
-              <input id="login-email" type="email" autoComplete="email" autoCapitalize="none" className={inputClassName} aria-invalid={!!form.formState.errors.email} aria-describedby={form.formState.errors.email ? 'login-email-error' : undefined} {...form.register('email')} />
+            <Field label={t('email')} htmlFor="login-email" error={form.formState.errors.email ? validation(form.formState.errors.email.type === 'too_small' ? 'emailRequired' : 'emailInvalid') : undefined}>
+              <input id="login-email" type="email" dir="ltr" autoComplete="email" autoCapitalize="none" className={inputClassName} aria-invalid={!!form.formState.errors.email} aria-describedby={form.formState.errors.email ? 'login-email-error' : undefined} {...form.register('email')} />
             </Field>
-            <Field label={t.password} htmlFor="login-password" error={form.formState.errors.password?.message}>
+            <Field label={t('password')} htmlFor="login-password" error={form.formState.errors.password ? validation('passwordRequired') : undefined}>
               <input id="login-password" type="password" autoComplete="current-password" className={inputClassName} aria-invalid={!!form.formState.errors.password} aria-describedby={form.formState.errors.password ? 'login-password-error' : undefined} {...form.register('password')} />
             </Field>
             <Button className="w-full" type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}
-              {form.formState.isSubmitting ? t.submitting : t.submit}
+              {form.formState.isSubmitting ? t('submitting') : t('submit')}
             </Button>
-            {form.formState.isSubmitting ? <span className="sr-only" role="status">{t.submitting}</span> : null}
+            {form.formState.isSubmitting ? <span className="sr-only" role="status">{t('submitting')}</span> : null}
           </fieldset>
         </form>
-        <Link className="mt-4 block text-sm text-primary underline" href="/auth/recover">{recoveryCopy.title}</Link>
+        <Link className="mt-4 block text-sm text-primary underline" href="/auth/recover">{recovery('title')}</Link>
       </section>
     </main>
   );

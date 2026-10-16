@@ -1,4 +1,6 @@
 'use client';
+import { useNotificationCopy, useNotificationLabels } from '@/i18n/use-delivery-copy';
+import { useDeliveryText } from '@/i18n/use-delivery-text';
 import { PageContainer } from '@/components/ui/page-container';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,7 +14,6 @@ import { AccessDeniedWithReturn } from '@/components/app/route-access';
 import { ApiErrorState } from '@/components/ui/states';
 import { can } from '@/lib/frontend/permissions';
 import { notificationsApi } from '@/lib/frontend/notifications/api';
-import { notificationCopy as t, notificationSourceLabels, notificationStatusLabels } from '@/lib/frontend/notifications/copy';
 import { notificationErrorMessage } from '@/lib/frontend/notifications/errors';
 import { refreshNotificationReadState } from '@/lib/frontend/notifications/mutations';
 import { notificationKeys } from '@/lib/frontend/notifications/queries';
@@ -21,6 +22,9 @@ import { NotificationDetail } from './notification-detail';
 import { NotificationsList } from './notifications-list';
 
 export function NotificationsWorkspace() {
+  const t = useNotificationCopy();
+  const text = useDeliveryText();
+  const { notificationStatusLabels, notificationSourceLabels } = useNotificationLabels();
   const app = useAppContext();
   const schoolId = app.currentSchool?.id;
   const role = app.currentSchool?.role;
@@ -60,7 +64,7 @@ export function NotificationsWorkspace() {
     <PageContainer variant="READING_CONTENT" className="space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.description}</p></div>
-        <div className="flex items-center gap-3 self-start">
+        <div className="flex flex-wrap items-center gap-3 self-start">
           {typeof unread.data?.count === 'number' ? <span className="rounded-full border bg-muted px-2.5 py-1 text-xs font-medium" aria-live="polite">{t.unreadCount(unread.data.count)}</span> : null}
           <Button type="button" variant="outline" disabled={markAll.isPending || unread.data?.count === 0} onClick={() => { setFeedback(null); markAll.mutate(); }}>
             {markAll.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <CheckCheck className="size-4" aria-hidden="true" />}
@@ -73,8 +77,8 @@ export function NotificationsWorkspace() {
         <label className="grid gap-1.5 text-sm font-medium">{t.source}<select className={selectClassName} value={sourceType ?? ''} onChange={(event) => updateUrl({ sourceType: event.target.value || undefined, page: 1 })}><option value="">{t.allSources}</option>{notificationSourceTypes.map((value) => <option key={value} value={value}>{notificationSourceLabels[value]}</option>)}</select></label>
       </section>
       {feedback ? <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{feedback}</p> : null}
-      {markAll.isError ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{notificationErrorMessage(markAll.error)}</p> : null}
-      {list.isError ? <ApiErrorState title={t.unavailable} description={notificationErrorMessage(list.error)} onRetry={() => void list.refetch()} /> : <NotificationsList result={list.data} loading={list.isPending} status={status} sourceType={sourceType} onOpen={setSelectedId} onPage={(next) => updateUrl({ page: next })} />}
+      {markAll.isError ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{text(notificationErrorMessage(markAll.error))}</p> : null}
+      {list.isError ? <ApiErrorState title={t.unavailable} description={text(notificationErrorMessage(list.error))} onRetry={() => void list.refetch()} /> : <NotificationsList result={list.data} loading={list.isPending} status={status} sourceType={sourceType} onOpen={setSelectedId} onPage={(next) => updateUrl({ page: next })} />}
       <NotificationDetail schoolId={schoolId} notificationId={selectedId} onClose={() => setSelectedId(null)} />
     </PageContainer>
   );

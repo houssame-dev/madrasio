@@ -1,5 +1,7 @@
 'use client';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { useDomainText } from '@/i18n/use-domain-text';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -63,6 +65,8 @@ export function GradingRulesForm({
   save: (value: FormValue) => Promise<void>;
   onCancel: () => void;
 }) {
+  const text = useDomainText();
+  const ui = useTranslations('domainUi');
   const parsed = configurationRules.safeParse(initial);
   const rules = parsed.success ? parsed.data : defaults;
   const form = useForm<FormValue>({
@@ -88,23 +92,19 @@ export function GradingRulesForm({
       )}
     >
       {mutation.isError ? (
-        <InlineFeedback kind="error">{configurationFailure(mutation.error)}</InlineFeedback>
+        <InlineFeedback kind="error">{text(configurationFailure(mutation.error))}</InlineFeedback>
       ) : null}
       {form.formState.errors.rules ? (
         <div id="grading-rules-errors" tabIndex={-1}>
-          <InlineFeedback kind="error">
-            Check numeric ranges, passing score, required types and rule settings. Maximum and
-            passing scores must be positive; passing score cannot exceed maximum. Weights must be
-            0–100 and rounding scale 0–6.
-          </InlineFeedback>
+          <InlineFeedback kind="error">{text("Check numeric ranges, passing score, required types and rule settings. Maximum and passing scores must be positive; passing score cannot exceed maximum. Weights must be 0–100 and rounding scale 0–6.")}</InlineFeedback>
         </div>
       ) : null}
       {creating ? (
         <Field
-          label="Configuration name"
+          label={text("Configuration name")}
           htmlFor="configuration-name"
           required
-          error={form.formState.errors.name?.message}
+          error={text(form.formState.errors.name?.message)}
         >
           <input id="configuration-name" className={inputClassName} {...form.register('name')} />
         </Field>
@@ -112,15 +112,15 @@ export function GradingRulesForm({
       <div className="grid gap-4 sm:grid-cols-2">
         {(
           [
-            ['rules.periodCalculation.mode', 'Period calculation', CALCULATION_MODES],
+            ['rules.periodCalculation.mode', text("Period calculation"), CALCULATION_MODES],
             [
               'rules.annualCalculation.mode',
-              'Annual calculation (V1 simple average)',
+              text("Annual calculation (V1 simple average)"),
               ['SIMPLE_AVERAGE'],
             ],
-            ['rules.assessmentWeighting.mode', 'Assessment weighting', WEIGHTING_MODES],
-            ['rules.coefficientUsage.mode', 'Subject coefficient usage', COEFFICIENT_USAGE_MODES],
-            ['rules.rounding.mode', 'Rounding mode', ROUNDING_MODES],
+            ['rules.assessmentWeighting.mode', text("Assessment weighting"), WEIGHTING_MODES],
+            ['rules.coefficientUsage.mode', text("Subject coefficient usage"), COEFFICIENT_USAGE_MODES],
+            ['rules.rounding.mode', text("Rounding mode"), ROUNDING_MODES],
           ] as const
         ).map(([path, label, options]) => (
           <Field
@@ -128,13 +128,13 @@ export function GradingRulesForm({
             label={label}
             htmlFor={path}
             required
-            error={form.getFieldState(path, form.formState).error?.message}
+            error={text(form.getFieldState(path, form.formState).error?.message)}
           >
             <select id={path} className={inputClassName} {...form.register(path)}>
-              <option value="">Not configured</option>
+              <option value="">{text("Not configured")}</option>
               {options.map((value) => (
                 <option key={value} value={value}>
-                  {value.replaceAll('_', ' ')}
+                  {text(value)}
                 </option>
               ))}
             </select>
@@ -142,9 +142,9 @@ export function GradingRulesForm({
         ))}
         {(
           [
-            ['rules.rounding.scale', 'Decimal places'],
-            ['rules.thresholds.maxScore', 'Result maximum score'],
-            ['rules.thresholds.passingScore', 'Passing score'],
+            ['rules.rounding.scale', text("Decimal places")],
+            ['rules.thresholds.maxScore', text("Result maximum score")],
+            ['rules.thresholds.passingScore', text("Passing score")],
           ] as const
         ).map(([path, label]) => (
           <Field
@@ -152,11 +152,11 @@ export function GradingRulesForm({
             label={label}
             htmlFor={path}
             required
-            error={form.getFieldState(path, form.formState).error?.message}
+            error={text(form.getFieldState(path, form.formState).error?.message)}
           >
             <input
               id={path}
-              type="number"
+              type="number" dir="ltr"
               step="any"
               className={inputClassName}
               aria-describedby={form.formState.errors.rules ? 'grading-rules-errors' : undefined}
@@ -167,23 +167,20 @@ export function GradingRulesForm({
       </div>
       {weighting === 'WEIGHTED' ? (
         <fieldset className="grid gap-3 sm:grid-cols-2">
-          <legend>Assessment type weights (0–100)</legend>
-          <p className="text-sm sm:col-span-2">
-            The engine normalizes the total of the assessments present; weights do not need to sum
-            to 100. Missing type weights prevent calculation.
-          </p>
+          <legend>{text("Assessment type weights (0–100)")}</legend>
+          <p className="text-sm sm:col-span-2">{text("The engine normalizes the total of the assessments present; weights do not need to sum to 100. Missing type weights prevent calculation.")}</p>
           {ASSESSMENT_TYPES.map((type) => (
             <Field
               key={type}
-              label={`${type} weight`}
+              label={ui('typeWeight', { type: text(type) })}
               htmlFor={`weight-${type}`}
-              error={
+              error={text(
                 form.formState.errors.rules?.assessmentWeighting?.weightsByType?.[type]?.message
-              }
+              )}
             >
               <input
                 id={`weight-${type}`}
-                type="number"
+                type="number" dir="ltr"
                 step="any"
                 className={inputClassName}
                 value={form.watch(`rules.assessmentWeighting.weightsByType.${type}`) ?? ''}
@@ -198,9 +195,9 @@ export function GradingRulesForm({
         </fieldset>
       ) : null}
       <Field
-        label="Required assessment types"
+        label={text("Required assessment types")}
         htmlFor="required-types"
-        hint="Select none to require no specific type. Use Ctrl/Command with click, or keyboard arrows and Shift, for multiple types."
+        hint={text("Select none to require no specific type. Use Ctrl/Command with click, or keyboard arrows and Shift, for multiple types.")}
       >
         <select
           multiple
@@ -216,16 +213,12 @@ export function GradingRulesForm({
           }}
         >
           {ASSESSMENT_TYPES.map((type) => (
-            <option key={type}>{type}</option>
+            <option key={type} value={type}>{text(type)}</option>
           ))}
         </select>
       </Field>
-      <p className="text-sm text-muted-foreground">
-        Coefficient values stay in the curriculum. Assessment maximum scores stay in Gradebook
-        setup. Passing score is stored configuration metadata; it does not change the current
-        average formula.
-      </p>
-      <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel="Save draft" />
+      <p className="text-sm text-muted-foreground">{text("Coefficient values stay in the curriculum. Assessment maximum scores stay in Gradebook setup. Passing score is stored configuration metadata; it does not change the current average formula.")}</p>
+      <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={text("Save draft")} />
     </form>
   );
 }
@@ -237,6 +230,8 @@ function ConfigurationEditor({
   detail: ConfigurationDetail;
   saved: () => Promise<void>;
 }) {
+  const text = useDomainText();
+  const ui = useTranslations('domainUi');
   const [editing, setEditing] = useState<ConfigurationVersion | 'new' | null>(null);
   const mutation = useMutation({
     mutationFn: (operation: () => Promise<unknown>) => operation(),
@@ -247,18 +242,14 @@ function ConfigurationEditor({
     if (!mutation.isPending) mutation.mutate(operation);
   };
   return (
-    <section className="space-y-4" aria-label="Configuration versions">
+    <section className="space-y-4" aria-label={text("Configuration versions")}>
       <h2 className="text-xl font-semibold">
-        {detail.name} <StatusBadge status={detail.status} />
+        {detail.name} <StatusBadge status={detail.status} label={text(detail.status)} />
       </h2>
       {mutation.isError ? (
-        <InlineFeedback kind="error">{configurationFailure(mutation.error)}</InlineFeedback>
+        <InlineFeedback kind="error">{text(configurationFailure(mutation.error))}</InlineFeedback>
       ) : null}
-      <p className="text-sm">
-        Activation archives the previous active version, without rebinding Gradebooks or
-        recalculating results. Select one consistent version for all Gradebooks that will be
-        aggregated together.
-      </p>
+      <p className="text-sm">{text("Activation archives the previous active version, without rebinding Gradebooks or recalculating results. Select one consistent version for all Gradebooks that will be aggregated together.")}</p>
       {detail.status !== 'ARCHIVED' ? (
         <div className="flex flex-wrap gap-2">
           <Button
@@ -272,25 +263,21 @@ function ConfigurationEditor({
               )
             }
           >
-            {detail.status === 'ACTIVE' ? 'Deactivate configuration' : 'Reactivate configuration'}
+            {detail.status === 'ACTIVE' ? text("Deactivate configuration") : text("Reactivate configuration")}
           </Button>
           <Button
             disabled={mutation.isPending}
             onClick={() => perform(() => configurationApi.status(detail.id, 'ARCHIVED'))}
-          >
-            Archive configuration (permanent)
-          </Button>
+          >{text("Archive configuration (permanent)")}</Button>
           {detail.status === 'ACTIVE' ? (
-            <Button disabled={mutation.isPending} onClick={() => setEditing('new')}>
-              New draft version
-            </Button>
+            <Button disabled={mutation.isPending} onClick={() => setEditing('new')}>{text("New draft version")}</Button>
           ) : null}
         </div>
       ) : null}
       {editing ? (
         <PageContainer variant="FORM_DETAIL">
           <h3 className="font-semibold">
-            {editing === 'new' ? 'New draft version' : `Edit draft v${editing.versionNumber}`}
+            {editing === 'new' ? text("New draft version") : ui('editVersion', { version: editing.versionNumber })}
           </h3>
           <GradingRulesForm
             key={editing === 'new' ? 'new' : editing.id}
@@ -312,22 +299,19 @@ function ConfigurationEditor({
       {detail.versions.map((version) => (
         <article key={version.id} className="space-y-3 rounded border p-4">
           <h3 className="font-semibold">
-            Version {version.versionNumber} <StatusBadge status={version.status} />
+            {ui('version', { version: version.versionNumber })} <StatusBadge status={version.status} label={text(version.status)} />
           </h3>
           {!version.editable ? (
-            <p>
-              Rules are read-only to preserve academic history or because the configuration is
-              inactive. For future changes, use a new draft under an active configuration.
-            </p>
+            <p>{text("Rules are read-only to preserve academic history or because the configuration is inactive. For future changes, use a new draft under an active configuration.")}</p>
           ) : (
-            <p>Unused draft: rules may be corrected before activation.</p>
+            <p>{text("Unused draft: rules may be corrected before activation.")}</p>
           )}
           {version.hasHistory ? (
-            <p>Bound academic records exist. Their original rules remain preserved.</p>
+            <p>{text("Bound academic records exist. Their original rules remain preserved.")}</p>
           ) : null}
           <details>
-            <summary className="cursor-pointer">View exact stored rules</summary>
-            <pre className="overflow-auto whitespace-pre-wrap break-words text-sm">
+            <summary className="cursor-pointer">{text("View exact stored rules")}</summary>
+            <pre dir="ltr" className="overflow-auto whitespace-pre-wrap break-words text-sm">
               {JSON.stringify(version.rules, null, 2)}
             </pre>
           </details>
@@ -335,7 +319,7 @@ function ConfigurationEditor({
             <div className="flex flex-wrap gap-2">
               {version.editable ? (
                 <Button disabled={mutation.isPending} onClick={() => setEditing(version)}>
-                  Edit draft v{version.versionNumber}
+                  {ui('editVersion', { version: version.versionNumber })}
                 </Button>
               ) : null}
               {version.status === 'DRAFT' ? (
@@ -345,7 +329,7 @@ function ConfigurationEditor({
                     perform(() => configurationApi.transition(detail.id, version.id, 'ACTIVE'))
                   }
                 >
-                  Activate v{version.versionNumber}
+                  {ui('activateVersion', { version: version.versionNumber })}
                 </Button>
               ) : null}
               {version.status !== 'ARCHIVED' ? (
@@ -355,7 +339,7 @@ function ConfigurationEditor({
                     perform(() => configurationApi.transition(detail.id, version.id, 'ARCHIVED'))
                   }
                 >
-                  Archive v{version.versionNumber}
+                  {ui('archiveVersion', { version: version.versionNumber })}
                 </Button>
               ) : null}
             </div>
@@ -366,6 +350,7 @@ function ConfigurationEditor({
   );
 }
 function SchoolConfigurationWorkspace({ schoolId }: { schoolId: string }) {
+  const text = useDomainText();
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -392,18 +377,11 @@ function SchoolConfigurationWorkspace({ schoolId }: { schoolId: string }) {
   if (list.isError) return <ApiErrorState onRetry={() => void list.refetch()} />;
   return (
     <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
-      <Link href="/grades" className="underline">
-        Back to Gradebook setup
-      </Link>
-      <h1 className="text-2xl font-semibold">Grading configuration</h1>
-      <p>
-        School-owned calculation rules. Drafts are editable; activated and archived versions
-        preserve historical meaning.
-      </p>
+      <Link href="/grades" className="underline">{text("Back to Gradebook setup")}</Link>
+      <h1 className="text-2xl font-semibold">{text("Grading configuration")}</h1>
+      <p>{text("School-owned calculation rules. Drafts are editable; activated and archived versions preserve historical meaning.")}</p>
       {success ? (
-        <InlineFeedback kind="success">
-          Grading configuration saved. Existing academic records were not recalculated.
-        </InlineFeedback>
+        <InlineFeedback kind="success">{text("Grading configuration saved. Existing academic records were not recalculated.")}</InlineFeedback>
       ) : null}
       {creating ? (
         <PageContainer variant="FORM_DETAIL">
@@ -418,7 +396,7 @@ function SchoolConfigurationWorkspace({ schoolId }: { schoolId: string }) {
           />
         </PageContainer>
       ) : (
-        <Button onClick={() => setCreating(true)}>Create configuration</Button>
+        <Button onClick={() => setCreating(true)}>{text("Create configuration")}</Button>
       )}
       <ul className="flex flex-wrap gap-3">
         {list.data.data.map((row) => (
@@ -430,15 +408,13 @@ function SchoolConfigurationWorkspace({ schoolId }: { schoolId: string }) {
                 setSuccess(false);
               }}
             >
-              {row.name} — {row.status}
+              <bdi>{row.name}</bdi> — {text(row.status)}
             </Button>
           </li>
         ))}
       </ul>
       {!list.data.data.length ? (
-        <p>
-          No grading configuration yet. Create a draft and activate it before setting up Gradebooks.
-        </p>
+        <p>{text("No grading configuration yet. Create a draft and activate it before setting up Gradebooks.")}</p>
       ) : null}
       <Pagination page={page} pageSize={50} total={list.data.meta.total} onPage={setPage} />
       {selected ? (

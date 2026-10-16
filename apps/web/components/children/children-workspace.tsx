@@ -5,12 +5,14 @@ import { useAppContext } from '@/components/app/app-context';
 import { AccessDeniedWithReturn } from '@/components/app/route-access';
 import { ChildCard } from '@/components/parent/child-card';
 import { ApiErrorState, EmptyState, InlineLoading } from '@/components/ui/states';
-import { parentPortalCopy as t } from '@/lib/frontend/parent-portal/copy';
+import { useParentPortalCopy } from '@/i18n/use-people-copy';
 import { parentBootstrapQuery } from '@/lib/frontend/parent-portal/queries';
 import { relatedChildren } from '@/lib/frontend/parent-portal/types';
 import { can } from '@/lib/frontend/permissions';
 
 export function ChildrenWorkspace() {
+  const t = useParentPortalCopy();
+
   const context = useAppContext();
   const role = context.currentSchool?.role;
   const schoolId = context.currentSchool?.id;

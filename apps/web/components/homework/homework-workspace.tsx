@@ -1,5 +1,6 @@
 'use client';
 import { PageContainer } from '@/components/ui/page-container';
+import { useDomainText } from '@/i18n/use-domain-text';
 
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Search } from 'lucide-react';
@@ -14,7 +15,7 @@ import { academicApi, listAllResource } from '@/lib/frontend/academic/api';
 import { academicKeys } from '@/lib/frontend/academic/queries';
 import type { ClassDto, SubjectDto } from '@/lib/frontend/academic/types';
 import { currentUserHomeworkAssignments, homeworkApi } from '@/lib/frontend/homework/api';
-import { homeworkCopy as t } from '@/lib/frontend/homework/copy';
+import { useHomeworkCopy } from '@/i18n/use-domain-copy';
 import { homeworkKeys } from '@/lib/frontend/homework/queries';
 import { homeworkStatuses } from '@/lib/frontend/homework/schemas';
 import type { HomeworkStatus } from '@/lib/frontend/homework/types';
@@ -23,6 +24,8 @@ import { HomeworkForm } from './homework-form';
 import { HomeworkTable } from './homework-table';
 
 export function HomeworkWorkspace() {
+  const text = useDomainText();
+  const t = useHomeworkCopy();
   const app = useAppContext(); const schoolId = app.currentSchool?.id; const role = app.currentSchool?.role;
   const searchParams = useSearchParams(); const pathname = usePathname(); const router = useRouter(); const [creating, setCreating] = useState(false); const [searchDraft, setSearchDraft] = useState(searchParams.get('search') ?? '');
   const pageValue = Number(searchParams.get('page') ?? '1'); const page = Number.isInteger(pageValue) && pageValue > 0 ? pageValue : 1;
@@ -46,10 +49,10 @@ export function HomeworkWorkspace() {
     <section className="space-y-3" aria-labelledby="homework-filters"><h2 id="homework-filters" className="text-sm font-semibold">{t.filters}</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <form className="flex gap-2 sm:col-span-2" onSubmit={(event) => { event.preventDefault(); updateUrl({ search: searchDraft.trim() || undefined, page: 1 }); }}><label className="sr-only" htmlFor="homework-search">{t.search}</label><input id="homework-search" className={inputClassName} value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder={t.search} /><Button type="submit" variant="outline"><Search className="size-4" aria-hidden="true" />{t.search}</Button></form>
       <select aria-label={t.academicYear} className={selectClassName} value={academicYearId ?? ''} onChange={(event) => updateUrl({ academicYearId: event.target.value || undefined, classId: undefined, page: 1 })}><option value="">{t.allYears}</option>{years.data.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-      <select aria-label="Class" className={selectClassName} value={classId ?? ''} onChange={(event) => updateUrl({ classId: event.target.value || undefined, page: 1 })}><option value="">{t.allClasses}</option>{availableClasses.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-      <select aria-label={t.status} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{homeworkStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-      <input aria-label={t.dueFrom} type="date" className={inputClassName} value={dueFrom ?? ''} onChange={(event) => updateUrl({ dueFrom: event.target.value || undefined, page: 1 })} />
-      <input aria-label={t.dueTo} type="date" className={inputClassName} value={dueTo ?? ''} onChange={(event) => updateUrl({ dueTo: event.target.value || undefined, page: 1 })} />
+      <select aria-label={text("Class")} className={selectClassName} value={classId ?? ''} onChange={(event) => updateUrl({ classId: event.target.value || undefined, page: 1 })}><option value="">{t.allClasses}</option>{availableClasses.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+      <select aria-label={t.status} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{homeworkStatuses.map((item) => <option key={item} value={item}>{text(item)}</option>)}</select>
+      <input aria-label={t.dueFrom} type="date" dir="ltr" className={inputClassName} value={dueFrom ?? ''} onChange={(event) => updateUrl({ dueFrom: event.target.value || undefined, page: 1 })} />
+      <input aria-label={t.dueTo} type="date" dir="ltr" className={inputClassName} value={dueTo ?? ''} onChange={(event) => updateUrl({ dueTo: event.target.value || undefined, page: 1 })} />
     </div></section>
     {invalidRange ? <InlineFeedback kind="error">{t.invalidRange}</InlineFeedback> : list.isError ? <ApiErrorState title={t.unavailable} onRetry={() => void list.refetch()} /> : <HomeworkTable result={list.data} loading={list.isPending} years={years.data} subjects={subjects.data} onPage={(next) => updateUrl({ page: next })} />}
     <Modal open={creating} title={t.create} description={t.authorScopeMissing} onClose={() => setCreating(false)}>{creating ? <HomeworkForm schoolId={schoolId} years={years.data} subjects={subjects.data} assignments={scope.data} onCancel={() => setCreating(false)} /> : null}</Modal>

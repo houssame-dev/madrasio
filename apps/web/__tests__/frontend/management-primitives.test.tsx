@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render as renderComponent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -7,6 +7,14 @@ import { Field, InlineFeedback } from '@/components/academic/ui';
 import { PageContainer, pageWidths } from '@/components/ui/page-container';
 import { SearchInput } from '@/components/ui/search-input';
 import { useSuccessFeedback } from '@/lib/frontend/use-success-feedback';
+import { NextIntlClientProvider } from 'next-intl';
+import { getCatalog } from '@/i18n/catalogs';
+import type { ReactNode } from 'react';
+
+function IntlHarness({ children }: { children: ReactNode }) {
+  return <NextIntlClientProvider locale="en" messages={getCatalog('en')} timeZone="UTC">{children}</NextIntlClientProvider>;
+}
+function render(ui: ReactNode) { return renderComponent(ui, { wrapper: IntlHarness }); }
 
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 

@@ -3,13 +3,19 @@
 import { Building2 } from 'lucide-react';
 
 import type { MeMembershipDto } from '@/lib/api/me';
-import { ApiClientError } from '@/lib/frontend/api-client';
-import { copy, roleLabels } from '@/lib/frontend/copy';
+import { useTranslations } from 'next-intl';
+
 import { useSelectCurrentSchool } from '@/lib/frontend/current-user';
 import { Button } from '@school/ui';
 import { LogoutButton } from '@/components/auth/logout-button';
+import { LanguagePreferenceSlot } from '@/components/language/preference-slot';
+
+const roleKeys = { SUPER_ADMIN: 'roles.superAdmin', SCHOOL_ADMIN: 'roles.schoolAdmin', TEACHER: 'roles.teacher', PARENT: 'roles.parent' } as const;
 
 export function SchoolSelectionPanel({ memberships }: { memberships: readonly MeMembershipDto[] }) {
+  const t = useTranslations('workspace');
+  const roles = useTranslations('shell');
+  const errors = useTranslations('states.error');
   const selection = useSelectCurrentSchool();
 
   return (
@@ -18,10 +24,11 @@ export function SchoolSelectionPanel({ memberships }: { memberships: readonly Me
         <div className="mb-6 flex items-start gap-3">
           <span className="rounded-md bg-primary p-2 text-primary-foreground" aria-hidden="true"><Building2 className="size-5" /></span>
           <div>
-            <h1 id="school-selection-title" className="text-xl font-semibold">{copy.chooseSchool}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{copy.chooseSchoolDescription}</p>
+            <h1 id="school-selection-title" className="text-xl font-semibold">{t('chooseSchool')}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t('chooseSchoolDescription')}</p>
           </div>
         </div>
+        <LanguagePreferenceSlot placement="school-selection" />
         <div className="grid gap-3">
           {memberships.map((membership) => (
             <Button
@@ -32,17 +39,15 @@ export function SchoolSelectionPanel({ memberships }: { memberships: readonly Me
               disabled={selection.isPending}
               onClick={() => selection.mutate(membership.schoolId)}
             >
-              <span className="truncate font-medium">{membership.schoolName}</span>
-              <span className="text-xs font-normal text-muted-foreground">{roleLabels[membership.role]}</span>
+              <span className="truncate font-medium"><bdi>{membership.schoolName}</bdi></span>
+              <span className="text-xs font-normal text-muted-foreground">{roles(roleKeys[membership.role])}</span>
             </Button>
           ))}
         </div>
-        {selection.isPending ? <p className="mt-4 text-sm text-muted-foreground" role="status">{copy.switchingSchool}</p> : null}
+        {selection.isPending ? <p className="mt-4 text-sm text-muted-foreground" role="status">{t('switchingSchool')}</p> : null}
         {selection.isError ? (
           <p className="mt-4 text-sm text-destructive" role="alert">
-            {selection.error instanceof ApiClientError && selection.error.status < 500
-              ? selection.error.message
-              : copy.requestFailedDescription}
+            {errors('description')}
           </p>
         ) : null}
         <div className="mt-6 flex justify-end border-t pt-4"><LogoutButton /></div>
@@ -52,6 +57,8 @@ export function SchoolSelectionPanel({ memberships }: { memberships: readonly Me
 }
 
 export function SchoolSwitcher({ memberships, currentSchoolId }: { memberships: readonly MeMembershipDto[]; currentSchoolId: string }) {
+  const t = useTranslations('workspace');
+  const errors = useTranslations('states.error');
   const selection = useSelectCurrentSchool();
 
   if (memberships.length < 2) return null;
@@ -59,9 +66,9 @@ export function SchoolSwitcher({ memberships, currentSchoolId }: { memberships: 
   return (
     <div className="flex min-w-0 items-center gap-2 text-sm">
       <label>
-        <span className="sr-only">{copy.switchSchool}</span>
+        <span className="sr-only">{t('switchSchool')}</span>
         <select
-          aria-label={copy.switchSchool}
+          aria-label={t('switchSchool')}
           value={currentSchoolId}
           disabled={selection.isPending}
           onChange={(event) => selection.mutate(event.target.value)}
@@ -70,8 +77,8 @@ export function SchoolSwitcher({ memberships, currentSchoolId }: { memberships: 
           {memberships.map((membership) => <option key={membership.schoolId} value={membership.schoolId}>{membership.schoolName}</option>)}
         </select>
       </label>
-      {selection.isPending ? <span className="sr-only" role="status">{copy.switchingSchool}</span> : null}
-      {selection.isError ? <span className="sr-only" role="alert">{copy.requestFailedDescription}</span> : null}
+      {selection.isPending ? <span className="sr-only" role="status">{t('switchingSchool')}</span> : null}
+      {selection.isError ? <span className="sr-only" role="alert">{errors('description')}</span> : null}
     </div>
   );
 }

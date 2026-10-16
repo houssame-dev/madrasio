@@ -1,10 +1,9 @@
 import { Suspense } from 'react';
 import { HomeworkDetailWorkspace } from '@/components/homework/homework-detail';
-import { PageLoading } from '@/components/ui/states';
-import { homeworkCopy as t } from '@/lib/frontend/homework/copy';
+import { RouteLoading } from '@/components/language/route-presentation';
 
 export default async function HomeworkDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <Suspense fallback={<PageLoading label={t.loading} />}><HomeworkDetailWorkspace homeworkId={id} /></Suspense>;
+  return <Suspense fallback={<RouteLoading messageKey="homework.loading" />}><HomeworkDetailWorkspace homeworkId={id} /></Suspense>;
 }
 

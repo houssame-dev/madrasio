@@ -1,10 +1,9 @@
 import { getRequestConfig } from 'next-intl/server';
-import { DEFAULT_LOCALE } from '@school/shared';
+import { cookies } from 'next/headers';
 import { getCatalog } from './catalogs';
+import { cookieLocale, LOCALE_COOKIE } from './locale-cookie';
 
-export default getRequestConfig(async () => ({
-  // A1 deliberately ignores cookies, headers and locale overrides. Task 066_04
-  // will resolve the authenticated User's authoritative stored preference.
-  locale: DEFAULT_LOCALE,
-  messages: getCatalog(DEFAULT_LOCALE),
-}));
+export default getRequestConfig(async () => {
+  const locale = cookieLocale((await cookies()).get(LOCALE_COOKIE)?.value);
+  return { locale, messages: getCatalog(locale), timeZone: 'UTC' };
+});

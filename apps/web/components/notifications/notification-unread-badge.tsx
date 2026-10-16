@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
 import Link from 'next/link';
@@ -8,6 +9,7 @@ import { notificationsApi } from '@/lib/frontend/notifications/api';
 import { notificationKeys } from '@/lib/frontend/notifications/queries';
 
 export function NotificationUnreadBadge() {
+  const t = useTranslations('notificationBadge');
   const app = useAppContext();
   const schoolId = app.currentSchool?.id;
   const count = useQuery({
@@ -16,7 +18,7 @@ export function NotificationUnreadBadge() {
     enabled: schoolId !== undefined,
   });
   const value = typeof count.data?.count === 'number' ? count.data.count : 0;
-  const label = value > 0 ? `Notifications, ${value} unread` : 'Notifications';
+  const label = value > 0 ? t('unread', { count: value }) : t('title');
   return (
     <Link href="/notifications" aria-label={label} title={label} className="relative grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <Bell className="size-5" aria-hidden="true" />

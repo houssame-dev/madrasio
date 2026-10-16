@@ -6,10 +6,12 @@ import { z } from 'zod';
 import { Button } from '@school/ui';
 import { Field, InlineFeedback, inputClassName } from '@/components/academic/ui';
 import { apiRequest } from '@/lib/frontend/api-client';
-import { recoveryCopy as t } from '@/lib/frontend/auth/recovery-copy';
+import { useTranslations } from 'next-intl';
 
 const schema = z.object({ email: z.string().trim().email().max(254) });
 export function RecoveryForm() {
+  const t = useTranslations('recovery');
+  const validation = useTranslations('validation');
   const [hydrated, setHydrated] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(false);
@@ -19,7 +21,7 @@ export function RecoveryForm() {
     defaultValues: { email: '' },
   });
   useEffect(() => setHydrated(true), []);
-  if (sent) return <InlineFeedback kind="success">{t.confirmation}</InlineFeedback>;
+  if (sent) return <InlineFeedback kind="success">{t('confirmation')}</InlineFeedback>;
   return (
     <form
       method="post"
@@ -43,23 +45,24 @@ export function RecoveryForm() {
       })}
     >
       <fieldset className="space-y-4" disabled={!hydrated}>
-        {error ? <InlineFeedback kind="error">{t.unavailable}</InlineFeedback> : null}
+        {error ? <InlineFeedback kind="error">{t('unavailable')}</InlineFeedback> : null}
         <Field
           required
-          label={t.email}
+          label={t('email')}
           htmlFor="recovery-email"
-          error={form.formState.errors.email?.message}
+          error={form.formState.errors.email ? (form.formState.errors.email.type === 'too_big' ? validation('emailTooLong', { maximum: 254 }) : validation('emailInvalid')) : undefined}
         >
           <input
             id="recovery-email"
             type="email"
+            dir="ltr"
             autoComplete="email"
             className={inputClassName}
             {...form.register('email')}
           />
         </Field>
         <Button type="submit" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? t.pending : t.submit}
+          {form.formState.isSubmitting ? t('pending') : t('submit')}
         </Button>
       </fieldset>
     </form>

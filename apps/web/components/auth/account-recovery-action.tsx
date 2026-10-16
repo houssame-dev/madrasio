@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@school/ui';
 import { InlineFeedback } from '@/components/academic/ui';
 import { ApiClientError, apiRequest } from '@/lib/frontend/api-client';
-import { recoveryCopy as t } from '@/lib/frontend/auth/recovery-copy';
+import { useTranslations } from 'next-intl';
 
 export function AccountRecoveryAction({
   kind,
@@ -12,13 +12,14 @@ export function AccountRecoveryAction({
   kind: 'teachers' | 'parents';
   profileId: string;
 }) {
+  const t = useTranslations('recovery');
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string>();
   return (
     <div className="mt-4 space-y-2">
-      <p className="text-sm text-muted-foreground">{t.assistDescription}</p>
-      {sent ? <InlineFeedback kind="success">{t.assistSuccess}</InlineFeedback> : null}
+      <p className="text-sm text-muted-foreground">{t('assistDescription')}</p>
+      {sent ? <InlineFeedback kind="success">{t('assistSuccess')}</InlineFeedback> : null}
       {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}
       <Button
         type="button"
@@ -36,15 +37,15 @@ export function AccountRecoveryAction({
           } catch (error) {
             setError(
               error instanceof ApiClientError && error.featureCode === 'ACCOUNT_RECOVERY_COOLDOWN'
-                ? t.cooldown
-                : t.assistFailure,
+                ? t('cooldown')
+                : t('assistFailure'),
             );
           } finally {
             setPending(false);
           }
         }}
       >
-        {pending ? t.pending : t.assist}
+        {pending ? t('pending') : t('assist')}
       </Button>
     </div>
   );

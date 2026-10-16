@@ -1,4 +1,6 @@
 'use client';
+import { usePeopleText } from '@/i18n/use-people-text';
+
 import { AccountRecoveryAction } from '@/components/auth/account-recovery-action';
 import { PageContainer } from '@/components/ui/page-container';
 import { useSuccessFeedback } from '@/lib/frontend/use-success-feedback';
@@ -19,7 +21,7 @@ import { academicKeys } from '@/lib/frontend/academic/queries';
 import type { ClassDto, SubjectDto } from '@/lib/frontend/academic/types';
 import { can } from '@/lib/frontend/permissions';
 import { listAllAssignments, teachersApi } from '@/lib/frontend/teachers/api';
-import { teacherCopy as t } from '@/lib/frontend/teachers/copy';
+import { useTeacherCopy } from '@/i18n/use-people-copy';
 import { invalidateTeacher, teacherKeys } from '@/lib/frontend/teachers/queries';
 import { AssignmentForm } from './assignment-form';
 import { AssignmentsPanel } from './assignments-panel';
@@ -33,6 +35,9 @@ export function TeacherDetailWorkspace({ teacherId }: { teacherId: string }) {
 }
 
 function TeacherDetail({ schoolId, role, teacherId }: { schoolId: string; role: 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT'; teacherId: string }) {
+  const t = useTeacherCopy();
+  const text = usePeopleText();
+
   const canManage = can(role, 'teachers.manage'); const queryClient = useQueryClient(); const searchParams = useSearchParams(); const pathname = usePathname(); const router = useRouter();
   const [editing, setEditing] = useState(false); const [assigning, setAssigning] = useState(false); const [inviting, setInviting] = useState(false); const [notice, setNotice] = useSuccessFeedback();
   const historyValue = Number(searchParams.get('historyPage') ?? '1'); const historyPage = Number.isInteger(historyValue) && historyValue > 0 ? historyValue : 1;
@@ -47,10 +52,10 @@ function TeacherDetail({ schoolId, role, teacherId }: { schoolId: string; role: 
   const value = teacher.data; const name = `${value.firstName} ${value.lastName}`;
   const invalidate = async (message: string = t.changesSaved, includeList = false) => { await invalidateTeacher(queryClient, schoolId, teacherId, includeList); setNotice(message); };
   return <PageContainer variant="FORM_DETAIL" className="space-y-6">
-    <Link href="/teachers" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />{t.backToTeachers}</Link>
-    <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-semibold tracking-tight">{name}</h1><StatusBadge status={value.status} /></div><p className="mt-1 text-sm text-muted-foreground">{value.teacherCode ?? `${t.teacherCode}: ${t.unknown}`}</p></div>{canManage ? <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{t.editTeacher}</Button><TeacherLifecycleActions teacher={value} onSaved={async () => invalidate(t.changesSaved, true)} /></div> : <div className="rounded-md border bg-muted px-3 py-2 text-sm">{t.readOnly}</div>}</header>
+    <Link href="/teachers" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4 rtl:rotate-180" aria-hidden="true" />{t.backToTeachers}</Link>
+    <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-semibold tracking-tight"><bdi>{name}</bdi></h1><StatusBadge status={value.status} label={text(value.status)} /></div><p className="mt-1 text-sm text-muted-foreground">{value.teacherCode ?? `${t.teacherCode}: ${t.unknown}`}</p></div>{canManage ? <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setEditing(true)}><Pencil className="size-4" aria-hidden="true" />{t.editTeacher}</Button><TeacherLifecycleActions teacher={value} onSaved={async () => invalidate(t.changesSaved, true)} /></div> : <div className="rounded-md border bg-muted px-3 py-2 text-sm">{t.readOnly}</div>}</header>
     {notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}
-    <div className="grid gap-6 lg:grid-cols-2"><section className="space-y-3"><h2 className="text-lg font-semibold">{t.profile}</h2><dl className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-3"><div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.firstName}</dt><dd className="mt-1">{value.firstName}</dd></div><div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.lastName}</dt><dd className="mt-1">{value.lastName}</dd></div><div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.teacherCode}</dt><dd className="mt-1">{value.teacherCode ?? t.unknown}</dd></div></dl>{value.status !== 'ACTIVE' ? <p className="text-sm text-muted-foreground">{t.inactiveScope}</p> : null}</section>
+    <div className="grid gap-6 lg:grid-cols-2"><section className="space-y-3"><h2 className="text-lg font-semibold">{t.profile}</h2><dl className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-3"><div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.firstName}</dt><dd dir="auto" className="mt-1">{value.firstName}</dd></div><div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.lastName}</dt><dd dir="auto" className="mt-1">{value.lastName}</dd></div><div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.teacherCode}</dt><dd dir="auto" className="mt-1">{value.teacherCode ?? t.unknown}</dd></div></dl>{value.status !== 'ACTIVE' ? <p className="text-sm text-muted-foreground">{t.inactiveScope}</p> : null}</section>
       <section className="space-y-3"><h2 className="text-lg font-semibold">{t.linkedAccount}</h2><div className="rounded-lg border bg-card p-4"><p className="font-medium">{value.userId ? t.linked : t.unlinked}</p><p className="mt-1 text-sm text-muted-foreground">{t.linkedHint}</p>{canManage && value.status === 'ACTIVE' && !value.userId ? <Button className="mt-4" type="button" variant="outline" onClick={() => setInviting(true)}>{t.inviteAccount}</Button> : null}{canManage && value.status === 'ACTIVE' && value.userId ? <AccountRecoveryAction kind="teachers" profileId={teacherId} /> : null}</div></section></div>
     {canManage && value.status === 'ACTIVE' ? <div className="flex justify-end"><Button type="button" onClick={() => setAssigning(true)} disabled={activeAssignments.isPending || activeAssignments.isError}><Plus className="size-4" aria-hidden="true" />{t.createAssignment}</Button></div> : null}
     <AssignmentsPanel schoolId={schoolId} teacherId={teacherId} years={years.data} classes={classes.data} subjects={subjects.data} page={historyPage} canManage={canManage} onPage={(page) => updateUrl({ historyPage: page })} onChanged={() => invalidate(t.assignmentsUpdated)} />

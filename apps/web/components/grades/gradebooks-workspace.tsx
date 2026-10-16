@@ -1,5 +1,6 @@
 'use client';
 import { PageContainer } from '@/components/ui/page-container';
+import { useDomainText } from '@/i18n/use-domain-text';
 
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
@@ -16,7 +17,7 @@ import { academicKeys } from '@/lib/frontend/academic/queries';
 import type { AcademicPeriodDto, ClassDto, SubjectDto } from '@/lib/frontend/academic/types';
 import { can } from '@/lib/frontend/permissions';
 import { gradesApi } from '@/lib/frontend/grades/api';
-import { gradeCopy as t } from '@/lib/frontend/grades/copy';
+import { useGradeCopy } from '@/i18n/use-domain-copy';
 import { gradeKeys } from '@/lib/frontend/grades/queries';
 import type { GradebookStatus } from '@/lib/frontend/grades/types';
 import { currentUserActiveAssignments } from '@/lib/frontend/teachers/api';
@@ -26,6 +27,8 @@ import { GradebooksTable } from './gradebooks-table';
 const statuses: readonly GradebookStatus[] = ['DRAFT', 'OPEN', 'CLOSED', 'ARCHIVED'];
 
 export function GradebooksWorkspace() {
+  const text = useDomainText();
+  const t = useGradeCopy();
   const app = useAppContext(); const role = app.currentSchool?.role; const schoolId = app.currentSchool?.id;
   const [creating, setCreating] = useState(false);
   const searchParams = useSearchParams(); const pathname = usePathname(); const router = useRouter();
@@ -56,14 +59,14 @@ export function GradebooksWorkspace() {
   const availableClasses = academicYearId ? classes.data.filter((row) => row.academicYearId === academicYearId) : classes.data;
   const canOpenCreate = canCreate && (role !== 'TEACHER' || (teacherScope.data?.length ?? 0) > 0);
   return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
-    {can(role, 'grades.manage') ? <Link href="/grades/configuration" className="font-medium underline">Manage grading configuration</Link> : null}
+    {can(role, 'grades.manage') ? <Link href="/grades/configuration" className="font-medium underline">{text("Manage grading configuration")}</Link> : null}
     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{role === 'TEACHER' ? t.teacherDescription : t.description}</p></div><div className="flex flex-wrap gap-2"><Link href="/grades/results" className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">{t.resultsWorkspace}</Link>{canOpenCreate ? <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{t.createGradebook}</Button> : null}</div></header>
     <section className="space-y-3" aria-labelledby="gradebook-filters"><h2 id="gradebook-filters" className="text-sm font-semibold">{t.filters}</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <label><span className="sr-only">{t.academicYear}</span><select aria-label={t.academicYear} className={selectClassName} value={academicYearId ?? ''} onChange={(event) => updateUrl({ academicYearId: event.target.value || undefined, academicPeriodId: undefined, classId: undefined, page: 1 })}><option value="">{t.allYears}</option>{years.data.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
       <label><span className="sr-only">{t.period}</span><select aria-label={t.period} className={selectClassName} value={academicPeriodId ?? ''} disabled={!academicYearId || periods.isPending} onChange={(event) => updateUrl({ academicPeriodId: event.target.value || undefined, page: 1 })}><option value="">{t.allPeriods}</option>{periods.data?.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
       <label><span className="sr-only">{t.class}</span><select aria-label={t.class} className={selectClassName} value={classId ?? ''} onChange={(event) => updateUrl({ classId: event.target.value || undefined, page: 1 })}><option value="">{t.allClasses}</option>{availableClasses.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
       <label><span className="sr-only">{t.subject}</span><select aria-label={t.subject} className={selectClassName} value={subjectId ?? ''} onChange={(event) => updateUrl({ subjectId: event.target.value || undefined, page: 1 })}><option value="">{t.allSubjects}</option>{subjects.data.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
-      <label><span className="sr-only">{t.status}</span><select aria-label={t.status} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{statuses.map((row) => <option key={row} value={row}>{row}</option>)}</select></label>
+      <label><span className="sr-only">{t.status}</span><select aria-label={t.status} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{statuses.map((row) => <option key={row} value={row}>{text(row)}</option>)}</select></label>
     </div></section>
     {gradebooks.isError ? <ApiErrorState title={t.unavailable} description={t.unavailableDescription} onRetry={() => void gradebooks.refetch()} /> : <GradebooksTable schoolId={schoolId} result={gradebooks.data} loading={gradebooks.isPending} years={years.data} classes={classes.data} subjects={subjects.data} onPage={(next) => updateUrl({ page: next })} />}
     <Modal open={creating} title={t.createGradebook} description={t.createDescription} onClose={() => setCreating(false)}>{creating ? <GradebookForm schoolId={schoolId} years={years.data} classes={classes.data} subjects={subjects.data} assignments={role === 'TEACHER' ? teacherScope.data ?? [] : undefined} versions={versions.data ?? []} versionsPending={versions.isPending} versionsError={versions.isError} refetchVersions={() => versions.refetch()} onCancel={() => setCreating(false)} /> : null}</Modal>

@@ -1,8 +1,7 @@
 import { Suspense } from 'react';
 import { NotificationsWorkspace } from '@/components/notifications/notifications-workspace';
-import { PageLoading } from '@/components/ui/states';
-import { notificationCopy as t } from '@/lib/frontend/notifications/copy';
+import { RouteLoading } from '@/components/language/route-presentation';
 
-export default function NotificationsPage() {
-  return <Suspense fallback={<PageLoading label={t.loading} />}><NotificationsWorkspace /></Suspense>;
+export default async function NotificationsPage() {
+  return <Suspense fallback={<RouteLoading messageKey="notificationUi.loading" />}><NotificationsWorkspace /></Suspense>;
 }

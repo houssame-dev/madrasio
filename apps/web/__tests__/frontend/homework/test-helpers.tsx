@@ -1,3 +1,5 @@
+import { NextIntlClientProvider } from 'next-intl';
+import { getCatalog } from '@/i18n/catalogs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderResult } from '@testing-library/react';
 import type { ReactElement } from 'react';
@@ -37,6 +39,6 @@ export const page = <T,>(data: T[], pageNumber = 1, pageSize = 20, total = data.
 
 export function renderHomework(ui: ReactElement, role: Role = 'SCHOOL_ADMIN', timezone = 'UTC'): RenderResult & { queryClient: QueryClient } {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  const result = render(<QueryClientProvider client={queryClient}><AppContextProvider value={{ user: { id: userId }, currentSchool: { id: schoolId, role, timezone }, memberships: [{ schoolId, schoolName: 'Atlas School', role, status: 'ACTIVE' }] }}>{ui}</AppContextProvider></QueryClientProvider>);
+  const result = render(<NextIntlClientProvider locale="en" messages={getCatalog('en')} timeZone="UTC"><QueryClientProvider client={queryClient}><AppContextProvider value={{ user: { id: userId }, currentSchool: { id: schoolId, role, timezone }, memberships: [{ schoolId, schoolName: 'Atlas School', role, status: 'ACTIVE' }] }}>{ui}</AppContextProvider></QueryClientProvider></NextIntlClientProvider>);
   return Object.assign(result, { queryClient });
 }

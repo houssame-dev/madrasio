@@ -3,6 +3,9 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { users } from '../drizzle/schema';
+import { createTestDb } from './helpers';
+
 const migrationsFolder = fileURLToPath(new URL('../drizzle/migrations/', import.meta.url));
 const journalPath = fileURLToPath(
   new URL('../drizzle/migrations/meta/_journal.json', import.meta.url),
@@ -25,6 +28,27 @@ async function migrationInventory() {
 }
 
 describe('hosted migration readiness', () => {
+  it('creates an application User through the ORM on 0022 without a locale column', async () => {
+    const { client, db } = await createTestDb();
+    try {
+      expect((await client.query(`select column_name from information_schema.columns
+        where table_schema='public' and table_name='users' and column_name='preferred_locale'`)).rows)
+        .toEqual([]);
+      expect((await client.query(`select conname from pg_constraint
+        where conrelid='public.users'::regclass and conname='users_preferred_locale_check'`)).rows)
+        .toEqual([]);
+      const id = '06600000-0000-4000-8000-000000000006';
+      const email = 'provisioning@example.test';
+      await client.query('insert into auth.users(id,email) values ($1,$2)', [id, email]);
+      const insert = db.insert(users).values({ id, email, status: 'ACTIVE' });
+      expect(insert.toSQL().sql).not.toContain('preferred_locale');
+      const [created] = await insert.returning();
+      expect(created).toMatchObject({ id, email, status: 'ACTIVE', isPlatformAdmin: false });
+    } finally {
+      await client.close();
+    }
+  }, 20_000);
+
   it('keeps every migration file in one deterministic journal chain', async () => {
     const { files, journal } = await migrationInventory();
 

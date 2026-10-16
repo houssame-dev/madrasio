@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 
 import type { Permission } from '@/lib/authorization/permissions';
 import type { Role } from '@/lib/authorization/roles';
-import { copy } from '@/lib/frontend/copy';
+import { useTranslations } from 'next-intl';
 import { can } from '@/lib/frontend/permissions';
 import { AccessDeniedState } from '@/components/ui/states';
 import { useAppContext } from './app-context';
@@ -22,7 +22,8 @@ export function RouteAccess({ permission, roles, children }: { permission?: Perm
 }
 
 export function AccessDeniedWithReturn() {
+  const t = useTranslations('workspace');
   return (
-    <AccessDeniedState action={<Link href="/dashboard" className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">{copy.backToDashboard}</Link>} />
+    <AccessDeniedState action={<Link href="/dashboard" className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">{t('backToDashboard')}</Link>} />
   );
 }

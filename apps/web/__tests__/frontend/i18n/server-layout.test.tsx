@@ -1,8 +1,6 @@
-import { isValidElement } from 'react';
-import type { ReactElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { NextIntlClientProvider } from 'next-intl';
-import { Providers } from '@/app/providers';
+import { DocumentPresentation } from '@/components/language/document-presentation';
 import { getCatalog } from '@/i18n/catalogs';
 
 // Vitest runs outside RSC. Load the real pinned server implementation and supply
@@ -22,14 +20,14 @@ vi.mock('next-intl/config', () => ({
   default: async (params: Parameters<typeof import('@/i18n/request').default>[0]) =>
     (await import('@/i18n/request')).default(params),
 }));
-vi.mock('next/headers', () => ({ headers: vi.fn(() => { throw new Error('A1 must not read locale headers'); }) }));
+vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => undefined }) }));
 
 import requestConfig from '@/i18n/request';
 import RootLayout from '@/app/layout';
 import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 
 describe('server request and root layout foundation', () => {
-  it('keeps English authoritative without reading untrusted request locale', async () => {
+  it('defaults to English without accepting untrusted route locale overrides', async () => {
     const configuration = await requestConfig({
       locale: 'ar',
       get requestLocale(): Promise<string> { throw new Error('Untrusted locale was read'); },
@@ -48,17 +46,13 @@ describe('server request and root layout foundation', () => {
 
   it('composes a single intl provider with Query and matching initial HTML', async () => {
     const child = <p>Existing application content</p>;
-    const html = await RootLayout({ children: child });
-    expect(html.type).toBe('html');
-    expect(html.props).toMatchObject({ lang: 'en', dir: 'ltr' });
-    const body = html.props.children;
-    const intl = body.props.children;
-    expect(intl.type).toBe(NextIntlClientProvider);
-    expect(intl.props.locale).toBe('en');
-    expect(intl.props.messages).toEqual(await getMessages());
-    expect(isValidElement(intl)).toBe(true);
-    const query = intl.props.children as ReactElement<{ children: ReactElement }>;
-    expect(query.type).toBe(Providers);
-    expect(query.props.children).toBe(child);
+    const document = await RootLayout({ children: child });
+    expect(document.type).toBe(DocumentPresentation);
+    expect(document.props.initialLocale).toBe('en');
+    expect(document.props.children).toBe(child);
+    const html = renderToStaticMarkup(document);
+    expect(html).toContain('lang="en"');
+    expect(html).toContain('dir="ltr"');
+    expect(html).toContain('Existing application content');
   });
 });

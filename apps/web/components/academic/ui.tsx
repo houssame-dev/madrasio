@@ -4,12 +4,14 @@ import { AlertCircle, CheckCircle2, LoaderCircle, X } from 'lucide-react';
 import { Children, cloneElement, isValidElement, useEffect, useRef, type ReactNode, type HTMLAttributes } from 'react';
 import { cn } from '@school/shared';
 import { Button } from '@school/ui';
-import { academicCopy as t } from '@/lib/frontend/academic/copy';
+import { useTranslations } from 'next-intl';
+import { useAcademicCopy } from '@/i18n/use-domain-copy';
 
 export const inputClassName = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground';
 export const selectClassName = inputClassName;
 
 export function ManagementPageHeader({ readOnly }: { readOnly: boolean }) {
+  const t = useAcademicCopy();
   return (
     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
@@ -25,10 +27,10 @@ export function SectionHeader({ title, description, action }: { title: string; d
   return <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-semibold">{title}</h2>{description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}</div>{action}</div>;
 }
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, label = status }: { status: string; label?: string }) {
   const positive = status === 'ACTIVE';
   const quiet = ['ARCHIVED', 'CLOSED', 'INACTIVE'].includes(status);
-  return <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-xs font-medium', positive && 'border-emerald-200 bg-emerald-50 text-emerald-800', status === 'PLANNED' || status === 'DRAFT' ? 'border-blue-200 bg-blue-50 text-blue-800' : '', quiet && 'bg-muted text-muted-foreground')}>{status}</span>;
+  return <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-xs font-medium', positive && 'border-emerald-200 bg-emerald-50 text-emerald-800', status === 'PLANNED' || status === 'DRAFT' ? 'border-blue-200 bg-blue-50 text-blue-800' : '', quiet && 'bg-muted text-muted-foreground')}>{label}</span>;
 }
 
 export function TableShell({ headers, children, loading }: { headers: readonly string[]; children: ReactNode; loading?: boolean }) {
@@ -36,19 +38,21 @@ export function TableShell({ headers, children, loading }: { headers: readonly s
     <div className="overflow-x-auto rounded-lg border bg-card">
       <table className="w-full min-w-[42rem] text-sm">
         <thead className="border-b bg-muted/60 text-start text-xs uppercase tracking-wide text-muted-foreground"><tr>{headers.map((header) => <th key={header} scope="col" className="px-4 py-3 text-start font-medium">{header}</th>)}</tr></thead>
-        <tbody className="divide-y">{loading ? Array.from({ length: 4 }, (_, index) => <tr key={index} aria-hidden="true">{headers.map((header) => <td key={header} className="px-4 py-4"><span className="block h-4 animate-pulse rounded bg-muted" /></td>)}</tr>) : children}</tbody>
+        <tbody className="divide-y">{loading ? Array.from({ length: 4 }, (_, index) => <tr key={index} aria-hidden="true">{headers.map((header) => <td dir="auto" key={header} className="px-4 py-4"><span className="block h-4 animate-pulse rounded bg-muted" /></td>)}</tr>) : children}</tbody>
       </table>
     </div>
   );
 }
 
 export function EmptyTableRow({ columns }: { columns: number }) {
-  return <tr><td colSpan={columns} className="px-4 py-10 text-center"><p className="font-medium">{t.noRecords}</p><p className="mt-1 text-sm text-muted-foreground">{t.noRecordsDescription}</p></td></tr>;
+  const common = useTranslations('collection');
+  return <tr><td dir="auto" colSpan={columns} className="px-4 py-10 text-center"><p className="font-medium">{common('empty')}</p><p className="mt-1 text-sm text-muted-foreground">{common('emptyDescription')}</p></td></tr>;
 }
 
 export function Pagination({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (page: number) => void }) {
+  const common = useTranslations('collection');
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  return <nav aria-label={t.pagination} className="flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">{t.page} {page} / {pages} · {total}</p><div className="flex gap-2"><Button type="button" variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>{t.previous}</Button><Button type="button" variant="outline" size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>{t.next}</Button></div></nav>;
+  return <nav aria-label={common('pagination')} className="flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">{common('pageSummary', { page, pages, total })}</p><div className="flex gap-2"><Button type="button" variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>{common('previous')}</Button><Button type="button" variant="outline" size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>{common('next')}</Button></div></nav>;
 }
 
 export function InlineFeedback({ kind, children }: { kind: 'success' | 'error' | 'warning'; children: ReactNode }) {
@@ -73,6 +77,7 @@ export function Field({ label, htmlFor, error, hint, required, children }: { lab
 }
 
 export function Modal({ open, title, description, onClose, children }: { open: boolean; title: string; description?: string; onClose: () => void; children: ReactNode }) {
+  const actions = useTranslations('foundation.actions');
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -95,13 +100,16 @@ export function Modal({ open, title, description, onClose, children }: { open: b
     return () => { document.removeEventListener('keydown', onKeyDown); triggerRef.current?.focus(); };
   }, [open, onClose]);
   if (!open) return null;
-  return <div className="fixed inset-0 z-[70] grid place-items-center p-4"><button type="button" className="absolute inset-0 bg-foreground/40" aria-label={t.cancel} onClick={onClose} /><div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="academic-modal-title" aria-describedby={description ? 'academic-modal-description' : undefined} className="relative z-10 max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-lg border bg-background shadow-xl"><div className="flex items-start justify-between gap-4 border-b p-5"><div><h2 id="academic-modal-title" className="text-lg font-semibold">{title}</h2>{description ? <p id="academic-modal-description" className="mt-1 text-sm text-muted-foreground">{description}</p> : null}</div><Button type="button" variant="ghost" size="icon" aria-label={t.cancel} onClick={onClose}><X className="size-4" aria-hidden="true" /></Button></div><div className="p-5">{children}</div></div></div>;
+  return <div className="fixed inset-0 z-[70] grid place-items-center p-4"><button type="button" className="absolute inset-0 bg-foreground/40" aria-label={actions('cancel')} onClick={onClose} /><div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="academic-modal-title" aria-describedby={description ? 'academic-modal-description' : undefined} className="relative z-10 max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-lg border bg-background shadow-xl"><div className="flex items-start justify-between gap-4 border-b p-5"><div><h2 id="academic-modal-title" className="text-lg font-semibold">{title}</h2>{description ? <p id="academic-modal-description" className="mt-1 text-sm text-muted-foreground">{description}</p> : null}</div><Button type="button" variant="ghost" size="icon" aria-label={actions('cancel')} onClick={onClose}><X className="size-4" aria-hidden="true" /></Button></div><div className="p-5">{children}</div></div></div>;
 }
 
-export function FormActions({ pending, onCancel, submitLabel = t.save }: { pending: boolean; onCancel: () => void; submitLabel?: string }) {
-  return <div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={onCancel}>{t.cancel}</Button><Button type="submit" disabled={pending}>{pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}{submitLabel}</Button></div>;
+export function FormActions({ pending, onCancel, submitLabel }: { pending: boolean; onCancel: () => void; submitLabel?: string }) {
+  const actions = useTranslations('foundation.actions');
+  return <div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={onCancel}>{actions('cancel')}</Button><Button type="submit" disabled={pending}>{pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}{submitLabel ?? actions('save')}</Button></div>;
 }
 
 export function ConfirmDialog({ open, title, description, pending, error, onClose, onConfirm }: { open: boolean; title: string; description: string; pending: boolean; error?: string; onClose: () => void; onConfirm: () => void }) {
-  return <Modal open={open} title={title} description={description} onClose={onClose}><div className="space-y-4">{error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}<div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={onClose}>{t.cancel}</Button><Button type="button" disabled={pending} onClick={onConfirm}>{pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}{t.confirmAction}</Button></div></div></Modal>;
+  const actions = useTranslations('foundation.actions');
+  const common = useTranslations('collection');
+  return <Modal open={open} title={title} description={description} onClose={onClose}><div className="space-y-4">{error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}<div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={onClose}>{actions('cancel')}</Button><Button type="button" disabled={pending} onClick={onConfirm}>{pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}{common('confirm')}</Button></div></div></Modal>;
 }

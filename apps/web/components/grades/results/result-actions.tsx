@@ -1,11 +1,12 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useDomainText } from '@/i18n/use-domain-text';
 import { useState } from 'react';
 import { Button } from '@school/ui';
 import { ConfirmDialog, InlineFeedback } from '@/components/academic/ui';
 import { gradesApi } from '@/lib/frontend/grades/api';
-import { gradeCopy as t } from '@/lib/frontend/grades/copy';
+import { useGradeCopy } from '@/i18n/use-domain-copy';
 import { gradeErrorMessage } from '@/lib/frontend/grades/errors';
 import { invalidateResult } from '@/lib/frontend/grades/queries';
 import type { ResultDto } from '@/lib/frontend/grades/types';
@@ -17,6 +18,8 @@ export function ResultActions({ schoolId, result, onChanged }: {
   result: ResultDto;
   onChanged: (message: string) => void;
 }) {
+  const text = useDomainText();
+  const t = useGradeCopy();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<{ action: Action; key?: string }>();
   const mutation = useMutation({
@@ -35,7 +38,7 @@ export function ResultActions({ schoolId, result, onChanged }: {
   const title = selected?.action === 'FINALIZE' ? t.finalizeTitle : selected?.action === 'PUBLISH' ? t.publishResultTitle : t.reviseTitle;
   const description = selected?.action === 'FINALIZE' ? t.finalizeDescription : selected?.action === 'PUBLISH' ? t.publishResultDescription : t.reviseDescription;
   return <div className="space-y-3"><div className="flex flex-wrap gap-2">{result.status === 'CALCULATED' ? <Button type="button" onClick={() => choose('FINALIZE')}>{t.finalize}</Button> : <><Button type="button" onClick={() => choose('PUBLISH')}>{t.publishResult}</Button><Button type="button" variant="outline" onClick={() => choose('REVISE')}>{t.reviseResult}</Button></>}</div>
-    {mutation.isError && !selected ? <InlineFeedback kind="error">{gradeErrorMessage(mutation.error)}</InlineFeedback> : null}
-    <ConfirmDialog open={!!selected} title={title} description={description} pending={mutation.isPending} error={mutation.isError ? gradeErrorMessage(mutation.error) : undefined} onClose={() => { setSelected(undefined); mutation.reset(); }} onConfirm={() => selected && mutation.mutate(selected)} />
+    {mutation.isError && !selected ? <InlineFeedback kind="error">{text(gradeErrorMessage(mutation.error))}</InlineFeedback> : null}
+    <ConfirmDialog open={!!selected} title={title} description={description} pending={mutation.isPending} error={mutation.isError ? text(gradeErrorMessage(mutation.error)) : undefined} onClose={() => { setSelected(undefined); mutation.reset(); }} onConfirm={() => selected && mutation.mutate(selected)} />
   </div>;
 }

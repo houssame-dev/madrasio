@@ -1,4 +1,6 @@
 'use client';
+import { usePeopleText } from '@/i18n/use-people-text';
+
 import { SearchInput } from '@/components/ui/search-input';
 import { PageContainer } from '@/components/ui/page-container';
 import { useSuccessFeedback } from '@/lib/frontend/use-success-feedback';
@@ -14,7 +16,7 @@ import { useAppContext } from '@/components/app/app-context';
 import { ApiErrorState } from '@/components/ui/states';
 import { can } from '@/lib/frontend/permissions';
 import { studentsApi } from '@/lib/frontend/students/api';
-import { studentCopy as t } from '@/lib/frontend/students/copy';
+import { useStudentCopy } from '@/i18n/use-people-copy';
 import { studentKeys } from '@/lib/frontend/students/queries';
 import type { StudentDto, StudentStatus } from '@/lib/frontend/students/types';
 import { StudentForm } from './student-form';
@@ -23,6 +25,9 @@ import { StudentsTable } from './students-table';
 const statuses: readonly StudentStatus[] = ['ACTIVE', 'INACTIVE', 'WITHDRAWN', 'ARCHIVED'];
 
 export function StudentsWorkspace() {
+  const t = useStudentCopy();
+  const text = usePeopleText();
+
   const context = useAppContext();
   const role = context.currentSchool?.role;
   const schoolId = context.currentSchool?.id;
@@ -56,7 +61,7 @@ export function StudentsWorkspace() {
   return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.description}</p></div>{canManage ? <Button type="button" onClick={() => setEditing(null)}><Plus className="size-4" aria-hidden="true" />{t.createStudent}</Button> : <div className="rounded-md border bg-muted px-3 py-2 text-sm"><span className="font-medium">{t.readOnly}</span><span className="sr-only">. {t.readOnlyDescription}</span></div>}</header>
     {notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}
-    <div className="flex flex-col gap-2 sm:flex-row"><SearchInput id="student-search" label={t.searchLabel} value={search} onSearch={(next) => updateUrl({ search: next, page: 1 })} busy={query.isFetching} /><label className="sm:w-56"><span className="sr-only">{t.filterStatus}</span><select aria-label={t.filterStatus} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{statuses.map((value) => <option key={value} value={value}>{value}</option>)}</select></label></div>
+    <div className="flex flex-col gap-2 sm:flex-row"><SearchInput id="student-search" label={t.searchLabel} value={search} onSearch={(next) => updateUrl({ search: next, page: 1 })} busy={query.isFetching} /><label className="sm:w-56"><span className="sr-only">{t.filterStatus}</span><select aria-label={t.filterStatus} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{statuses.map((value) => <option key={value} value={value}>{text(value)}</option>)}</select></label></div>
     {query.isError ? <ApiErrorState title={t.listError} onRetry={() => void query.refetch()} /> : <StudentsTable result={query.data} loading={query.isPending} canManage={canManage} onEdit={setEditing} onPage={(next) => updateUrl({ page: next })} />}
     <Modal open={editing !== undefined} title={editing ? t.editStudent : t.createStudent} description={editing ? undefined : t.enrollmentSeparate} onClose={() => setEditing(undefined)}>{editing !== undefined ? <StudentForm initial={editing ?? undefined} onCancel={() => setEditing(undefined)} onSaved={saved} /> : null}</Modal>
   </PageContainer>;

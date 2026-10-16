@@ -3,13 +3,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@school/ui';
 import { inputClassName } from '@/components/academic/ui';
-import { managementCopy as t } from '@/lib/frontend/management-copy';
+import { useTranslations } from 'next-intl';
 
 /** URL/query state stays with the consumer. Local complete lists use mode="local". */
-export function SearchInput({ id, label, value = '', onSearch, busy = false, mode = 'server' }: {
+export function SearchInput({ id, label, value = '', onSearch, busy = false, mode = 'server', copy }: {
   id: string; label: string; value?: string; onSearch: (value?: string) => void;
   busy?: boolean; mode?: 'server' | 'local';
+  copy?: { search: string; clear: string; searching: string };
 }) {
+  const t = useTranslations();
+  const labels = copy ?? { search: t('academic.search'), clear: t('domainUi.clearSearch'), searching: t('domainUi.searching') };
   const [draft, setDraft] = useState(value);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const callback = useRef(onSearch);
@@ -30,9 +33,9 @@ export function SearchInput({ id, label, value = '', onSearch, busy = false, mod
       if (!raw.trim() || mode === 'local') publish(raw);
       else timer.current = setTimeout(() => publish(raw), 350);
     }} />
-    <Button type="submit" variant="outline">{t.search}</Button>
-    {draft || value ? <Button type="button" variant="ghost" onClick={() => { setDraft(''); publish(''); }}>{t.clear}</Button> : null}
+    <Button type="submit" variant="outline">{labels.search}</Button>
+    {draft || value ? <Button type="button" variant="ghost" onClick={() => { setDraft(''); publish(''); }}>{labels.clear}</Button> : null}
     {/* Deliberately not a live region: do not announce each search keystroke. */}
-    {busy ? <span className="text-xs text-muted-foreground">{t.searching}</span> : null}
+    {busy ? <span className="text-xs text-muted-foreground">{labels.searching}</span> : null}
   </form>;
 }

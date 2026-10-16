@@ -1,5 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextIntlClientProvider } from 'next-intl';
+import type { ReactNode } from 'react';
+import { getCatalog } from '@/i18n/catalogs';
+import type { SupportedLocale } from '@school/shared';
 
 import { NavigationLinks } from '@/components/app/navigation-links';
 import { AppContextProvider } from '@/components/app/app-context';
@@ -10,6 +14,10 @@ const navigation = vi.hoisted(() => ({ pathname: '/students' }));
 vi.mock('next/navigation', () => ({ usePathname: () => navigation.pathname }));
 
 beforeEach(() => { navigation.pathname = '/students'; });
+
+function renderNavigation(ui: ReactNode, locale: SupportedLocale = 'en') {
+  return render(<NextIntlClientProvider locale={locale} messages={getCatalog(locale)} timeZone="UTC">{ui}</NextIntlClientProvider>);
+}
 
 describe('role-aware navigation', () => {
   it('shows the full school administrator foundation', () => {
@@ -36,18 +44,63 @@ describe('role-aware navigation', () => {
   });
 
   it('marks the exact active route', () => {
-    render(<NavigationLinks role="SCHOOL_ADMIN" />);
+    renderNavigation(<NavigationLinks role="SCHOOL_ADMIN" />);
     expect(screen.getByRole('link', { name: 'Students' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current');
   });
 
   it('renders a safe denied state for a directly visited unavailable section', () => {
-    render(
+    renderNavigation(
       <AppContextProvider value={{ user: { id: 'user' }, currentSchool: { id: 'school', role: 'PARENT', timezone: 'UTC' }, memberships: [] }}>
         <FeaturePlaceholder title="Students" permission="students.read" roles={['SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER']} />
       </AppContextProvider>,
     );
     expect(screen.getByRole('heading', { name: 'Access unavailable' })).toBeInTheDocument();
     expect(screen.queryByText('UI implementation is coming in a later task.')).not.toBeInTheDocument();
+  });
+});
+
+describe('localized navigation presentation', () => {
+  it.each([
+    ['en', 'Main navigation', 'Students', 'Platform Schools'],
+    ['fr', 'Navigation principale', 'Élèves', 'Établissements de la plateforme'],
+    ['ar', 'التنقل الرئيسي', 'الطلاب', 'مدارس المنصة'],
+  ] as const)('uses %s labels for visible links, collapsed names and platform navigation', (locale, landmark, students, platformSchools) => {
+    const onNavigate = vi.fn();
+    const view = renderNavigation(<NavigationLinks role="SCHOOL_ADMIN" platformAuthority="SUPER_ADMIN" onNavigate={onNavigate} />, locale);
+    expect(screen.getByRole('navigation', { name: landmark })).toBeInTheDocument();
+    const studentLink = screen.getByRole('link', { name: students });
+    expect(studentLink).toHaveAttribute('href', '/students');
+    expect(studentLink).toHaveAttribute('aria-current', 'page');
+    expect(studentLink).not.toHaveAttribute('title');
+    expect(studentLink).toHaveTextContent(students);
+    studentLink.click();
+    expect(onNavigate).toHaveBeenCalledOnce();
+    expect(screen.getByRole('link', { name: platformSchools })).toHaveAttribute('href', '/platform/schools');
+
+    view.rerender(<NextIntlClientProvider locale={locale} messages={getCatalog(locale)} timeZone="UTC">
+      <NavigationLinks role="SCHOOL_ADMIN" collapsed />
+    </NextIntlClientProvider>);
+    const collapsedLink = screen.getByRole('link', { name: students });
+    expect(collapsedLink).toHaveAttribute('title', students);
+    expect(collapsedLink.querySelector('.sr-only')).toHaveTextContent(students);
+    expect(collapsedLink.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByRole('link', { name: platformSchools })).not.toBeInTheDocument();
+  });
+
+  it.each(['en', 'fr', 'ar'] as const)('preserves Parent destinations and ordering in %s', (locale) => {
+    renderNavigation(<NavigationLinks role="PARENT" />, locale);
+    expect(screen.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
+      '/dashboard', '/children', '/announcements/inbox', '/notifications',
+    ]);
+  });
+
+  it('retains the provider missing-message contract rather than substituting an English label', () => {
+    const onError = vi.fn();
+    render(<NextIntlClientProvider locale="en" messages={{ navigation: { landmark: 'Main navigation', items: {} } }} timeZone="UTC" onError={onError}>
+      <NavigationLinks role="SCHOOL_ADMIN" />
+    </NextIntlClientProvider>);
+    expect(screen.getByRole('link', { name: 'navigation.items.students' })).toHaveAttribute('href', '/students');
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: 'MISSING_MESSAGE' }));
   });
 });

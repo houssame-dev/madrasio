@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import { StudentsWorkspace } from '@/components/students/students-workspace';
-import { PageLoading } from '@/components/ui/states';
-import { studentCopy as t } from '@/lib/frontend/students/copy';
+import { RouteLoading } from '@/components/language/route-presentation';
 
-export default function StudentsPage() {
-  return <Suspense fallback={<PageLoading label={t.loadingStudents} />}><StudentsWorkspace /></Suspense>;
+export default async function StudentsPage() {
+
+  return <Suspense fallback={<RouteLoading messageKey="peopleStudents.loadingStudents" />}><StudentsWorkspace /></Suspense>;
 }

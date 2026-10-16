@@ -1,4 +1,6 @@
 'use client';
+import { usePeopleText } from '@/i18n/use-people-text';
+
 import { SearchInput } from '@/components/ui/search-input';
 import { PageContainer } from '@/components/ui/page-container';
 import { useSuccessFeedback } from '@/lib/frontend/use-success-feedback';
@@ -14,7 +16,7 @@ import { useAppContext } from '@/components/app/app-context';
 import { ApiErrorState } from '@/components/ui/states';
 import { can } from '@/lib/frontend/permissions';
 import { teachersApi } from '@/lib/frontend/teachers/api';
-import { teacherCopy as t } from '@/lib/frontend/teachers/copy';
+import { useTeacherCopy } from '@/i18n/use-people-copy';
 import { teacherKeys } from '@/lib/frontend/teachers/queries';
 import type { TeacherDto, TeacherStatus } from '@/lib/frontend/teachers/types';
 import { TeacherForm } from './teacher-form';
@@ -23,6 +25,9 @@ import { TeachersTable } from './teachers-table';
 const statuses: readonly TeacherStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
 
 export function TeachersWorkspace() {
+  const t = useTeacherCopy();
+  const text = usePeopleText();
+
   const context = useAppContext(); const role = context.currentSchool?.role; const schoolId = context.currentSchool?.id;
   const searchParams = useSearchParams(); const pathname = usePathname(); const router = useRouter(); const queryClient = useQueryClient();
   const [editing, setEditing] = useState<TeacherDto | null | undefined>(); const [notice, setNotice] = useSuccessFeedback();
@@ -39,7 +44,7 @@ export function TeachersWorkspace() {
   return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{canManage ? t.title : t.selfTitle}</h1><p className="mt-1 text-sm text-muted-foreground">{canManage ? t.description : t.selfDescription}</p></div>{canManage ? <Button type="button" onClick={() => setEditing(null)}><Plus className="size-4" aria-hidden="true" />{t.createTeacher}</Button> : <div className="rounded-md border bg-muted px-3 py-2 text-sm"><span className="font-medium">{t.readOnly}</span><span className="sr-only">. {t.readOnlyDescription}</span></div>}</header>
     {notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}
-    {canManage ? <div className="flex flex-col gap-2 sm:flex-row"><SearchInput id="teacher-search" label={t.searchLabel} value={search} onSearch={(next) => updateUrl({ search: next, page: 1 })} busy={query.isFetching} /><label className="sm:w-56"><span className="sr-only">{t.filterStatus}</span><select aria-label={t.filterStatus} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{statuses.map((value) => <option key={value} value={value}>{value}</option>)}</select></label></div> : null}
+    {canManage ? <div className="flex flex-col gap-2 sm:flex-row"><SearchInput id="teacher-search" label={t.searchLabel} value={search} onSearch={(next) => updateUrl({ search: next, page: 1 })} busy={query.isFetching} /><label className="sm:w-56"><span className="sr-only">{t.filterStatus}</span><select aria-label={t.filterStatus} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{statuses.map((value) => <option key={value} value={value}>{text(value)}</option>)}</select></label></div> : null}
     {query.isError ? <ApiErrorState title={t.listError} onRetry={() => void query.refetch()} /> : <TeachersTable result={query.data} loading={query.isPending} canManage={canManage} onEdit={setEditing} onPage={(next) => updateUrl({ page: next })} />}
     {!canManage && query.data?.data.length === 0 ? <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{t.noLinkedSelfDescription}</p> : null}
     <Modal open={editing !== undefined} title={editing ? t.editTeacher : t.createTeacher} description={t.linkedHint} onClose={() => setEditing(undefined)}>{editing !== undefined ? <TeacherForm initial={editing ?? undefined} onCancel={() => setEditing(undefined)} onSaved={saved} /> : null}</Modal>

@@ -1,6 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import { renderWithEnglish as render } from './i18n/render-localized';
+import { screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ getUser: vi.fn() }));
+vi.mock('next-intl/server', async () => {
+  const { createTranslator } = await import('next-intl');
+  const { getCatalog } = await import('@/i18n/catalogs');
+  return { getTranslations: async (namespace: 'password' | 'recovery') => createTranslator({ locale: 'en', messages: getCatalog('en'), namespace }) };
+});
 vi.mock('@/lib/supabase/server', () => ({
   getServerSupabase: async () => ({ auth: { getUser: mocks.getUser } }),
 }));

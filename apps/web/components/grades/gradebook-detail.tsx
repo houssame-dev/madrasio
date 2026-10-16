@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useDomainText } from '@/i18n/use-domain-text';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { AccessDeniedWithReturn } from '@/components/app/route-access';
@@ -12,7 +13,7 @@ import { academicKeys } from '@/lib/frontend/academic/queries';
 import type { AcademicPeriodDto, ClassDto, SubjectDto } from '@/lib/frontend/academic/types';
 import { can } from '@/lib/frontend/permissions';
 import { gradesApi } from '@/lib/frontend/grades/api';
-import { gradeCopy as t } from '@/lib/frontend/grades/copy';
+import { useGradeCopy } from '@/i18n/use-domain-copy';
 import { gradeKeys, invalidateGradebook } from '@/lib/frontend/grades/queries';
 import { AssessmentsPanel } from './assessments-panel';
 import { GradebookLifecycleActions } from './gradebook-lifecycle-actions';
@@ -25,6 +26,8 @@ export function GradebookDetailWorkspace({ gradebookId }: { gradebookId: string 
 }
 
 function GradebookDetail({ gradebookId, schoolId, role }: { gradebookId: string; schoolId: string; role: 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' }) {
+  const text = useDomainText();
+  const t = useGradeCopy();
   const queryClient = useQueryClient();
   const gradebook = useQuery({ queryKey: gradeKeys.gradebookDetail(schoolId, gradebookId), queryFn: () => gradesApi.gradebook(gradebookId) });
   const years = useQuery({ queryKey: academicKeys.selectors(schoolId, 'years'), queryFn: academicApi.allYears });
@@ -43,14 +46,14 @@ function GradebookDetail({ gradebookId, schoolId, role }: { gradebookId: string;
   const label = value.name ?? `${klass?.name ?? t.unknown} · ${subject?.name ?? t.unknown}`;
   if (!period) return <ApiErrorState title={t.unavailable} description={t.unavailableDescription} />;
   return <div className="mx-auto max-w-[100rem] space-y-6">
-    <Link href="/grades" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" />{t.back}</Link>
-    <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-semibold tracking-tight">{label}</h1><StatusBadge status={value.status} /></div><p className="mt-1 text-sm text-muted-foreground">{t.exactContextDescription}</p></div>{canManage ? <GradebookLifecycleActions gradebook={value} onSaved={() => invalidateGradebook(queryClient, schoolId, value.id, true)} /> : <div className="rounded-md border bg-muted px-3 py-2 text-sm">{t.readOnly}</div>}</header>
+    <Link href="/grades" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4 rtl:rotate-180" aria-hidden="true" />{t.back}</Link>
+    <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-semibold tracking-tight">{label}</h1><StatusBadge status={value.status} label={text(value.status)} /></div><p className="mt-1 text-sm text-muted-foreground">{t.exactContextDescription}</p></div>{canManage ? <GradebookLifecycleActions gradebook={value} onSaved={() => invalidateGradebook(queryClient, schoolId, value.id, true)} /> : <div className="rounded-md border bg-muted px-3 py-2 text-sm">{t.readOnly}</div>}</header>
     <section className="space-y-3"><h2 className="text-lg font-semibold">{t.exactContext}</h2><dl className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.academicYear}</dt><dd className="mt-1">{year?.name ?? t.unknown}</dd></div>
-      <div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.period}</dt><dd className="mt-1">{period.name} <StatusBadge status={period.status} /></dd></div>
-      <div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.class}</dt><dd className="mt-1">{klass?.name ?? t.unknown}</dd></div>
-      <div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.subject}</dt><dd className="mt-1">{subject?.name ?? t.unknown}</dd></div>
-      <div className="sm:col-span-2"><dt className="text-xs font-medium uppercase text-muted-foreground">{t.configurationVersion}</dt><dd className="mt-1 break-all font-mono text-sm">{value.gradingConfigurationVersionId}</dd></div>
+      <div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.academicYear}</dt><dd dir="auto" className="mt-1">{year?.name ?? t.unknown}</dd></div>
+      <div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.period}</dt><dd dir="auto" className="mt-1">{period.name} <StatusBadge status={period.status} label={text(period.status)} /></dd></div>
+      <div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.class}</dt><dd dir="auto" className="mt-1">{klass?.name ?? t.unknown}</dd></div>
+      <div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.subject}</dt><dd dir="auto" className="mt-1">{subject?.name ?? t.unknown}</dd></div>
+      <div className="sm:col-span-2"><dt className="text-xs font-medium uppercase text-muted-foreground">{t.configurationVersion}</dt><dd dir="auto" className="mt-1 break-all font-mono text-sm">{value.gradingConfigurationVersionId}</dd></div>
     </dl></section>
     <AssessmentsPanel schoolId={schoolId} gradebook={value} period={period} canManage={canManage} />
     <GradebookGradesPanel schoolId={schoolId} gradebookId={value.id} />

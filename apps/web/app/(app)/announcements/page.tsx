@@ -1,8 +1,7 @@
 import { Suspense } from 'react';
 import { AnnouncementsWorkspace } from '@/components/announcements/announcements-workspace';
-import { PageLoading } from '@/components/ui/states';
-import { announcementCopy as t } from '@/lib/frontend/announcements/copy';
+import { RouteLoading } from '@/components/language/route-presentation';
 
-export default function AnnouncementsPage() {
-  return <Suspense fallback={<PageLoading label={t.loading} />}><AnnouncementsWorkspace /></Suspense>;
+export default async function AnnouncementsPage() {
+  return <Suspense fallback={<RouteLoading messageKey="announcementUi.loading" />}><AnnouncementsWorkspace /></Suspense>;
 }

@@ -1053,6 +1053,10 @@ Testing uses:
 - Notification idempotency
 - File access
 
+Development and test execution follows explicit owner authorization and operation-specific preflight: verify local targets, synthetic configuration, resource ownership, bounded cleanup and exclusion of hosted credentials/environment files. ADR-024, ADR-025 and ADR-026 were removed by owner decision in TASK_066_SIMPLIFIED_MULTILINGUAL_V1 and are not active requirements.
+
+Disposable local integration tests require approved local destinations, synthetic identities/data, appropriate credentials, positive resource ownership and bounded cleanup. Stronger network isolation is required where justified by actual workload risk; stop the affected sensitive workload if external-access risk cannot be adequately controlled. Configuration sanitation alone is not containment evidence. Production/STAGING/provider mutations, privileged secrets, migration application, deployment, backup and recovery retain their separate authorization and security rules. No prior isolation control or execution gate is claimed verified by this governance change.
+
 ---
 
 # 54. Deployment Architecture

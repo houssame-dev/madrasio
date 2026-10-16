@@ -1,4 +1,6 @@
 'use client';
+import { useDeliveryText } from '@/i18n/use-delivery-text';
+import { useTranslations } from 'next-intl';
 import { useId, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@school/ui';
@@ -17,6 +19,8 @@ const messages: Record<string, string> = {
   FILE_REQUEST_CONFLICT: 'This upload request was already used. Refresh before continuing.',
 };
 export function AnnouncementAttachments(props: Props) {
+  const text = useDeliveryText();
+  const msg = useTranslations();
   const app = useAppContext(); const cache = useQueryClient(); const inputId = useId();
   const input = useRef<HTMLInputElement>(null); const busy = useRef(false);
   const [selection, setSelection] = useState<{ file: File; requestId: string }>();
@@ -34,17 +38,17 @@ export function AnnouncementAttachments(props: Props) {
     catch (error) { setFailure(error instanceof ApiClientError ? messages[error.featureCode ?? ''] ?? 'Attachment could not be changed. Refresh and check your access.' : 'Attachment request failed. Refresh before retrying.'); await cache.invalidateQueries({ queryKey: key }); }
     finally { busy.current = false; setPending(false); }
   }
-  return <section className="space-y-3 rounded-md border p-4" aria-label="Attachments">
-    <h3 className="font-semibold">Attachments</h3>
-    {query.isPending ? <p role="status">Loading attachments…</p> : query.isError ? <p role="alert">Attachments unavailable. <button type="button" className="underline" onClick={() => void query.refetch()}>Retry</button></p>
-      : query.data.data.length === 0 ? <p>No attachments for this Version.</p> : <ul className="space-y-2">{query.data.data.map((item) => <li key={item.id} className="flex flex-wrap items-center gap-3 break-all">
-        {item.state === 'READY' ? <a className="underline focus-visible:ring-2" href={`${path}/${item.id}/download`} download>{item.name}</a> : <span>{item.name} — incomplete upload ({item.state.toLowerCase()})</span>}
-        <span className="text-sm">{Math.ceil(item.byteSize / 1024)} KiB</span>
-        {props.editable ? <Button type="button" variant="outline" disabled={pending} aria-label={`Remove ${item.name}`} onClick={() => { setFailure(''); setRemoving(item); }}>Remove</Button> : null}
+  return <section className="space-y-3 rounded-md border p-4" aria-label={text("Attachments")}>
+    <h3 className="font-semibold">{text("Attachments")}</h3>
+    {query.isPending ? <p role="status">{text("Loading attachments…")}</p> : query.isError ? <p role="alert">{text("Attachments unavailable.")}{' '}<button type="button" className="underline" onClick={() => void query.refetch()}>{text("Retry")}</button></p>
+      : query.data.data.length === 0 ? <p>{text("No attachments for this Version.")}</p> : <ul className="space-y-2">{query.data.data.map((item) => <li key={item.id} className="flex flex-wrap items-center gap-3 break-all">
+        {item.state === 'READY' ? <a className="underline focus-visible:ring-2" href={`${path}/${item.id}/download`} download><bdi>{item.name}</bdi></a> : <span><bdi>{item.name}</bdi> — {msg('deliveryUi.incomplete', { state: text(item.state) })}</span>}
+        <span className="text-sm">{msg('domainUi.size', { size: Math.ceil(item.byteSize / 1024) })}</span>
+        {props.editable ? <Button type="button" variant="outline" disabled={pending} aria-label={msg('deliveryUi.removeName', { name: item.name })} onClick={() => { setFailure(''); setRemoving(item); }}>{text("Remove")}</Button> : null}
       </li>)}</ul>}
     {props.editable ? <div className="space-y-2">
-      <label className="block" htmlFor={inputId}>Add a private attachment</label>
-      <p id={`${inputId}-help`} className="text-sm">PDF, PNG or JPEG, up to 2 MiB each; ten attachments per Version. Published or scheduled Versions cannot change. Files are not malware-scanned.</p>
+      <label className="block" htmlFor={inputId}>{text("Add a private attachment")}</label>
+      <p id={`${inputId}-help`} className="text-sm">{text("PDF, PNG or JPEG, up to 2 MiB each; ten attachments per Version. Published or scheduled Versions cannot change. Files are not malware-scanned.")}</p>
       <input ref={input} id={inputId} type="file" accept="application/pdf,image/png,image/jpeg" disabled={pending} aria-describedby={`${inputId}-help`} className="block max-w-full" onChange={(event) => {
         const file = event.target.files?.[0]; setSelection(file ? { file, requestId: crypto.randomUUID() } : undefined); setFailure('');
       }} />
@@ -55,11 +59,11 @@ export function AnnouncementAttachments(props: Props) {
           await apiRequest(path, { method: 'POST', headers: { 'content-type': selection.file.type, 'x-file-name': encodeURIComponent(selection.file.name), 'idempotency-key': selection.requestId }, body: selection.file });
           setSelection(undefined); if (input.current) input.current.value = '';
         }, 'Attachment added.');
-      }}>{pending ? 'Working…' : 'Upload attachment'}</Button>
+      }}>{pending ? text('Working…') : text('Upload attachment')}</Button>
     </div> : null}
-    {failure ? <p role="alert">{failure}</p> : null}{notice ? <p role="status">{notice}</p> : null}
-    <ConfirmDialog open={!!removing} title="Remove attachment?" description="Remove this attachment from the draft Version. Stored bytes are retained for controlled cleanup; published history cannot be changed."
-      pending={pending} error={failure} onClose={() => { if (!pending) setRemoving(undefined); }}
+    {failure ? <p role="alert">{text(failure)}</p> : null}{notice ? <p role="status">{text(notice)}</p> : null}
+    <ConfirmDialog open={!!removing} title={text("Remove attachment?")} description={text("Remove this attachment from the draft Version. Stored bytes are retained for controlled cleanup; published history cannot be changed.")}
+      pending={pending} error={text(failure)} onClose={() => { if (!pending) setRemoving(undefined); }}
       onConfirm={() => { if (removing) void mutate(() => apiRequest(`${path}/${removing.id}`, { method: 'DELETE' }), 'Attachment removed.'); }} />
   </section>;
 }

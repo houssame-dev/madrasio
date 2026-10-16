@@ -2,6 +2,8 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, expect, it, vi } from 'vitest';
+import { NextIntlClientProvider } from 'next-intl';
+import { getCatalog } from '@/i18n/catalogs';
 import {
   PlatformSchools,
   PlatformSchool,
@@ -57,7 +59,7 @@ function wrap(ui: React.ReactNode) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+  return render(<NextIntlClientProvider locale="en" messages={getCatalog('en')} timeZone="UTC"><QueryClientProvider client={client}>{ui}</QueryClientProvider></NextIntlClientProvider>);
 }
 it.each(['SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'SUPER_ADMIN'] as const)(
   'does not show platform navigation from School role %s alone',

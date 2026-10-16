@@ -1,8 +1,8 @@
 'use client';
+import { useNotificationCopy } from '@/i18n/use-delivery-copy';
 
 import { Pagination } from '@/components/academic/ui';
 import { EmptyState, InlineLoading } from '@/components/ui/states';
-import { notificationCopy as t } from '@/lib/frontend/notifications/copy';
 import type { NotificationPage, NotificationReadStatus, NotificationSourceType } from '@/lib/frontend/notifications/types';
 import { NotificationRow } from './notification-row';
 
@@ -21,6 +21,7 @@ export function NotificationsList({
   onOpen: (id: string) => void;
   onPage: (page: number) => void;
 }) {
+  const t = useNotificationCopy();
   if (loading) return <div className="rounded-lg border bg-card p-6"><InlineLoading label={t.loading} /></div>;
   if (!result || result.data.length === 0) {
     const filtered = sourceType !== undefined || status === 'READ';

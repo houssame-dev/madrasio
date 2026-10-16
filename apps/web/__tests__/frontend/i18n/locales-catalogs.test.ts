@@ -2,6 +2,8 @@ import { createTranslator } from 'next-intl';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isSupportedLocale, localeDirection, resolveLocale } from '@school/shared';
 import { getCatalog } from '@/i18n/catalogs';
+import { copy, roleLabels } from '@/lib/frontend/copy';
+import { navigationItems } from '@/lib/frontend/navigation';
 
 function keys(value: object, prefix = ''): string[] {
   return Object.entries(value).flatMap(([key, child]) => {
@@ -32,7 +34,7 @@ describe('shared locale and catalog contract', () => {
 
   it('has identical, non-empty keys in all catalogs', () => {
     const englishKeys = keys(getCatalog('en'));
-    expect(englishKeys).toHaveLength(6);
+    expect(englishKeys).toHaveLength(1181);
     for (const locale of SUPPORTED_LOCALES) {
       expect(keys(getCatalog(locale))).toEqual(englishKeys);
       const t = createTranslator({ locale, messages: getCatalog(locale), namespace: 'foundation' });
@@ -42,6 +44,98 @@ describe('shared locale and catalog contract', () => {
         expect(t(`actions.${key}`).trim()).not.toBe('');
       }
     }
+  });
+
+
+  it('covers exactly nine static shell messages in every locale', () => {
+    const shellKeys = [
+      'navigation.open', 'navigation.close', 'navigation.collapse', 'navigation.expand',
+      'currentSchool', 'roles.superAdmin', 'roles.schoolAdmin', 'roles.teacher', 'roles.parent',
+    ].sort();
+    for (const locale of SUPPORTED_LOCALES) {
+      const messages = getCatalog(locale).shell;
+      expect(keys(messages)).toEqual(shellKeys);
+      for (const value of [messages.currentSchool, ...Object.values(messages.navigation),
+        ...Object.values(messages.roles)]) {
+        expect(value.trim()).not.toBe('');
+        expect(value).not.toMatch(/[{}]/);
+      }
+    }
+  });
+
+  it('preserves the exact English shell copy without duplicating existing names', () => {
+    expect(getCatalog('en').shell).toEqual({
+      navigation: {
+        open: copy.openNavigation,
+        close: copy.closeNavigation,
+        collapse: copy.collapseNavigation,
+        expand: copy.expandNavigation,
+      },
+      currentSchool: copy.currentSchool,
+      roles: {
+        superAdmin: roleLabels.SUPER_ADMIN,
+        schoolAdmin: roleLabels.SCHOOL_ADMIN,
+        teacher: roleLabels.TEACHER,
+        parent: roleLabels.PARENT,
+      },
+    });
+    expect(getCatalog('en').foundation.appName).toBe(copy.productName);
+    expect(getCatalog('en').navigation.landmark).toBe(copy.navigation);
+  });
+
+  it('covers exactly eight static shared-state messages in every locale', () => {
+    const stateKeys = [
+      'loading', 'error.title', 'error.description', 'error.retry',
+      'accessDenied.title', 'accessDenied.description',
+      'noSchool.title', 'noSchool.description',
+    ].sort();
+    for (const locale of SUPPORTED_LOCALES) {
+      const messages = getCatalog(locale).states;
+      expect(keys(messages)).toEqual(stateKeys);
+      const values = [messages.loading, ...Object.values(messages.error),
+        ...Object.values(messages.accessDenied), ...Object.values(messages.noSchool)];
+      for (const value of values) {
+        expect(value.trim()).not.toBe('');
+        expect(value).not.toMatch(/[{}]/);
+      }
+    }
+  });
+
+  it('preserves all eight shared English defaults', () => {
+    expect(getCatalog('en').states).toEqual({
+      loading: copy.loadingApplication,
+      error: {
+        title: copy.requestFailed,
+        description: copy.requestFailedDescription,
+        retry: copy.tryAgain,
+      },
+      accessDenied: { title: copy.accessDenied, description: copy.accessDeniedDescription },
+      noSchool: { title: copy.noSchool, description: copy.noSchoolDescription },
+    });
+  });
+
+  it('covers exactly the navigation messages without introducing ICU arguments', () => {
+    const navigationKeys = [
+      'landmark', 'items.dashboard', 'items.academic', 'items.students',
+      'items.myChildren', 'items.teachers', 'items.parents', 'items.grades',
+      'items.attendance', 'items.homework', 'items.announcements',
+      'items.schoolAnnouncements', 'items.notifications', 'items.platformSchools',
+    ].sort();
+    for (const locale of SUPPORTED_LOCALES) {
+      const messages = getCatalog(locale).navigation;
+      expect(keys(messages)).toEqual(navigationKeys);
+      for (const value of [messages.landmark, ...Object.values(messages.items)]) {
+        expect(value.trim()).not.toBe('');
+        expect(value).not.toMatch(/[{}]/);
+      }
+    }
+  });
+
+  it('preserves every English configuration label and navigation landmark', () => {
+    const messages = getCatalog('en').navigation;
+    for (const item of navigationItems) expect(messages.items[item.labelKey]).toBe(item.label);
+    expect(messages.landmark).toBe('Main navigation');
+    expect(messages.items.platformSchools).toBe('Platform Schools');
   });
 
   it.each([

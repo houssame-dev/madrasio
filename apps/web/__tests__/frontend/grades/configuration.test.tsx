@@ -1,3 +1,5 @@
+import { NextIntlClientProvider } from 'next-intl';
+import { getCatalog } from '@/i18n/catalogs';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -64,7 +66,7 @@ function wrap(node: React.ReactNode) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
+  return render(<NextIntlClientProvider locale="en" messages={getCatalog('en')} timeZone="UTC"><QueryClientProvider client={client}>{node}</QueryClientProvider></NextIntlClientProvider>);
 }
 it.each(['TEACHER', 'PARENT', null])(
   'hides configuration actions for %s even with a platform flag',

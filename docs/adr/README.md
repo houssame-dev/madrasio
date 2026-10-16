@@ -65,6 +65,7 @@ Current V1 architecture decisions are primarily `Accepted`.
 | ADR-021 | Production Backup Cadence Hardening |
 | ADR-022 | Production Backup Independent Scheduler |
 | ADR-023 | Explicit Platform Authority Separate from School Membership |
+| ADR-024–026 (removed) | Retired by owner in TASK_066_SIMPLIFIED_MULTILINGUAL_V1; historical task/verification facts remain in PROJECT-STATE.md. These are not active requirements. |
 
 ---
 

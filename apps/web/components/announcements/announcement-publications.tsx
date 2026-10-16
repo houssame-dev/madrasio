@@ -1,4 +1,7 @@
 'use client';
+import { useAnnouncementCopy } from '@/i18n/use-delivery-copy';
+import { useDeliveryText } from '@/i18n/use-delivery-text';
+import { useTranslations } from 'next-intl';
 import { formatSchoolInstant } from '@school/shared';
 import { Button } from '@school/ui';
 import { useAppContext } from '@/components/app/app-context';
@@ -6,7 +9,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ConfirmDialog, InlineFeedback, Pagination, SectionHeader, StatusBadge, TableShell, EmptyTableRow } from '@/components/academic/ui';
 import { ApiErrorState } from '@/components/ui/states';
-import { announcementCopy as t } from '@/lib/frontend/announcements/copy';
 import { announcementsApi } from '@/lib/frontend/announcements/api';
 import { announcementKeys } from '@/lib/frontend/announcements/queries';
 import { invalidateAnnouncement } from '@/lib/frontend/announcements/mutations';
@@ -17,6 +19,9 @@ import { AnnouncementScheduleDialog } from './announcement-schedule-dialog';
 export function AnnouncementPublications({ schoolId, announcementId, versions, canPublish = false }: {
   schoolId: string; announcementId: string; versions: AnnouncementVersionDto[]; canPublish?: boolean;
 }) {
+  const t = useAnnouncementCopy();
+  const text = useDeliveryText();
+  const msg = useTranslations();
   const timezone = useAppContext().currentSchool!.timezone;
   const client = useQueryClient();
   const [page, setPage] = useState(1);
@@ -29,23 +34,23 @@ export function AnnouncementPublications({ schoolId, announcementId, versions, c
   const versionNumber = (id: string) => versions.find((item) => item.id === id)?.versionNumber;
   return <section className="space-y-4 rounded-lg border bg-card p-5">
     <SectionHeader title={t.publications} description={t.publicationsHint} />
-    {feedback ? <InlineFeedback kind="success">{feedback}</InlineFeedback> : null}
-    {query.isError ? <ApiErrorState description={announcementErrorMessage(query.error)} onRetry={() => void query.refetch()} /> : <TableShell headers={[t.publication, t.version, t.status, t.scheduledAt, t.publishedAt, t.recipients, t.actions]} loading={query.isPending}>
+    {feedback ? <InlineFeedback kind="success">{text(feedback)}</InlineFeedback> : null}
+    {query.isError ? <ApiErrorState description={text(announcementErrorMessage(query.error))} onRetry={() => void query.refetch()} /> : <TableShell headers={[t.publication, t.version, t.status, t.scheduledAt, t.publishedAt, t.recipients, t.actions]} loading={query.isPending}>
       {query.data?.data.length === 0 ? <EmptyTableRow columns={7} /> : query.data?.data.map((item) => <tr key={item.id}>
-        <td className="px-4 py-3">#{item.publicationVersion}</td><td className="px-4 py-3">v{item.versionNumber ?? versionNumber(item.announcementVersionId) ?? '?'}</td>
-        <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
-        <td className="px-4 py-3">{item.scheduledAt ? formatSchoolInstant(item.scheduledAt, timezone) : '—'}</td>
-        <td className="px-4 py-3">{item.publishedAt ? formatSchoolInstant(item.publishedAt, timezone) : '—'}</td>
+        <td dir="ltr" className="px-4 py-3">#{item.publicationVersion}</td><td dir="ltr" className="px-4 py-3">v{item.versionNumber ?? versionNumber(item.announcementVersionId) ?? '?'}</td>
+        <td className="px-4 py-3"><StatusBadge status={item.status} label={text(item.status)} /></td>
+        <td dir="ltr" className="px-4 py-3">{item.scheduledAt ? formatSchoolInstant(item.scheduledAt, timezone) : '—'}</td>
+        <td dir="ltr" className="px-4 py-3">{item.publishedAt ? formatSchoolInstant(item.publishedAt, timezone) : '—'}</td>
         <td className="px-4 py-3">{item.recipientCount}</td><td className="px-4 py-3">{canPublish && item.status === 'SCHEDULED' ? <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => { setFeedback(''); setReschedule(item); }}>Reschedule #{item.publicationVersion}</Button>
-          <Button type="button" variant="outline" onClick={() => { mutation.reset(); setFeedback(''); setCancel(item); }}>Cancel publication #{item.publicationVersion}</Button>
+          <Button type="button" variant="outline" onClick={() => { setFeedback(''); setReschedule(item); }}>{msg('deliveryUi.rescheduleNumber', { number: item.publicationVersion })}</Button>
+          <Button type="button" variant="outline" onClick={() => { mutation.reset(); setFeedback(''); setCancel(item); }}>{msg('deliveryUi.cancelNumber', { number: item.publicationVersion })}</Button>
         </div> : '—'}</td>
       </tr>)}
     </TableShell>}
     {query.data ? <Pagination {...query.data.meta} onPage={setPage} /> : null}
     <p className="text-xs text-muted-foreground">{t.scheduledBoundary}</p>
-    <ConfirmDialog open={!!cancel} title="Cancel scheduled publication?" description="This intent stays in history as CANCELLED. If publication already won the race, cancellation will be refused. To correct content or targets, create a new Version afterward."
-      pending={mutation.isPending} error={mutation.isError ? announcementErrorMessage(mutation.error) : undefined}
+    <ConfirmDialog open={!!cancel} title={text("Cancel scheduled publication?")} description={text("This intent stays in history as CANCELLED. If publication already won the race, cancellation will be refused. To correct content or targets, create a new Version afterward.")}
+      pending={mutation.isPending} error={mutation.isError ? text(announcementErrorMessage(mutation.error)) : undefined}
       onClose={() => { if (!mutation.isPending) setCancel(null); }} onConfirm={() => { if (cancel && !mutation.isPending) mutation.mutate(cancel.id); }} />
     {reschedule ? <AnnouncementScheduleDialog open schoolId={schoolId} announcementId={announcementId} versionId={reschedule.announcementVersionId} publicationId={reschedule.id}
       onClose={() => setReschedule(null)} /> : null}

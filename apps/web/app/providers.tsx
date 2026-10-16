@@ -26,7 +26,7 @@ export function createAppQueryClient() {
 /**
  * App-level providers.
  *
- * Foundation only — no domain-specific providers are wired in here yet.
+ * Shared Query state. Browser presentation language is supplied by next-intl.
  * This file exists to give us a single place to attach client-side providers
  * (TanStack Query, theme, etc.) without scattering them across the tree.
  */

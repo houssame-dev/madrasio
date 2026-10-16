@@ -1,5 +1,6 @@
+import { renderWithEnglish as render } from './i18n/render-localized';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,10 +8,11 @@ import { LoginForm } from '@/components/auth/login-form';
 
 const mocks = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
-  replace: vi.fn(),
+  navigate: vi.fn(), replace: vi.fn(),
   refresh: vi.fn(),
 }));
 
+vi.mock('@/lib/frontend/language/auth-navigation', () => ({ navigateAfterAuth: mocks.navigate }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }));
 vi.mock('@/lib/supabase/browser', () => ({ getBrowserSupabase: () => ({ auth: { signInWithPassword: mocks.signInWithPassword } }) }));
 
@@ -24,7 +26,7 @@ function renderLogin() {
 describe('login UX', () => {
   beforeEach(() => {
     mocks.signInWithPassword.mockReset();
-    mocks.replace.mockReset();
+    mocks.navigate.mockReset(); mocks.replace.mockReset();
     mocks.refresh.mockReset();
   });
   afterEach(() => vi.restoreAllMocks());
@@ -44,10 +46,10 @@ describe('login UX', () => {
     await userEvent.type(screen.getByLabelText('Password'), 'correct horse');
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
-    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/dashboard'));
     expect(mocks.signInWithPassword).toHaveBeenCalledWith({ email: 'admin@example.com', password: 'correct horse' });
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
-    expect(mocks.refresh).toHaveBeenCalledOnce();
+    expect(mocks.refresh).not.toHaveBeenCalled();
   });
 
   it('shows a controlled credential error without exposing provider text', async () => {
@@ -60,7 +62,7 @@ describe('login UX', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('email or password is incorrect');
     expect(screen.queryByText('provider internals')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Email address')).toHaveFocus();
-    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
   it('maps a transient provider failure to safe retryable copy', async () => {
@@ -72,6 +74,6 @@ describe('login UX', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Sign in is unavailable');
     expect(screen.queryByText('network socket details')).not.toBeInTheDocument();
-    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });

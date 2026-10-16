@@ -1,5 +1,6 @@
+import { renderWithEnglish as render } from './i18n/render-localized';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -45,7 +46,8 @@ describe('current School switch tenant safety', () => {
     render(<QueryClientProvider client={queryClient}><SchoolSelectionPanel memberships={memberships} /></QueryClientProvider>);
     await userEvent.click(screen.getByRole('button', { name: /Rif School/ }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('School is unavailable.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Please try again. If the problem continues, contact your administrator.');
+    expect(screen.queryByText('School is unavailable.')).not.toBeInTheDocument();
     expect(queryClient.getQueryData(['students', schoolA])).toEqual([{ id: 'school-a-student' }]);
     expect(queryClient.getQueryData(['me'])).toMatchObject({ currentSchool: { id: schoolA } });
     expect(router.replace).not.toHaveBeenCalled();

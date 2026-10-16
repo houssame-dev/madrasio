@@ -2,10 +2,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { NextIntlClientProvider } from 'next-intl';
+import { getCatalog } from '@/i18n/catalogs';
 
 import { AppBootstrap } from '@/components/app/app-bootstrap';
 
-const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn() }));
+const router = vi.hoisted(() => ({ navigate: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+vi.mock('@/lib/frontend/language/auth-navigation', () => ({ navigateAfterAuth: router.navigate }));
 vi.mock('next/navigation', () => ({ useRouter: () => router, usePathname: () => '/dashboard' }));
 
 const schoolA = '00000000-0000-4000-8000-000000000001';
@@ -14,12 +17,12 @@ const schoolB = '00000000-0000-4000-8000-000000000002';
 function renderBootstrap(fetcher: typeof fetch) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(fetcher);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={queryClient}><AppBootstrap><h1>Protected content</h1></AppBootstrap></QueryClientProvider>);
+  return render(<NextIntlClientProvider locale="en" messages={getCatalog('en')} timeZone="UTC"><QueryClientProvider client={queryClient}><AppBootstrap><h1>Protected content</h1></AppBootstrap></QueryClientProvider></NextIntlClientProvider>);
 }
 
 afterEach(() => {
   vi.restoreAllMocks();
-  router.replace.mockReset();
+  router.navigate.mockReset(); router.replace.mockReset();
   router.refresh.mockReset();
 });
 
@@ -92,12 +95,12 @@ describe('/me application bootstrap', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ error: { code: 'UNAUTHENTICATED', message: 'Authentication required' } }, { status: 401 }));
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     queryClient.setQueryData(['school-secret'], { secret: true });
-    render(<QueryClientProvider client={queryClient}><AppBootstrap><h1>Protected content</h1></AppBootstrap></QueryClientProvider>);
+    render(<NextIntlClientProvider locale="en" messages={getCatalog('en')} timeZone="UTC"><QueryClientProvider client={queryClient}><AppBootstrap><h1>Protected content</h1></AppBootstrap></QueryClientProvider></NextIntlClientProvider>);
 
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/login'));
+    await waitFor(() => expect(router.navigate).toHaveBeenCalledWith('/login'));
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
-    expect(router.refresh).toHaveBeenCalledOnce();
+    expect(router.refresh).not.toHaveBeenCalled();
     expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
   });
 });

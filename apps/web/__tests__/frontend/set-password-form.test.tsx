@@ -1,11 +1,13 @@
+import { renderWithEnglish as render } from './i18n/render-localized';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SetPasswordForm } from '@/components/auth/set-password-form';
 
-const mocks = vi.hoisted(() => ({ updateUser: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+const mocks = vi.hoisted(() => ({ updateUser: vi.fn(), navigate: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+vi.mock('@/lib/frontend/language/auth-navigation', () => ({ navigateAfterAuth: mocks.navigate }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }));
 vi.mock('@/lib/supabase/browser', () => ({
   getBrowserSupabase: () => ({ auth: { updateUser: mocks.updateUser } }),
@@ -20,7 +22,7 @@ function renderForm() {
 
 describe('invite password setup', () => {
   beforeEach(() => {
-    mocks.updateUser.mockReset(); mocks.replace.mockReset(); mocks.refresh.mockReset();
+    mocks.updateUser.mockReset(); mocks.navigate.mockReset(); mocks.replace.mockReset(); mocks.refresh.mockReset();
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -40,10 +42,10 @@ describe('invite password setup', () => {
     await userEvent.type(screen.getByLabelText('New password'), 'strong-pass-123');
     await userEvent.type(screen.getByLabelText('Confirm password'), 'strong-pass-123');
     await userEvent.click(screen.getByRole('button', { name: 'Set password' }));
-    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/dashboard'));
     expect(mocks.updateUser).toHaveBeenCalledWith({ password: 'strong-pass-123' });
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
-    expect(mocks.refresh).toHaveBeenCalledOnce();
+    expect(mocks.refresh).not.toHaveBeenCalled();
   });
 
   it('maps Auth failure without exposing provider details', async () => {
@@ -54,7 +56,7 @@ describe('invite password setup', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Set password' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not be set/);
     expect(screen.queryByText(/provider internals/)).not.toBeInTheDocument();
-    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
     expect(screen.getByLabelText('New password')).toHaveFocus();
   });
 
@@ -75,12 +77,12 @@ describe('invite password setup', () => {
     await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledOnce());
     expect(mocks.updateUser).toHaveBeenCalledWith({ password: syntheticPassword });
     expect(screen.getByRole('button', { name: 'Saving password…' })).toBeDisabled();
-    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
     expect(window.location.href).toBe(originalUrl);
     await act(async () => finish({ error: null }));
-    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/dashboard'));
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
-    expect(mocks.refresh).toHaveBeenCalledOnce();
+    expect(mocks.refresh).not.toHaveBeenCalled();
     expect([log, info, warn, error].some((spy) => JSON.stringify(spy.mock.calls).includes(syntheticPassword))).toBe(false);
     expect(JSON.stringify(localStorage).includes(syntheticPassword)).toBe(false);
     expect(JSON.stringify(sessionStorage).includes(syntheticPassword)).toBe(false);
@@ -94,7 +96,7 @@ describe('invite password setup', () => {
     await userEvent.keyboard('{Enter}');
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not be set/);
     expect(screen.queryByText(/synthetic-private-provider-detail/)).not.toBeInTheDocument();
-    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
     expect(screen.getByLabelText('New password')).toHaveFocus();
   });
 });

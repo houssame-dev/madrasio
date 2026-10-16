@@ -27,6 +27,16 @@ policies. RLS is not the server authorization system: the current direct DB
 owner bypasses it. Never expose that connection or an elevated Auth client to
 the browser. No browser-direct REST/GraphQL application repository is added.
 
+## Development and test execution
+
+Use explicitly authorized, controlled local validation with synthetic data/configuration, positive resource ownership and bounded cleanup. ADR-024–026 were removed by owner decision; historical infrastructure findings are not current universal prerequisites. No hosted operations are implied.
+
+Separately authorized routine checks require a verified non-production environment, synthetic configuration/data, exclusion of Production/STAGING credentials and customer data, review of environment/configuration loading and side effects, and avoidance of unnecessary external access. Stop the affected operation on unexpected hosted targets, credentials or unsafe behavior. Schema-only Drizzle generation may use the installed toolchain after inspection verifies no database/Auth connection; exclude hosted environment files/credentials, account for automatic dotenv loading, and review SQL/snapshot/journal changes without modifying old applied migrations. Generation never authorizes database application.
+
+Disposable local database/Auth/browser integration requires separately approved local destinations, synthetic identities and isolated data, appropriate secret handling, positive resource ownership and bounded cleanup. Apply stronger network isolation when actual external-access or privilege risks warrant it; stop that specific workload if risk cannot be adequately controlled. Sanitized configuration, mocks or a timeout alone do not prove network containment.
+
+School tenant isolation, server authorization, Supabase identity ownership, ACTIVE User enforcement, ADR-023 platform separation, historical integrity and secret management remain binding. STAGING/Production database/provider mutations, CI/CD and deployment, customer onboarding, backup/recovery and release operations retain separate authorization. Dedicated recovery security controls remain unchanged. P1/P2, Phase A and real session/browser/logout-race evidence remain unverified; no technical result is created by supersession.
+
 ## Historical pre-0015 privilege findings
 
 The inspected session and application object owner were `postgres`. It is not a

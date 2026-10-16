@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import { ParentsWorkspace } from '@/components/parents/parents-workspace';
-import { PageLoading } from '@/components/ui/states';
-import { parentCopy as t } from '@/lib/frontend/parents/copy';
+import { RouteLoading } from '@/components/language/route-presentation';
 
-export default function ParentsPage() {
-  return <Suspense fallback={<PageLoading label={t.loadingParents} />}><ParentsWorkspace /></Suspense>;
+export default async function ParentsPage() {
+
+  return <Suspense fallback={<RouteLoading messageKey="peopleParents.loadingParents" />}><ParentsWorkspace /></Suspense>;
 }

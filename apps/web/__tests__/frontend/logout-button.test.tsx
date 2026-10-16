@@ -1,11 +1,13 @@
+import { renderWithEnglish as render } from './i18n/render-localized';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LogoutButton } from '@/components/auth/logout-button';
 
-const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn() }));
+const router = vi.hoisted(() => ({ navigate: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+vi.mock('@/lib/frontend/language/auth-navigation', () => ({ navigateAfterAuth: router.navigate }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
 function renderLogout() {
@@ -17,7 +19,7 @@ function renderLogout() {
 
 describe('logout UX', () => {
   beforeEach(() => {
-    router.replace.mockReset();
+    router.navigate.mockReset(); router.replace.mockReset();
     router.refresh.mockReset();
   });
   afterEach(() => vi.restoreAllMocks());
@@ -27,10 +29,10 @@ describe('logout UX', () => {
     const queryClient = renderLogout();
     await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
 
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/login'));
+    await waitFor(() => expect(router.navigate).toHaveBeenCalledWith('/login'));
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/auth/logout', expect.objectContaining({ method: 'POST', credentials: 'same-origin' }));
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
-    expect(router.refresh).toHaveBeenCalledOnce();
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 
   it('keeps the current screen and cache when server logout fails', async () => {
@@ -40,7 +42,7 @@ describe('logout UX', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('could not log you out');
     expect(queryClient.getQueryData(['school-secret'])).toEqual({ secret: true });
-    expect(router.replace).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
     expect(router.refresh).not.toHaveBeenCalled();
   });
 
@@ -54,6 +56,6 @@ describe('logout UX', () => {
     expect(pending).toBeDisabled();
     expect(screen.getByRole('status')).toHaveTextContent('Logging out');
     resolveRequest(Response.json({ data: { signedOut: true } }));
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/login'));
+    await waitFor(() => expect(router.navigate).toHaveBeenCalledWith('/login'));
   });
 });

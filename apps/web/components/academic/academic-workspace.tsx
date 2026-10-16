@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
 import { AccessDeniedWithReturn } from '@/components/app/route-access';
 import { useAppContext } from '@/components/app/app-context';
-import { academicCopy as t } from '@/lib/frontend/academic/copy';
+import { useAcademicCopy } from '@/i18n/use-domain-copy';
 import { can } from '@/lib/frontend/permissions';
 import { ClassesSection } from './classes-section';
 import { CurriculaSection } from './curricula-section';
@@ -29,6 +29,7 @@ function isSection(value: string | null): value is Section {
 }
 
 export function AcademicWorkspace() {
+  const t = useAcademicCopy();
   const context = useAppContext();
   const role = context.currentSchool?.role;
   const searchParams = useSearchParams();

@@ -15,12 +15,13 @@ import { academicApi, listAllResource } from '@/lib/frontend/academic/api';
 import { academicKeys } from '@/lib/frontend/academic/queries';
 import type { ClassDto } from '@/lib/frontend/academic/types';
 import { teacherAttendanceClassIds } from '@/lib/frontend/attendance/api';
-import { attendanceCopy as t } from '@/lib/frontend/attendance/copy';
+import { useAttendanceCopy } from '@/i18n/use-domain-copy';
 import { attendanceKeys } from '@/lib/frontend/attendance/queries';
 import { schoolCalendarToday } from '@/lib/frontend/attendance/schemas';
 import { can } from '@/lib/frontend/permissions';
 
 export function AttendanceWorkspace() {
+  const t = useAttendanceCopy();
   const app = useAppContext(); const schoolId = app.currentSchool?.id; const role = app.currentSchool?.role;
   const searchParams = useSearchParams(); const pathname = usePathname(); const router = useRouter();
   const section = searchParams.get('section') === 'history' ? 'history' : 'daily';
@@ -28,7 +29,7 @@ export function AttendanceWorkspace() {
   const [dirty, setDirty] = useState(false);
   const allowed = !!schoolId && !!role && role !== 'PARENT' && can(role, 'attendance.read');
   const updateUrl = useCallback((updates: Record<string, string | undefined>) => { const next = new URLSearchParams(searchParams.toString()); for (const [key, value] of Object.entries(updates)) { if (!value) next.delete(key); else next.set(key, value); } const suffix = next.toString(); router.replace(`${pathname}${suffix ? `?${suffix}` : ''}`, { scroll: false }); }, [pathname, router, searchParams]);
-  const change = useCallback((updates: Record<string, string | undefined>) => { if (dirty && !window.confirm(t.unsavedPrompt)) return; setDirty(false); updateUrl(updates); }, [dirty, updateUrl]);
+  const change = useCallback((updates: Record<string, string | undefined>) => { if (dirty && !window.confirm(t.unsavedPrompt)) return; setDirty(false); updateUrl(updates); }, [dirty, t.unsavedPrompt, updateUrl]);
   const years = useQuery({ queryKey: academicKeys.selectors(schoolId ?? 'no-school', 'years'), queryFn: academicApi.allYears, enabled: allowed });
   const classes = useQuery({ queryKey: academicKeys.selectors(schoolId ?? 'no-school', 'classes'), queryFn: () => listAllResource<ClassDto>('/api/v1/classes'), enabled: allowed });
   const teacherClasses = useQuery({ queryKey: attendanceKeys.teacherClasses(schoolId ?? 'no-school'), queryFn: teacherAttendanceClassIds, enabled: allowed && role === 'TEACHER' });
