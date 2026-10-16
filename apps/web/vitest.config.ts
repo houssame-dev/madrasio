@@ -5,6 +5,11 @@ import path from 'node:path';
 export default defineConfig({
   plugins: [react()],
   test: {
+    // Public synthetic fixtures only; unit tests must not require operator credentials.
+    env: {
+      NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:1',
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_unit_test_fixture',
+    },
     environment: 'happy-dom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],

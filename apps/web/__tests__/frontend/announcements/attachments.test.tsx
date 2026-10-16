@@ -36,7 +36,7 @@ it('uploads raw bytes with a stable retry key, shows pending state, and never su
 it('confirms logical removal and denies download for incomplete uploads', async () => {
   const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_path, init) => Response.json({ data: init?.method === 'DELETE' ? { removed: true } : [{ ...item, state: 'UPLOADING' }] }));
   renderAnnouncements(<AnnouncementAttachments announcementId={announcementId} versionId={versionId} editable />);
-  await screen.findByText(/incomplete upload/); expect(screen.queryByRole('link', { name: item.name })).not.toBeInTheDocument();
+  await screen.findByText(/incomplete upload/i); expect(screen.queryByRole('link', { name: item.name })).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: 'Remove notice.pdf' }));
   expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
   await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));

@@ -42,10 +42,13 @@ describe('Child read journey states', () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: [], meta: { page: 1, pageSize: 20, total: 0 } }));
     const user = userEvent.setup(); renderParents(<ChildJourneys {...props} />, 'PARENT');
     await user.click(screen.getByRole('button', { name: 'Attendance' })); await screen.findByText('No attendance records');
-    await user.type(screen.getByLabelText('From date'), '2025-10-10'); await user.type(screen.getByLabelText('To date'), '2025-10-09');
+    const from = screen.getByLabelText('Date from');
+    const to = screen.getByLabelText('Date to');
+    expect(from).toHaveAttribute('type', 'date'); expect(to).toHaveAttribute('type', 'date');
+    await user.type(from, '2025-10-10'); await user.type(to, '2025-10-09');
     await user.click(screen.getByRole('button', { name: 'Apply dates' }));
-    expect(screen.getByLabelText('To date')).toHaveFocus(); expect(fetch).toHaveBeenCalledTimes(1);
-    await user.clear(screen.getByLabelText('To date')); await user.type(screen.getByLabelText('To date'), '2025-10-10');
+    expect(to).toHaveFocus(); expect(fetch).toHaveBeenCalledTimes(1);
+    await user.clear(to); await user.type(to, '2025-10-10');
     await user.click(screen.getByRole('button', { name: 'Apply dates' }));
     await waitFor(() => expect(fetch.mock.calls.some(([url]) => String(url).includes('dateFrom=2025-10-10&dateTo=2025-10-10'))).toBe(true));
   });

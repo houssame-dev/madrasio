@@ -1,14 +1,12 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClassForm, CurriculumSubjectForm, SubjectForm, VersionForm } from '@/components/academic/forms';
 import { classTransitions } from '@/components/academic/lifecycle-actions';
-import { curriculumId, levelId, stageId, subjectId, timestamps, trackId, versionId, yearId } from './test-helpers';
+import { curriculumId, levelId, renderAcademic, stageId, subjectId, timestamps, trackId, versionId, yearId } from './test-helpers';
 
 function renderForm(ui: React.ReactElement) {
-  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+  return renderAcademic(ui);
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -72,7 +70,9 @@ describe('academic forms use exact contracts', () => {
     renderForm(<SubjectForm onCancel={vi.fn()} onSaved={vi.fn()} />);
     await userEvent.type(screen.getByLabelText('Name'), 'Mathematics');
     await userEvent.click(screen.getByRole('button', { name: 'Create' }));
-    expect(await screen.findByText('Code is too long.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText(/^Code \(optional\)$/i)).toHaveAccessibleDescription('Check the entered value.'));
+    expect(screen.getByLabelText(/^Code \(optional\)$/i)).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByText('Code is too long.')).not.toBeInTheDocument();
   });
 
   it('creates a named CurriculumVersion without a versionNumber', async () => {

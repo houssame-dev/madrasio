@@ -303,6 +303,10 @@ const entries = [
     "domainUi.positive"
   ],
   [
+    "Coefficient must be greater than zero.",
+    "domainUi.positive"
+  ],
+  [
     "Title is required.",
     "domainUi.titleRequired"
   ],

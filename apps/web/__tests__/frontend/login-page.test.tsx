@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import { Children, Fragment, isValidElement } from 'react';
+import { LanguageSelector } from '@/components/language/language-selector';
+import { LoginForm } from '@/components/auth/login-form';
 
 const mocks = vi.hoisted(() => ({ getUser: vi.fn(), redirect: vi.fn() }));
 
@@ -33,7 +36,12 @@ describe('/login server entry', () => {
     mocks.redirect.mockReset();
 
     const result = await LoginPage();
-    expect(result.type.name).toBe('LoginForm');
+    expect(result.type).toBe(Fragment);
+    const children = Children.toArray(result.props.children);
+    expect(children.some((child) => isValidElement(child) && child.type === LoginForm)).toBe(true);
+    const selectorContainer = children.find((child) => isValidElement(child) && child.type === 'div');
+    expect(isValidElement<{ children: React.ReactNode }>(selectorContainer) &&
+      Children.toArray(selectorContainer.props.children).some((child) => isValidElement(child) && child.type === LanguageSelector)).toBe(true);
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 });
