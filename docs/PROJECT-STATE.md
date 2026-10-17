@@ -2,6 +2,39 @@
 
 Last updated: **2026-10-17**
 
+## Task 058 - First STAGING Platform Administrator (2026-10-17)
+
+**STAGING designation complete.** The guarded operator invited and designated one dedicated ACTIVE platform administrator with an atomic PLATFORM/SYSTEM audit event. Read-only verification confirmed one designated/active platform administrator, a complete protected receipt, no School membership for the account, and unchanged existing School/membership records.
+
+**Browser acceptance:** The owner confirmed successful authentication and access to the School list and School Admin management controls at /platform/schools. Successful execution of School/Admin mutations was not separately verified.
+
+**Boundaries:** STAGING only. Production was not modified. Existing migration history is unchanged. The operator implementation passed local focused tests, lint and typecheck. No new platform CRM functionality is implied.
+
+## Current operator handoff — TASK_058_STAGING_PLATFORM_ADMIN_IMPLEMENT_02 (2026-10-17)
+
+**IMPLEMENTATION_PASS — local procedure prepared and locally verified; real platform-admin creation NOT PERFORMED.** Baseline: `houssame-dev/madrasio`, `main`, HEAD `94be08f1c1e7b2fbf4175193e892869a7d620e60`, clean working tree before this task. HEAD remains unchanged. The Task 066 release/acceptance history below is preserved; this checkpoint does not perform another deployment or authorize Production.
+
+Exact changed-file scope:
+
+- `apps/web/scripts/operator/platform-admin-contracts.ts` — strict STAGING configuration, mode confirmations, receipt/recipient identity contract and sanitized error codes.
+- `apps/web/scripts/operator/platform-admin.ts` — injected orchestration, migration/schema/security readiness, dedicated identity/lifecycle checks, serialized first designation and atomic SYSTEM audit.
+- `apps/web/scripts/operator/staging-platform-admin.ts` — explicit CLI entrypoint, bounded verified-TLS database/Auth adapters, external receipt custody and exclusive mutation lease; no network activity on import.
+- `apps/web/__tests__/operator/staging-platform-admin.test.ts` — focused synthetic configuration, in-memory canonical-migration transactions, transport/receipt and safe entrypoint regression tests.
+- `docs/architecture/staging-platform-administrator.md` — prepared command, private input names, separate authorization gates, failure/reconciliation and verification procedure.
+- `docs/PROJECT-STATE.md` — this local milestone record.
+
+The runner separates read-only `preflight`, local `prepare-invite`, separately confirmed `invite`, separately confirmed `designate`, and read-only `verify`. It accepts only STAGING `cqeaxlttezunirsmkrxz`, its exact Auth origin and session-pooler project identity with verified TLS, and checks all 23 migration hashes/timestamps through 0022 plus the existing application database security audit. Receipt stages are persisted before mutations, binding the operation, authorization reference and recipient; uncertain invitation/commit outcomes are never automatically retried or compensated. A crash lease requires manual reconciliation. Recipient setup requires matching provider/database UUID and canonical email, invitation, confirmed email, sign-in and a password-present boolean (no password hash is returned). Existing unrelated identities, application Users, School/profile links and other designated admins fail closed.
+
+A short transaction serializes designation with a self-conflicting User-table lock, rechecks the Auth row under a share lock and creates only the exact dedicated ACTIVE User with platform authority. Mandatory `PlatformAdminDesignated` audit uses PLATFORM scope, fixed SYSTEM actor `STAGING_PLATFORM_ADMIN_OPERATOR`, null School/actor User, exact User resource and only operation/authorization UUID metadata. Audit failure rolls back the User insert. An exact audited completed repeat is a read-only no-op. Ordinary platform audit/authorization and tenant boundaries are unchanged; no School or membership is created.
+
+**Local validation:** final focused suite **51 passed / 0 failed**, existing operator/platform/hardening suites **66 passed / 0 failed**, and provisioning/lifecycle suites **54 passed / 0 failed** — **9 distinct files / 171 passing tests**. Normal root `pnpm lint` and `pnpm typecheck` both **PASS, exit 0**, with no lint warnings/errors or TypeScript diagnostics. Initial failures exposed the legacy migration-tag underscore parser, two test typing issues and missing synthetic Supabase roles in the generic Auth fixture; these were corrected without weakening readiness checks. The final lifecycle guard additionally rejects invitation confirmation without configured password state. Earlier failed runs remain preserved in external diagnostics.
+
+Execution used a byte-verified external source copy, cleared child environment, no real dotenv files/credentials or inherited executable preloads, offline package settings and existing installed dependencies. PGlite was in memory with synthetic Auth identities and canonical migrations; SDK transport was fake. The CLI subprocess test supplied **no mode or credentials** and verified rejection before configuration/network startup. Existing pnpm relocated-workspace and Vite CJS deprecation warnings are recorded; no package installation occurred. Durable commands, sanitized environment manifest, stdout/stderr, exit statuses and integrity evidence: `C:\Users\Ultrapc\Documents\Madrasio\validation\TASK_058_STAGING_PLATFORM_ADMIN_IMPLEMENT_02\`.
+
+**Integrity and limits:** all 1,107 pre-existing files other than this documentation retain their baseline SHA-256; only this tracked document and five new task files changed. Migrations/schema, dependencies/lockfile, workflows, ordinary Auth/provisioning/platform services and ADR-023 are unchanged. No hosted operator mode, real Auth/database connection, invitation, permission grant, account deletion, commit, push or deployment was performed. Prior zero-admin STAGING counts remain historical, not freshly verified. Local queued PGlite contention/rollback tests do not prove real multi-backend PostgreSQL timing, hosted Auth email delivery/settings, filesystem power-loss durability or authenticated browser acceptance. Receipt directory ownership/Windows ACLs and prevention of competing external identity operations remain operator prerequisites.
+
+**Next separately authorized checkpoint:** fresh read-only STAGING target/schema/security/admin-count and dedicated-recipient preflight using privately supplied owner inputs and reviewed receipt custody. Only after reviewing that evidence may the owner separately authorize one invitation; recipient setup and a further explicit designation approval follow. No real account creation is complete or authorized by this implementation milestone.
+
 ## Current status and handoff — TASK_066_PROJECT_STATE_SYNC_01 (2026-10-17)
 
 **TASK_066_CI_UNIT_TEST_FIX_01: VERIFIED COMPLETE — CI REGRESSION-FIX CHECKPOINT CLOSED.** The simplified cookie-based English/French/Arabic V1 implementation is committed, CI-validated and deployed to STAGING. Latest verified corrective commit on `main`: **`d4077884c59a4c0be5aa1aa0f4adbba6e3291099`**.
