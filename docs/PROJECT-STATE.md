@@ -1,6 +1,23 @@
 # Madrasio — Current Project State
 
-Last updated: **2026-10-16**
+Last updated: **2026-10-17**
+
+## Current status and handoff — TASK_066_PROJECT_STATE_SYNC_01 (2026-10-17)
+
+**TASK_066_CI_UNIT_TEST_FIX_01: VERIFIED COMPLETE — CI REGRESSION-FIX CHECKPOINT CLOSED.** The simplified cookie-based English/French/Arabic V1 implementation is committed, CI-validated and deployed to STAGING. Latest verified corrective commit on `main`: **`d4077884c59a4c0be5aa1aa0f4adbba6e3291099`**.
+
+| Verified workflow | Result and exact verification scope |
+| --- | --- |
+| [CI #133](https://github.com/houssame-dev/madrasio/actions/runs/38981530562) | **SUCCESS** against the exact corrective commit: lint, typecheck, unit tests, production build and Playwright smoke. |
+| [Deploy STAGING #76](https://github.com/houssame-dev/madrasio/actions/runs/38981530528) | **SUCCESS** against the exact corrective commit: exact release checkout, lint/typecheck, unit tests, application build, STAGING migration execution step and migration/schema verification, promotion to `staging-release`, deploy hook, exact deployed-SHA verification and stable STAGING deployment verification. |
+
+Evidence basis: the owner's supplied verified GitHub workflow results. This documentation checkpoint does not repeat provider readback, validation or deployment. The corrective task addressed synthetic Supabase test initialization, translation-provider integration, outdated assertions and the verified grade-error presentation defect. Commit `bb8e59921795e0219d8998430d6c11be1378844e` initially failed [CI #132](https://github.com/houssame-dev/madrasio/actions/runs/38963306114) and [Deploy STAGING #75](https://github.com/houssame-dev/madrasio/actions/runs/38963306050) during unit tests; STAGING stopped before migration application or deployment. Those failures remain historical evidence, superseded by the successful corrective verification above.
+
+Repository migration head is **`0022_homework-actual-handin-attachments` (23 migrations)**. Obsolete locale migration `0023` was withdrawn in TASK_066_SIMPLE_V1_DB_CLEANUP_06. A successful STAGING migration execution step does **not** itself prove that a new migration was applied.
+
+**Remaining acceptance/release boundary:** successful CI/Playwright/STAGING deployment does not complete separately required real authenticated application acceptance or every overall V1 release-acceptance requirement. No automatic Production deployment occurred as part of these workflows. Production is outside this checkpoint's authorization; its previously observed migration head was **`0015`**, not freshly reverified here. Customer onboarding and Production release are **not authorized** by this milestone.
+
+**Next handoff:** complete any separately required real-authenticated STAGING acceptance; preserve independent Production migration/recovery/release authorization; prepare tuition-management and scheduling product-planning initiatives. Those initiatives are **not started or approved for implementation** by this synchronization. No implementation, provider operation, test/build rerun, commit, push or deployment is authorized by this documentation checkpoint.
 
 ## Current owner direction — TASK_066_SIMPLIFIED_MULTILINGUAL_V1 (2026-10-16)
 
@@ -8,7 +25,9 @@ The owner explicitly replaced the unfinished per-account locale activation strat
 
 The active presentation source is the validated host-only MADRASIO_LOCALE cookie, English by default. A Next Server Action saves the supported selection with HttpOnly, SameSite=Lax, one-year lifetime and Secure in production, then the client reloads the full document. Authenticated slots and public login/recovery/password pages expose the selector. Locale/messages/lang/dir come from the same selected catalog; Arabic uses RTL. UTC remains a formatting fallback; School business-time logic is unchanged. The production Query provider no longer mounts the prepared account-lifetime machinery. Legacy prepared preference/API/controller modules remain dormant and are not used by this flow. No cross-device synchronization, remote Apply/Later, router interception or database preference activation is claimed.
 
-Migration 0023 and every migration/metadata file remain preserved and unapplied by this task. The cookie flow does not call the prepared database language API. Authentication/authorization, verified User lifecycle and School tenant boundaries are unchanged. Language is intentionally a browser presentation preference shared by accounts using that browser, not a persisted User setting.
+Migration `0023` and its obsolete database preference endpoint/service/repository/resolver were withdrawn in the earlier cleanup milestone; repository migration head remains `0022`. Historical migration records through `0022` are preserved. The cookie flow has no database language-preference dependency. Authentication/authorization, verified User lifecycle and School tenant boundaries are unchanged. Language is intentionally a browser presentation preference shared by accounts using that browser, not a persisted User setting.
+
+The dated checkpoint sections below preserve their original evidence and chronology. Older statements about "current" work, pending commits, preserved `0023`, blocked STAGING deployment or next authorization describe those historical checkpoints; the current status and handoff above supersede them without rewriting their outcomes.
 
 ### Obsolete database preference cleanup — TASK_066_SIMPLE_V1_DB_CLEANUP_06 (2026-10-16)
 
