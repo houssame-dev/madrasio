@@ -1,6 +1,9 @@
 export const financeEn = {
+  currency: 'School currency', currencyNotice: 'Choose before creating a fee structure. Currency cannot change after financial records exist. Amounts are never converted.',
+  currencyLocked: 'Currency is locked because financial records exist, including inactive or cancelled records.',
+  MAD: 'Moroccan dirham', EUR: 'Euro', USD: 'US dollar', GBP: 'Pound sterling',
   "title": "Finance",
-  "description": "Student fees and charges · MAD",
+  "description": "Student fees and charges",
   "configuration": "Fee configuration",
   "generation": "Generate charges",
   "charges": "Student charges",
@@ -22,7 +25,7 @@ export const financeEn = {
   "cadence": "Frequency",
   "MONTHLY": "Monthly",
   "ONCE": "One-time",
-  "amount": "Amount (MAD)",
+  "amount": "Amount",
   "period": "Month",
   "once": "One-time",
   "dueDate": "Due date",
@@ -71,8 +74,11 @@ export const financeEn = {
   "studentLimit": "Search results show up to 100 students. Use Class or Level for bulk selection (maximum 500)."
 } as const;
 export const financeFr = {
+  currency: 'Devise de l’établissement', currencyNotice: 'Choisissez avant de créer un barème. La devise ne peut plus changer après la création de données financières. Aucun montant n’est converti.',
+  currencyLocked: 'La devise est verrouillée car des données financières existent, y compris des enregistrements inactifs ou annulés.',
+  MAD: 'Dirham marocain', EUR: 'Euro', USD: 'Dollar américain', GBP: 'Livre sterling',
   "title": "Finance",
-  "description": "Frais et créances élèves · MAD",
+  "description": "Frais et créances élèves",
   "configuration": "Configuration des frais",
   "generation": "Générer les créances",
   "charges": "Créances élèves",
@@ -94,7 +100,7 @@ export const financeFr = {
   "cadence": "Fréquence",
   "MONTHLY": "Mensuel",
   "ONCE": "Ponctuel",
-  "amount": "Montant (MAD)",
+  "amount": "Montant",
   "period": "Mois",
   "once": "Ponctuel",
   "dueDate": "Échéance",
@@ -143,8 +149,11 @@ export const financeFr = {
   "studentLimit": "La recherche affiche 100 élèves maximum. Utilisez Classe ou Niveau pour la sélection groupée (500 maximum)."
 } as const satisfies Record<keyof typeof financeEn, string>;
 export const financeAr = {
+  currency: 'عملة المدرسة', currencyNotice: 'اختر العملة قبل إنشاء هيكل رسوم. لا يمكن تغييرها بعد وجود سجلات مالية. لا يتم تحويل أي مبلغ.',
+  currencyLocked: 'العملة مقفلة لوجود سجلات مالية، بما فيها السجلات غير النشطة أو الملغاة.',
+  MAD: 'درهم مغربي', EUR: 'يورو', USD: 'دولار أمريكي', GBP: 'جنيه إسترليني',
   "title": "المالية",
-  "description": "رسوم ومستحقات الطلاب · الدرهم المغربي",
+  "description": "رسوم ومستحقات الطلاب",
   "configuration": "إعداد الرسوم",
   "generation": "إنشاء المستحقات",
   "charges": "مستحقات الطلاب",
@@ -166,7 +175,7 @@ export const financeAr = {
   "cadence": "الدورية",
   "MONTHLY": "شهري",
   "ONCE": "مرة واحدة",
-  "amount": "المبلغ بالدرهم",
+  "amount": "المبلغ",
   "period": "الشهر",
   "once": "مرة واحدة",
   "dueDate": "تاريخ الاستحقاق",

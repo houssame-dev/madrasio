@@ -30,6 +30,7 @@ export const feeStructures = pgTable('finance_fee_structures', {
   createdBy: uuid('created_by').notNull(), updatedBy: uuid('updated_by').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
+  foreignKey({ columns: [t.schoolId, t.currency], foreignColumns: [schools.id, schools.financeCurrency], name: 'finance_structures_currency_fk' }).onDelete('restrict'),
   unique('finance_structures_context_unique').on(t.schoolId, t.academicYearId, t.feeTypeId, t.id),
   unique('finance_structures_school_id_unique').on(t.schoolId, t.id),
   foreignKey({ columns: [t.schoolId, t.academicYearId], foreignColumns: [academicYears.schoolId, academicYears.id], name: 'finance_structures_year_fk' }).onDelete('restrict'),
@@ -38,7 +39,7 @@ export const feeStructures = pgTable('finance_fee_structures', {
   foreignKey({ columns: [t.schoolId, t.createdBy], foreignColumns: [schoolMemberships.schoolId, schoolMemberships.userId], name: 'finance_structures_creator_fk' }).onDelete('restrict'),
   foreignKey({ columns: [t.schoolId, t.updatedBy], foreignColumns: [schoolMemberships.schoolId, schoolMemberships.userId], name: 'finance_structures_editor_fk' }).onDelete('restrict'),
   uniqueIndex('finance_structures_active_scope_unique').on(t.schoolId, t.academicYearId, t.feeTypeId, sql`coalesce(${t.levelId}, '00000000-0000-0000-0000-000000000000'::uuid)`).where(sql`${t.active}`),
-  check('finance_structures_values_check', sql`${t.currency}='MAD' and ${t.cadence} in ('MONTHLY','ONCE') and ${t.amountCents} between 1 and 999999999 and ${t.revision}>0 and jsonb_typeof(${t.periods})='array' and jsonb_array_length(${t.periods}) between 1 and 36`),
+  check('finance_structures_values_check', sql`${t.currency} in ('MAD','EUR','USD','GBP') and ${t.cadence} in ('MONTHLY','ONCE') and ${t.amountCents} between 1 and 999999999 and ${t.revision}>0 and jsonb_typeof(${t.periods})='array' and jsonb_array_length(${t.periods}) between 1 and 36`),
 ]).enableRLS();
 
 export const financeBatches = pgTable('finance_generation_batches', {
@@ -65,6 +66,8 @@ export const studentCharges = pgTable('finance_student_charges', {
   status: text('status').$type<'OPEN' | 'CANCELLED'>().notNull().default('OPEN'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
+  foreignKey({ columns: [t.schoolId, t.currency], foreignColumns: [schools.id, schools.financeCurrency], name: 'finance_charges_currency_fk' }).onDelete('restrict'),
+  unique('finance_charges_currency_context_unique').on(t.schoolId, t.studentId, t.id, t.currency),
   unique('finance_charges_school_id_unique').on(t.schoolId, t.id),
   unique('finance_charges_student_context_unique').on(t.schoolId, t.studentId, t.id),
   unique('finance_charges_logical_identity_unique').on(t.schoolId, t.studentId, t.academicYearId, t.feeTypeId, t.period),
@@ -73,7 +76,7 @@ export const studentCharges = pgTable('finance_student_charges', {
   foreignKey({ columns: [t.schoolId, t.academicYearId, t.feeTypeId, t.structureId], foreignColumns: [feeStructures.schoolId, feeStructures.academicYearId, feeStructures.feeTypeId, feeStructures.id], name: 'finance_charges_structure_fk' }).onDelete('restrict'),
   foreignKey({ columns: [t.schoolId, t.batchId], foreignColumns: [financeBatches.schoolId, financeBatches.id], name: 'finance_charges_batch_fk' }).onDelete('restrict'),
   index('finance_charges_school_year_due_idx').on(t.schoolId, t.academicYearId, t.dueDate, t.id),
-  check('finance_charges_money_check', sql`${t.currency}='MAD' and ${t.originalCents} between 1 and 999999999 and ${t.reductionCents}>=0 and ${t.reductionCents}<=${t.originalCents} and ${t.allocatedCents}>=0 and ${t.allocatedCents}<=${t.originalCents}-${t.reductionCents}`),
+  check('finance_charges_money_check', sql`${t.currency} in ('MAD','EUR','USD','GBP') and ${t.originalCents} between 1 and 999999999 and ${t.reductionCents}>=0 and ${t.reductionCents}<=${t.originalCents} and ${t.allocatedCents}>=0 and ${t.allocatedCents}<=${t.originalCents}-${t.reductionCents}`),
   check('finance_charges_state_check', sql`${t.status} in ('OPEN','CANCELLED') and (${t.status}<>'CANCELLED' or ${t.allocatedCents}=0)`),
   check('finance_charges_period_check', sql`${t.period}='once' or ${t.period} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
 ]).enableRLS();
@@ -86,20 +89,25 @@ export const financePayments = pgTable('finance_payments', {
   currency: text('currency').notNull().default('MAD'), receivedOn: date('received_on').notNull(), reference: text('reference'),
   recordedBy: uuid('recorded_by').notNull(), recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => [
+  foreignKey({ columns: [t.schoolId, t.currency], foreignColumns: [schools.id, schools.financeCurrency], name: 'finance_payments_currency_fk' }).onDelete('restrict'),
+  unique('finance_payments_currency_context_unique').on(t.schoolId, t.studentId, t.id, t.currency),
   unique('finance_payments_student_context_unique').on(t.schoolId, t.studentId, t.id),
   unique('finance_payments_request_unique').on(t.schoolId, t.requestKey),
   unique('finance_payments_receipt_unique').on(t.schoolId, t.receiptReference),
   foreignKey({ columns: [t.schoolId, t.studentId], foreignColumns: [students.schoolId, students.id], name: 'finance_payments_student_fk' }).onDelete('restrict'),
   foreignKey({ columns: [t.schoolId, t.recordedBy], foreignColumns: [schoolMemberships.schoolId, schoolMemberships.userId], name: 'finance_payments_actor_fk' }).onDelete('restrict'),
   index('finance_payments_student_date_idx').on(t.schoolId, t.studentId, t.receivedOn, t.id),
-  check('finance_payments_values_check', sql`${t.currency}='MAD' and ${t.amountCents} between 1 and 999999999 and ${t.method} in ('CASH','BANK_TRANSFER','CHEQUE') and (${t.reference} is null or length(${t.reference}) between 1 and 100)`),
+  check('finance_payments_values_check', sql`${t.currency} in ('MAD','EUR','USD','GBP') and ${t.amountCents} between 1 and 999999999 and ${t.method} in ('CASH','BANK_TRANSFER','CHEQUE') and (${t.reference} is null or length(${t.reference}) between 1 and 100)`),
 ]).enableRLS();
 
 export const financeAllocations = pgTable('finance_payment_allocations', {
   id: uuid('id').primaryKey().defaultRandom(), schoolId: uuid('school_id').notNull(), studentId: uuid('student_id').notNull(),
+  currency: text('currency').notNull().default('MAD'),
   paymentId: uuid('payment_id').notNull(), chargeId: uuid('charge_id').notNull(), amountCents: integer('amount_cents').notNull(),
   feeName: text('fee_name').notNull(), period: text('period').notNull(), dueDate: date('due_date').notNull(),
 }, t => [
+  foreignKey({ columns: [t.schoolId, t.studentId, t.paymentId, t.currency], foreignColumns: [financePayments.schoolId, financePayments.studentId, financePayments.id, financePayments.currency], name: 'finance_allocations_payment_currency_fk' }).onDelete('restrict'),
+  foreignKey({ columns: [t.schoolId, t.studentId, t.chargeId, t.currency], foreignColumns: [studentCharges.schoolId, studentCharges.studentId, studentCharges.id, studentCharges.currency], name: 'finance_allocations_charge_currency_fk' }).onDelete('restrict'),
   unique('finance_allocations_charge_unique').on(t.paymentId, t.chargeId),
   foreignKey({ columns: [t.schoolId, t.studentId, t.paymentId], foreignColumns: [financePayments.schoolId, financePayments.studentId, financePayments.id], name: 'finance_allocations_payment_fk' }).onDelete('restrict'),
   foreignKey({ columns: [t.schoolId, t.studentId, t.chargeId], foreignColumns: [studentCharges.schoolId, studentCharges.studentId, studentCharges.id], name: 'finance_allocations_charge_fk' }).onDelete('restrict'),

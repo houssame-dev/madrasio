@@ -30,8 +30,8 @@ export const paymentSchema = z.object({
 export const reversalSchema = z.object({ requestKey: z.string().uuid(), confirmed: z.literal(true), reason: z.string().trim().min(1).max(500) }).strict();
 
 /** Decimal text, never floating point multiplication. */
-export function parseMAD(value: string): number {
-  if (!/^\d{1,7}(\.\d{1,2})?$/.test(value)) throw new ValidationError('Invalid MAD amount.');
+export function parseMoney(value: string): number {
+  if (!/^\d{1,7}(\.\d{1,2})?$/.test(value)) throw new ValidationError('Invalid two-decimal amount.');
   const [whole, fraction = ''] = value.split('.');
   return centsSchema.parse(Number(BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'))));
 }

@@ -6,14 +6,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@school/ui';
 import { Field, inputClassName } from '@/components/academic/ui';
 import { apiRequest, ApiClientError } from '@/lib/frontend/api-client';
-import { parseMAD, schoolToday } from '@/lib/modules/finance/domain/contracts';
+import { parseMoney, schoolToday } from '@/lib/modules/finance/domain/contracts';
 import type { paymentOptions, paymentHistory, paymentDetail } from '@/lib/modules/finance/application/payments';
+import { formatMoney } from '@/lib/modules/finance/domain/csv';
 type Options = Awaited<ReturnType<typeof paymentOptions>>;
 type History = Awaited<ReturnType<typeof paymentHistory>>;
 type Detail = Awaited<ReturnType<typeof paymentDetail>>;
 interface StudentOption { id: string; firstName: string; lastName: string }
 
-export function PaymentsWorkspace({ schoolId, timezone, initialStudentId = '' }: { schoolId: string; timezone: string; initialStudentId?: string }) {
+export function PaymentsWorkspace({ schoolId, timezone, currency, initialStudentId = '' }: { schoolId: string; timezone: string; currency: string; initialStudentId?: string }) {
   const common = useTranslations('finance'), t = useTranslations('financePayments'), locale = useLocale(), cache = useQueryClient();
   const [studentId, setStudentId] = useState(initialStudentId), [search, setSearch] = useState(''), [amount, setAmount] = useState('');
   const [method, setMethod] = useState<'CASH' | 'BANK_TRANSFER' | 'CHEQUE'>('CASH'), [date, setDate] = useState(schoolToday(timezone)), [reference, setReference] = useState('');
@@ -26,16 +27,16 @@ export function PaymentsWorkspace({ schoolId, timezone, initialStudentId = '' }:
   const history = useQuery({ queryKey: [...key, 'payments', studentId, page], queryFn: () => apiRequest<{ data: History }>(`/api/v1/finance/payments?page=${page}${studentId ? `&studentId=${studentId}` : ''}`), retry: false });
   const detail = useQuery({ queryKey: [...key, 'payment', detailId], queryFn: () => apiRequest<{ data: Detail }>(`/api/v1/finance/payments/${detailId}`), enabled: !!detailId, retry: false });
   const mutation = useMutation({ mutationFn: (v: { path: `/api/v1/${string}`; body: unknown }) => apiRequest<{ data: { id: string } }>(v.path, { method: 'POST', body: JSON.stringify(v.body) }), retry: false });
-  const money = (v: number) => new Intl.NumberFormat(locale, { style: 'currency', currency: 'MAD' }).format(v / 100);
+  const money = (v: number, unit = currency) => formatMoney(v, locale, unit);
   const rows = options.data?.data.charges ?? [];
   const balance = (row: Options['charges'][number]) => row.originalCents - row.reductionCents - row.allocatedCents;
   let received = 0, allocated = 0, invalid = false;
   const allocations: { chargeId: string; amountCents: number }[] = [];
   try {
-    if (amount) received = parseMAD(amount);
+    if (amount) received = parseMoney(amount);
     for (const [chargeId, text] of Object.entries(values)) {
       if (!text || /^0(?:\.0{1,2})?$/.test(text)) continue;
-      const amountCents = parseMAD(text); const row = rows.find(c => c.id === chargeId);
+      const amountCents = parseMoney(text); const row = rows.find(c => c.id === chargeId);
       if (!row || amountCents > balance(row)) invalid = true;
       allocations.push({ chargeId, amountCents }); allocated += amountCents;
     }
@@ -89,13 +90,13 @@ export function PaymentsWorkspace({ schoolId, timezone, initialStudentId = '' }:
       <Button disabled={!ready}>{t('record')}</Button></fieldset>
     </form>
     <h2 className="text-xl font-semibold">{t('history')}</h2>
-    {history.isPending ? <p role="status">{t('loading')}</p> : history.isError ? <p role="alert">{t('error')}<Button onClick={() => void history.refetch()}>{t('reload')}</Button></p> : !history.data.data.items.length ? <p>{t('empty')}</p> : history.data.data.items.map(({ payment, reversal }) => <article key={payment.id} className="space-y-2 rounded-md border p-3"><p dir="auto">{payment.studentName} · {money(payment.amountCents)} · {t(reversal ? 'REVERSED' : 'RECORDED')}</p><p><bdi className="break-all">{payment.receiptReference}</bdi> · <bdi>{payment.receivedOn}</bdi> · {t(payment.method)}</p><Button variant="outline" onClick={() => { setDetailId(payment.id); setReason(''); setReverseConfirmed(false); }}>{t('receipt')}</Button></article>)}
+    {history.isPending ? <p role="status">{t('loading')}</p> : history.isError ? <p role="alert">{t('error')}<Button onClick={() => void history.refetch()}>{t('reload')}</Button></p> : !history.data.data.items.length ? <p>{t('empty')}</p> : history.data.data.items.map(({ payment, reversal }) => <article key={payment.id} className="space-y-2 rounded-md border p-3"><p dir="auto">{payment.studentName} · {money(payment.amountCents, payment.currency)} · {t(reversal ? 'REVERSED' : 'RECORDED')}</p><p><bdi className="break-all">{payment.receiptReference}</bdi> · <bdi>{payment.receivedOn}</bdi> · {t(payment.method)}</p><Button variant="outline" onClick={() => { setDetailId(payment.id); setReason(''); setReverseConfirmed(false); }}>{t('receipt')}</Button></article>)}
     <div className="flex gap-2"><Button variant="outline" disabled={page <= 1} onClick={() => setPage(v => v - 1)}>{t('previous')}</Button><Button variant="outline" disabled={page * 50 >= (history.data?.data.total ?? 0)} onClick={() => setPage(v => v + 1)}>{t('next')}</Button></div>
     {detailId ? <section className="space-y-3 rounded-lg border p-4" aria-label={t('receipt')}>
       {detail.isPending ? <p role="status">{t('loading')}</p> : detail.isError ? <p role="alert">{t('error')}<Button onClick={() => void detail.refetch()}>{t('reload')}</Button></p> : p ? <>
-        <h3 className="font-semibold break-all">{p.payment.receiptReference}</h3><p>{t(p.reversal ? 'REVERSED' : 'RECORDED')} · {money(p.payment.amountCents)}</p>
+        <h3 className="font-semibold break-all">{p.payment.receiptReference}</h3><p>{t(p.reversal ? 'REVERSED' : 'RECORDED')} · {money(p.payment.amountCents, p.payment.currency)}</p>
         <p dir="auto">{p.payment.studentName}</p><p>{t(p.payment.method)} · <bdi>{p.payment.receivedOn}</bdi></p>
-        <ul className="space-y-1">{p.allocations.map(a => <li key={a.id} dir="auto">{a.feeName} · <bdi>{a.period === 'once' ? common('once') : a.period}</bdi> · {money(a.amountCents)}</li>)}</ul>
+        <ul className="space-y-1">{p.allocations.map(a => <li key={a.id} dir="auto">{a.feeName} · <bdi>{a.period === 'once' ? common('once') : a.period}</bdi> · {money(a.amountCents, a.currency)}</li>)}</ul>
         <div className="flex flex-wrap gap-3"><Link className="underline" href={`/finance/receipts/${p.payment.id}`} target="_blank" rel="noopener">{t('print')}</Link><a className="underline" href={`/api/v1/finance/payments/${p.payment.id}/receipt?download=1`}>{t('download')}</a></div>
         {p.reversal ? <><p className="break-all">{t('reversalReference')}: {p.reversal.reversalReference}</p><p dir="auto">{p.reversal.reason}</p></> : <form className="space-y-3" onSubmit={e => { e.preventDefault(); void reverse(); }}><p>{t('reversalNotice')}</p><Field label={t('reason')} htmlFor="payment-reversal-reason" required><textarea id="payment-reversal-reason" className={`${inputClassName} min-h-24`} required maxLength={500} disabled={mutation.isPending} value={reason} onChange={e => { setReason(e.target.value); setReverseConfirmed(false); }} /></Field><label className="flex min-h-10 items-center gap-2"><input type="checkbox" checked={reverseConfirmed} disabled={mutation.isPending} onChange={e => setReverseConfirmed(e.target.checked)} />{t('confirmReverse')}</label><Button variant="destructive" disabled={mutation.isPending || !reverseConfirmed || !reason.trim()}>{t('reverse')}</Button></form>}
       </> : null}

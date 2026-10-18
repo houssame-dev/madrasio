@@ -7,7 +7,7 @@ import { createGradesTestDb, seedSchool, seedStudentAndActors, seedParentActor, 
 import { adjustCharge, generateCharges, previewCharges, saveFeeType, saveStructure, type FinanceDb } from '@/lib/modules/finance/application/service';
 import { recordPayment, reversePayment, paymentDetail } from '@/lib/modules/finance/application/payments';
 import { collectionsReport, outstandingReport, studentBalance, collectionFilters, outstandingFilters, exactCents } from '@/lib/modules/finance/application/reports';
-import { csvDocument, decimalMAD, formatMAD } from '@/lib/modules/finance/domain/csv';
+import { csvDocument, decimalMoney, formatMoney } from '@/lib/modules/finance/domain/csv';
 let test: GradesTestDb, db: FinanceDb;
 let school: Awaited<ReturnType<typeof seedSchool>>, actors: Awaited<ReturnType<typeof seedStudentAndActors>>, ids: string[];
 let actor: { userId: string; schoolId: string };
@@ -117,11 +117,11 @@ it('validates dates, scope identifiers and exact aggregate limits', () => {
   expect(outstandingFilters.safeParse({ classId: 'foreign' }).success).toBe(false);
   expect(exactCents('9007199254740991')).toBe(Number.MAX_SAFE_INTEGER);
   expect(() => exactCents('9007199254740992')).toThrow(); expect(() => exactCents('-1')).toThrow();
-  expect(decimalMAD(Number.MAX_SAFE_INTEGER)).toBe('90071992547409.91');
-  expect(formatMAD(Number.MAX_SAFE_INTEGER, 'en')).toContain('90,071,992,547,409.91');
+  expect(decimalMoney(Number.MAX_SAFE_INTEGER)).toBe('90071992547409.91');
+  expect(formatMoney(Number.MAX_SAFE_INTEGER, 'en', 'MAD')).toContain('90,071,992,547,409.91');
 });
 it('exports Excel-friendly UTF-8, CRLF and quoted formula-safe cells without losing Arabic', () => {
-  const csv = csvDocument([['Student', 'MAD'], ['=HYPERLINK("bad")', decimalMAD(12345)], [' +cmd', 'عربية, "اسم"'], ['\t@SUM(1)', 'line\r\nnext'], ['-1', 'normal']]);
+  const csv = csvDocument([['Student', 'MAD'], ['=HYPERLINK("bad")', decimalMoney(12345)], [' +cmd', 'عربية, "اسم"'], ['\t@SUM(1)', 'line\r\nnext'], ['-1', 'normal']]);
   expect(csv.startsWith('\uFEFF')).toBe(true); expect(csv).toContain('"\'=HYPERLINK(""bad"")"'); expect(csv).toContain('"\' +cmd"');
   expect(csv).toContain('"عربية, ""اسم"""'); expect(csv).toContain('"123.45"'); expect(csv).toContain('"\'\t@SUM(1)"'); expect(csv.endsWith('\r\n')).toBe(true);
 });

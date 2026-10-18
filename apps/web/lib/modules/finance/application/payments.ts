@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { financePayments as payments, financeAllocations as allocations, financeReversals as reversals, studentCharges as charges, students } from '@school/database';
 import { BusinessRuleViolationError, ConflictError, NotFoundError } from '@/lib/errors';
-import { authorize, lock, type FinanceActor, type FinanceDb } from './service';
+import { authorize, financeSettings, lock, type FinanceActor, type FinanceDb } from './service';
 import { paymentSchema, reversalSchema, schoolToday } from '../domain/contracts';
 import { recordFinanceAudit } from '@/lib/audit/finance';
 
@@ -28,7 +28,7 @@ export async function paymentOptions(db: FinanceDb, actor: FinanceActor, student
   if (!student) throw new NotFoundError();
   const rows = await db.select().from(charges).where(and(eq(charges.schoolId, actor.schoolId), eq(charges.studentId, studentId), eq(charges.status, 'OPEN'), sql`${charges.originalCents}-${charges.reductionCents}-${charges.allocatedCents}>0`)).orderBy(asc(charges.dueDate), asc(charges.id)).limit(501);
   // A bounded payment uses up to 500 charges; subsequent payments can use later pages.
-  return { student, charges: rows.slice(0, 500), hasMore: rows.length > 500, suggested: suggestAllocations(rows.slice(0, 500), amountCents) };
+  return { currency: (await financeSettings(db, actor)).currency, student, charges: rows.slice(0, 500), hasMore: rows.length > 500, suggested: suggestAllocations(rows.slice(0, 500), amountCents) };
 }
 export async function paymentHistory(db: FinanceDb, actor: FinanceActor, studentId?: string, page = 1) {
   await authorize(db, actor);
@@ -61,15 +61,16 @@ export async function recordPayment(db: FinanceDb, actor: FinanceActor, raw: unk
     const rows = await tx.select().from(charges).where(and(eq(charges.schoolId, actor.schoolId), eq(charges.studentId, student.id), inArray(charges.id, input.allocations.map(a => a.chargeId)))).orderBy(asc(charges.id)).for('update');
     if (rows.length !== input.allocations.length) throw new NotFoundError();
     for (const row of rows) {
+      if (row.currency !== school.financeCurrency) throw new ConflictError('Charge currency does not match School currency.');
       const allocation = input.allocations.find(a => a.chargeId === row.id)!;
       if (row.status !== 'OPEN' || allocation.amountCents > row.originalCents - row.reductionCents - row.allocatedCents) throw new ConflictError('Charge balance changed. Review allocations.');
     }
     const id = randomUUID();
     const [payment] = await tx.insert(payments).values({ id, schoolId: actor.schoolId, studentId: student.id, requestKey: input.requestKey, requestHash: hash,
       receiptReference: `R-${id.replaceAll('-', '').toUpperCase()}`, schoolName: school.name, schoolTimezone: school.timezone, studentName: `${student.firstName} ${student.lastName}`,
-      method: input.method, amountCents: input.amountCents, receivedOn: input.receivedOn, reference: input.reference || null, recordedBy: actor.userId! }).returning();
+      method: input.method, currency: school.financeCurrency, amountCents: input.amountCents, receivedOn: input.receivedOn, reference: input.reference || null, recordedBy: actor.userId! }).returning();
     await tx.insert(allocations).values(rows.map(row => ({ schoolId: actor.schoolId, studentId: student.id, paymentId: id, chargeId: row.id,
-      amountCents: input.allocations.find(a => a.chargeId === row.id)!.amountCents, feeName: row.feeName, period: row.period, dueDate: row.dueDate })));
+      currency: row.currency, amountCents: input.allocations.find(a => a.chargeId === row.id)!.amountCents, feeName: row.feeName, period: row.period, dueDate: row.dueDate })));
     for (const row of rows) await tx.update(charges).set({ allocatedCents: row.allocatedCents + input.allocations.find(a => a.chargeId === row.id)!.amountCents }).where(eq(charges.id, row.id));
     await recordFinanceAudit(tx, actor, { action: 'FinancePaymentRecorded', resourceId: payment.id, metadata: { studentId: student.id, requestKey: input.requestKey, amountCents: input.amountCents, method: input.method } });
     return payment;

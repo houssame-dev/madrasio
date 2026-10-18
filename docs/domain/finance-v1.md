@@ -33,10 +33,21 @@ receivables, not SaaS subscriptions or a general ledger.
   skip existing charges, including cancelled charges; cancellation does not
   permit accidental regeneration. Repeated identical generation requests return
   the recorded batch result. A reused key with changed content conflicts.
-- Money is MAD integer centimes, never floating-point arithmetic. Amounts are
+- Money is integer minor units in the configured School currency, never floating-point arithmetic. Amounts are
   positive and at most 999,999,999 centimes. Totals remain safe integers within
   bounded batches. UI decimal input is converted using decimal-text arithmetic.
-- Generated charges snapshot fee name, structure revision, Class/year, period,
+- Each School defaults to MAD and an ACTIVE School Admin can select MAD, EUR,
+  USD or GBP in Finance configuration before any fee structure, charge or payment
+  exists. All supported currencies have two fractional digits. Identical updates
+  are idempotent; inactive structures, cancelled charges and reversed payments
+  still lock the currency. Fee types alone do not lock it. No conversions occur.
+- Configuration and monetary writes serialize on the same School row lock.
+  Structures, charges, payments and allocations retain currency snapshots;
+  same-School currency foreign keys prevent mismatches even outside the services.
+  Receipts use the original payment currency; reports and CSVs identify currency.
+  Additional currencies require app validation and a forward constraint migration,
+  with explicit verification of a two-decimal ISO currency.
+- Generated charges snapshot currency, fee name, structure revision, Class/year, period,
   due date and original amount. Structure edits affect later generation only.
   No generated-charge deletion or mutation of original amount/date/context API.
 - A manual reduction is an additional positive amount, requires a reason, and
@@ -84,7 +95,7 @@ transport failures; no automatic mutation retry.
   apply. Platform-only authority, Teachers and Parents receive no Finance access.
 - Record money already collected outside Madrasio: CASH, BANK_TRANSFER or CHEQUE.
   No gateway, online collection, cheque clearing or monetary refund is performed.
-  Positive MAD centimes, School-local received date (1900 through today), method,
+  Positive integer minor units in the School currency, School-local received date (1900 through today), method,
   optional bounded reference, recording actor and database timestamp are retained.
 - Historical/archived Students and closed Academic Years can have existing debts
   settled; current enrollment is not required to pay an existing charge. Student,
@@ -172,7 +183,7 @@ or provider change is authorized by implementation or local test results.
 - CSV uses exactly the same report service/filter/snapshot semantics, all matching
   rows irrespective of page. Exports over 10,000 rows fail explicitly; they never
   silently truncate. UTF-8 BOM, CRLF, universal quoting/doubled quotes, and dangerous
-  spreadsheet-formula prefixes are handled. Columns identify MAD, reporting dates,
+  spreadsheet-formula prefixes are handled. Columns identify the School currency, reporting dates,
   timezone and active scope filters. Downloaded personal data must be stored safely.
 - /finance integrates reports and balances with existing controls, EN/FR/AR and RTL;
   no charting library, new standard UI primitive or dependency is introduced.
@@ -192,3 +203,17 @@ either pending migration. Prefer a reviewed forward correction; any restore need
 its own data-loss/consistency assessment. Local testing is not hosted migration,
 pooler, real-Auth browser acceptance or deployment approval. Invoices, expenses,
 payroll, online collection and advanced accounting remain outside Finance V1.
+
+## School currency forward migration
+
+Migration 0025_school-finance-currency adds School and allocation currency defaults
+(MAD), broadens the three former MAD-only checks, and adds currency-consistency
+keys. It preserves existing financial amounts and all deployed migration bytes.
+Apply 0025 before deploying code that selects the new columns; verify 26 journal
+records and the unchanged 51 application tables. Recovery bundles require their
+matching source/schema revision: 0022 and 0024 artifacts retain their original
+format and cannot be restored through the 0025 migration chain.
+
+Once non-MAD financial records exist, a rollback to the earlier MAD-only application
+is unsafe even if the database migration is retained. Prefer a forward correction;
+do not relabel stored amounts or remove currency constraints to enable a rollback.

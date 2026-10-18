@@ -6,11 +6,15 @@ export function csvDocument(rows: readonly (readonly (string | number)[])[]) {
     return `"${safe.replaceAll('"', '""')}"`;
   }).join(',')).join('\r\n') + '\r\n';
 }
-export const decimalMAD = (cents: number) => `${BigInt(cents) / 100n}.${String(BigInt(cents) % 100n).padStart(2, '0')}`;
+export const decimalMoney = (cents: number) => `${BigInt(cents) / 100n}.${String(BigInt(cents) % 100n).padStart(2, '0')}`;
 /** Format aggregate centimes without losing the last cent through division at large totals. */
-export function formatMAD(cents: number, locale: string) {
+export function formatMoney(cents: number, locale: string, currency: string) {
   const value = BigInt(cents);
-  const fraction = new Intl.NumberFormat(locale, { useGrouping: false, minimumIntegerDigits: 2 }).format(Number(value % 100n));
-  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'MAD', minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    .formatToParts(value / 100n).map(part => part.type === 'fraction' ? fraction : part.value).join('');
+  const magnitude = value < 0n ? -value : value;
+  const whole = magnitude / 100n;
+  const fraction = new Intl.NumberFormat(locale, { useGrouping: false, minimumIntegerDigits: 2 }).format(Number(magnitude % 100n));
+  // Keep a negative sign even for amounts between -0.99 and zero.
+  const integral = value < 0n ? (whole === 0n ? -0 : -whole) : whole;
+  return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .formatToParts(integral).map(part => part.type === 'fraction' ? fraction : part.value).join('');
 }

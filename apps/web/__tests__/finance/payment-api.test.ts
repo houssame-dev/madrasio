@@ -19,7 +19,7 @@ it('exposes no edit/delete operation for historical payments', () => {
 });
 const request = (body: unknown, origin: string | null = 'https://school.example.test') => new Request('https://school.example.test/api/v1/finance/payments', { method: 'POST', headers: { 'content-type': 'application/json', ...(origin ? { origin } : {}) }, body: JSON.stringify(body) });
 beforeEach(() => { vi.resetAllMocks(); mock.actor.mockResolvedValue({ userId, schoolContext: { schoolId } }); mock.record.mockResolvedValue({ id }); mock.reverse.mockResolvedValue({ id: randomUUID() });
-  mock.detail.mockResolvedValue({ payment: { id, receiptReference: `R-${id}`, schoolName: '<script>School</script>', schoolTimezone: 'UTC', studentName: 'Amina Test', amountCents: 10000, receivedOn: '2025-11-01', method: 'CASH', reference: null, recordedBy: userId, recordedAt: new Date('2025-11-01T12:00:00Z') }, allocations: [], reversal: null }); });
+  mock.detail.mockResolvedValue({ payment: { id, receiptReference: `R-${id}`, schoolName: '<script>School</script>', schoolTimezone: 'UTC', currency: 'MAD', studentName: 'Amina Test', amountCents: 10000, receivedOn: '2025-11-01', method: 'CASH', reference: null, recordedBy: userId, recordedAt: new Date('2025-11-01T12:00:00Z') }, allocations: [], reversal: null }); });
 it('binds payment and reversal writes to verified server identity and disables caching', async () => {
   const body = input(), response = await paymentPOST(request(body)); expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('private, no-store');
   expect(mock.record).toHaveBeenCalledWith('synthetic-db', { userId, schoolId }, body);

@@ -39,26 +39,26 @@ function amounts(row: { net: string; paid: string; outstanding: string; notOverd
 }
 async function reportDate(tx: Tx, actor: FinanceActor, now: Date) {
   await authorize(tx, actor);
-  const [school] = await tx.select({ timezone: schools.timezone }).from(schools).where(eq(schools.id, actor.schoolId));
-  return { today: schoolToday(school.timezone, now), timezone: school.timezone };
+  const [school] = await tx.select({ currency: schools.financeCurrency, timezone: schools.timezone }).from(schools).where(eq(schools.id, actor.schoolId));
+  return { currency: school.currency, today: schoolToday(school.timezone, now), timezone: school.timezone };
 }
 // All statements share one MVCC snapshot: a concurrent reversal cannot split totals and rows.
 export async function outstandingReport(db: FinanceDb, actor: FinanceActor, raw: unknown, now = new Date(), exporting = false) {
   const f = outstandingFilters.parse(raw);
   return db.transaction(async tx => {
-    const { today, timezone } = await reportDate(tx, actor, now); const where = scope(actor, f);
+    const { today, timezone, currency } = await reportDate(tx, actor, now); const where = scope(actor, f);
     const [total] = await tx.select({ ...sums(today), students: sql<number>`count(distinct ${charges.studentId})::int`, overdueStudents: sql<number>`count(distinct case when ${charges.dueDate}<${today}::date and ${remaining}>0 then ${charges.studentId} end)::int` }).from(charges).where(where);
     if (exporting && total.students > 10000) throw new BusinessRuleViolationError('Export exceeds 10000 students. Narrow the filters.');
     const rows = await tx.select({ studentId: charges.studentId, firstName: students.firstName, lastName: students.lastName, ...sums(today) }).from(charges)
       .innerJoin(students, and(eq(students.schoolId, charges.schoolId), eq(students.id, charges.studentId))).where(where)
       .groupBy(charges.studentId, students.firstName, students.lastName).orderBy(asc(students.lastName), asc(students.firstName), asc(charges.studentId)).limit(exporting ? 10000 : 50).offset(exporting ? 0 : (f.page - 1) * 50);
-    return { today, timezone, summary: { ...amounts(total), students: total.students, overdueStudents: total.overdueStudents }, items: rows.map(row => ({ studentId: row.studentId, studentName: `${row.firstName} ${row.lastName}`, ...amounts(row) })), page: f.page };
+    return { today, timezone, currency, summary: { ...amounts(total), students: total.students, overdueStudents: total.overdueStudents }, items: rows.map(row => ({ studentId: row.studentId, studentName: `${row.firstName} ${row.lastName}`, ...amounts(row) })), page: f.page };
   }, { isolationLevel: 'repeatable read', accessMode: 'read only' });
 }
 export async function collectionsReport(db: FinanceDb, actor: FinanceActor, raw: unknown, now = new Date(), exporting = false) {
   const f = collectionFilters.parse(raw);
   return db.transaction(async tx => {
-    const { today, timezone } = await reportDate(tx, actor, now);
+    const { today, timezone, currency } = await reportDate(tx, actor, now);
     const where = and(eq(payments.schoolId, actor.schoolId), gte(payments.receivedOn, f.from), lte(payments.receivedOn, f.to), f.studentId ? eq(payments.studentId, f.studentId) : undefined);
     // One reversal per payment; no allocation join and therefore no multiplied payment totals.
     const active = sql`${reversals.id} is null`;
@@ -69,17 +69,17 @@ export async function collectionsReport(db: FinanceDb, actor: FinanceActor, raw:
       cheque: sql<string>`coalesce(sum(case when ${active} and ${payments.method}='CHEQUE' then ${payments.amountCents} else 0 end),0)::text`,
     }).from(payments).leftJoin(reversals, and(eq(reversals.schoolId, payments.schoolId), eq(reversals.paymentId, payments.id))).where(where);
     if (exporting && total.count > 10000) throw new BusinessRuleViolationError('Export exceeds 10000 payments. Narrow the filters.');
-    const items = await tx.select({ id: payments.id, studentId: payments.studentId, studentName: payments.studentName, receivedOn: payments.receivedOn, method: payments.method, amountCents: payments.amountCents, receiptReference: payments.receiptReference,
+    const items = await tx.select({ currency: payments.currency, id: payments.id, studentId: payments.studentId, studentName: payments.studentName, receivedOn: payments.receivedOn, method: payments.method, amountCents: payments.amountCents, receiptReference: payments.receiptReference,
       reversalReference: reversals.reversalReference, reversedAt: reversals.reversedAt }).from(payments).leftJoin(reversals, and(eq(reversals.schoolId, payments.schoolId), eq(reversals.paymentId, payments.id))).where(where)
       .orderBy(desc(payments.receivedOn), asc(payments.id)).limit(exporting ? 10000 : 50).offset(exporting ? 0 : (f.page - 1) * 50);
     const cashCents = exactCents(total.cash), bankCents = exactCents(total.bank), chequeCents = exactCents(total.cheque);
-    return { today, timezone, from: f.from, to: f.to, total: total.count, page: f.page, grossCents: exactCents(total.gross), reversedCents: exactCents(total.reversed), netCents: exactCents(total.gross) - exactCents(total.reversed), cashCents, bankCents, chequeCents, items };
+    return { today, timezone, currency, from: f.from, to: f.to, total: total.count, page: f.page, grossCents: exactCents(total.gross), reversedCents: exactCents(total.reversed), netCents: exactCents(total.gross) - exactCents(total.reversed), cashCents, bankCents, chequeCents, items };
   }, { isolationLevel: 'repeatable read', accessMode: 'read only' });
 }
 export async function studentBalance(db: FinanceDb, actor: FinanceActor, studentId: string, page = 1, now = new Date()) {
   uuid.parse(studentId); z.number().int().min(1).max(100000).parse(page);
   return db.transaction(async tx => {
-    const { today, timezone } = await reportDate(tx, actor, now);
+    const { today, timezone, currency } = await reportDate(tx, actor, now);
     const [student] = await tx.select({ id: students.id, firstName: students.firstName, lastName: students.lastName }).from(students).where(and(eq(students.schoolId, actor.schoolId), eq(students.id, studentId)));
     if (!student) throw new NotFoundError();
     const [totals] = await tx.select(sums(today)).from(charges).where(scope(actor, { studentId, page: 1 }));
@@ -89,6 +89,6 @@ export async function studentBalance(db: FinanceDb, actor: FinanceActor, student
     const [count] = await tx.select({ n: sql<number>`count(*)::int` }).from(charges).where(where);
     const items = await tx.select({ charge: charges, academicYear: academicYears.name }).from(charges).innerJoin(academicYears, and(eq(academicYears.schoolId, charges.schoolId), eq(academicYears.id, charges.academicYearId)))
       .where(where).orderBy(asc(charges.dueDate), asc(charges.id)).limit(50).offset((page - 1) * 50);
-    return { today, timezone, student, summary: amounts(totals), validPaymentsCents: exactCents(valid.total), items, total: count.n, page };
+    return { today, timezone, currency, student, summary: amounts(totals), validPaymentsCents: exactCents(valid.total), items, total: count.n, page };
   }, { isolationLevel: 'repeatable read', accessMode: 'read only' });
 }

@@ -1,4 +1,5 @@
 'use client';
+import { formatMoney } from '@/lib/modules/finance/domain/csv';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +18,7 @@ export function PaymentReceipt({ id }: { id: string }) {
   if (query.isPending) return <p role="status">{t('loading')}</p>;
   if (query.isError || !query.data) return <div role="alert">{t('error')}<Button onClick={() => void query.refetch()}>{t('reload')}</Button></div>;
   const { payment: p, allocations, reversal: r } = query.data.data;
-  const money = (n: number) => new Intl.NumberFormat(locale, { style: 'currency', currency: 'MAD' }).format(n / 100);
+  const money = (n: number) => formatMoney(n, locale, p.currency);
   const time = (v: unknown) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: p.schoolTimezone }).format(new Date(String(v)));
   return <section id="finance-receipt" className="mx-auto max-w-4xl space-y-4 rounded-lg border bg-background p-4 sm:p-6">
     <style>{'@media print{body *{visibility:hidden}#finance-receipt,#finance-receipt *{visibility:visible}#finance-receipt{position:absolute;inset:0;width:100%;max-width:none;border:0;padding:0}.finance-no-print{display:none!important}tr{break-inside:avoid}}@page{margin:16mm}'}</style>

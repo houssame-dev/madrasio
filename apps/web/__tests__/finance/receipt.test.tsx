@@ -17,7 +17,7 @@ function show(locale: SupportedLocale = 'en', role: Role = 'SCHOOL_ADMIN') {
 it.each<SupportedLocale>(['en', 'fr', 'ar'])('preserves original receipt, reversed status and print/download actions in %s', async locale => {
   const t = getCatalog(locale).financePayments;
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: {
-    payment: { id: 'payment', receiptReference: 'R-STABLE', schoolName: '<script>Original School</script>', schoolTimezone: 'UTC', studentName: 'Amina Test', receivedOn: '2025-11-01', recordedAt: '2025-11-01T12:00:00Z', method: 'CASH', amountCents: 10001, recordedBy: 'admin', reference: 'Paper record' },
+    payment: { id: 'payment', receiptReference: 'R-STABLE', schoolName: '<script>Original School</script>', schoolTimezone: 'UTC', currency: 'MAD', studentName: 'Amina Test', receivedOn: '2025-11-01', recordedAt: '2025-11-01T12:00:00Z', method: 'CASH', amountCents: 10001, recordedBy: 'admin', reference: 'Paper record' },
     allocations: [{ id: 'allocation', feeName: 'Tuition', period: '2025-12', dueDate: '2025-12-10', amountCents: 10001 }],
     reversal: { reversalReference: 'REV-STABLE', reason: 'Correct record', reversedBy: 'admin', reversedAt: '2025-11-02T12:00:00Z' },
   } }));

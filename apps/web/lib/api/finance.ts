@@ -10,7 +10,8 @@ import { cookies } from 'next/headers';
 import { cookieLocale, LOCALE_COOKIE } from '@/i18n/locale-cookie';
 import { receiptDocument } from '@/lib/modules/finance/domain/receipt';
 import { collectionsReport, outstandingReport, studentBalance, collectionFilters, outstandingFilters } from '@/lib/modules/finance/application/reports';
-import { csvDocument, decimalMAD } from '@/lib/modules/finance/domain/csv';
+import { csvDocument, decimalMoney } from '@/lib/modules/finance/domain/csv';
+import { currencySettingsSchema } from '@/lib/modules/finance/domain/currency';
 
 type Params = { params: Promise<{ id: string }> };
 const uuid = z.string().uuid();
@@ -36,6 +37,8 @@ export function stateGET(request: Request) { return run(async () => {
   const value = await actor(); return finance.listFinance(value.db, value.actor, query);
 }); }
 export function typePOST(request: Request) { return run(async () => { sameOrigin(request); const input = await parseBody(request, feeTypeSchema); const v = await actor(); return finance.saveFeeType(v.db, v.actor, input); }); }
+export function settingsGET() { return run(async () => { const v = await actor(); return finance.financeSettings(v.db, v.actor); }); }
+export function settingsPATCH(request: Request) { return run(async () => { sameOrigin(request); const input = await parseBody(request, currencySettingsSchema); const v = await actor(); return finance.setFinanceCurrency(v.db, v.actor, input); }); }
 export function typePATCH(request: Request, context: Params) { return run(async () => { sameOrigin(request); const input = await parseBody(request, feeTypeSchema); const v = await actor(); return finance.saveFeeType(v.db, v.actor, input, uuid.parse((await context.params).id)); }); }
 export function structurePOST(request: Request) { return run(async () => { sameOrigin(request); const input = await parseBody(request, structureSchema); const v = await actor(); return finance.saveStructure(v.db, v.actor, input); }); }
 export function structurePATCH(request: Request, context: Params) { return run(async () => { sameOrigin(request); const input = await parseBody(request, structurePatchSchema); const v = await actor(); return finance.saveStructure(v.db, v.actor, input, uuid.parse((await context.params).id)); }); }
@@ -86,8 +89,8 @@ export async function collectionsGET(request: Request) {
     const report = await collectionsReport(v.db, v.actor, f, new Date(), exporting);
     if (!exporting) return run(async () => report);
     return csvResponse([
-      ['Received date (inclusive)', 'Student', 'Method', 'Gross MAD', 'Net MAD', 'Receipt reference', 'Reversal reference', 'Reversed at (UTC)', 'From', 'To', 'Current state on', 'School timezone', 'Student filter'],
-      ...report.items.map(p => [p.receivedOn, p.studentName, p.method, decimalMAD(p.amountCents), decimalMAD(p.reversalReference ? 0 : p.amountCents), p.receiptReference, p.reversalReference ?? '', p.reversedAt?.toISOString() ?? '', report.from, report.to, report.today, report.timezone, f.studentId ?? 'ALL']),
+      ['Received date (inclusive)', 'Student', 'Method', `Gross ${report.currency}`, `Net ${report.currency}`, 'Receipt reference', 'Reversal reference', 'Reversed at (UTC)', 'From', 'To', 'Current state on', 'School timezone', 'Student filter'],
+      ...report.items.map(p => [p.receivedOn, p.studentName, p.method, decimalMoney(p.amountCents), decimalMoney(p.reversalReference ? 0 : p.amountCents), p.receiptReference, p.reversalReference ?? '', p.reversedAt?.toISOString() ?? '', report.from, report.to, report.today, report.timezone, f.studentId ?? 'ALL']),
     ], 'finance-collections');
   } catch (error) { return run(async () => { throw error; }); }
 }
@@ -97,8 +100,8 @@ export async function outstandingGET(request: Request) {
     const report = await outstandingReport(v.db, v.actor, f, new Date(), exporting);
     if (!exporting) return run(async () => report);
     return csvResponse([
-      ['Student', 'Net charges MAD', 'Allocated MAD', 'Outstanding MAD', 'Not overdue MAD', '1-30 days MAD', '31-60 days MAD', '61+ days MAD', 'Current state on', 'School timezone', 'Academic year filter', 'Charge class filter', 'Student filter'],
-      ...report.items.map(p => [p.studentName, decimalMAD(p.netCents), decimalMAD(p.paidCents), decimalMAD(p.outstandingCents), decimalMAD(p.notOverdueCents), decimalMAD(p.days1to30Cents), decimalMAD(p.days31to60Cents), decimalMAD(p.days61plusCents), report.today, report.timezone, f.academicYearId ?? 'ALL', f.classId ?? 'ALL', f.studentId ?? 'ALL']),
+      ['Student', `Net charges ${report.currency}`, `Allocated ${report.currency}`, `Outstanding ${report.currency}`, `Not overdue ${report.currency}`, `1-30 days ${report.currency}`, `31-60 days ${report.currency}`, `61+ days ${report.currency}`, 'Current state on', 'School timezone', 'Academic year filter', 'Charge class filter', 'Student filter'],
+      ...report.items.map(p => [p.studentName, decimalMoney(p.netCents), decimalMoney(p.paidCents), decimalMoney(p.outstandingCents), decimalMoney(p.notOverdueCents), decimalMoney(p.days1to30Cents), decimalMoney(p.days31to60Cents), decimalMoney(p.days61plusCents), report.today, report.timezone, f.academicYearId ?? 'ALL', f.classId ?? 'ALL', f.studentId ?? 'ALL']),
     ], 'finance-outstanding');
   } catch (error) { return run(async () => { throw error; }); }
 }

@@ -96,6 +96,19 @@ async function manifestFixture(rowCount: number) {
 }
 
 describe('Production manifest and bundle construction', () => {
+  it('preserves 0024 Finance bundle format while requiring its exact older migration chain', async () => {
+    const fixture = await manifestFixture(1);
+    try {
+      const current = fixture.manifest, ordered = current.migrations.ordered.slice(0, 25);
+      const previous = { ...current, migrations: { count: 25, latest: '0024_finance-offline-payments', ordered,
+        createdAt: current.migrations.createdAt.slice(0, 25), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
+      expect(parseRecoveryManifest(previous)).toEqual(previous);
+      expect(previous.fingerprints).toHaveLength(53);
+      expect(() => assertRecoveryMigrationCompatibility(previous.migrations, previous.migrations)).not.toThrow();
+      expect(() => assertRecoveryMigrationCompatibility(current.migrations, previous.migrations)).toThrow('matching source revision');
+      expect(validateRecoveryManifest(previous)).toEqual(previous);
+    } finally { await rm(fixture.directory, { recursive: true, force: true }); }
+  });
   it('recognizes unchanged 0022 bundles but never treats them as current Finance recovery points', async () => {
     const fixture = await manifestFixture(1);
     try {
@@ -174,8 +187,8 @@ describe('Production manifest and bundle construction', () => {
       );
       expect(restoredManifest.format).toBe('madrasio-recovery-v1');
       expect(restoredManifest.migrations).toMatchObject({
-        count: 25,
-        latest: '0024_finance-offline-payments',
+        count: 26,
+        latest: '0025_school-finance-currency',
       });
       expect(restoredManifest.fingerprints).toHaveLength(53);
       expect(restoredManifest.fingerprints.every((item) => item.rowCount === rowCount)).toBe(true);
@@ -194,8 +207,8 @@ describe('Production manifest and bundle construction', () => {
       /\/database\/drizzle\/migrations\/?$/,
     );
     await expect(loadMigrationMetadata(migrationsDirectory)).resolves.toMatchObject({
-      count: 25,
-      latest: '0024_finance-offline-payments',
+      count: 26,
+      latest: '0025_school-finance-currency',
     });
     await expect(loadMigrationMetadata(join(tmpdir(), 'missing-migrations'))).rejects.toMatchObject(
       {

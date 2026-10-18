@@ -1,8 +1,8 @@
 export const paymentEn = {
   title: 'Offline payments', record: 'Record payment', notice: 'Record money collected outside Madrasio. No online collection is performed.',
   method: 'Method', CASH: 'Cash', BANK_TRANSFER: 'Bank transfer', CHEQUE: 'Cheque', receivedOn: 'Payment date', reference: 'Optional reference',
-  amount: 'Received amount (MAD)', student: 'Student', search: 'Search students', select: 'Select…', suggest: 'Suggest oldest first',
-  allocation: 'Allocations', remaining: 'Remaining balance', allocated: 'Allocated amount (MAD)', difference: 'Amount still to allocate',
+  amount: 'Received amount', student: 'Student', search: 'Search students', select: 'Select…', suggest: 'Suggest oldest first',
+  allocation: 'Allocations', remaining: 'Remaining balance', allocated: 'Allocated amount', difference: 'Amount still to allocate',
   confirm: 'I confirm the received amount and the allocations shown.', history: 'Payment history', receipt: 'Receipt', print: 'Print / Save as PDF', download: 'Download receipt (HTML)',
   printHelp: 'Print this receipt or use your browser’s Save as PDF option. Downloaded receipts contain personal information; store them securely.',
   reverse: 'Reverse payment', reason: 'Reversal reason (required)', confirmReverse: 'I confirm this reversal corrects the record and does not refund money.',
@@ -17,8 +17,8 @@ export const paymentEn = {
 export const paymentFr = {
   title: 'Paiements hors ligne', record: 'Enregistrer un paiement', notice: 'Enregistrez les sommes perçues en dehors de Madrasio. Aucun encaissement en ligne n’est effectué.',
   method: 'Mode', CASH: 'Espèces', BANK_TRANSFER: 'Virement bancaire', CHEQUE: 'Chèque', receivedOn: 'Date du paiement', reference: 'Référence facultative',
-  amount: 'Montant reçu (MAD)', student: 'Élève', search: 'Rechercher des élèves', select: 'Sélectionner…', suggest: 'Proposer les plus anciennes d’abord',
-  allocation: 'Affectations', remaining: 'Solde restant', allocated: 'Montant affecté (MAD)', difference: 'Montant restant à affecter',
+  amount: 'Montant reçu', student: 'Élève', search: 'Rechercher des élèves', select: 'Sélectionner…', suggest: 'Proposer les plus anciennes d’abord',
+  allocation: 'Affectations', remaining: 'Solde restant', allocated: 'Montant affecté', difference: 'Montant restant à affecter',
   confirm: 'Je confirme le montant reçu et les affectations affichées.', history: 'Historique des paiements', receipt: 'Reçu', print: 'Imprimer / Enregistrer en PDF', download: 'Télécharger le reçu (HTML)',
   printHelp: 'Imprimez ce reçu ou utilisez l’option Enregistrer en PDF du navigateur. Les reçus téléchargés contiennent des données personnelles : conservez-les en sécurité.',
   reverse: 'Contrepasser le paiement', reason: 'Motif de contrepassation (obligatoire)', confirmReverse: 'Je confirme que cette contrepassation corrige l’enregistrement et ne rembourse aucune somme.',
@@ -33,8 +33,8 @@ export const paymentFr = {
 export const paymentAr = {
   title: 'المدفوعات خارج النظام', record: 'تسجيل دفعة', notice: 'سجّل المبالغ المحصلة خارج مدراسيو. لا يتم تحصيل أي مبلغ عبر الإنترنت.',
   method: 'طريقة الدفع', CASH: 'نقداً', BANK_TRANSFER: 'تحويل بنكي', CHEQUE: 'شيك', receivedOn: 'تاريخ الدفع', reference: 'مرجع اختياري',
-  amount: 'المبلغ المستلم بالدرهم', student: 'الطالب', search: 'البحث عن الطلاب', select: 'اختر…', suggest: 'اقتراح المستحقات الأقدم أولاً',
-  allocation: 'توزيع المبلغ', remaining: 'الرصيد المتبقي', allocated: 'المبلغ المخصص بالدرهم', difference: 'المبلغ المتبقي للتوزيع',
+  amount: 'المبلغ المستلم', student: 'الطالب', search: 'البحث عن الطلاب', select: 'اختر…', suggest: 'اقتراح المستحقات الأقدم أولاً',
+  allocation: 'توزيع المبلغ', remaining: 'الرصيد المتبقي', allocated: 'المبلغ المخصص', difference: 'المبلغ المتبقي للتوزيع',
   confirm: 'أؤكد المبلغ المستلم والتوزيع المعروض.', history: 'سجل المدفوعات', receipt: 'وصل', print: 'طباعة / حفظ بصيغة PDF', download: 'تنزيل الوصل بصيغة HTML',
   printHelp: 'اطبع هذا الوصل أو استخدم خيار الحفظ بصيغة PDF في المتصفح. تحتوي الوصولات المنزّلة على بيانات شخصية؛ احفظها بأمان.',
   reverse: 'عكس الدفعة', reason: 'سبب العكس (مطلوب)', confirmReverse: 'أؤكد أن العكس يصحح السجل ولا يعيد أي مبلغ مالي.',

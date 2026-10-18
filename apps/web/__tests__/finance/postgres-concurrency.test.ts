@@ -8,7 +8,7 @@ import path from 'node:path';
 import * as schema from '@school/database';
 import { applicationSecurityAuditSql } from '@school/database/security';
 import { seedSchool, seedStudentAndActors } from '../grades/test-helpers';
-import { adjustCharge, chargeDetail, generateCharges, previewCharges, saveFeeType, saveStructure } from '@/lib/modules/finance/application/service';
+import { adjustCharge, chargeDetail, generateCharges, previewCharges, saveFeeType, saveStructure, setFinanceCurrency } from '@/lib/modules/finance/application/service';
 import { recordPayment, reversePayment } from '@/lib/modules/finance/application/payments';
 import { collectionsReport, outstandingReport, studentBalance } from '@/lib/modules/finance/application/reports';
 import { paymentDetail } from '@/lib/modules/finance/application/payments';
@@ -41,6 +41,26 @@ describe.skipIf(!portText)('real local PostgreSQL: distinct connections and row-
     id = (await generateCharges(db, actor, { ...input, previewHash: preview.previewHash, requestKey: randomUUID() })).chargeIds[0];
   });
   afterAll(async () => { await pool.end(); });
+  it.each(['currency-first', 'structure-first'] as const)('serializes currency configuration against first structure creation: %s', async order => {
+    const seed = db as unknown as Parameters<typeof seedSchool>[0];
+    const fresh = await seedSchool(seed), people = await seedStudentAndActors(seed, fresh.schoolId, fresh.yearId, fresh.classId);
+    const admin = { schoolId: fresh.schoolId, userId: people.schoolAdminUserId };
+    const fee = await saveFeeType(db, admin, { name: 'Tuition' });
+    const blocker = await pool.connect(); await blocker.query('BEGIN');
+    await blocker.query('select id from schools where id=$1 for update', [fresh.schoolId]);
+    const create = () => saveStructure(db, admin, { academicYearId: fresh.yearId, feeTypeId: fee.id, amountCents: 12345, cadence: 'ONCE', periods: [{ period: 'once', dueDate: '2025-12-10' }] });
+    const change = () => setFinanceCurrency(db, admin, { currency: 'EUR' });
+    const pending = order === 'currency-first' ? Promise.allSettled([change(), create()]) : Promise.allSettled([create(), change()]);
+    try { await waitForBlocked(2); } finally { await blocker.query('COMMIT'); blocker.release(); }
+    const results = await pending;
+    // PostgreSQL may schedule either waiting operation first. Both legal outcomes
+    // must leave the School and the immutable structure snapshot identical.
+    const schoolRow = (await pool.query('select finance_currency from schools where id=$1', [fresh.schoolId])).rows[0];
+    const rows = (await pool.query('select currency,amount_cents from finance_fee_structures where school_id=$1', [fresh.schoolId])).rows;
+    expect(rows).toHaveLength(1); expect(rows[0]).toEqual({ currency: schoolRow.finance_currency, amount_cents: 12345 });
+    if (schoolRow.finance_currency === 'MAD') expect(results.filter(r => r.status === 'rejected')).toHaveLength(1);
+    else expect(results.every(r => r.status === 'fulfilled')).toBe(true);
+  });
   const input = (amountCents = 6000) => ({ requestKey: randomUUID(), confirmed: true, studentId, method: 'CASH', amountCents, receivedOn: '2025-11-01', allocations: [{ chargeId: id, amountCents }] });
   const reversal = () => ({ requestKey: randomUUID(), confirmed: true, reason: 'Correct offline record' });
   async function waitForBlocked(minimum: number) {

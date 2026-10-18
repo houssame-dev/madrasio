@@ -12,8 +12,8 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
 const fetcher = vi.fn<typeof fetch>();
 const clients: QueryClient[] = [];
 const ids = { year: '10000000-0000-4000-8000-000000000001', type: '10000000-0000-4000-8000-000000000002', structure: '10000000-0000-4000-8000-000000000003', student: '10000000-0000-4000-8000-000000000004' };
-const state = { types: [{ id: ids.type, name: 'Tuition', active: true }], years: [{ id: ids.year, name: '2025/26', startDate: '2025-09-01', endDate: '2026-07-01', status: 'ACTIVE' }], levels: [], classes: [], students: [{ id: ids.student, firstName: 'Amina', lastName: 'Test' }], charges: [], page: 1, total: 0,
-  structures: [{ id: ids.structure, academicYearId: ids.year, feeTypeId: ids.type, amountCents: 12345, cadence: 'MONTHLY', levelId: null, active: true, revision: 1, periods: [{ period: '2026-01', dueDate: '2026-01-10' }] }] };
+const state = { settings: { currency: 'MAD', locked: true }, types: [{ id: ids.type, name: 'Tuition', active: true }], years: [{ id: ids.year, name: '2025/26', startDate: '2025-09-01', endDate: '2026-07-01', status: 'ACTIVE' }], levels: [], classes: [], students: [{ id: ids.student, firstName: 'Amina', lastName: 'Test' }], charges: [], page: 1, total: 0,
+  structures: [{ id: ids.structure, academicYearId: ids.year, feeTypeId: ids.type, amountCents: 12345, currency: 'MAD', cadence: 'MONTHLY', levelId: null, active: true, revision: 1, periods: [{ period: '2026-01', dueDate: '2026-01-10' }] }] };
 beforeEach(() => { fetcher.mockReset(); vi.stubGlobal('fetch', fetcher); fetcher.mockImplementation(async () => Response.json({ data: state })); });
 afterEach(() => { cleanup(); clients.forEach(c => c.clear()); clients.length = 0; vi.unstubAllGlobals(); });
 function show(locale: SupportedLocale = 'en', role: Role = 'SCHOOL_ADMIN') {
@@ -42,6 +42,22 @@ it.each<SupportedLocale>(['en', 'fr', 'ar'])('renders localized configuration, p
   expect(call[1]?.credentials).toBe('same-origin');
 });
 it('shows safe errors and an explicit retry', async () => { fetcher.mockRejectedValue(new Error('synthetic')); show(); expect(await screen.findByRole('alert')).toHaveTextContent(getCatalog('en').finance.error); expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument(); });
+it.each<SupportedLocale>(['en', 'fr', 'ar'])('offers accessible School currency configuration and locks existing records in %s', async locale => {
+  const t = getCatalog(locale).finance, user = userEvent.setup();
+  fetcher.mockImplementation(async () => Response.json({ data: { ...state, settings: { currency: 'EUR', locked: false }, structures: [] } }));
+  show(locale);
+  const select = await screen.findByLabelText(t.currency);
+  expect(select).toHaveValue('EUR'); expect(select).toBeEnabled();
+  await user.selectOptions(select, 'GBP');
+  const form = select.closest('form')!;
+  fetcher.mockImplementation(async path => Response.json({ data: String(path).endsWith('/settings') ? { currency: 'GBP', locked: false } : { ...state, settings: { currency: 'GBP', locked: true } } }));
+  await user.click(within(form).getByRole('button', { name: t.save }));
+  await waitFor(() => expect(screen.getByLabelText(t.currency)).toBeDisabled());
+  expect(screen.getByLabelText(t.currency)).toHaveValue('GBP');
+  expect(screen.getByText(t.currencyLocked)).toBeInTheDocument();
+  const call = fetcher.mock.calls.find(([p]) => String(p).endsWith('/settings'))!;
+  expect(call[1]?.method).toBe('PATCH'); expect(JSON.parse(String(call[1]?.body))).toEqual({ currency: 'GBP' });
+});
 it('submits exact-cent configuration with explicit cross-year months and individual due dates', async () => {
   const t = getCatalog('en').finance, user = userEvent.setup(); show();
   await screen.findByRole('heading', { name: t.title, level: 1 });

@@ -1213,3 +1213,8 @@ offline payment allocation, reversal, receipts, current balances, collections an
 outstanding/aging reports follow [Finance V1](finance-v1.md), the authoritative Pass 1–3 contract. This does not
 introduce online payments, SaaS billing, payroll, automatic enrollment charges or
 an Accountant role. Existing tenant, authorization and historical-data rules apply.
+
+Finance currency is School-scoped (MAD by default; EUR, USD and GBP also supported),
+uses integer minor units with two fractional digits, and is fixed once any fee
+structure, charge or payment exists. No exchange rates or conversions are supported.
+Financial snapshots and same-currency allocation integrity follow the Finance V1 contract.

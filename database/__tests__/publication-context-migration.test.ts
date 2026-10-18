@@ -12,12 +12,12 @@ afterEach(async () => { await client?.close(); });
 
 it('replays the current chain from zero and retains the nullable JSONB schema snapshot', async () => {
   ({ client } = await createTestDb());
-  expect((await client.query<{ count: number }>('select count(*)::int as count from drizzle.__drizzle_migrations')).rows[0].count).toBe(25);
+  expect((await client.query<{ count: number }>('select count(*)::int as count from drizzle.__drizzle_migrations')).rows[0].count).toBe(26);
   expect((await client.query("select data_type,is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='result_publications' and column_name='display_context'")).rows).toEqual([{ data_type: 'jsonb', is_nullable: 'YES', column_default: null }]);
   const snapshot = JSON.parse(await readFile(join(migrationsFolder, 'meta/0018_snapshot.json'), 'utf8'));
   expect(snapshot.tables['public.result_publications'].columns.display_context).toMatchObject({ type: 'jsonb', notNull: false });
   expect((await client.query<{ count: number }>("select count(*)::int as count from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity")).rows[0].count).toBe(51);
-});
+}, 30000);
 
 it('upgrades a populated 0000–0017 publication without inventing historical labels or changing existing fields', async () => {
   client = new PGlite(); await createSupabaseAuth(client);
@@ -30,8 +30,9 @@ it('upgrades a populated 0000–0017 publication without inventing historical la
   const userId = randomUUID();
   await client.query('insert into auth.users(id,email) values ($1,$2)', [userId, 'migration@example.test']);
   await client.query('insert into users(id,email) values ($1,$2)', [userId, 'migration@example.test']);
-  const [school] = await db.insert(schema.schools).values({ name: 'Current school' }).returning();
-  const schoolId = school.id;
+  // Seed the historical schema, before finance_currency exists in 0025.
+  const schoolId = randomUUID();
+  await client.query('insert into schools(id,name) values ($1,$2)', [schoolId, 'Current school']);
   const [year] = await db.insert(schema.academicYears).values({ schoolId, name: 'Current year label', startDate: '2025-09-01', endDate: '2026-07-01' }).returning();
   const [stage] = await db.insert(schema.stages).values({ schoolId, name: 'Stage', sequence: 1 }).returning();
   const [level] = await db.insert(schema.levels).values({ schoolId, stageId: stage.id, name: 'Level', sequence: 1 }).returning();

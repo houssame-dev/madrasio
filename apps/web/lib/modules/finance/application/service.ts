@@ -5,6 +5,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@school/database';
 import { requireOperation, type AuthorizationDb } from '@/lib/authorization/server';
 import { ConflictError, NotFoundError, ValidationError, BusinessRuleViolationError, ForbiddenError } from '@/lib/errors';
+import { currencySettingsSchema } from '../domain/currency';
 import { adjustmentSchema, feeTypeSchema, generateSchema, previewSchema, schoolToday, structurePatchSchema, structureSchema, validatePeriods,
   type AdjustmentInput, type ChargeSelection, type GenerateInput } from '../domain/contracts';
 
@@ -43,6 +44,27 @@ async function configuration<T>(operation: () => Promise<T>) {
   }
 }
 
+async function currencyLocked(db: FinanceDb | Tx, schoolId: string) {
+  const [row] = await db.select({ locked: sql<boolean>`exists(select 1 from ${feeStructures} where ${feeStructures.schoolId}=${schoolId}) or exists(select 1 from ${studentCharges} where ${studentCharges.schoolId}=${schoolId}) or exists(select 1 from ${schema.financePayments} where ${schema.financePayments.schoolId}=${schoolId})` }).from(schools).where(eq(schools.id, schoolId));
+  return row.locked;
+}
+export async function financeSettings(db: FinanceDb, actor: FinanceActor) {
+  await authorize(db, actor);
+  const [school] = await db.select({ currency: schools.financeCurrency }).from(schools).where(eq(schools.id, actor.schoolId));
+  return { currency: school.currency, locked: await currencyLocked(db, actor.schoolId) };
+}
+export async function setFinanceCurrency(db: FinanceDb, actor: FinanceActor, raw: unknown) {
+  const input = currencySettingsSchema.parse(raw); await authorize(db, actor, true);
+  return db.transaction(async tx => {
+    const school = await lock(tx, actor);
+    const locked = await currencyLocked(tx, actor.schoolId);
+    if (school.financeCurrency === input.currency) return { currency: input.currency, locked };
+    if (locked) throw new ConflictError('Currency cannot change after financial records exist.');
+    await tx.update(schools).set({ financeCurrency: input.currency, updatedAt: new Date() }).where(eq(schools.id, actor.schoolId));
+    return { currency: input.currency, locked: false };
+  });
+}
+
 export async function saveFeeType(db: FinanceDb, actor: FinanceActor, raw: unknown, id?: string) {
   const input = feeTypeSchema.parse(raw); await authorize(db, actor, true);
   return configuration(() => db.transaction(async tx => {
@@ -55,7 +77,7 @@ export async function saveFeeType(db: FinanceDb, actor: FinanceActor, raw: unkno
 export async function saveStructure(db: FinanceDb, actor: FinanceActor, raw: unknown, id?: string) {
   await authorize(db, actor, true);
   return configuration(() => db.transaction(async tx => {
-    await lock(tx, actor);
+    const school = await lock(tx, actor);
     if (id) {
       const input = structurePatchSchema.parse(raw);
       const [current] = await tx.select().from(feeStructures).where(and(eq(feeStructures.schoolId, actor.schoolId), eq(feeStructures.id, id))).for('update');
@@ -70,7 +92,7 @@ export async function saveStructure(db: FinanceDb, actor: FinanceActor, raw: unk
     const [type] = await tx.select().from(feeTypes).where(and(eq(feeTypes.schoolId, actor.schoolId), eq(feeTypes.id, input.feeTypeId), eq(feeTypes.active, true)));
     if (!type) throw new NotFoundError();
     if (input.levelId && !(await tx.select({ id: levels.id }).from(levels).where(and(eq(levels.schoolId, actor.schoolId), eq(levels.id, input.levelId), eq(levels.status, 'ACTIVE')))).length) throw new NotFoundError();
-    return (await tx.insert(feeStructures).values({ ...input, schoolId: actor.schoolId, createdBy: actor.userId!, updatedBy: actor.userId! }).returning())[0];
+    return (await tx.insert(feeStructures).values({ ...input, currency: school.financeCurrency, schoolId: actor.schoolId, createdBy: actor.userId!, updatedBy: actor.userId! }).returning())[0];
   }));
 }
 
@@ -91,7 +113,7 @@ export async function listFinance(db: FinanceDb, actor: FinanceActor, input: { a
       .where(conditions).orderBy(desc(studentCharges.createdAt), asc(studentCharges.id)).limit(50).offset((input.page - 1) * 50),
     db.select({ count: sql<number>`count(*)::int` }).from(studentCharges).where(conditions),
   ]);
-  return { types, structures, years, levels: levelRows, classes: classRows, students: studentRows, charges, total: total[0].count, page: input.page };
+  return { settings: await financeSettings(db, actor), types, structures, years, levels: levelRows, classes: classRows, students: studentRows, charges, total: total[0].count, page: input.page };
 }
 export async function chargeDetail(db: FinanceDb, actor: FinanceActor, id: string) {
   await authorize(db, actor);
@@ -149,7 +171,7 @@ export async function generateCharges(db: FinanceDb, actor: FinanceActor, raw: G
     const rows = value.items.filter(item => !item.existingChargeId).map(item => ({ schoolId: actor.schoolId, studentId: item.studentId,
         academicYearId: value.structure.academicYearId, feeTypeId: value.structure.feeTypeId, structureId: value.structure.id,
         batchId: batch.id, classId: item.classId, feeName: value.feeName, structureRevision: value.structure.revision,
-        period: item.period, dueDate: item.dueDate, originalCents: item.amountCents }));
+        period: item.period, dueDate: item.dueDate, originalCents: item.amountCents, currency: value.structure.currency }));
     // Bound parameter counts and database round trips without splitting the atomic batch.
     for (let offset = 0; offset < rows.length; offset += 250) {
       const inserted = await tx.insert(studentCharges).values(rows.slice(offset, offset + 250)).returning({ id: studentCharges.id });

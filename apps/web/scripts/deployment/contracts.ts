@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const STAGING_PROJECT_REF = 'cqeaxlttezunirsmkrxz';
-export const EXPECTED_MIGRATION_COUNT = 25;
+export const EXPECTED_MIGRATION_COUNT = 26;
 export const EXPECTED_TABLE_COUNT = 51;
-export const EXPECTED_LATEST_MIGRATION = '0024_finance-offline-payments';
+export const EXPECTED_LATEST_MIGRATION = '0025_school-finance-currency';
 export const STAGING_VERCEL_PROJECT = 'madrasio-staging';
 export const CRON_SCHEDULE = '* * * * *';
 

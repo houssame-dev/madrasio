@@ -2,6 +2,49 @@
 
 Last updated: **2026-10-18**
 
+## Current handoff — FINANCE_V1_SCHOOL_CURRENCY (2026-10-18)
+
+**LOCAL IMPLEMENTATION VALIDATED — not committed or deployed.** Started from a
+clean `main` at `99a3e1c5b34211d7ec468c1f67d2a0283d79b8ef`. The owner reports the
+previous Finance V1 release successfully deployed; earlier local-only handoffs
+below are historical and are not the current release state. No hosted state was
+requeried in this checkpoint.
+
+Finance configuration now supports School Admin selection of MAD (default), EUR,
+USD or GBP before any fee structure, charge or payment exists. Existing Schools
+and financial amounts remain MAD without conversion. School-row locking serializes
+configuration with monetary creation; currency-aware foreign keys also prevent
+School/charge/payment/allocation mismatches. Currency snapshots flow through fees,
+charges, payments, allocations, receipts, reports and CSVs. Inactive, cancelled and
+reversed records still prevent currency changes. EN/FR/AR copy and existing RTL
+presentation are preserved. See [the Finance contract](domain/finance-v1.md).
+
+Forward migration `0025_school-finance-currency` adds School and allocation
+currency columns, extends the supported-currency checks and adds consistency
+keys. All deployed SQL/snapshots through 0024 are unchanged; the journal appends
+only index 25 (26 migrations, still 51 application tables). Apply 0025 before
+deploying code selecting the new columns. Historical 0022/0024 recovery formats
+remain valid with their exact matching source/migration chain. Do not roll back
+to the MAD-only application once non-MAD financial records exist.
+
+**Local evidence:** credential-free source copy, cleared child environment,
+offline installed tooling and synthetic configuration. Root lint and TypeScript
+passed; production build passed. Focused Finance/API/UI/authorization/deployment/
+catalog/security checks passed **242** (11 native opt-in cases skipped there);
+the separate PostgreSQL 17.6 run passed **all 11**, including both currency versus
+first-structure contention cases. Migration/upgrade/security checks passed **27**;
+affected recovery checks passed **105**, including 0024 bundle compatibility.
+Earlier diagnostics exposed stale migration-count expectations, a missing browser
+fixture allocation currency and a pre-0025 fixture using the current School ORM;
+those fixtures were corrected and affected checks passed. Full root unit suite,
+browser smoke and a new encrypted operational backup were not run here.
+
+**Next separately authorized STAGING checkpoint:** verify the target, fresh recovery
+point, 0024 ledger and exact release inventory; then authorize migration 0025 before
+exact-SHA application deployment and authenticated School Admin currency acceptance
+on disposable test data. No hosted migration, provider access, commit, push or
+deployment occurred in this checkpoint. Production remains outside this task.
+
 ## Current handoff — FINANCE_V1_RELEASE_VALIDATION_FIX_06 (2026-10-18)
 
 **VALIDATION_PASS — local unit and native encrypted recovery blockers cleared; no release performed.** `main` remains at `1b60ee5b831d266e1ee499367a26b41fa0d59c09`, with **42 modified tracked / 56 untracked / zero staged, deleted or conflicted files**. This checkpoint changes only this handoff in the repository; all Finance/recovery implementation, tests and migration bytes are preserved. Earlier partial results below remain historical evidence.

@@ -20,7 +20,7 @@ for (const [locale, t, c, p] of [['en', reportsEn, financeEn, paymentEn], ['fr',
         let data: unknown;
         if (url.pathname === '/api/v1/me') data = { user: { id: 'admin' }, currentSchool: { id: 'school', role: 'SCHOOL_ADMIN', timezone: 'UTC' }, memberships: [{ schoolId: 'school', schoolName: 'Synthetic School', role: 'SCHOOL_ADMIN', status: 'ACTIVE' }] };
         else if (url.pathname.endsWith('/unread-count')) data = { count: 0 };
-        else if (url.pathname === '/api/v1/finance') data = { types: [], structures: [], years: [{ id: 'year', name: '2025/26' }], classes: [{ id: 'class', academicYearId: 'year', name: 'Class A' }], students: [student], charges: [], levels: [], total: 0, page: 1 };
+        else if (url.pathname === '/api/v1/finance') data = { settings: { currency: 'MAD', locked: true }, types: [], structures: [], years: [{ id: 'year', name: '2025/26' }], classes: [{ id: 'class', academicYearId: 'year', name: 'Class A' }], students: [student], charges: [], levels: [], total: 0, page: 1 };
         else if (url.pathname.endsWith('/payments/students')) data = [student];
         else if (url.pathname.includes('/reports/')) {
           requests.push(url.pathname + url.search);
@@ -58,7 +58,7 @@ test('long receipt prints all allocation rows across pages', async ({ page, cont
     if (!url.pathname.startsWith('/api/v1/')) return route.continue();
     const data = url.pathname === '/api/v1/me' ? { user: { id: 'admin' }, currentSchool: { id: 'school', role: 'SCHOOL_ADMIN', timezone: 'UTC' }, memberships: [{ schoolId: 'school', schoolName: 'Print Test School', role: 'SCHOOL_ADMIN', status: 'ACTIVE' }] }
       : url.pathname.endsWith('/unread-count') ? { count: 0 }
-      : { payment: { id: 'long-payment', receiptReference: 'R-MULTIPAGE', schoolName: 'Print Test School', schoolTimezone: 'UTC', studentName: 'Synthetic Student', receivedOn: '2026-01-01', method: 'CASH', amountCents: 6000, recordedBy: 'admin', recordedAt: '2026-01-01T12:00:00Z', reference: null }, allocations, reversal: null };
+      : { payment: { id: 'long-payment', receiptReference: 'R-MULTIPAGE', currency: 'MAD', schoolName: 'Print Test School', schoolTimezone: 'UTC', studentName: 'Synthetic Student', receivedOn: '2026-01-01', method: 'CASH', amountCents: 6000, recordedBy: 'admin', recordedAt: '2026-01-01T12:00:00Z', reference: null }, allocations, reversal: null };
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ data }) });
   });
   await page.goto('/finance/receipts/long-payment'); await expect(page.getByRole('heading', { name: 'Receipt', exact: true })).toBeVisible();
@@ -75,7 +75,7 @@ for (const [locale, t] of [['en', financeEn], ['fr', financeFr], ['ar', financeA
       await context.addCookies([{ name: 'MADRASIO_LOCALE', value: locale, url: baseURL!, httpOnly: true, sameSite: 'Lax' }]);
       const structure = { id: 'structure', feeTypeId: 'type', academicYearId: 'year', amountCents: 125099, active: true, levelId: null, cadence: 'MONTHLY', revision: 1, periods: [{ period: '2099-01', dueDate: '2099-01-10' }] };
       const charge = { id: 'charge', feeName: 'Tuition', period: '2099-01', dueDate: '2099-01-10', originalCents: 125099, reductionCents: 0, allocatedCents: 0, status: 'OPEN' };
-      const state = { types: [{ id: 'type', name: 'Tuition', active: true }], structures: [structure], years: [{ id: 'year', name: '2098/99', startDate: '2098-09-01', endDate: '2099-07-01' }], levels: [], classes: [], students: [{ id: 'student', firstName: 'Amina', lastName: 'Test' }], charges: [] as { charge: typeof charge; studentName: string }[], page: 1, total: 0 };
+      const state = { settings: { currency: 'MAD', locked: true }, types: [{ id: 'type', name: 'Tuition', active: true }], structures: [structure], years: [{ id: 'year', name: '2098/99', startDate: '2098-09-01', endDate: '2099-07-01' }], levels: [], classes: [], students: [{ id: 'student', firstName: 'Amina', lastName: 'Test' }], charges: [] as { charge: typeof charge; studentName: string }[], page: 1, total: 0 };
       let previews = 0, generations = 0; const events: { kind: string; reason: string; beforeCents: number; afterCents: number; occurredAt: string; id: string }[] = [];
       const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', async route => {
@@ -129,7 +129,7 @@ for (const [locale, t, method] of [['en', paymentEn, 'CASH'], ['fr', paymentFr, 
       await context.addCookies([{ name: 'MADRASIO_LOCALE', value: locale, url: baseURL!, httpOnly: true, sameSite: 'Lax' }]);
       const charges = ['old', 'new'].map((id, i) => ({ id, feeName: 'Tuition', period: i ? '2026-01' : '2025-12', dueDate: i ? '2026-01-10' : '2025-12-10', originalCents: 10000, reductionCents: 0, allocatedCents: 0, status: 'OPEN' }));
       const payment = { id: 'payment', schoolId: 'school', studentId: 'student', requestKey: 'synthetic', requestHash: 'a'.repeat(64), receiptReference: 'R-STABLE', schoolName: 'Original School', schoolTimezone: 'UTC', studentName: 'Amina Test', method, amountCents: 15000, currency: 'MAD', receivedOn: '2026-01-01', reference: 'Paper reference', recordedBy: 'admin', recordedAt: new Date('2026-01-01T12:00:00Z') };
-      const detail = { payment, allocations: charges.map((c, i) => ({ id: `allocation-${i}`, schoolId: 'school', studentId: 'student', paymentId: 'payment', chargeId: c.id, feeName: c.feeName, period: c.period, dueDate: c.dueDate, amountCents: i ? 10000 : 5000 })), reversal: null as null | { id: string; schoolId: string; studentId: string; paymentId: string; requestKey: string; requestHash: string; reason: string; reversalReference: string; reversedBy: string; reversedAt: Date } };
+      const detail = { payment, allocations: charges.map((c, i) => ({ id: `allocation-${i}`, schoolId: 'school', studentId: 'student', paymentId: 'payment', chargeId: c.id, currency: 'MAD', feeName: c.feeName, period: c.period, dueDate: c.dueDate, amountCents: i ? 10000 : 5000 })), reversal: null as null | { id: string; schoolId: string; studentId: string; paymentId: string; requestKey: string; requestHash: string; reason: string; reversalReference: string; reversedBy: string; reversedAt: Date } };
       let recorded = false; const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
       await context.route('**/*', async route => {
         const url = new URL(route.request().url()); if (url.origin !== new URL(baseURL!).origin) return route.abort();
@@ -137,7 +137,7 @@ for (const [locale, t, method] of [['en', paymentEn, 'CASH'], ['fr', paymentFr, 
         let data: unknown;
         if (url.pathname === '/api/v1/me') data = { user: { id: 'admin' }, currentSchool: { id: 'school', role: 'SCHOOL_ADMIN', timezone: 'UTC' }, memberships: [{ schoolId: 'school', schoolName: 'Original School', role: 'SCHOOL_ADMIN', status: 'ACTIVE' }] };
         else if (url.pathname === '/api/v1/notifications/unread-count') data = { count: 0 };
-        else if (url.pathname === '/api/v1/finance') data = { types: [], structures: [], years: [], levels: [], classes: [], students: [], charges: [], page: 1, total: 0 };
+        else if (url.pathname === '/api/v1/finance') data = { settings: { currency: 'MAD', locked: true }, types: [], structures: [], years: [], levels: [], classes: [], students: [], charges: [], page: 1, total: 0 };
         else if (url.pathname.endsWith('/payments/students')) data = [{ id: 'student', firstName: 'Amina', lastName: 'Test' }];
         else if (url.pathname.endsWith('/payments/options')) data = { student: { id: 'student' }, charges: charges.filter(c => c.allocatedCents < c.originalCents), hasMore: false, suggested: [] };
         else if (url.pathname.endsWith('/payments') && route.request().method() === 'GET') data = { items: recorded ? [{ payment, reversal: detail.reversal }] : [], total: recorded ? 1 : 0, page: 1 };

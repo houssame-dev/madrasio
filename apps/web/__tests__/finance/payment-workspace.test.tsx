@@ -13,11 +13,11 @@ beforeEach(() => { fetcher.mockReset(); vi.stubGlobal('fetch', fetcher); fetcher
   if (url.includes('/students?')) data = [{ id: 'student', firstName: 'Amina', lastName: 'Test' }];
   else if (url.includes('/options?')) data = { student: { id: 'student' }, charges: rows, hasMore: false, suggested: [] };
   else if (url.includes('/payments?')) data = { items: [], total: 0, page: 1 };
-  else data = { payment: { id: 'payment', receiptReference: 'R-STABLE', amountCents: 15000, studentName: 'Amina Test', method: 'CASH', receivedOn: '2026-01-01' }, allocations: [], reversal: null };
+  else data = { payment: { id: 'payment', receiptReference: 'R-STABLE', currency: 'MAD', amountCents: 15000, studentName: 'Amina Test', method: 'CASH', receivedOn: '2026-01-01' }, allocations: [], reversal: null };
   return Response.json({ data });
 }); });
 afterEach(() => { cleanup(); clients.forEach(c => c.clear()); clients.length = 0; vi.unstubAllGlobals(); });
-function show(locale: SupportedLocale, initialStudentId = '') { const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); clients.push(client); return render(<NextIntlClientProvider locale={locale} messages={getCatalog(locale)} timeZone="UTC"><QueryClientProvider client={client}><div dir={locale === 'ar' ? 'rtl' : 'ltr'}><PaymentsWorkspace initialStudentId={initialStudentId} schoolId="school" timezone="UTC" /></div></QueryClientProvider></NextIntlClientProvider>); }
+function show(locale: SupportedLocale, initialStudentId = '') { const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); clients.push(client); return render(<NextIntlClientProvider locale={locale} messages={getCatalog(locale)} timeZone="UTC"><QueryClientProvider client={client}><div dir={locale === 'ar' ? 'rtl' : 'ltr'}><PaymentsWorkspace initialStudentId={initialStudentId} schoolId="school" timezone="UTC" currency="MAD" /></div></QueryClientProvider></NextIntlClientProvider>); }
 it.each<SupportedLocale>(['en', 'fr', 'ar'])('allows editable oldest-first allocation with explicit confirmation in %s', async locale => {
   const user = userEvent.setup(), t = getCatalog(locale).financePayments; show(locale);
   await screen.findByRole('option', { name: 'Amina Test' }); await user.selectOptions(screen.getByLabelText(t.student), 'student');

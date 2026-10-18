@@ -7,7 +7,7 @@ import { Button } from '@school/ui';
 import { Field, inputClassName } from '@/components/academic/ui';
 import { apiRequest } from '@/lib/frontend/api-client';
 import { schoolToday } from '@/lib/modules/finance/domain/contracts';
-import { formatMAD } from '@/lib/modules/finance/domain/csv';
+import { formatMoney } from '@/lib/modules/finance/domain/csv';
 import type { collectionsReport, outstandingReport, studentBalance } from '@/lib/modules/finance/application/reports';
 
 type Outstanding = Awaited<ReturnType<typeof outstandingReport>>;
@@ -31,7 +31,7 @@ export function ReportsWorkspace({ schoolId, timezone, years, classes, onPayment
   const students = useQuery({ queryKey: [...key, 'students', search], queryFn: () => apiRequest<{ data: { id: string; firstName: string; lastName: string }[] }>(`/api/v1/finance/payments/students?search=${encodeURIComponent(search)}`), retry: false });
   const active = mode === 'outstanding' ? outstanding : collections;
   const o = outstanding.data?.data, r = collections.data?.data;
-  const money = (n: number) => formatMAD(n, locale);
+  const money = (n: number) => formatMoney(n, locale, (mode === 'outstanding' ? o?.currency : r?.currency) ?? 'MAD');
   const total = mode === 'outstanding' ? o?.summary.students ?? 0 : r?.total ?? 0;
   function change(action: () => void) { action(); setPage(1); setExportState(null); }
   async function download() {
@@ -80,7 +80,7 @@ export function ReportsWorkspace({ schoolId, timezone, years, classes, onPayment
 function StudentOverview({ schoolId, id, onClose, onPayments }: { schoolId: string; id: string; onClose: () => void; onPayments: (id: string) => void }) {
   const t = useTranslations('financeReports'), c = useTranslations('finance'), locale = useLocale(); const [page, setPage] = useState(1);
   const balance = useQuery({ queryKey: ['finance', schoolId, 'balance', id, page], queryFn: () => apiRequest<{ data: Balance }>(`/api/v1/finance/students/${id}/balance?page=${page}`), retry: false });
-  const d = balance.data?.data; const money = (n: number) => formatMAD(n, locale);
+  const d = balance.data?.data; const money = (n: number) => formatMoney(n, locale, d?.currency ?? 'MAD');
   return <section className="min-w-0 space-y-3 rounded-lg border p-4" aria-label={t('balance')}><div className="flex flex-wrap justify-between gap-2"><h3 className="text-xl font-semibold">{t('balance')}</h3><Button variant="ghost" onClick={onClose}>{c('close')}</Button></div>
     {balance.isPending ? <p role="status">{c('loading')}</p> : balance.isError || !d ? <p role="alert">{c('error')}<Button onClick={() => void balance.refetch()}>{c('retry')}</Button></p> : <>
       <p><bdi>{d.student.firstName} {d.student.lastName}</bdi> · {t('asOf')} <bdi>{d.today}</bdi></p>

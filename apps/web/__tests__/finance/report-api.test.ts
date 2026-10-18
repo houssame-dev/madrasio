@@ -11,8 +11,8 @@ const schoolId = randomUUID(), userId = randomUUID(), id = randomUUID();
 const request = (query: string) => new Request(`https://school.example.test/api/v1/finance/reports/x?${query}`);
 beforeEach(() => {
   vi.resetAllMocks(); mock.actor.mockResolvedValue({ userId, schoolContext: { schoolId } });
-  mock.collections.mockResolvedValue({ from: '2026-01-01', to: '2026-01-31', today: '2026-02-10', timezone: 'Africa/Casablanca', items: [{ id, studentName: '=HYPERLINK("secret")', method: 'CASH', amountCents: 123, receiptReference: 'R-test', receivedOn: '2026-01-01', reversalReference: 'REV-test', reversedAt: new Date('2026-02-10T12:00:00Z') }] });
-  mock.outstanding.mockResolvedValue({ today: '2026-02-10', timezone: 'UTC', items: [{ studentName: 'طالب', netCents: 1000, paidCents: 500, outstandingCents: 500, notOverdueCents: 0, days1to30Cents: 500, days31to60Cents: 0, days61plusCents: 0 }] });
+  mock.collections.mockResolvedValue({ currency: 'EUR', from: '2026-01-01', to: '2026-01-31', today: '2026-02-10', timezone: 'Africa/Casablanca', items: [{ id, studentName: '=HYPERLINK("secret")', method: 'CASH', amountCents: 123, receiptReference: 'R-test', receivedOn: '2026-01-01', reversalReference: 'REV-test', reversedAt: new Date('2026-02-10T12:00:00Z') }] });
+  mock.outstanding.mockResolvedValue({ currency: 'GBP', today: '2026-02-10', timezone: 'UTC', items: [{ studentName: 'طالب', netCents: 1000, paidCents: 500, outstandingCents: 500, notOverdueCents: 0, days1to30Cents: 500, days31to60Cents: 0, days61plusCents: 0 }] });
   mock.balance.mockResolvedValue({ student: { id } });
 });
 it('binds all JSON reports to verified School and user and marks them private', async () => {
@@ -25,7 +25,7 @@ it('binds all JSON reports to verified School and user and marks them private', 
 it('exports all filtered rows through the same service, preserves reversal trace and sanitizes formulas', async () => {
   const response = await collectionsGET(request(`from=2026-01-01&to=2026-01-31&studentId=${id}&page=2&format=csv`));
   expect(mock.collections.mock.calls[0][4]).toBe(true); expect(mock.collections.mock.calls[0][2]).toMatchObject({ studentId: id, page: 2 });
-  const csv = await response.text(); expect(csv).toContain('"\'=HYPERLINK'); expect(csv).toContain('"1.23","0.00","R-test","REV-test"'); expect(csv).toContain('2026-02-10T12:00:00.000Z');
+  const csv = await response.text(); expect(csv).toContain('Gross EUR'); expect(csv).not.toContain('MAD'); expect(csv).toContain('"\'=HYPERLINK'); expect(csv).toContain('"1.23","0.00","R-test","REV-test"'); expect(csv).toContain('2026-02-10T12:00:00.000Z');
   expect(response.headers.get('content-type')).toBe('text/csv; charset=utf-8'); expect(response.headers.get('content-disposition')).toContain('attachment;'); expect(response.headers.get('x-content-type-options')).toBe('nosniff');
   expect(response.headers.get('cache-control')).toBe('private, no-store');
 });

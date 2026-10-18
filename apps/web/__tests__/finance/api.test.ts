@@ -2,11 +2,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { UnauthenticatedError, ForbiddenError } from '@/lib/errors';
-const mock = vi.hoisted(() => ({ context: vi.fn(), list: vi.fn(), save: vi.fn(), generate: vi.fn() }));
+const mock = vi.hoisted(() => ({ context: vi.fn(), list: vi.fn(), save: vi.fn(), generate: vi.fn(), settings: vi.fn(), currency: vi.fn() }));
 vi.mock('@/lib/db/client', () => ({ getDb: () => 'synthetic-db' }));
 vi.mock('@/lib/auth/require-context', () => ({ requireCurrentContext: mock.context }));
-vi.mock('@/lib/modules/finance/application/service', () => ({ listFinance: mock.list, saveFeeType: mock.save, generateCharges: mock.generate }));
-import { stateGET, typePOST, generatePOST } from '@/lib/api/finance';
+vi.mock('@/lib/modules/finance/application/service', () => ({ listFinance: mock.list, saveFeeType: mock.save, generateCharges: mock.generate, financeSettings: mock.settings, setFinanceCurrency: mock.currency }));
+import { stateGET, typePOST, generatePOST, settingsGET, settingsPATCH } from '@/lib/api/finance';
 const userId = randomUUID(), schoolId = randomUUID();
 beforeEach(() => { vi.resetAllMocks(); mock.context.mockResolvedValue({ userId, schoolContext: { schoolId } }); mock.list.mockResolvedValue({ charges: [] }); mock.save.mockResolvedValue({ name: 'Tuition' }); });
 function request(body: unknown, origin: string | null = 'https://school.example.test') {
@@ -14,6 +14,15 @@ function request(body: unknown, origin: string | null = 'https://school.example.
 }
 function privateResponse(response: Response) { expect(response.headers.get('cache-control')).toBe('private, no-store'); expect(response.headers.get('vary')).toBe('Cookie'); }
 describe('Finance HTTP boundary', () => {
+  it('binds currency settings to verified School identity and private responses', async () => {
+    mock.settings.mockResolvedValue({ currency: 'EUR', locked: false }); mock.currency.mockResolvedValue({ currency: 'EUR', locked: false });
+    for (const response of [await settingsGET(), await settingsPATCH(request({ currency: 'EUR' }))]) { expect(response.status).toBe(200); privateResponse(response); }
+    expect(mock.currency).toHaveBeenCalledWith('synthetic-db', { userId, schoolId }, { currency: 'EUR' });
+    for (const body of [{ currency: 'JPY' }, { currency: null }, { currency: 'USD', schoolId }, {}]) { const response = await settingsPATCH(request(body)); expect(response.status).toBe(400); privateResponse(response); }
+    mock.currency.mockClear();
+    for (const origin of [null, 'null', 'https://foreign.example.test']) { const response = await settingsPATCH(request({ currency: 'GBP' }, origin)); expect(response.status).toBe(403); privateResponse(response); }
+    expect(mock.currency).not.toHaveBeenCalled();
+  });
   it('uses verified server identity and returns private success', async () => {
     const response = await typePOST(request({ name: 'Tuition' }));
     expect(response.status).toBe(200); privateResponse(response);

@@ -7,7 +7,7 @@ import { recordPayment } from '@/lib/modules/finance/application/payments';
 import { applicationSecurityAuditSql } from '@school/database/security';
 import { createGradesTestDb, seedSchool, seedStudentAndActors, seedParentActor, type GradesTestDb } from '../grades/test-helpers';
 import { adjustCharge, chargeDetail, generateCharges, listFinance, previewCharges, saveFeeType, saveStructure, type FinanceDb } from '@/lib/modules/finance/application/service';
-import { adjustmentSchema, generateSchema, parseMAD, previewSchema, schoolToday, validatePeriods } from '@/lib/modules/finance/domain/contracts';
+import { adjustmentSchema, generateSchema, parseMoney, previewSchema, schoolToday, validatePeriods } from '@/lib/modules/finance/domain/contracts';
 
 let test: GradesTestDb; let db: FinanceDb;
 let school: Awaited<ReturnType<typeof seedSchool>>;
@@ -215,13 +215,13 @@ describe('authorization and tenant integrity', () => {
   it('replays the new schema with all application ACL protections intact', async () => {
     await test.client.exec('create role anon;create role authenticated;create role service_role');
     expect((await test.client.query(applicationSecurityAuditSql)).rows).toEqual([]);
-    expect((await test.client.query('select count(*)::int as n from drizzle.__drizzle_migrations')).rows).toEqual([{ n: 25 }]);
+    expect((await test.client.query('select count(*)::int as n from drizzle.__drizzle_migrations')).rows).toEqual([{ n: 26 }]);
   });
 });
 
 describe('strict money/date/selection contracts', () => {
-  it('uses exact MAD decimal arithmetic', () => { expect(parseMAD('1250.99')).toBe(125099); expect(parseMAD('0.01')).toBe(1); expect(parseMAD('9999999.99')).toBe(999999999); });
-  it.each(['0', '-1', '1.001', '1e4', 'NaN', '0.0001', '10000000'])('rejects invalid money %s', value => { expect(() => parseMAD(value)).toThrow(); });
+  it('uses exact two-decimal money arithmetic', () => { expect(parseMoney('1250.99')).toBe(125099); expect(parseMoney('0.01')).toBe(1); expect(parseMoney('9999999.99')).toBe(999999999); });
+  it.each(['0', '-1', '1.001', '1e4', 'NaN', '0.0001', '10000000'])('rejects invalid money %s', value => { expect(() => parseMoney(value)).toThrow(); });
   it('handles school-local dates without UTC cancellation drift', () => { expect(schoolToday('Pacific/Kiritimati', new Date('2025-12-09T12:30:00Z'))).toBe('2025-12-10'); });
   it('rejects extra authority fields, duplicate months, multiple selection modes and missing reasons', () => {
     expect(previewSchema.safeParse({ ...selection(), schoolId: randomUUID() }).success).toBe(false);
