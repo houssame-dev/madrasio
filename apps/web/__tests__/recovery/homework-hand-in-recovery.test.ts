@@ -25,7 +25,7 @@ it('recovers actual/unknown hand-in and immutable file associations in FK order;
     await source.test.client.query("update homework_submissions set actual_handed_in_at='2025-10-09T10:00:00Z' where id=$1", [recorded.id]);
     expect(await fingerprintTable(a, 'public.homework_submissions')).not.toEqual(original);
     await source.test.client.query("update homework_submissions set actual_handed_in_at='2025-10-10T10:00:00Z' where id=$1", [recorded.id]);
-    const order = buildRestoreOrder(await loadForeignKeys(a)); expect(order).toHaveLength(45);
+    const order = buildRestoreOrder(await loadForeignKeys(a)); expect(order).toHaveLength(53);
     expect(order.indexOf('public.homework_submission_attachments')).toBeGreaterThan(order.indexOf('public.homework_submissions'));
     expect(order.indexOf('public.homework_submission_attachments')).toBeGreaterThan(order.indexOf('public.files'));
     for (const table of order) {

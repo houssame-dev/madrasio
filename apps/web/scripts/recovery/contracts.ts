@@ -18,7 +18,7 @@ export const PINNED_TOOLS = {
 } as const;
 export const AGE_RUNTIME_VERSION = `v${PINNED_TOOLS.age}`;
 
-/** Durable allowlist through 0022. Full rows include actual hand-in and private submission attachment metadata, not R2 bytes. */
+/** Durable allowlist through 0024, including the complete Finance ledger. Not R2 bytes. */
 export const APPLICATION_TABLES = [
   'academic_periods',
   'academic_years',
@@ -36,6 +36,14 @@ export const APPLICATION_TABLES = [
   'curriculum_subjects',
   'curriculum_versions',
   'files',
+  'finance_charge_events',
+  'finance_fee_structures',
+  'finance_fee_types',
+  'finance_generation_batches',
+  'finance_payment_allocations',
+  'finance_payment_reversals',
+  'finance_payments',
+  'finance_student_charges',
   'gradebooks',
   'grades',
   'grading_configuration_versions',

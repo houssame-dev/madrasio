@@ -23,7 +23,7 @@ const result: RecoveryBundleResult = {
   outputPath: 'replaced-by-test',
   bytes: 42,
   ciphertextSha256: 'b'.repeat(64),
-  applicationTableCount: 43,
+  applicationTableCount: 51,
   authUserCount: 1,
 };
 

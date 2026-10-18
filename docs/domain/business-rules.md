@@ -1205,3 +1205,11 @@ The implementation must preserve these answers consistently across:
 - Database
 - Events
 - Background processing
+
+## Finance V1 addendum
+
+Student fee configuration, explicit charge generation, reductions, cancellation,
+offline payment allocation, reversal, receipts, current balances, collections and
+outstanding/aging reports follow [Finance V1](finance-v1.md), the authoritative Pass 1–3 contract. This does not
+introduce online payments, SaaS billing, payroll, automatic enrollment charges or
+an Accountant role. Existing tenant, authorization and historical-data rules apply.

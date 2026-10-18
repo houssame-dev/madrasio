@@ -6,7 +6,7 @@ import { navigationItems, isActiveNavigationPath } from '@/lib/frontend/navigati
 describe('unprefixed application routing', () => {
   it('preserves existing navigation paths', () => {
     expect(navigationItems.map((item) => item.href)).toEqual([
-      '/dashboard', '/academic', '/students', '/children', '/teachers', '/parents',
+      '/finance', '/dashboard', '/academic', '/students', '/children', '/teachers', '/parents',
       '/grades', '/attendance', '/homework', '/announcements', '/announcements/inbox', '/notifications',
     ]);
     expect(isActiveNavigationPath('/students/student-id', '/students')).toBe(true);

@@ -1,4 +1,10 @@
+import { reportsEn } from './finance-reports';
+import { paymentEn } from './finance-payments';
+import { financeEn } from './finance';
 const messages = {
+  financeReports: reportsEn,
+  financePayments: paymentEn,
+  finance: financeEn,
   foundation: {
     appName: 'Madrasio',
     actions: {
@@ -13,6 +19,7 @@ const messages = {
     landmark: 'Main navigation',
     items: {
       dashboard: 'Dashboard',
+      finance: 'Finance',
       academic: 'Academic Structure',
       students: 'Students',
       myChildren: 'My Children',

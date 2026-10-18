@@ -128,3 +128,4 @@ export * from './notifications';
 export * from './audit';
 export * from './files';
 export * from './homework-attachments';
+export * from './finance';

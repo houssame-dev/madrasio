@@ -1,6 +1,12 @@
+import { reportsAr } from './finance-reports';
+import { paymentAr } from './finance-payments';
 import type { Messages } from '../catalogs';
+import { financeAr } from './finance';
 
 const messages = {
+  financeReports: reportsAr,
+  financePayments: paymentAr,
+  finance: financeAr,
   foundation: {
     appName: 'Madrasio',
     actions: {
@@ -14,6 +20,7 @@ const messages = {
   navigation: {
     landmark: 'التنقل الرئيسي',
     items: {
+      finance: 'المالية',
       dashboard: 'لوحة التحكم',
       academic: 'الهيكل الدراسي',
       students: 'الطلاب',

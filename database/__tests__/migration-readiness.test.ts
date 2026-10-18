@@ -28,7 +28,7 @@ async function migrationInventory() {
 }
 
 describe('hosted migration readiness', () => {
-  it('creates an application User through the ORM on 0022 without a locale column', async () => {
+  it('creates an application User through the ORM at the current head without a locale column', async () => {
     const { client, db } = await createTestDb();
     try {
       expect((await client.query(`select column_name from information_schema.columns
@@ -57,8 +57,8 @@ describe('hosted migration readiness', () => {
     );
     expect(journal.entries.map((entry) => `${entry.tag}.sql`)).toEqual(files);
     expect(new Set(journal.entries.map((entry) => entry.tag)).size).toBe(journal.entries.length);
-    expect(files).toHaveLength(23);
-    expect(files.at(-1)).toBe('0022_homework-actual-handin-attachments.sql');
+    expect(files).toHaveLength(25);
+    expect(files.at(-1)).toBe('0024_finance-offline-payments.sql');
   });
 
   it('references Supabase Auth without owning its managed schema or table', async () => {

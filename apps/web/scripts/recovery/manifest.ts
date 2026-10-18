@@ -65,7 +65,7 @@ export const recoveryManifestSchema = z
         }),
       )
       .min(1),
-    fingerprints: z.array(fingerprintSchema).length(RECOVERY_TABLES.length),
+    fingerprints: z.array(fingerprintSchema).min(1),
     lifecycleAggregates: z.record(
       z.string().regex(/^public\.[a-z_][a-z0-9_]*$/),
       z.record(z.number().int().nonnegative()),
@@ -101,7 +101,22 @@ export const recoveryManifestSchema = z
       }),
     }),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    // Recognize the previous accepted schema without reclassifying it as Finance.
+    // Actual restore still requires the exact source revision and migration chain.
+    const legacy = value.migrations.count === 23 && value.migrations.latest === '0022_homework-actual-handin-attachments';
+    const expected = legacy ? RECOVERY_TABLES.filter(table => !table.startsWith('public.finance_')) : RECOVERY_TABLES;
+    const actual = value.fingerprints.map(item => item.table).sort();
+    if (JSON.stringify(actual) !== JSON.stringify([...expected].sort())) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['fingerprints'], message: 'Recovery table inventory does not match its schema generation.' });
+    }
+    if (legacy && (value.migrations.ordered.length !== 23 || value.migrations.createdAt.length !== 23 ||
+      Object.keys(value.migrations.fileSha256).length !== 23 || value.migrations.ordered.at(-1) !== value.migrations.latest ||
+      value.migrations.ordered.some((tag, index) => !tag.startsWith(`${String(index).padStart(4, '0')}_`) || !value.migrations.fileSha256[`${tag}.sql`]))) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['migrations'], message: 'Historical migration metadata is inconsistent.' });
+    }
+  });
 
 export type RecoveryManifest = z.infer<typeof recoveryManifestSchema>;
 export type { AuthColumnContract };
@@ -156,7 +171,7 @@ export function createBackupId(snapshotAt: string, gitSha: string): string {
 
 export function validateRecoveryManifest(value: unknown): RecoveryManifest {
   const parsed = recoveryManifestSchema.safeParse(value);
-  if (!parsed.success) {
+  if (!parsed.success || parsed.data.fingerprints.length !== RECOVERY_TABLES.length) {
     throw new RecoveryError(
       'BACKUP_MANIFEST_VALIDATION_FAILED',
       'The recovery manifest does not satisfy the reviewed contract.',
@@ -206,14 +221,15 @@ export function parseRecoveryManifest(value: unknown): RecoveryManifest {
       'RESTORE_MANIFEST_INVALID',
       'Recovery manifest is malformed or unsupported.',
     );
-  const tables = parsed.data.fingerprints.map((item) => item.table).sort();
-  if (JSON.stringify(tables) !== JSON.stringify([...RECOVERY_TABLES].sort())) {
-    throw new RecoveryError(
-      'RESTORE_MANIFEST_INVALID',
-      'Recovery manifest table inventory is incomplete.',
-    );
-  }
   return parsed.data;
+}
+
+/** A historical bundle remains valid only with its matching repository chain. No implicit upgrade. */
+export function assertRecoveryMigrationCompatibility(repository: RecoveryManifest['migrations'], source: RecoveryManifest['migrations']) {
+  if (canonicalJson(repository) !== canonicalJson(source)) {
+    throw new RecoveryError('RESTORE_MANIFEST_INVALID', 'Recovery point requires its exact repository migration chain; use the matching source revision for historical bundles.',
+      { phase: 'restore_manifest_validation', timeout: false });
+  }
 }
 
 export async function loadMigrationMetadata(migrationsDirectory: string) {

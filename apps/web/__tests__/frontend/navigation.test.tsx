@@ -22,8 +22,14 @@ function renderNavigation(ui: ReactNode, locale: SupportedLocale = 'en') {
 describe('role-aware navigation', () => {
   it('shows the full school administrator foundation', () => {
     const labels = visibleNavigationItems('SCHOOL_ADMIN').map((item) => item.label);
-    expect(labels).toEqual(expect.arrayContaining(['Dashboard', 'Academic Structure', 'Students', 'Teachers', 'Parents', 'Grades & Results', 'Attendance', 'Homework', 'Announcements', 'Notifications']));
+    expect(labels).toEqual(expect.arrayContaining(['Finance', 'Dashboard', 'Academic Structure', 'Students', 'Teachers', 'Parents', 'Grades & Results', 'Attendance', 'Homework', 'Announcements', 'Notifications']));
     expect(labels).not.toContain('Children');
+  });
+
+  it('does not grant Finance navigation to other roles or platform authority', () => {
+    for (const role of ['SUPER_ADMIN', 'TEACHER', 'PARENT'] as const) {
+      expect(visibleNavigationItems(role).map(item => item.href)).not.toContain('/finance');
+    }
   });
 
   it('keeps teacher navigation free of administrator directories', () => {

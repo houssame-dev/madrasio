@@ -8,6 +8,7 @@ import { readRecoveryBundle, writeRecoveryBundle } from '@/scripts/recovery/bund
 import { RECOVERY_TABLES, safeRecoveryError } from '@/scripts/recovery/contracts';
 import {
   artifactMetadata,
+  assertRecoveryMigrationCompatibility,
   createBackupId,
   loadMigrationMetadata,
   loadServerVersion,
@@ -95,6 +96,25 @@ async function manifestFixture(rowCount: number) {
 }
 
 describe('Production manifest and bundle construction', () => {
+  it('recognizes unchanged 0022 bundles but never treats them as current Finance recovery points', async () => {
+    const fixture = await manifestFixture(1);
+    try {
+      const current = fixture.manifest;
+      const ordered = current.migrations.ordered.slice(0, 23);
+      const legacy = { ...current, fingerprints: current.fingerprints.filter(f => !f.table.startsWith('public.finance_')),
+        migrations: { count: 23, latest: '0022_homework-actual-handin-attachments', ordered, createdAt: current.migrations.createdAt.slice(0, 23), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
+      expect(parseRecoveryManifest(legacy)).toEqual(legacy);
+      expect(legacy.fingerprints).toHaveLength(45);
+      expect(() => assertRecoveryMigrationCompatibility(legacy.migrations, legacy.migrations)).not.toThrow();
+      expect(() => assertRecoveryMigrationCompatibility(current.migrations, legacy.migrations)).toThrow('matching source revision');
+      expect(() => validateRecoveryManifest(legacy)).toThrow();
+      expect(() => parseRecoveryManifest({ ...current, fingerprints: legacy.fingerprints })).toThrow();
+      expect(() => parseRecoveryManifest({ ...legacy, fingerprints: current.fingerprints })).toThrow();
+      expect(() => parseRecoveryManifest({ ...legacy, migrations: { ...legacy.migrations, ordered: ordered.slice(1) } })).toThrow();
+      expect(() => parseRecoveryManifest({ ...legacy, fingerprints: [...legacy.fingerprints.slice(1), legacy.fingerprints[1]] })).toThrow();
+      expect(() => parseRecoveryManifest({ ...current, fingerprints: [...current.fingerprints, { ...current.fingerprints[0], table: 'public.unreviewed' }] })).toThrow();
+    } finally { await rm(fixture.directory, { recursive: true, force: true }); }
+  });
   it('retains one V1 format for guarded Production and STAGING source labels', async () => {
     const fixture = await manifestFixture(0);
     try {
@@ -154,10 +174,10 @@ describe('Production manifest and bundle construction', () => {
       );
       expect(restoredManifest.format).toBe('madrasio-recovery-v1');
       expect(restoredManifest.migrations).toMatchObject({
-        count: 23,
-        latest: '0022_homework-actual-handin-attachments',
+        count: 25,
+        latest: '0024_finance-offline-payments',
       });
-      expect(restoredManifest.fingerprints).toHaveLength(45);
+      expect(restoredManifest.fingerprints).toHaveLength(53);
       expect(restoredManifest.fingerprints.every((item) => item.rowCount === rowCount)).toBe(true);
       expect(contents.get('recovery-data.dump')).toEqual(await readFile(fixture.dump));
     } finally {
@@ -174,8 +194,8 @@ describe('Production manifest and bundle construction', () => {
       /\/database\/drizzle\/migrations\/?$/,
     );
     await expect(loadMigrationMetadata(migrationsDirectory)).resolves.toMatchObject({
-      count: 23,
-      latest: '0022_homework-actual-handin-attachments',
+      count: 25,
+      latest: '0024_finance-offline-payments',
     });
     await expect(loadMigrationMetadata(join(tmpdir(), 'missing-migrations'))).rejects.toMatchObject(
       {

@@ -66,6 +66,9 @@ jobs:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/postgres
         run: pnpm build
 
+      - name: Verify STAGING target before migrations
+        run: pnpm --filter @school/web exec tsx scripts/deployment/verify-staging-target.ts
+
       - name: Apply explicit STAGING migrations
         run: pnpm db:migrate
 

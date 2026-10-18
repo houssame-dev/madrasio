@@ -1,6 +1,12 @@
+import { reportsFr } from './finance-reports';
+import { paymentFr } from './finance-payments';
 import type { Messages } from '../catalogs';
+import { financeFr } from './finance';
 
 const messages = {
+  financeReports: reportsFr,
+  financePayments: paymentFr,
+  finance: financeFr,
   foundation: {
     appName: 'Madrasio',
     actions: {
@@ -14,6 +20,7 @@ const messages = {
   navigation: {
     landmark: 'Navigation principale',
     items: {
+      finance: 'Finance',
       dashboard: 'Tableau de bord',
       academic: 'Structure scolaire',
       students: 'Élèves',

@@ -8,13 +8,13 @@ import { createTestDb, createSupabaseAuth, migrationsFolder } from './helpers';
 let client: PGlite;
 afterEach(async () => { await client?.close(); });
 
-it('replays the current chain with 43 RLS tables and the minimal announcement schema', async () => {
+it('replays the current chain with 51 RLS tables and the minimal announcement schema', async () => {
   ({ client } = await createTestDb());
-  expect((await client.query<{ count: number }>('select count(*)::int as count from drizzle.__drizzle_migrations')).rows[0].count).toBe(23);
+  expect((await client.query<{ count: number }>('select count(*)::int as count from drizzle.__drizzle_migrations')).rows[0].count).toBe(25);
   const snapshot = JSON.parse(await readFile(join(migrationsFolder, 'meta/0019_snapshot.json'), 'utf8'));
   expect(snapshot.tables['public.announcement_versions'].columns.body_format).toMatchObject({ type: 'text', notNull: true, default: "'PLAIN_TEXT'" });
   expect((await client.query("select data_type,is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='announcement_versions' and column_name='body_format'")).rows).toEqual([{ data_type: 'text', is_nullable: 'NO', column_default: "'PLAIN_TEXT'::text" }]);
-  expect((await client.query<{ count: number }>("select count(*)::int as count from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity")).rows[0].count).toBe(43);
+  expect((await client.query<{ count: number }>("select count(*)::int as count from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity")).rows[0].count).toBe(51);
 });
 
 it('upgrades populated legacy content without reinterpretation; cancellation requires unpublished scheduled intent', async () => {

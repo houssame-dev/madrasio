@@ -1,0 +1,72 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { NextIntlClientProvider } from 'next-intl';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { AppContextProvider } from '@/components/app/app-context';
+import { FinanceWorkspace } from '@/components/finance/finance-workspace';
+import { getCatalog } from '@/i18n/catalogs';
+import type { SupportedLocale } from '@school/shared';
+import type { Role } from '@/lib/authorization/roles';
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+const fetcher = vi.fn<typeof fetch>();
+const clients: QueryClient[] = [];
+const ids = { year: '10000000-0000-4000-8000-000000000001', type: '10000000-0000-4000-8000-000000000002', structure: '10000000-0000-4000-8000-000000000003', student: '10000000-0000-4000-8000-000000000004' };
+const state = { types: [{ id: ids.type, name: 'Tuition', active: true }], years: [{ id: ids.year, name: '2025/26', startDate: '2025-09-01', endDate: '2026-07-01', status: 'ACTIVE' }], levels: [], classes: [], students: [{ id: ids.student, firstName: 'Amina', lastName: 'Test' }], charges: [], page: 1, total: 0,
+  structures: [{ id: ids.structure, academicYearId: ids.year, feeTypeId: ids.type, amountCents: 12345, cadence: 'MONTHLY', levelId: null, active: true, revision: 1, periods: [{ period: '2026-01', dueDate: '2026-01-10' }] }] };
+beforeEach(() => { fetcher.mockReset(); vi.stubGlobal('fetch', fetcher); fetcher.mockImplementation(async () => Response.json({ data: state })); });
+afterEach(() => { cleanup(); clients.forEach(c => c.clear()); clients.length = 0; vi.unstubAllGlobals(); });
+function show(locale: SupportedLocale = 'en', role: Role = 'SCHOOL_ADMIN') {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); clients.push(client);
+  return render(<NextIntlClientProvider locale={locale} messages={getCatalog(locale)} timeZone="UTC"><QueryClientProvider client={client}><AppContextProvider value={{ user: { id: 'admin' }, currentSchool: { id: 'school', role, timezone: 'UTC' }, memberships: [] }}><div dir={locale === 'ar' ? 'rtl' : 'ltr'}><FinanceWorkspace /></div></AppContextProvider></QueryClientProvider></NextIntlClientProvider>);
+}
+it.each<SupportedLocale>(['en', 'fr', 'ar'])('renders localized configuration, preview and confirmation in %s', async locale => {
+  const t = getCatalog(locale).finance; const user = userEvent.setup(); const view = show(locale);
+  expect(await screen.findByRole('heading', { name: t.title, level: 1 })).toBeInTheDocument();
+  expect(view.container.firstElementChild).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
+  expect(screen.getByRole('button', { name: t.addStructure })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: t.generation }));
+  await user.selectOptions(screen.getByLabelText(t.structure), ids.structure);
+  await user.click(screen.getByLabelText('Amina Test'));
+  const preview = { items: [{ studentId: ids.student, studentName: 'Amina Test', period: '2026-01', dueDate: '2026-01-10', amountCents: 12345, existingChargeId: null }], previewHash: 'a'.repeat(64), created: 1, skipped: 0, totalCents: 12345 };
+  fetcher.mockResolvedValueOnce(Response.json({ data: preview }));
+  await user.click(screen.getByRole('button', { name: t.preview }));
+  const region = await screen.findByRole('region', { name: t.preview });
+  expect(within(region).getByText('Amina Test')).toBeInTheDocument(); expect(within(region).getByText('2026-01-10')).toBeInTheDocument();
+  expect(fetcher.mock.calls.filter(c => String(c[0]).endsWith('/generate'))).toHaveLength(0);
+  fetcher.mockResolvedValueOnce(Response.json({ data: { created: 1 } }));
+  await user.click(within(region).getByRole('button', { name: t.confirm }));
+  await waitFor(() => expect(fetcher.mock.calls.some(c => String(c[0]).endsWith('/generate'))).toBe(true));
+  const call = fetcher.mock.calls.find(c => String(c[0]).endsWith('/generate'))!;
+  expect(JSON.parse(String(call[1]?.body))).toMatchObject({ studentIds: [ids.student], periods: ['2026-01'], previewHash: preview.previewHash, requestKey: expect.any(String) });
+  expect(call[1]?.credentials).toBe('same-origin');
+});
+it('shows safe errors and an explicit retry', async () => { fetcher.mockRejectedValue(new Error('synthetic')); show(); expect(await screen.findByRole('alert')).toHaveTextContent(getCatalog('en').finance.error); expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument(); });
+it('submits exact-cent configuration with explicit cross-year months and individual due dates', async () => {
+  const t = getCatalog('en').finance, user = userEvent.setup(); show();
+  await screen.findByRole('heading', { name: t.title, level: 1 });
+  await user.selectOptions(screen.getByLabelText(t.year), ids.year);
+  await user.click(screen.getByRole('button', { name: t.addStructure }));
+  const form = screen.getByRole('heading', { name: t.addStructure }).closest('form')!;
+  const controls = within(form);
+  await user.selectOptions(controls.getByLabelText(t.feeType), ids.type);
+  await user.type(controls.getByLabelText(t.amount), '1250.99');
+  fireEvent.change(controls.getByLabelText(t.period), { target: { value: '2025-12' } });
+  fireEvent.change(controls.getByLabelText(t.dueDate), { target: { value: '2025-12-15' } });
+  await user.click(controls.getByRole('button', { name: t.addPeriod }));
+  fireEvent.change(controls.getAllByLabelText(t.period)[1], { target: { value: '2026-01' } });
+  fireEvent.change(controls.getAllByLabelText(t.dueDate)[1], { target: { value: '2026-01-20' } });
+  await user.click(controls.getByRole('button', { name: t.save }));
+  await waitFor(() => expect(fetcher.mock.calls.some(c => String(c[0]) === '/api/v1/finance/structures')).toBe(true));
+  const call = fetcher.mock.calls.find(c => String(c[0]) === '/api/v1/finance/structures')!;
+  expect(JSON.parse(String(call[1]?.body))).toEqual({ academicYearId: ids.year, feeTypeId: ids.type, levelId: null, cadence: 'MONTHLY', amountCents: 125099, periods: [{ period: '2025-12', dueDate: '2025-12-15' }, { period: '2026-01', dueDate: '2026-01-20' }] });
+});
+it.each<Role>(['TEACHER', 'PARENT', 'SUPER_ADMIN'])('does not expose Finance or issue requests for %s', async role => { show('en', role); expect(screen.queryByRole('heading', { name: 'Finance' })).not.toBeInTheDocument(); expect(fetcher).not.toHaveBeenCalled(); });
+it('does not carry the configuration year restriction into report Class options', async () => {
+  fetcher.mockImplementation(async path => Response.json({ data: String(path).includes('/reports/') ? { today: '2026-02-10', summary: { netCents: 0, paidCents: 0, outstandingCents: 0, overdueStudents: 0, students: 0 }, items: [] } : String(path).includes('/payments/students') ? [] : state }));
+  show(); const user = userEvent.setup(); await screen.findByRole('heading', { name: 'Finance', level: 1 });
+  await user.selectOptions(screen.getByLabelText(getCatalog('en').finance.year), ids.year);
+  await waitFor(() => expect(fetcher.mock.calls.some(([p]) => String(p).includes(`academicYearId=${ids.year}`))).toBe(true));
+  fetcher.mockClear(); await user.click(screen.getByRole('button', { name: getCatalog('en').financeReports.title }));
+  await waitFor(() => expect(fetcher.mock.calls.some(([p]) => String(p).startsWith('/api/v1/finance?') && !String(p).includes('academicYearId'))).toBe(true));
+});

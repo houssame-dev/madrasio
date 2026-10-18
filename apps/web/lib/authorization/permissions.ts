@@ -14,6 +14,8 @@ import type { Role } from './roles';
  */
 export const PERMISSIONS = [
   'audit.read',
+  'finance.read',
+  'finance.manage',
   'school.read',
   'academic_structure.read',
   'academic_structure.manage',
@@ -46,7 +48,7 @@ export type Permission = (typeof PERMISSIONS)[number];
  * engine consumes it and React never re-implements it.
  *
  * FOUNDATION NOTES (not the final product matrix):
- * - SUPER_ADMIN maps to the full set as a platform-level placeholder
+ * - SUPER_ADMIN retains the legacy set (excluding Finance) as a platform-level placeholder
  *   (Task 005 §12). School-scoped operations still require a valid,
  *   active SchoolMembership + School Context — the pipeline is uniform.
  *   Detailed SUPER_ADMIN platform workflows are deferred.
@@ -57,8 +59,10 @@ export type Permission = (typeof PERMISSIONS)[number];
  *   ParentStudent (BR-ROLE-005), never from the permission alone.
  */
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
-  SUPER_ADMIN: PERMISSIONS,
+  SUPER_ADMIN: PERMISSIONS.filter(p => p !== 'finance.read' && p !== 'finance.manage'),
   SCHOOL_ADMIN: [
+    'finance.read',
+    'finance.manage',
     'audit.read',
     'school.read',
     'academic_structure.read',

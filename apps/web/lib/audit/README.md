@@ -93,3 +93,14 @@ change. An older 41-table backup must be restored using its matching repository
 revision, not the newer inventory. Future deployment/backup runners must use the
 matching schema revision; mismatches continue to fail closed. No hosted migration,
 backup or restore acceptance is claimed by this local task.
+
+## Finance offline payment coverage
+
+`recordFinanceAudit` produces `FinancePaymentRecorded` and `FinancePaymentReversed`
+with resource `FinancePayment`. It requires current-School `finance.manage` and
+strictly allows Student/request UUIDs, integer centimes and method, plus the
+reversal UUID for reversals. It never accepts arbitrary request metadata or logs
+names, payment references, reasons or receipt content. Finance payment/allocation/
+balance changes and audit append are atomic; failure prevents the business change.
+Idempotent repeats append nothing. Domain reversal history retains the reason,
+actor and timestamp; normal repositories/API expose append/read only, as above.

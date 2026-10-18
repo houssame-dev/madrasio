@@ -18,7 +18,7 @@ import {
 import { cleanupRecoveryWorkDirectory, createRecoveryWorkDirectory } from './filesystem';
 import { loadForeignKeys } from './inventory';
 import {
-  canonicalJson,
+  assertRecoveryMigrationCompatibility,
   hashBuffer,
   loadMigrationMetadata,
   parseRecoveryManifest,
@@ -146,13 +146,7 @@ export async function restoreLocalRecoveryBundle(
       );
     }
     const repositoryMigrations = await loadMigrationMetadata(resolveRecoveryMigrationsDirectory());
-    if (canonicalJson(repositoryMigrations) !== canonicalJson(manifest.migrations)) {
-      throw new RecoveryError(
-        'RESTORE_MANIFEST_INVALID',
-        'Repository migration chain does not match the recovery point.',
-        { phase: 'restore_manifest_validation', timeout: false },
-      );
-    }
+    assertRecoveryMigrationCompatibility(repositoryMigrations, manifest.migrations);
     await inRestorePhase('restore_archive_validation', 'RESTORE_DATA_FAILED', async () => {
       await writeFile(dump, dumpBytes, { mode: 0o600 });
       await assertPostgresContainerArchiveReadable(

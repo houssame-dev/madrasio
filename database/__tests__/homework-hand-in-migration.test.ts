@@ -8,10 +8,10 @@ import { applicationSecurityAuditSql } from '../security';
 let client: PGlite;
 afterEach(async () => { await client?.close(); });
 
-it('fresh 0000–0022 replay has 23 migrations, 43 RLS tables, private grants and nullable actual time', async () => {
+it('fresh current replay has 25 migrations, 51 RLS tables, private grants and nullable actual time', async () => {
   ({ client } = await createTestDb());
   await client.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;');
-  expect((await client.query<{ count: number }>('select count(*)::int count from drizzle.__drizzle_migrations')).rows[0]!.count).toBe(23);
+  expect((await client.query<{ count: number }>('select count(*)::int count from drizzle.__drizzle_migrations')).rows[0]!.count).toBe(25);
   expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
   expect((await client.query("select data_type,is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='homework_submissions' and column_name='actual_handed_in_at'")).rows).toEqual([
     { data_type: 'timestamp with time zone', is_nullable: 'YES', column_default: null },
@@ -64,5 +64,9 @@ it('upgrades populated 0021 without inventing hand-in time or rewriting recordin
   await expect(insert(school, ids[1]!, file)).rejects.toThrow();
   await expect(client.query('delete from files where id=$1', [file])).rejects.toThrow();
   await expect(client.query('delete from homework_submissions where id=$1', [ids[0]])).rejects.toThrow();
+  // Bring the historical upgrade fixture to the current head before the current ACL audit.
+  for (const file of (await readdir(migrationsFolder)).filter(n => /^\d{4}_.+\.sql$/.test(n) && Number(n.slice(0, 4)) > 22).sort()) {
+    for (const sql of (await readFile(join(migrationsFolder, file), 'utf8')).split('--> statement-breakpoint')) if (sql.trim()) await client.exec(sql);
+  }
   expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
 }, 30_000);

@@ -384,9 +384,9 @@ describe('recovery archive and tools', () => {
     );
   });
 
-  it('uses one complete 43-table application allowlist plus durable Auth', () => {
-    expect(APPLICATION_TABLES).toHaveLength(43);
-    expect(new Set(RECOVERY_TABLES).size).toBe(45);
+  it('uses one complete 51-table application allowlist plus durable Auth', () => {
+    expect(APPLICATION_TABLES).toHaveLength(51);
+    expect(new Set(RECOVERY_TABLES).size).toBe(53);
     expect(RECOVERY_TABLES).toContain('auth.users');
     expect(RECOVERY_TABLES).not.toContain('auth.sessions');
     expect(RECOVERY_TABLES).not.toContain('auth.oauth_client_states');
@@ -577,7 +577,7 @@ describe('recovery archive and tools', () => {
     expect(args).toContain('--format=custom');
     expect(args).toContain('--data-only');
     expect(args).toContain('--snapshot=00000003-1');
-    expect(args.filter((item) => item === '--table')).toHaveLength(45);
+    expect(args.filter((item) => item === '--table')).toHaveLength(53);
     expect(args.join(' ')).not.toMatch(/password|database-url|session|refresh_tokens/);
   });
 
@@ -1226,14 +1226,14 @@ describe('snapshot and restore orchestration', () => {
 });
 
 describe('manifest, reconciliation, cleanup and future transport boundary', () => {
-  it('captures the exact ordered 0000-0022 repository migration contract', async () => {
+  it('captures the exact ordered 0000-0024 repository migration contract', async () => {
     const metadata = await loadMigrationMetadata(
       resolve(process.cwd(), '../../database/drizzle/migrations'),
     );
-    expect(metadata.count).toBe(23);
-    expect(metadata.latest).toBe('0022_homework-actual-handin-attachments');
-    expect(Object.keys(metadata.fileSha256)).toHaveLength(23);
-    expect(metadata.createdAt).toHaveLength(23);
+    expect(metadata.count).toBe(25);
+    expect(metadata.latest).toBe('0024_finance-offline-payments');
+    expect(Object.keys(metadata.fileSha256)).toHaveLength(25);
+    expect(metadata.createdAt).toHaveLength(25);
   });
 
   it('canonicalizes objects without locale-dependent key order and rejects unknown manifests', () => {

@@ -162,6 +162,20 @@
       "when": 1791854797599,
       "tag": "0022_homework-actual-handin-attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792266653290,
+      "tag": "0023_finance-student-fees",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792273026159,
+      "tag": "0024_finance-offline-payments",
+      "breakpoints": true
     }
   ]
 }

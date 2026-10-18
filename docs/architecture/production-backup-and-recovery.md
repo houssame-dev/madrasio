@@ -1,5 +1,34 @@
 # Production backup and recovery
 
+## Finance V1 recovery compatibility — current local source
+
+The current schema through `0024_finance-offline-payments` contains **51 application
+tables + 2 durable Auth tables = 53 recovery tables**. The strict alphabetic
+allowlist includes all eight Finance tables: fee types, structures, generation
+batches, charges, charge events, payments, allocations and reversals. Existing
+dump selection, full-row/primary-key fingerprints and FK-derived restore order
+use that same allowlist. Charge OPEN/CANCELLED lifecycle counts are included
+automatically; payment and reversal history is preserved as full immutable rows,
+not collapsed into a balance. Unknown, missing or extra tables still fail closed.
+
+The `madrasio-recovery-v1` container/encryption format is unchanged. Historical
+`0022` manifests with exactly 45 reviewed tables remain recognizable with their
+original fingerprints and migration metadata. They are **not Finance recovery
+points**: execution still requires their exact source revision, migration hashes,
+timestamps and source project. Use the matching `0022` repository/tool revision
+for an actual historical restore. The Finance checkout refuses an implicit
+upgrade/relabel of a legacy bundle; new bundle creation requires all 53 tables.
+Historical encrypted artifacts are neither rewritten nor deleted. Before upgrading
+a hosted target, create/verify its recovery point with tools matching its actual
+schema; new Finance tools correctly reject an unmigrated 43-table source.
+
+The local Finance recovery regression replays representative reductions,
+cancellation, partial payments, allocation snapshots, reversal and audit history;
+verifies all 53 fingerprints, tenant/FK/security integrity and financial totals;
+and rejects missing/extra tables and altered Finance content/primary keys. This
+does not claim hosted recovery acceptance or a new real age-encrypted roundtrip.
+Earlier Task 065 and Task 050 counts/evidence below remain historical.
+
 ## Task 065 Homework metadata extension
 
 Current repository migration head is `0022_homework-actual-handin-attachments`

@@ -24,6 +24,12 @@ describe('roles — V1 role model (BR-ROLE-001)', () => {
 });
 
 describe('role → permission mapping (PRD.md §6, Task 005 §6)', () => {
+  it('limits Finance to School Admins without granting platform-only tenant access', () => {
+    for (const permission of ['finance.read', 'finance.manage'] as const) {
+      expect(roleHasPermission('SCHOOL_ADMIN', permission)).toBe(true);
+      for (const role of ['SUPER_ADMIN', 'TEACHER', 'PARENT'] as const) expect(roleHasPermission(role, permission)).toBe(false);
+    }
+  });
   it('every permission is a member of PERMISSIONS', () => {
     for (const role of ROLES) {
       for (const permission of ROLE_PERMISSIONS[role]) {
