@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { postgresConnectionConfig } from '@school/database/connection';
-import { assertStagingMigrationTarget, safeDeploymentError, STAGING_PROJECT_REF } from './contracts';
+import { assertStagingMigrationTarget, safeDeploymentError, STAGING_PROJECT_REF, EXPECTED_MIGRATION_COUNT, EXPECTED_TABLE_COUNT } from './contracts';
 
 async function main(): Promise<void> {
   const url = assertStagingMigrationTarget(process.env);
@@ -30,12 +30,12 @@ async function main(): Promise<void> {
           "SELECT count(*)::int AS count FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND NOT c.relrowsecurity",
         );
         if (
-          migrations.rows[0]?.count !== 23 ||
-          tables.rows[0]?.count !== 43 ||
-          finance.rows[0]?.count !== 0 ||
+          migrations.rows[0]?.count !== EXPECTED_MIGRATION_COUNT - 1 ||
+          tables.rows[0]?.count !== EXPECTED_TABLE_COUNT ||
+          finance.rows[0]?.count !== 8 ||
           missingRls.rows[0]?.count !== 0
         ) {
-          throw new Error('STAGING pre-migration schema differs from the verified 0022 checkpoint.');
+          throw new Error('STAGING pre-migration schema differs from the verified 0024 checkpoint.');
         }
       } finally {
         await client.query('ROLLBACK');
@@ -49,8 +49,8 @@ async function main(): Promise<void> {
   console.info(JSON.stringify({
     event: 'staging_pre_migration_target_verified',
     projectRef: STAGING_PROJECT_REF,
-    migrations: 23,
-    applicationTables: 43,
+    migrations: EXPECTED_MIGRATION_COUNT - 1,
+    applicationTables: EXPECTED_TABLE_COUNT,
   }));
 }
 
