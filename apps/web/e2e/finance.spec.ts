@@ -4,6 +4,9 @@ import { paymentEn, paymentFr, paymentAr } from '../i18n/messages/finance-paymen
 import { receiptDocument } from '../lib/modules/finance/domain/receipt';
 import { reportsEn, reportsFr, reportsAr } from '../i18n/messages/finance-reports';
 import { csvDocument } from '../lib/modules/finance/domain/csv';
+import type { chargeDetail } from '../lib/modules/finance/application/service';
+
+type ChargeDetail = Awaited<ReturnType<typeof chargeDetail>>;
 
 for (const [locale, t, c, p] of [['en', reportsEn, financeEn, paymentEn], ['fr', reportsFr, financeFr, paymentFr], ['ar', reportsAr, financeAr, paymentAr]] as const) {
   for (const width of [390, 768, 1440]) {
@@ -74,9 +77,9 @@ for (const [locale, t] of [['en', financeEn], ['fr', financeFr], ['ar', financeA
       await page.setViewportSize({ width, height: 900 });
       await context.addCookies([{ name: 'MADRASIO_LOCALE', value: locale, url: baseURL!, httpOnly: true, sameSite: 'Lax' }]);
       const structure = { id: 'structure', feeTypeId: 'type', academicYearId: 'year', amountCents: 125099, active: true, levelId: null, cadence: 'MONTHLY', revision: 1, periods: [{ period: '2099-01', dueDate: '2099-01-10' }] };
-      const charge = { id: 'charge', feeName: 'Tuition', period: '2099-01', dueDate: '2099-01-10', originalCents: 125099, reductionCents: 0, allocatedCents: 0, status: 'OPEN' };
+      const charge: ChargeDetail['charge'] = { id: 'charge', schoolId: 'school', studentId: 'student', academicYearId: 'year', feeTypeId: 'type', structureId: 'structure', batchId: 'batch', classId: 'class', structureRevision: 1, createdAt: new Date('2026-10-17T12:00:00Z'), feeName: 'Tuition', period: '2099-01', dueDate: '2099-01-10', originalCents: 125099, reductionCents: 0, allocatedCents: 0, currency: 'MAD', status: 'OPEN' };
       const state = { settings: { currency: 'MAD', locked: true }, types: [{ id: 'type', name: 'Tuition', active: true }], structures: [structure], years: [{ id: 'year', name: '2098/99', startDate: '2098-09-01', endDate: '2099-07-01' }], levels: [], classes: [], students: [{ id: 'student', firstName: 'Amina', lastName: 'Test' }], charges: [] as { charge: typeof charge; studentName: string }[], page: 1, total: 0 };
-      let previews = 0, generations = 0; const events: { kind: string; reason: string; beforeCents: number; afterCents: number; occurredAt: string; id: string }[] = [];
+      let previews = 0, generations = 0; const events: ChargeDetail['events'] = [];
       const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
       await page.route('**/*', async route => {
         const url = new URL(route.request().url());
@@ -92,7 +95,7 @@ for (const [locale, t] of [['en', financeEn], ['fr', financeFr], ['ar', financeA
           const body = route.request().postDataJSON(); expect(body.reason).toBe('Synthetic operator reason');
           const beforeCents = charge.originalCents - charge.reductionCents;
           if (body.kind === 'REDUCTION') { expect(body.amountCents).toBe(10099); charge.reductionCents += body.amountCents; } else charge.status = 'CANCELLED';
-          const event = { id: String(events.length), kind: body.kind, reason: body.reason, beforeCents, afterCents: body.kind === 'REDUCTION' ? beforeCents - body.amountCents : 0, occurredAt: '2026-10-17T12:00:00Z' }; events.push(event); data = event;
+          const event: ChargeDetail['events'][number] = { id: String(events.length), schoolId: charge.schoolId, chargeId: charge.id, requestKey: body.requestKey, requestHash: 'a'.repeat(64), actorId: 'admin', reductionId: null, replacesEventId: null, reductionBeforeCents: null, reductionAfterCents: null, kind: body.kind, reason: body.reason, beforeCents, afterCents: body.kind === 'REDUCTION' ? beforeCents - body.amountCents : 0, occurredAt: new Date('2026-10-17T12:00:00Z') }; events.push(event); data = event;
         } else if (url.pathname.endsWith('/charges/charge')) data = { charge, events };
         else throw new Error('Unexpected synthetic API path');
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data }) });
@@ -112,9 +115,16 @@ for (const [locale, t] of [['en', financeEn], ['fr', financeFr], ['ar', financeA
       await page.getByLabel(t.amount, { exact: true }).fill('100.99');
       await page.getByLabel(t.reason).fill('Synthetic operator reason'); await page.getByRole('button', { name: t.reduce }).click();
       await expect(page.getByText('Synthetic operator reason', { exact: false })).toBeVisible();
-      await page.getByLabel(t.history, { exact: true }).selectOption('CANCELLATION');
+      const history = page.getByRole('region', { name: t.history, exact: true });
+      await expect(history.getByText(t.effectiveReduction, { exact: false })).toBeVisible();
+      await expect(history.getByRole('button', { name: t.editReduction, exact: true })).toBeEnabled();
+      await expect(history.getByRole('button', { name: t.cancelReduction, exact: true })).toBeEnabled();
+      await expect(history.getByText('admin', { exact: true })).toBeVisible();
+      await page.getByRole('combobox', { name: t.history, exact: true }).selectOption('CANCELLATION');
       await page.getByLabel(t.reason).fill('Synthetic operator reason'); await page.getByRole('button', { name: t.cancelCharge }).click();
       await expect(page.getByRole('button', { name: t.cancelCharge })).toBeDisabled();
+      await expect(history.getByRole('button', { name: t.editReduction, exact: true })).toBeDisabled();
+      await expect(history.getByRole('button', { name: t.cancelReduction, exact: true })).toBeDisabled();
       expect(events.map(e => e.kind)).toEqual(['REDUCTION', 'CANCELLATION']);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       expect(errors).toEqual([]);

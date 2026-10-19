@@ -2,9 +2,11 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import journal from '../../../../database/drizzle/migrations/meta/_journal.json';
 
 import {
   assertStagingMigrationTarget,
+  assertStagingPreMigrationChain,
   buildCronCommand,
   CRON_JOBS,
   CRON_SCHEDULE,
@@ -15,6 +17,44 @@ import {
 } from '@/scripts/deployment/contracts';
 
 const repoRoot = resolve(process.cwd(), '../..');
+
+describe('STAGING pre-migration journal admission', () => {
+  const timestamps = journal.entries.map(entry => String(entry.when));
+
+  it.each([26, 27])('accepts the exact reviewed %i-migration prefix', count => {
+    expect(() => assertStagingPreMigrationChain(journal, timestamps.slice(0, count))).not.toThrow();
+  });
+
+  it.each([0, 25, 28])('rejects an unapproved migration count of %i', count => {
+    const applied = count === 28 ? [...timestamps, '9999999999999'] : timestamps.slice(0, count);
+    expect(() => assertStagingPreMigrationChain(journal, applied)).toThrow('must match');
+  });
+
+  it.each([26, 27])('rejects missing/replaced, duplicate and reordered timestamps at count %i', count => {
+    const prefix = timestamps.slice(0, count);
+    const replaced = [...prefix]; replaced[10] = '9999999999999';
+    const missingMiddle = [...timestamps.slice(0, 10), ...timestamps.slice(11)];
+    const duplicate = [...prefix]; duplicate[10] = duplicate[9];
+    const reordered = [...prefix]; [reordered[9], reordered[10]] = [reordered[10], reordered[9]];
+    for (const applied of [replaced, duplicate, reordered, ...(count === 26 ? [missingMiddle] : [])]) {
+      expect(() => assertStagingPreMigrationChain(journal, applied)).toThrow('must match');
+    }
+  });
+
+  it('rejects an incorrect final migration even when 0025 matches', () => {
+    expect(() => assertStagingPreMigrationChain(journal, [...timestamps.slice(0, 26), '9999999999999'])).toThrow('must match');
+  });
+
+  it('rejects an incomplete, unreviewed or malformed repository journal', () => {
+    for (const candidate of [
+      { entries: journal.entries.slice(0, 26) },
+      { entries: [...journal.entries.slice(0, 26), { ...journal.entries[26], tag: 'unreviewed' }] },
+      { entries: [{ tag: 'invalid', when: null }] },
+    ]) {
+      expect(() => assertStagingPreMigrationChain(candidate, timestamps)).toThrow('not the reviewed');
+    }
+  });
+});
 
 function migrationEnv(overrides: Partial<NodeJS.ProcessEnv> = {}): NodeJS.ProcessEnv {
   return {

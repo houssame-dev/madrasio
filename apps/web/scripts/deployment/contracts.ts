@@ -59,6 +59,33 @@ export function assertStagingMigrationTarget(env: NodeJS.ProcessEnv): URL {
   return url;
 }
 
+/** Permit a retry after 0026, but only on the reviewed journal or its 0025 prefix. */
+export function assertStagingPreMigrationChain(journal: unknown, appliedTimestamps: readonly string[]): void {
+  const parsed = z.object({
+    entries: z.array(z.object({ tag: z.string(), when: z.number().int().nonnegative().safe() })),
+  }).safeParse(journal);
+  if (
+    !parsed.success ||
+    parsed.data.entries.length !== EXPECTED_MIGRATION_COUNT ||
+    parsed.data.entries.at(-1)?.tag !== EXPECTED_LATEST_MIGRATION
+  ) {
+    throw new DeploymentError(
+      'REPOSITORY_MIGRATION_CHAIN_NOT_REVIEWED',
+      'The repository migration journal is not the reviewed deployment chain.',
+    );
+  }
+  const count = appliedTimestamps.length;
+  if (
+    (count !== EXPECTED_MIGRATION_COUNT - 1 && count !== EXPECTED_MIGRATION_COUNT) ||
+    appliedTimestamps.some((timestamp, index) => timestamp !== String(parsed.data.entries[index].when))
+  ) {
+    throw new DeploymentError(
+      'STAGING_MIGRATION_CHAIN_NOT_CONFIRMED',
+      'STAGING migrations must match the reviewed 0025 or 0026 journal prefix.',
+    );
+  }
+}
+
 export function parseStagingOrigin(value: string | undefined): URL {
   const parsed = z.string().url().safeParse(value);
   if (!parsed.success) {
