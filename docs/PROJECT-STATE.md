@@ -1,6 +1,42 @@
 # Madrasio — Current Project State
 
-Last updated: **2026-10-18**
+Last updated: **2026-10-19**
+
+## Current handoff — Finance V1 reduction correction (2026-10-19)
+
+**LOCAL IMPLEMENTATION VALIDATED — pending review and migration/release authorization.**
+Started from clean `main` at `63c64367d733985cf4f04154c2f0a63ad73c96c7`.
+An ACTIVE School Admin can edit or cancel an individual applied reduction from
+charge history, including multiple reductions and partially paid charges.
+Original audit events, charge amounts, payments, allocations and receipts remain
+unchanged. Corrections append actor, timestamp, reason, original reduction/previous
+revision references and individual plus payable old/new amounts. The existing
+School/charge locks, payment bounds, same-tenant keys, explicit confirmation and
+idempotency protect writes; stale revisions conflict. Cancelled charges and
+cancelled individual reductions reject further corrections. EN/FR/AR controls,
+RTL/LTR, updated balances, failure/reload prompts and keyboard focus are covered.
+
+Forward migration **0026_finance-reduction-corrections** extends only the existing
+event table; the repository now has 27 migrations and still 51 application tables.
+Migrations 0023–0025 and all earlier SQL/snapshots are preserved. Apply 0026 before
+the corresponding application release. See [Finance rules](domain/finance-v1.md).
+
+Local checks used a credential-free source copy and synthetic data: **261** focused
+application/domain/API/UI/security/catalog checks passed; the 15 opt-in native
+cases skipped there passed separately on PostgreSQL 17.6, including competing
+corrections, identical retries and payment overlap. **28** migration/security and
+**105** recovery checks passed. An initial five-second migration replay timeout
+under parallel load passed on a bounded one-worker rerun without weakening its
+assertions. Root lint, typecheck and production build passed. Six browser flows
+covered edit/cancel, preserved allocations, revised balances, focus, EN/FR/AR and
+390px/1440px layouts using real local routes with synthetic API responses.
+The full root unit suite and hosted/real-Auth acceptance were not run here.
+
+**Next authorization:** review the exact local change inventory and STAGING target,
+ledger and recovery point, then separately authorize commit/push, migration 0026
+and exact-SHA deployment with authenticated School Admin acceptance. No hosted
+access, hosted migration, commit, push or deployment occurred in this checkpoint.
+Earlier handoffs below remain historical evidence.
 
 ## Current handoff — FINANCE_V1_SCHOOL_CURRENCY (2026-10-18)
 

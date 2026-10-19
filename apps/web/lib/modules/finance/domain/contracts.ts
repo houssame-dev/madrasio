@@ -20,6 +20,10 @@ export const adjustmentSchema = z.object({ requestKey: z.string().uuid(), kind: 
 export type ChargeSelection = z.infer<typeof previewSchema>;
 export type GenerateInput = z.infer<typeof generateSchema>;
 export type AdjustmentInput = z.infer<typeof adjustmentSchema>;
+export const reductionCorrectionSchema = z.object({ requestKey: z.string().uuid(), expectedEventId: z.string().uuid(),
+  kind: z.enum(['REDUCTION_EDIT', 'REDUCTION_CANCEL']), amountCents: centsSchema.optional(),
+  reason: z.string().trim().min(1).max(500), confirmed: z.literal(true) }).strict()
+  .refine(v => v.kind === 'REDUCTION_EDIT' ? v.amountCents !== undefined : v.amountCents === undefined, 'Amount is required only for editing.');
 
 export const paymentSchema = z.object({
   requestKey: z.string().uuid(), confirmed: z.literal(true), studentId: z.string().uuid(),

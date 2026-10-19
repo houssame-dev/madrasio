@@ -6,6 +6,8 @@ import * as schema from '@school/database';
 import { requireOperation, type AuthorizationDb } from '@/lib/authorization/server';
 import { ConflictError, NotFoundError, ValidationError, BusinessRuleViolationError, ForbiddenError } from '@/lib/errors';
 import { currencySettingsSchema } from '../domain/currency';
+import { reductionCorrectionSchema } from '../domain/contracts';
+import { effectiveReductions } from '../domain/reductions';
 import { adjustmentSchema, feeTypeSchema, generateSchema, previewSchema, schoolToday, structurePatchSchema, structureSchema, validatePeriods,
   type AdjustmentInput, type ChargeSelection, type GenerateInput } from '../domain/contracts';
 
@@ -202,5 +204,33 @@ export async function adjustCharge(db: FinanceDb, actor: FinanceActor, id: strin
     }
     return (await tx.insert(financeChargeEvents).values({ schoolId: actor.schoolId, chargeId: id, requestKey: input.requestKey,
       requestHash: hash, kind: input.kind, reason: input.reason, beforeCents: before, afterCents: after, actorId: actor.userId! }).returning())[0];
+  });
+}
+
+export async function correctReduction(db: FinanceDb, actor: FinanceActor, id: string, reductionId: string, raw: unknown) {
+  const input = reductionCorrectionSchema.parse(raw); await authorize(db, actor, true);
+  return db.transaction(async tx => {
+    await lock(tx, actor);
+    const hash = digest({ id, reductionId, ...input });
+    const [old] = await tx.select().from(financeChargeEvents).where(and(eq(financeChargeEvents.schoolId, actor.schoolId), eq(financeChargeEvents.requestKey, input.requestKey)));
+    if (old) { if (old.requestHash !== hash) throw new ConflictError('Idempotency key reused.'); return old; }
+    const [charge] = await tx.select().from(studentCharges).where(and(scope(actor.schoolId), eq(studentCharges.id, id))).for('update');
+    if (!charge) throw new NotFoundError();
+    if (charge.status !== 'OPEN') throw new BusinessRuleViolationError('Cancelled charge cannot be changed.');
+    const events = await tx.select().from(financeChargeEvents).where(and(eq(financeChargeEvents.schoolId, actor.schoolId), eq(financeChargeEvents.chargeId, id)));
+    const reductions = effectiveReductions(events), current = reductions.find(r => r.id === reductionId);
+    if (!current) throw new NotFoundError();
+    if (current.currentEventId !== input.expectedEventId) throw new ConflictError('Reduction changed; reload its history.');
+    if (current.amountCents === 0) throw new BusinessRuleViolationError('Cancelled reduction cannot be changed.');
+    const total = reductions.reduce((sum, r) => sum + r.amountCents, 0);
+    if (total !== charge.reductionCents) throw new ConflictError('Reduction history is inconsistent.');
+    const next = input.kind === 'REDUCTION_CANCEL' ? 0 : input.amountCents!;
+    const reductionCents = total - current.amountCents + next;
+    const beforeCents = charge.originalCents - total, afterCents = charge.originalCents - reductionCents;
+    if (afterCents < charge.allocatedCents) throw new BusinessRuleViolationError('Reduction exceeds unpaid charge amount.');
+    await tx.update(studentCharges).set({ reductionCents }).where(eq(studentCharges.id, id));
+    return (await tx.insert(financeChargeEvents).values({ schoolId: actor.schoolId, chargeId: id, requestKey: input.requestKey, requestHash: hash,
+      kind: input.kind, reason: input.reason, reductionId, replacesEventId: current.currentEventId,
+      reductionBeforeCents: current.amountCents, reductionAfterCents: next, beforeCents, afterCents, actorId: actor.userId!, occurredAt: new Date() }).returning())[0];
   });
 }

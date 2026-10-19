@@ -1,0 +1,50 @@
+import { PGlite } from '@electric-sql/pglite';
+import { readFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { afterEach, expect, it } from 'vitest';
+import { createSupabaseAuth, migrationsFolder } from './helpers';
+import { applicationSecurityAuditSql } from '../security';
+let client: PGlite;
+afterEach(async () => { await client?.close(); });
+it('upgrades populated 0025 while preserving original reduction history and private security', async () => {
+  client = new PGlite(); await createSupabaseAuth(client);
+  for (const file of (await readdir(migrationsFolder)).filter(n => /^\d{4}_.+\.sql$/.test(n) && Number(n.slice(0, 4)) < 26).sort()) {
+    for (const sql of (await readFile(join(migrationsFolder, file), 'utf8')).split('--> statement-breakpoint')) if (sql.trim()) await client.exec(sql);
+  }
+  // Fixed synthetic UUIDs make every parent and immutable financial reference explicit.
+  const id = (n: number) => `02500000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+  await client.query("insert into schools(id,name) values ($1,'Existing School')", [id(1)]);
+  await client.query("insert into auth.users(id,email) values ($1,'admin@example.test')", [id(2)]);
+  await client.query("insert into users(id,email) values ($1,'admin@example.test')", [id(2)]);
+  await client.query("insert into school_memberships(school_id,user_id,role) values ($1,$2,'SCHOOL_ADMIN')", [id(1), id(2)]);
+  await client.query("insert into academic_years(id,school_id,name,start_date,end_date) values ($1,$2,'2025/26','2025-09-01','2026-07-01')", [id(3), id(1)]);
+  await client.query("insert into stages(id,school_id,name,sequence) values ($1,$2,'Primary',1)", [id(4), id(1)]);
+  await client.query("insert into levels(id,school_id,stage_id,name,sequence) values ($1,$2,$3,'Level',1)", [id(5), id(1), id(4)]);
+  await client.query("insert into curricula(id,school_id,name) values ($1,$2,'Curriculum')", [id(6), id(1)]);
+  await client.query("insert into curriculum_versions(id,school_id,curriculum_id,name) values ($1,$2,$3,'Version')", [id(7), id(1), id(6)]);
+  await client.query("insert into classes(id,school_id,academic_year_id,level_id,curriculum_version_id,name) values ($1,$2,$3,$4,$5,'Class')", [id(8), id(1), id(3), id(5), id(7)]);
+  await client.query("insert into students(id,school_id,first_name,last_name) values ($1,$2,'Synthetic','Student')", [id(9), id(1)]);
+  await client.query("insert into finance_fee_types(id,school_id,name) values ($1,$2,'Tuition')", [id(10), id(1)]);
+  await client.query(`insert into finance_fee_structures(id,school_id,academic_year_id,fee_type_id,cadence,amount_cents,periods,created_by,updated_by) values ($1,$2,$3,$4,'ONCE',12345,'[{"period":"once","dueDate":"2025-12-10"}]',$5,$5)`, [id(11), id(1), id(3), id(10), id(2)]);
+  await client.query(`insert into finance_generation_batches(id,school_id,request_key,request_hash,created_by,result) values ($1,$2,$1,'synthetic',$3,'{}')`, [id(12), id(1), id(2)]);
+  await client.query("insert into finance_student_charges(id,school_id,student_id,academic_year_id,fee_type_id,structure_id,batch_id,class_id,fee_name,structure_revision,period,due_date,original_cents,reduction_cents,allocated_cents) values ($1,$2,$3,$4,$5,$6,$7,$8,'Tuition',1,'once','2025-12-10',12345,1000,2345)", [id(13), id(1), id(9), id(3), id(10), id(11), id(12), id(8)]);
+  await client.query("insert into finance_payments(id,school_id,student_id,request_key,request_hash,receipt_reference,school_name,school_timezone,student_name,method,amount_cents,received_on,recorded_by) values ($1,$2,$3,$1,'synthetic','R-SYNTHETIC','Existing School','UTC','Synthetic Student','CASH',2345,'2025-11-01',$4)", [id(14), id(1), id(9), id(2)]);
+  await client.query("insert into finance_payment_allocations(id,school_id,student_id,payment_id,charge_id,amount_cents,fee_name,period,due_date) values ($1,$2,$3,$4,$5,2345,'Tuition','once','2025-12-10')", [id(15), id(1), id(9), id(14), id(13)]);
+  await client.query("insert into finance_charge_events(id,school_id,charge_id,request_key,request_hash,kind,reason,before_cents,after_cents,actor_id) values ($1,$2,$3,$1,'synthetic','REDUCTION','Legacy reduction',12345,11345,$4)", [id(16),id(1),id(13),id(2)]);
+  const before = (await client.query('select to_jsonb(e) row from finance_charge_events e')).rows;
+  const charges = (await client.query('select to_jsonb(c) row from finance_student_charges c')).rows;
+  await client.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role; BEGIN');
+  for (const sql of (await readFile(join(migrationsFolder, '0026_finance-reduction-corrections.sql'), 'utf8')).split('--> statement-breakpoint')) if (sql.trim()) await client.exec(sql);
+  await client.exec('COMMIT');
+  expect((await client.query("select to_jsonb(e)-'reduction_id'-'replaces_event_id'-'reduction_before_cents'-'reduction_after_cents' row from finance_charge_events e")).rows).toEqual(before);
+  expect((await client.query('select to_jsonb(c) row from finance_student_charges c')).rows).toEqual(charges);
+  expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
+  const previous = JSON.parse(await readFile(join(migrationsFolder, 'meta/0025_snapshot.json'), 'utf8'));
+  const current = JSON.parse(await readFile(join(migrationsFolder, 'meta/0026_snapshot.json'), 'utf8'));
+  expect(current.prevId).toBe(previous.id); expect(Object.keys(current.tables)).toEqual(Object.keys(previous.tables));
+  for (const name of Object.keys(previous.tables).filter(n => n !== 'public.finance_charge_events')) expect(current.tables[name]).toEqual(previous.tables[name]);
+  await client.exec('SET ROLE authenticated');
+  await expect(client.query('select * from finance_charge_events')).rejects.toThrow();
+  await expect(client.query('update finance_charge_events set after_cents=1')).rejects.toThrow();
+  await client.exec('RESET ROLE');
+}, 30000);

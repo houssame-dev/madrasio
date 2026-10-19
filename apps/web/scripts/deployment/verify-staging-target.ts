@@ -35,7 +35,7 @@ async function main(): Promise<void> {
           finance.rows[0]?.count !== 8 ||
           missingRls.rows[0]?.count !== 0
         ) {
-          throw new Error('STAGING pre-migration schema differs from the verified 0024 checkpoint.');
+          throw new Error('STAGING pre-migration schema differs from the verified 0025 checkpoint.');
         }
       } finally {
         await client.query('ROLLBACK');

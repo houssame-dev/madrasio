@@ -2,11 +2,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { UnauthenticatedError, ForbiddenError } from '@/lib/errors';
-const mock = vi.hoisted(() => ({ context: vi.fn(), list: vi.fn(), save: vi.fn(), generate: vi.fn(), settings: vi.fn(), currency: vi.fn() }));
+const mock = vi.hoisted(() => ({ context: vi.fn(), list: vi.fn(), save: vi.fn(), generate: vi.fn(), settings: vi.fn(), currency: vi.fn(), correct: vi.fn() }));
 vi.mock('@/lib/db/client', () => ({ getDb: () => 'synthetic-db' }));
 vi.mock('@/lib/auth/require-context', () => ({ requireCurrentContext: mock.context }));
-vi.mock('@/lib/modules/finance/application/service', () => ({ listFinance: mock.list, saveFeeType: mock.save, generateCharges: mock.generate, financeSettings: mock.settings, setFinanceCurrency: mock.currency }));
-import { stateGET, typePOST, generatePOST, settingsGET, settingsPATCH } from '@/lib/api/finance';
+vi.mock('@/lib/modules/finance/application/service', () => ({ listFinance: mock.list, saveFeeType: mock.save, generateCharges: mock.generate, financeSettings: mock.settings, setFinanceCurrency: mock.currency, correctReduction: mock.correct }));
+import { stateGET, typePOST, generatePOST, settingsGET, settingsPATCH, reductionPATCH } from '@/lib/api/finance';
+import * as reductionRoute from '@/app/api/v1/finance/charges/[id]/reductions/[reductionId]/route';
 const userId = randomUUID(), schoolId = randomUUID();
 beforeEach(() => { vi.resetAllMocks(); mock.context.mockResolvedValue({ userId, schoolContext: { schoolId } }); mock.list.mockResolvedValue({ charges: [] }); mock.save.mockResolvedValue({ name: 'Tuition' }); });
 function request(body: unknown, origin: string | null = 'https://school.example.test') {
@@ -14,6 +15,19 @@ function request(body: unknown, origin: string | null = 'https://school.example.
 }
 function privateResponse(response: Response) { expect(response.headers.get('cache-control')).toBe('private, no-store'); expect(response.headers.get('vary')).toBe('Cookie'); }
 describe('Finance HTTP boundary', () => {
+  it('exposes only guarded PATCH for an individual reduction and binds both identifiers to server School context', async () => {
+    expect(Object.keys(reductionRoute)).toEqual(['PATCH']); const id = randomUUID(), reductionId = randomUUID();
+    const params = { params: Promise.resolve({ id, reductionId }) };
+    const input = { kind: 'REDUCTION_EDIT', amountCents: 1200, reason: 'Correct amount', confirmed: true, expectedEventId: reductionId, requestKey: randomUUID() };
+    mock.correct.mockResolvedValue({ id: randomUUID() });
+    const response = await reductionPATCH(request(input), params); expect(response.status).toBe(200); privateResponse(response);
+    expect(mock.correct).toHaveBeenCalledWith('synthetic-db', { userId, schoolId }, id, reductionId, input);
+    mock.correct.mockClear();
+    for (const body of [{ ...input, schoolId }, { ...input, confirmed: false }, { ...input, amountCents: 0 }, { ...input, expectedEventId: undefined }, { ...input, reason: ' ' }]) { const result = await reductionPATCH(request(body), params); expect(result.status).toBe(400); privateResponse(result); }
+    for (const origin of [null, 'null', 'https://foreign.example.test', 'https://school.example.test.evil.test']) expect((await reductionPATCH(request(input, origin), params)).status).toBe(403);
+    expect(mock.correct).not.toHaveBeenCalled();
+    mock.context.mockRejectedValue(new ForbiddenError()); const denied = await reductionPATCH(request(input), params); expect(denied.status).toBe(403); privateResponse(denied);
+  });
   it('binds currency settings to verified School identity and private responses', async () => {
     mock.settings.mockResolvedValue({ currency: 'EUR', locked: false }); mock.currency.mockResolvedValue({ currency: 'EUR', locked: false });
     for (const response of [await settingsGET(), await settingsPATCH(request({ currency: 'EUR' }))]) { expect(response.status).toBe(200); privateResponse(response); }

@@ -12,6 +12,7 @@ import { receiptDocument } from '@/lib/modules/finance/domain/receipt';
 import { collectionsReport, outstandingReport, studentBalance, collectionFilters, outstandingFilters } from '@/lib/modules/finance/application/reports';
 import { csvDocument, decimalMoney } from '@/lib/modules/finance/domain/csv';
 import { currencySettingsSchema } from '@/lib/modules/finance/domain/currency';
+import { reductionCorrectionSchema } from '@/lib/modules/finance/domain/contracts';
 
 type Params = { params: Promise<{ id: string }> };
 const uuid = z.string().uuid();
@@ -46,6 +47,10 @@ export function previewPOST(request: Request) { return run(async () => { sameOri
 export function generatePOST(request: Request) { return run(async () => { sameOrigin(request); const input = await parseBody(request, generateSchema); const v = await actor(); return finance.generateCharges(v.db, v.actor, input); }); }
 export function chargeGET(_request: Request, context: Params) { return run(async () => { const v = await actor(); return finance.chargeDetail(v.db, v.actor, uuid.parse((await context.params).id)); }); }
 export function adjustmentPOST(request: Request, context: Params) { return run(async () => { sameOrigin(request); const input = await parseBody(request, adjustmentSchema); const v = await actor(); return finance.adjustCharge(v.db, v.actor, uuid.parse((await context.params).id), input); }); }
+export function reductionPATCH(request: Request, context: { params: Promise<{ id: string; reductionId: string }> }) { return run(async () => {
+  sameOrigin(request); const input = await parseBody(request, reductionCorrectionSchema); const v = await actor(); const params = await context.params;
+  return finance.correctReduction(v.db, v.actor, uuid.parse(params.id), uuid.parse(params.reductionId), input);
+}); }
 export function paymentsGET(request: Request) { return run(async () => {
   const input = z.object({ studentId: uuid.optional(), page: z.coerce.number().int().min(1).max(100000).default(1) }).strict().parse(Object.fromEntries(new URL(request.url).searchParams));
   const v = await actor(); return payments.paymentHistory(v.db, v.actor, input.studentId, input.page);

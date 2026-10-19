@@ -183,6 +183,13 @@
       "when": 1792345514211,
       "tag": "0025_school-finance-currency",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792369649041,
+      "tag": "0026_finance-reduction-corrections",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,7 @@ import path from 'node:path';
 import * as schema from '@school/database';
 import { applicationSecurityAuditSql } from '@school/database/security';
 import { seedSchool, seedStudentAndActors } from '../grades/test-helpers';
-import { adjustCharge, chargeDetail, generateCharges, previewCharges, saveFeeType, saveStructure, setFinanceCurrency } from '@/lib/modules/finance/application/service';
+import { adjustCharge, chargeDetail, correctReduction, generateCharges, previewCharges, saveFeeType, saveStructure, setFinanceCurrency } from '@/lib/modules/finance/application/service';
 import { recordPayment, reversePayment } from '@/lib/modules/finance/application/payments';
 import { collectionsReport, outstandingReport, studentBalance } from '@/lib/modules/finance/application/reports';
 import { paymentDetail } from '@/lib/modules/finance/application/payments';
@@ -79,6 +79,31 @@ describe.skipIf(!portText)('real local PostgreSQL: distinct connections and row-
     try { await waitForBlocked(2); } finally { await blocker.query('COMMIT'); blocker.release(); }
     return pending;
   }
+  it.each(['REDUCTION_EDIT', 'REDUCTION_CANCEL'] as const)('admits only one correction for competing revisions: %s', async kind => {
+    const root = await adjustCharge(db, actor, id, { kind: 'REDUCTION', amountCents: 1000, requestKey: randomUUID(), reason: 'Original' }, now);
+    const first = { kind: 'REDUCTION_EDIT', amountCents: 2000, expectedEventId: root.id, requestKey: randomUUID(), confirmed: true, reason: 'Edit' };
+    const second = { kind, ...(kind === 'REDUCTION_EDIT' ? { amountCents: 3000 } : {}), expectedEventId: root.id, requestKey: randomUUID(), confirmed: true, reason: 'Competing correction' };
+    const results = await contested(() => Promise.allSettled([correctReduction(db, actor, id, root.id, first), correctReduction(db, actor, id, root.id, second)]));
+    expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+    const detail = await chargeDetail(db, actor, id), correction = detail.events.find(e => e.reductionId === root.id)!;
+    expect(detail.events).toHaveLength(2); expect(detail.events.find(e => e.id === root.id)).toEqual(root);
+    expect(detail.charge.reductionCents).toBe(correction.reductionAfterCents);
+  });
+  it('replays one correction for simultaneous identical request keys', async () => {
+    const root = await adjustCharge(db, actor, id, { kind: 'REDUCTION', amountCents: 1000, requestKey: randomUUID(), reason: 'Original' }, now);
+    const body = { kind: 'REDUCTION_CANCEL', expectedEventId: root.id, requestKey: randomUUID(), confirmed: true, reason: 'Undo' };
+    const results = await contested(() => Promise.allSettled([correctReduction(db, actor, id, root.id, body), correctReduction(db, actor, id, root.id, body)]));
+    expect(results[0]).toEqual(results[1]); expect((await chargeDetail(db, actor, id)).events).toHaveLength(2);
+    expect((await chargeDetail(db, actor, id)).charge.reductionCents).toBe(0);
+  });
+  it('serializes increasing a reduction against payment allocation', async () => {
+    const root = await adjustCharge(db, actor, id, { kind: 'REDUCTION', amountCents: 1000, requestKey: randomUUID(), reason: 'Original' }, now);
+    const body = { kind: 'REDUCTION_EDIT', amountCents: 5000, expectedEventId: root.id, requestKey: randomUUID(), confirmed: true, reason: 'Increase' };
+    const results = await contested(() => Promise.allSettled([correctReduction(db, actor, id, root.id, body), recordPayment(db, actor, input(6000), now)]));
+    expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+    const charge = (await chargeDetail(db, actor, id)).charge;
+    expect(charge.allocatedCents).toBeLessThanOrEqual(charge.originalCents - charge.reductionCents);
+  });
   it('commits one payment for simultaneous identical idempotency keys', async () => {
     const body = input(); const results = await contested(() => Promise.allSettled([recordPayment(db, actor, body, now), recordPayment(db, actor, body, now)]));
     expect(results.every(r => r.status === 'fulfilled')).toBe(true);

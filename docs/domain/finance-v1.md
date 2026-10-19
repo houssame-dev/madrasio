@@ -54,6 +54,23 @@ receivables, not SaaS subscriptions or a general ledger.
   cannot reduce the payable amount below existing allocations. Original amount
   remains immutable. Every adjustment appends actor, time, reason, previous/new
   amount and idempotency identity in the same transaction as the charge change.
+- An individual reduction can be edited or cancelled while its charge is OPEN,
+  including partially paid charges. Corrections append `REDUCTION_EDIT` or
+  `REDUCTION_CANCEL` events; original events are never updated/deleted. They retain
+  the original reduction ID, previous revision ID, individual old/new reduction,
+  charge payable before/after, actor, timestamp, reason and request identity.
+  Cancelled individual reductions cannot be revived; a new explicit reduction
+  may be applied separately. Other reductions, original amounts, payment and
+  allocation records and receipt snapshots remain unchanged.
+- Correction requests require confirmation and the displayed revision ID. The
+  School/charge locks serialize corrections with payments and other adjustments;
+  stale edits conflict, identical request retries replay the original result, and
+  database uniqueness prevents two successors of one revision. Revision links,
+  rather than transaction timestamps, determine each reduction's current amount.
+  The aggregate is recalculated atomically from all effective reductions and
+  cannot make payable less than valid allocated payments. Failure to append the
+  correction rolls back the aggregate update. Closed/cancelled charges reject
+  corrections; same-School/same-charge reference keys reinforce tenant integrity.
 - Cancellation is explicit, reasoned and only for OPEN, fully unpaid charges
   whose due date is strictly after today in the School timezone. Today/overdue
   and allocated charges cannot be cancelled. Cancelled charges retain history;
@@ -217,3 +234,13 @@ format and cannot be restored through the 0025 migration chain.
 Once non-MAD financial records exist, a rollback to the earlier MAD-only application
 is unsafe even if the database migration is retained. Prefer a forward correction;
 do not relabel stored amounts or remove currency constraints to enable a rollback.
+
+## Individual reduction corrections
+
+Forward migration `0026_finance-reduction-corrections` extends the existing charge
+event table with nullable correction references/values, guarded self-references
+and one-successor uniqueness. Existing events keep all original values; no data
+conversion or new tables are introduced. Migration head becomes 0026 (27 records,
+51 application tables). Apply it before the corresponding application release.
+Historic migrations 0023–0025 and their snapshots must remain unchanged. Recovery
+continues to use full rows and the exact matching source/migration chain.

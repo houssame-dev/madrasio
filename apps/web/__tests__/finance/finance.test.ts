@@ -215,7 +215,7 @@ describe('authorization and tenant integrity', () => {
   it('replays the new schema with all application ACL protections intact', async () => {
     await test.client.exec('create role anon;create role authenticated;create role service_role');
     expect((await test.client.query(applicationSecurityAuditSql)).rows).toEqual([]);
-    expect((await test.client.query('select count(*)::int as n from drizzle.__drizzle_migrations')).rows).toEqual([{ n: 26 }]);
+    expect((await test.client.query('select count(*)::int as n from drizzle.__drizzle_migrations')).rows).toEqual([{ n: 27 }]);
   });
 });
 

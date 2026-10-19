@@ -13,6 +13,7 @@ import { parseMoney, schoolToday, type ChargeSelection } from '@/lib/modules/fin
 import type { chargeDetail, listFinance, previewCharges } from '@/lib/modules/finance/application/service';
 import { PaymentsWorkspace } from './payments-workspace';
 import { ReportsWorkspace } from './reports-workspace';
+import { ReductionHistory } from './reduction-history';
 import { FINANCE_CURRENCIES } from '@/lib/modules/finance/domain/currency';
 import { formatMoney } from '@/lib/modules/finance/domain/csv';
 
@@ -116,12 +117,13 @@ function FinanceScreen({ schoolId, timezone }: { schoolId: string; timezone: str
       {detailId ? <section aria-label={t('detail')} className="space-y-4 rounded-lg border p-4"><div className="flex flex-wrap justify-between gap-2"><h2 className="text-xl font-semibold">{t('detail')}</h2><Button variant="ghost" onClick={() => setDetailId('')}>{t('close')}</Button></div>
         {detail.isPending ? <p role="status">{t('loading')}</p> : detail.isError ? <div role="alert">{t('error')}<Button onClick={() => void detail.refetch()}>{t('retry')}</Button></div> : charge ? <>
           <p dir="auto">{charge.feeName} · <bdi>{charge.period === 'once' ? t('once') : charge.period}</bdi> · {t(charge.status)}</p><p>{t('original')}: {money(charge.originalCents, charge.currency)} · {t('reduction')}: {money(charge.reductionCents, charge.currency)}</p><p>{t('dueDate')}: <bdi>{charge.dueDate}</bdi></p>
+          <p>{paymentT('allocated')}: <bdi>{money(charge.allocatedCents, charge.currency)}</bdi> · {t('outstanding')}: <bdi>{money(charge.status === 'CANCELLED' ? 0 : charge.originalCents - charge.reductionCents - charge.allocatedCents, charge.currency)}</bdi></p>
           <p>{t('cancellationNotice')}</p><form className="space-y-3" onSubmit={e => { e.preventDefault(); const form = e.currentTarget; const f = new FormData(form); try { const value = { kind: adjustKind, reason: String(f.get('reason')), ...(adjustKind === 'REDUCTION' ? { amountCents: parseMoney(String(f.get('amount'))) } : {}) }; const signature = JSON.stringify({ id: detailId, ...value }); if (adjustmentRequest.current?.signature !== signature) adjustmentRequest.current = { signature, key: crypto.randomUUID() }; void write({ path: `/api/v1/finance/charges/${detailId}/adjustments`, body: { ...value, requestKey: adjustmentRequest.current.key } }).then(ok => { if (ok) { form.reset(); adjustmentRequest.current = null; } }); } catch { setMessage('invalid'); } }}>
             <Field label={t('history')} htmlFor="finance-adjustment"><select id="finance-adjustment" className={inputClassName} value={adjustKind} onChange={e => setAdjustKind(e.target.value === 'CANCELLATION' ? 'CANCELLATION' : 'REDUCTION')}><option value="REDUCTION">{t('REDUCTION')}</option><option value="CANCELLATION">{t('CANCELLATION')}</option></select></Field>
             {adjustKind === 'REDUCTION' ? <Field label={t('amount')} htmlFor="finance-reduction" required><input className={inputClassName} id="finance-reduction" name="amount" inputMode="decimal" dir="ltr" required /></Field> : null}
             <Field label={t('reason')} htmlFor="finance-reason" required><textarea className={`${inputClassName} min-h-24`} id="finance-reason" name="reason" maxLength={500} required /></Field>
             <Button variant={adjustKind === 'CANCELLATION' ? 'destructive' : 'default'} disabled={busy || charge.status !== 'OPEN' || (adjustKind === 'CANCELLATION' && !canCancel)}>{t(adjustKind === 'CANCELLATION' ? 'cancelCharge' : 'reduce')}</Button>
-          </form><h3 className="font-semibold">{t('history')}</h3>{!detail.data?.data.events.length ? <p>{t('empty')}</p> : <ol className="space-y-2">{detail.data.data.events.map(event => <li key={event.id} className="rounded-md border p-3"><p>{t(event.kind)} · {money(event.beforeCents)} → {money(event.afterCents)}</p><p dir="auto">{event.reason}</p></li>)}</ol>}
+          </form>{detail.data ? <ReductionHistory detail={detail.data.data} timezone={timezone} busy={busy || detail.isFetching} onWrite={write} onReload={() => void cache.invalidateQueries({ queryKey: key })} /> : null}
         </> : null}
       </section> : null}
     </section> : null}

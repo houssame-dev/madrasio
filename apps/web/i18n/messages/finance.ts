@@ -1,4 +1,11 @@
 export const financeEn = {
+  correctionReview: 'Reload charge history and review the current reduction and balances before confirming again.',
+  REDUCTION_EDIT: 'Reduction edited', REDUCTION_CANCEL: 'Reduction cancelled',
+  editReduction: 'Edit reduction', cancelReduction: 'Cancel this reduction', newReductionAmount: 'New effective reduction amount',
+  effectiveReduction: 'Effective reduction', reductionCancelled: 'This reduction is cancelled',
+  correctionNotice: 'Only this reduction changes. Its original event, other reductions, payments and receipts remain in history.',
+  confirmCorrection: 'I confirm this reduction correction and its effect on the remaining balance.', applyCorrection: 'Confirm correction',
+  payableChange: 'Payable amount', reductionChange: 'Reduction amount', eventActor: 'Recorded by', affectedReduction: 'Original reduction',
   currency: 'School currency', currencyNotice: 'Choose before creating a fee structure. Currency cannot change after financial records exist. Amounts are never converted.',
   currencyLocked: 'Currency is locked because financial records exist, including inactive or cancelled records.',
   MAD: 'Moroccan dirham', EUR: 'Euro', USD: 'US dollar', GBP: 'Pound sterling',
@@ -74,6 +81,13 @@ export const financeEn = {
   "studentLimit": "Search results show up to 100 students. Use Class or Level for bulk selection (maximum 500)."
 } as const;
 export const financeFr = {
+  correctionReview: 'Rechargez l’historique et vérifiez la réduction et les soldes actuels avant de confirmer à nouveau.',
+  REDUCTION_EDIT: 'Réduction modifiée', REDUCTION_CANCEL: 'Réduction annulée',
+  editReduction: 'Modifier la réduction', cancelReduction: 'Annuler cette réduction', newReductionAmount: 'Nouveau montant effectif de la réduction',
+  effectiveReduction: 'Réduction effective', reductionCancelled: 'Cette réduction est annulée',
+  correctionNotice: 'Seule cette réduction change. Son événement initial, les autres réductions, paiements et reçus restent dans l’historique.',
+  confirmCorrection: 'Je confirme cette correction et son effet sur le solde restant.', applyCorrection: 'Confirmer la correction',
+  payableChange: 'Montant à payer', reductionChange: 'Montant de la réduction', eventActor: 'Enregistré par', affectedReduction: 'Réduction initiale',
   currency: 'Devise de l’établissement', currencyNotice: 'Choisissez avant de créer un barème. La devise ne peut plus changer après la création de données financières. Aucun montant n’est converti.',
   currencyLocked: 'La devise est verrouillée car des données financières existent, y compris des enregistrements inactifs ou annulés.',
   MAD: 'Dirham marocain', EUR: 'Euro', USD: 'Dollar américain', GBP: 'Livre sterling',
@@ -149,6 +163,13 @@ export const financeFr = {
   "studentLimit": "La recherche affiche 100 élèves maximum. Utilisez Classe ou Niveau pour la sélection groupée (500 maximum)."
 } as const satisfies Record<keyof typeof financeEn, string>;
 export const financeAr = {
+  correctionReview: 'أعد تحميل السجل وراجع التخفيض والأرصدة الحالية قبل التأكيد مجدداً.',
+  REDUCTION_EDIT: 'تم تعديل التخفيض', REDUCTION_CANCEL: 'تم إلغاء التخفيض',
+  editReduction: 'تعديل التخفيض', cancelReduction: 'إلغاء هذا التخفيض', newReductionAmount: 'المبلغ الفعلي الجديد للتخفيض',
+  effectiveReduction: 'التخفيض الفعلي', reductionCancelled: 'تم إلغاء هذا التخفيض',
+  correctionNotice: 'يتغير هذا التخفيض فقط. يبقى الحدث الأصلي والتخفيضات الأخرى والدفعات والوصولات محفوظة في السجل.',
+  confirmCorrection: 'أؤكد تصحيح هذا التخفيض وتأثيره على الرصيد المتبقي.', applyCorrection: 'تأكيد التصحيح',
+  payableChange: 'المبلغ المستحق', reductionChange: 'مبلغ التخفيض', eventActor: 'سجله', affectedReduction: 'التخفيض الأصلي',
   currency: 'عملة المدرسة', currencyNotice: 'اختر العملة قبل إنشاء هيكل رسوم. لا يمكن تغييرها بعد وجود سجلات مالية. لا يتم تحويل أي مبلغ.',
   currencyLocked: 'العملة مقفلة لوجود سجلات مالية، بما فيها السجلات غير النشطة أو الملغاة.',
   MAD: 'درهم مغربي', EUR: 'يورو', USD: 'دولار أمريكي', GBP: 'جنيه إسترليني',

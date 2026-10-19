@@ -8,10 +8,10 @@ import { applicationSecurityAuditSql } from '../security';
 let client: PGlite;
 afterEach(async () => { await client?.close(); });
 
-it('fresh current replay has 26 migrations, 51 RLS tables, private grants and nullable actual time', async () => {
+it('fresh current replay has 27 migrations, 51 RLS tables, private grants and nullable actual time', async () => {
   ({ client } = await createTestDb());
   await client.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;');
-  expect((await client.query<{ count: number }>('select count(*)::int count from drizzle.__drizzle_migrations')).rows[0]!.count).toBe(26);
+  expect((await client.query<{ count: number }>('select count(*)::int count from drizzle.__drizzle_migrations')).rows[0]!.count).toBe(27);
   expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
   expect((await client.query("select data_type,is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='homework_submissions' and column_name='actual_handed_in_at'")).rows).toEqual([
     { data_type: 'timestamp with time zone', is_nullable: 'YES', column_default: null },

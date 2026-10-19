@@ -187,8 +187,8 @@ describe('Production manifest and bundle construction', () => {
       );
       expect(restoredManifest.format).toBe('madrasio-recovery-v1');
       expect(restoredManifest.migrations).toMatchObject({
-        count: 26,
-        latest: '0025_school-finance-currency',
+        count: 27,
+        latest: '0026_finance-reduction-corrections',
       });
       expect(restoredManifest.fingerprints).toHaveLength(53);
       expect(restoredManifest.fingerprints.every((item) => item.rowCount === rowCount)).toBe(true);
@@ -207,8 +207,8 @@ describe('Production manifest and bundle construction', () => {
       /\/database\/drizzle\/migrations\/?$/,
     );
     await expect(loadMigrationMetadata(migrationsDirectory)).resolves.toMatchObject({
-      count: 26,
-      latest: '0025_school-finance-currency',
+      count: 27,
+      latest: '0026_finance-reduction-corrections',
     });
     await expect(loadMigrationMetadata(join(tmpdir(), 'missing-migrations'))).rejects.toMatchObject(
       {

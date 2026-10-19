@@ -131,12 +131,23 @@ export const financeReversals = pgTable('finance_payment_reversals', {
 export const financeChargeEvents = pgTable('finance_charge_events', {
   id: uuid('id').primaryKey().defaultRandom(), schoolId: uuid('school_id').notNull(), chargeId: uuid('charge_id').notNull(),
   requestKey: uuid('request_key').notNull(), requestHash: text('request_hash').notNull(),
-  kind: text('kind').$type<'REDUCTION' | 'CANCELLATION'>().notNull(), reason: text('reason').notNull(),
+  kind: text('kind').$type<'REDUCTION' | 'CANCELLATION' | 'REDUCTION_EDIT' | 'REDUCTION_CANCEL'>().notNull(), reason: text('reason').notNull(),
+  reductionId: uuid('reduction_id'), replacesEventId: uuid('replaces_event_id'),
+  reductionBeforeCents: integer('reduction_before_cents'), reductionAfterCents: integer('reduction_after_cents'),
   beforeCents: integer('before_cents').notNull(), afterCents: integer('after_cents').notNull(), actorId: uuid('actor_id').notNull(),
   occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [unique('finance_events_request_unique').on(t.schoolId, t.requestKey),
+  unique('finance_events_context_unique').on(t.schoolId, t.chargeId, t.id),
+  unique('finance_events_replaces_unique').on(t.schoolId, t.replacesEventId),
+  foreignKey({ columns: [t.schoolId, t.chargeId, t.reductionId], foreignColumns: [t.schoolId, t.chargeId, t.id], name: 'finance_events_reduction_fk' }).onDelete('restrict'),
+  foreignKey({ columns: [t.schoolId, t.chargeId, t.replacesEventId], foreignColumns: [t.schoolId, t.chargeId, t.id], name: 'finance_events_previous_fk' }).onDelete('restrict'),
   foreignKey({ columns: [t.schoolId, t.chargeId], foreignColumns: [studentCharges.schoolId, studentCharges.id], name: 'finance_events_charge_fk' }).onDelete('restrict'),
   foreignKey({ columns: [t.schoolId, t.actorId], foreignColumns: [schoolMemberships.schoolId, schoolMemberships.userId], name: 'finance_events_actor_fk' }).onDelete('restrict'),
   index('finance_events_charge_idx').on(t.schoolId, t.chargeId, t.occurredAt),
-  check('finance_events_values_check', sql`${t.kind} in ('REDUCTION','CANCELLATION') and length(btrim(${t.reason})) between 1 and 500 and ${t.beforeCents}>=${t.afterCents} and ${t.afterCents}>=0`),
+  check('finance_events_values_check', sql`length(btrim(${t.reason})) between 1 and 500 and ${t.beforeCents}>=0 and ${t.afterCents}>=0 and (
+    (${t.kind} in ('REDUCTION','CANCELLATION') and ${t.beforeCents}>=${t.afterCents} and ${t.reductionId} is null and ${t.replacesEventId} is null and ${t.reductionBeforeCents} is null and ${t.reductionAfterCents} is null)
+    or (${t.kind} in ('REDUCTION_EDIT','REDUCTION_CANCEL') and ${t.reductionId} is not null and ${t.replacesEventId} is not null and ${t.reductionId}<>${t.id} and ${t.replacesEventId}<>${t.id}
+      and ${t.reductionBeforeCents} is not null and ${t.reductionAfterCents} is not null and ${t.reductionBeforeCents} between 1 and 999999999
+      and ((${t.kind}='REDUCTION_EDIT' and ${t.reductionAfterCents} between 1 and 999999999) or (${t.kind}='REDUCTION_CANCEL' and ${t.reductionAfterCents}=0))
+      and ${t.afterCents}=${t.beforeCents}+${t.reductionBeforeCents}-${t.reductionAfterCents}))`),
 ]).enableRLS();
