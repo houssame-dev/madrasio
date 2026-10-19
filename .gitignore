@@ -26,8 +26,51 @@ pnpm-debug.log*
 
 # Local env files
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+!.env.example
+!.env.*.example
+!*.example.env
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# Local credentials and private recovery material (never ignore migration SQL)
+.secrets/
+secrets/
+credentials/
+.aws/
+.ssh/
+.wrangler/
+.netrc
+_netrc
+.pgpass
+*.key
+*.p12
+*.pfx
+*.keystore
+*.agekey
+id_rsa
+id_ed25519
+id_ecdsa
+age-identity*.txt
+*-age-identity*.txt
+recovery-key*.txt
+*.credentials.json
+*-service-account.json
+
+# Database/recovery artifacts and scanner reports can contain sensitive data
+backups/
+recovery-artifacts/
+*.dump
+*.backup
+*.sql.gz
+*.age
+*.tfstate
+*.tfstate.*
+gitleaks-report*.json
+gitleaks-report*.sarif
+trufflehog-report*.json
 
 # Vercel
 .vercel

@@ -1,0 +1,18 @@
+# Reviewed synthetic historical findings only. These fingerprints include the exact
+# original commit, path, rule and line; they do not suppress future credentials.
+# Operator test URL/password-encoding fixtures:
+1b60ee5b831d266e1ee499367a26b41fa0d59c09:apps/web/__tests__/operator/staging-platform-admin.test.ts:madrasio-database-password:24
+1b60ee5b831d266e1ee499367a26b41fa0d59c09:apps/web/__tests__/operator/staging-platform-admin.test.ts:madrasio-database-password:88
+1b60ee5b831d266e1ee499367a26b41fa0d59c09:apps/web/__tests__/operator/staging-platform-admin.test.ts:madrasio-database-password:99
+1b60ee5b831d266e1ee499367a26b41fa0d59c09:apps/web/__tests__/operator/staging-platform-admin.test.ts:madrasio-database-password:100
+# Documented loopback validation password (not a hosted credential):
+e57da9b004fdd3cedc68b5a96f6739e18a37e55d:docs/architecture/published-result-experience.md:madrasio-database-password:118
+# Recovery test sentinel/encoding values:
+27386d7a58454ae3518d06631afcd3bbb29129c4:apps/web/__tests__/recovery/recovery-contracts.test.ts:madrasio-database-password:138
+0d13b0ee894dcb06b93168213698fccbfab920bb:apps/web/__tests__/recovery/recovery-contracts.test.ts:madrasio-database-password:395
+3098838705cf8c3c0373b53466b82f4538199329:apps/web/__tests__/recovery/recovery-contracts.test.ts:madrasio-database-password:452
+2381dc311dfff4ce6ad75b5e259fc5ae088504af:apps/web/__tests__/recovery/recovery-contracts.test.ts:madrasio-database-password:85
+# Runtime URI interpolation, not an embedded password:
+d0902e096847170a67cf2a64c7d63f0026b7c6aa:apps/web/scripts/recovery/local-target.ts:madrasio-database-password:207
+# Remote-TLS error-redaction test sentinel:
+bfe68c95a05052bd043da36d52861b7fb0a77270:apps/web/__tests__/security/hardening.test.ts:madrasio-database-password:36

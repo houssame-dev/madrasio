@@ -1,0 +1,53 @@
+title = "Madrasio secret scanning"
+
+[extend]
+useDefault = true
+
+# This exact prose fragment is not a credential. Do not exclude whole documents.
+[[allowlists]]
+description = "Security documentation prose"
+regexTarget = "match"
+regexes = ['''credentials,\s+publishable/secret''']
+
+# Supabase publishable keys are deliberately public client identifiers.
+[[allowlists]]
+description = "Public Supabase publishable key format only"
+regexTarget = "secret"
+regexes = ['''^sb_publishable_[A-Za-z0-9_-]+$''']
+
+[[rules]]
+id = "madrasio-database-password"
+description = "Password embedded in a database connection URI"
+regex = '''(?i)(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^:\s/@]+:([^@\s/]{3,})@'''
+secretGroup = 1
+keywords = ["postgres", "mysql", "mongodb"]
+
+[[rules.allowlists]]
+description = "Reviewed dummy database passwords in tests, examples and local fixture helpers"
+condition = "AND"
+paths = ['''(^|/)apps/web/__tests__/''', '''(^|/)\.github/workflows/(ci|deploy-staging|deploy-production)\.yml$''', '''(^|/)\.env\.example$''', '''(^|/)docs/architecture/published-result-experience\.md$''', '''(^|/)apps/web/scripts/recovery/local-target\.ts$''']
+regexTarget = "secret"
+regexes = ['''^(password|secret!?|test|pass|pw|postgres|local-only|your-password|p%40ss(?:word)?|redacted)$''', '''^\$\{[A-Za-z0-9_.]+\}$''']
+
+[[rules]]
+id = "madrasio-sensitive-assignment"
+description = "Sensitive named configuration assignment"
+regex = '''(?im)^[\t ]*(?:export[\t ]+)?(?:SUPABASE_(?:SECRET_KEY|SERVICE_ROLE_KEY|JWT_SECRET)|(?:R2|AWS)_(?:ACCESS_KEY_ID|SECRET_ACCESS_KEY)|CLOUDFLARE_API_TOKEN|GITHUB_TOKEN|GH_TOKEN|AGE_SECRET_KEY|BACKUP_PASSWORD|RECOVERY_PASSWORD)[\t ]*=[\t ]*["']?([^\s"'#]{8,})'''
+secretGroup = 1
+
+[[rules]]
+id = "madrasio-supabase-secret"
+description = "Supabase server secret key"
+regex = '''sb_secret_[A-Za-z0-9_-]{16,}'''
+
+[[rules.allowlists]]
+description = "Exact synthetic operator fixture; other secrets in tests still fail"
+condition = "AND"
+paths = ['''(^|/)apps/web/__tests__/operator/staging-platform-admin\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^sb_secret_synthetic_operator_fixture$''']
+
+[[rules]]
+id = "madrasio-age-identity"
+description = "Private age recovery identity"
+regex = '''AGE-SECRET-KEY-[A-Z0-9]{58}'''
