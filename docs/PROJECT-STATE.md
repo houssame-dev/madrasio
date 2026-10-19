@@ -2,7 +2,178 @@
 
 Last updated: **2026-10-19**
 
-## Current handoff — Finance V1 reduction correction (2026-10-19)
+## Current handoff — Timetable V1 Phase 3 (2026-10-19)
+
+**LOCAL PUBLICATION, HISTORY AND TEACHER/PARENT VIEWS IMPLEMENTED; HOSTED RELEASE NOT AUTHORIZED.**
+Repository `houssame-dev/madrasio`, `main`, HEAD
+`3dcb7ad6e1d726590e9ac86c1b8eac75d313c2b0` remains unchanged. All uncommitted
+Phase 1/2 work is preserved. No staging, commit, push, hosted migration, provider
+operation or deployment occurred.
+
+School Admins explicitly publish saved drafts with confirmation and an effective
+date. Publication rechecks lifecycle, eligible assignments and real clock/date
+Class/Teacher/room conflicts against published timelines under the School lock.
+Incomplete/excess loads are warnings. Expected draft revisions, publication
+sequences and request-key replay prevent lost or duplicate writes. Replacements
+append in strictly increasing School-local date order, today or later, within the
+Academic Period. The predecessor ends on the preceding day, bounded by its saved
+Period end; no historical row is rewritten. An explicitly confirmed empty
+replacement can end a previous week. First publication requires lessons.
+
+Published snapshots retain lesson times, Subject/Teacher/room names, Class/Year/
+Period labels and timezone. Admins can view by Class/Teacher and inspect history.
+Teachers see only their own currently authorized published assignment lessons;
+Parents select authorized linked children with dated enrollment placement.
+Ended assignments/relationships revoke scope without deleting history. Neither
+role can access drafts or Admin settings. Platform-only authority grants no access.
+EN/FR/AR, RTL and responsive views reuse existing controls and unprefixed routes.
+
+Forward migration `0029_timetable-publications.sql` adds one private RLS table,
+composite draft/context references and unique Class sequence/date and request
+keys. Migrations/snapshots through 0028 remain unchanged; journal index 29 is
+appended. Current contracts: 30 migrations, 57 application + 2 Auth recovery
+tables. Prechecks accept exact reviewed 27/28/29/30-entry prefixes with
+51/54/56/57 application tables; postchecks require the complete 30-entry chain.
+Historical recovery bundles, including 0027/0028, retain their original inventories
+and require matching source/migration chains. Publication JSON and audit history
+are included in fingerprints and FK-derived restore ordering.
+
+Local validation uses synthetic configuration and excludes real dotenv files:
+- Focused domain/API/UI, authorization, navigation, deployment and recovery:
+  **596 passed, 16 skipped**, exit 0. Eight native cases ran separately; the
+  remaining skips retain existing integration prerequisites.
+- Native PostgreSQL 17.6: **8 passed**, exit 0, including publication contention,
+  identical-request replay and cross-Level Teacher/room publication conflicts.
+  Independent connections and lock waiters were observed; the owned container
+  was removed afterward.
+- Focused migration/security: **31 passed**, exit 0, including 0028 → 0029 replay,
+  existing-row preservation, snapshot parentage and private ACL/RLS checks.
+- Recovery restored nonempty draft/publication history with all **59 fingerprints**
+  matching; deliberate financial/timetable/publication drift was detected.
+- Root lint/typecheck and credential-free production build passed. Chromium smoke
+  covers **33 cases**: EN/FR/AR Admin publication/history, Teacher views, Parent
+  child switching at 390/1440px, plus retained Phase 1/2 and tablet builder cases.
+  Browser APIs are synthetic; SQL authorization/concurrency are tested separately.
+  No native encrypted-backup or authenticated hosted-acceptance claim is made.
+
+No local release blocker remains after validation. Real authenticated STAGING
+acceptance is still required separately: review the complete accumulated release,
+verify a suitable recovery point and exact target/TLS binding, authorize pending
+0027–0029 migration/deployment, then verify Admin publication/replacement, Teacher
+scope, Parent links/transfers, Arabic RTL and exact deployed SHA. No such execution
+is authorized by this handoff. Auto-generation, substitutions, exam schedules,
+complex calendar exceptions and analytics remain deferred. See
+[Timetable V1 contract](domain/timetable-v1.md).
+
+## Historical handoff — Timetable V1 Phase 2 (2026-10-19)
+
+**LOCAL MANUAL WEEKLY DRAFT BUILDER IMPLEMENTED; HOSTED RELEASE NOT AUTHORIZED.**
+`main` remains at `3dcb7ad6e1d726590e9ac86c1b8eac75d313c2b0`. The existing
+Phase 1 working tree is preserved and extended; no staging, commit, push or hosted
+operation was performed.
+
+School Admins can select Year/Period/Class, add, edit, move and remove lessons,
+save complete immutable draft revisions and reload them. Existing ACTIVE Teacher
+Assignments remain authoritative. Lessons use exact configuration revisions,
+active curriculum Subjects and optional same-School rooms. Assignment eligibility
+covers every actual recurring lesson date. Configuration or academic-context
+changes require explicit review. Load counts/minutes and duration differences are
+warnings; actual Class/Teacher/room overlaps block saving, including across Level
+schedules and overlapping Periods. Adjacent intervals are allowed. School locks,
+fresh lifecycle authorization, expected revisions and idempotency keys protect
+concurrent saves. Teachers/Parents cannot access these drafts. EN/FR/AR, RTL and
+responsive click/tap controls reuse the existing UI primitives.
+
+Forward migration `0028_timetable-weekly-drafts.sql` creates `timetable_drafts`
+and `timetable_lessons`, with private RLS, composite context FKs and a configuration
+reference key. Existing SQL/snapshot bytes through 0027 are preserved. Journal
+index 28 is appended; current local contracts expect 29 migrations, 56 application
+tables and 2 Auth recovery tables. Deployment prechecks accept exact reviewed
+27/28/29-entry prefixes and corresponding 51/54/56-table inventories; postchecks
+require the complete 29-entry chain. Historical recovery inventories, including
+0027, retain matching-source restore boundaries. No migration was applied hosted.
+
+Local validation uses synthetic configuration and excludes real dotenv files:
+- Focused timetable/domain/API/UI, deployment, catalog, navigation, authorization
+  and recovery: **572 passed, 13 skipped**, exit 0. Native tests are separately
+  opt-in; remaining skips retain their existing integration prerequisites.
+- Native PostgreSQL 17.6: **5 passed**, exit 0, with independent connections and
+  observed lock contention for cross-Level Teacher/room reservations, competing
+  revisions, identical-request replay and lifecycle revalidation after waiting.
+- Focused database migration/replay/security: **30 passed**, exit 0, including
+  populated 0027 → 0028 replay, unchanged existing rows and snapshot parentage.
+- Nonempty draft/lesson recovery round trip: all **58 fingerprints** matched;
+  altered timetable history was detected. No native encrypted-backup claim is
+  made by this in-memory recovery regression check.
+- Root lint/typecheck and credential-free production build passed, exit 0.
+  Chromium route smoke: **15 passed**, exit 0 (EN/FR/AR at 390/768/1440px
+  for the builder, plus six retained Phase 1 cases), including localized card
+  bounds, no horizontal overflow and document direction. The editor's seven
+  focused UI tests also passed again after the wrapping correction. Browser APIs
+  are synthetic; real SQL and concurrent transaction behavior are verified separately.
+
+The entire database suite was not repeated. Real authenticated/hosted acceptance
+remains separate. Phase 3 is publication/effective-date design and implementation,
+then authorized Teacher/Parent published views and presentation-history snapshots.
+No publishing, auto-generation, substitutions or advanced availability engine is
+implemented. Separate release authorization is required before hosted migration.
+See [Timetable V1 contract](domain/timetable-v1.md).
+
+## Historical handoff — Timetable V1 Phase 1 (2026-10-19)
+
+**LOCAL FOUNDATION AND CONFIGURATION IMPLEMENTED AND FOCUSED-VALIDATED.**
+Started from clean `main` at `3dcb7ad6e1d726590e9ac86c1b8eac75d313c2b0`;
+HEAD remains unchanged. No hosted operations, staging, commit, push or deployment.
+
+`/timetable` now gives an ACTIVE School Admin year-scoped School teaching weeks,
+complete Stage/Level overrides (Level > Stage > School), ISO working days,
+ordered local-time teaching/break intervals, School rooms/labs and Class/Subject
+weekly lesson-count/duration requirements with optional room preferences.
+The UI/API reuse Academic Years, Levels, Classes, exact curriculum versions and
+existing Teacher Assignments. No parallel teacher authorization source was added.
+Configuration and load changes retain revisions, actor and time; room changes are
+audited with old/new values. Writes recheck authority and academic lifecycle under
+transaction locks; stale revisions conflict. Closed/archived years are read-only.
+The administration surface is School Admin only, including when a platform-only
+administrator exists. EN/FR/AR, RTL/LTR, responsive forms and error/empty states
+are included. See [Timetable V1 contract](domain/timetable-v1.md).
+
+New forward migration: `0027_timetable-foundation.sql`, snapshot `0027` and one
+journal append. It creates `timetable_configurations`, `timetable_rooms` and
+`timetable_loads`, plus a unique Teacher Assignment reference key. Existing
+migration/snapshot bytes through `0026` and all 27 previous journal entries remain
+unchanged. Local current head is 28 migrations, 54 private RLS application tables
+and 2 Auth recovery tables. Recovery inventory/fingerprints/FK restore ordering
+include the new tables. Historical 0022 and 0024–0026 bundles retain their original
+inventories and require their matching source/migration chain. Deployment guards
+accept the exact 27/28-migration prefix with 51/54 application tables respectively;
+post-migration verification requires the complete new chain. None was run hosted.
+
+Verified local evidence (sanitized environment; no real dotenv credentials):
+- Focused timetable, deployment, authorization, navigation, catalog and recovery:
+  **530 passed, 8 existing integration tests skipped**, exit 0.
+- Focused database migration/replay/security: **29 passed**, exit 0; includes
+  populated 0026 upgrade, snapshot parentage and unchanged existing rows.
+- Nonempty timetable and Finance recovery round trips: all **56 fingerprints**
+  matched; altered timetable records were detected.
+- Actual Next route Chromium smoke: **6 passed** (EN/FR/AR at 390/1440px), exit 0;
+  correct document direction, configuration/room/load writes and no horizontal
+  overflow. Browser APIs were synthetic; real SQL rules were tested separately.
+- Root lint/typecheck and credential-free-copy production build: exit 0.
+- Final diff whitespace check: exit 0. Dependencies and historical migrations intact.
+
+An additional full database suite exceeded its ten-minute execution budget and
+was stopped with partial diagnostics retained. No full database/full CI pass is
+claimed. The focused migration/security suite passed afterward. Native concurrent
+PostgreSQL sessions and real-authenticated/hosted acceptance were not exercised.
+
+Phase 2 manual recurring-week building, actual dated Teacher/Class/room conflict
+checks, assignment-date revalidation and exact configuration revision binding are
+next implementation work. Phase 3 publication and Teacher/Parent views are not
+implemented. No new published/active timetable exists from this checkpoint.
+Separate release review and authorization are required before hosted migration.
+
+## Historical handoff — Finance V1 reduction correction (2026-10-19)
 
 **LOCAL IMPLEMENTATION VALIDATED — pending review and migration/release authorization.**
 Started from clean `main` at `63c64367d733985cf4f04154c2f0a63ad73c96c7`.

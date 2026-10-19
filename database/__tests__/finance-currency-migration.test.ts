@@ -39,6 +39,10 @@ it('upgrades populated 0024 transactionally, retaining MAD history and existing 
   expect((await rows()).map(r => r.rows)).toEqual(before);
   expect((await client.query('select finance_currency from schools')).rows).toEqual([{ finance_currency: 'MAD' }]);
   expect((await client.query('select currency from finance_payment_allocations')).rows).toEqual([{ currency: 'MAD' }]);
+  // Verify the historical upgrade above, then reach the current schema for the current ACL inventory.
+  for (const file of (await readdir(migrationsFolder)).filter(n => /^\d{4}_.+\.sql$/.test(n) && Number(n.slice(0, 4)) > 25).sort()) {
+    for (const statement of (await readFile(join(migrationsFolder, file), 'utf8')).split('--> statement-breakpoint')) if (statement.trim()) await client.exec(statement);
+  }
   expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
   await expect(client.query("update schools set finance_currency='EUR'")).rejects.toThrow();
   await expect(client.query("update finance_payment_allocations set currency='USD'")).rejects.toThrow();

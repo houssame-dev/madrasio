@@ -1,9 +1,15 @@
+import { publicationFr } from './timetable-publication';
+import { builderFr } from './timetable-builder';
+import { timetableFr } from './timetable';
 import { reportsFr } from './finance-reports';
 import { paymentFr } from './finance-payments';
 import type { Messages } from '../catalogs';
 import { financeFr } from './finance';
 
 const messages = {
+  timetablePublication: publicationFr,
+  timetableBuilder: builderFr,
+  timetable: timetableFr,
   financeReports: reportsFr,
   financePayments: paymentFr,
   finance: financeFr,
@@ -20,6 +26,7 @@ const messages = {
   navigation: {
     landmark: 'Navigation principale',
     items: {
+      timetable: 'Emploi du temps',
       finance: 'Finance',
       dashboard: 'Tableau de bord',
       academic: 'Structure scolaire',

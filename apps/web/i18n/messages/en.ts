@@ -1,7 +1,13 @@
+import { publicationEn } from './timetable-publication';
+import { builderEn } from './timetable-builder';
+import { timetableEn } from './timetable';
 import { reportsEn } from './finance-reports';
 import { paymentEn } from './finance-payments';
 import { financeEn } from './finance';
 const messages = {
+  timetablePublication: publicationEn,
+  timetableBuilder: builderEn,
+  timetable: timetableEn,
   financeReports: reportsEn,
   financePayments: paymentEn,
   finance: financeEn,
@@ -18,6 +24,7 @@ const messages = {
   navigation: {
     landmark: 'Main navigation',
     items: {
+      timetable: 'Timetable',
       dashboard: 'Dashboard',
       finance: 'Finance',
       academic: 'Academic Structure',

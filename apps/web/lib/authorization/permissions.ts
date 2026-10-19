@@ -14,6 +14,8 @@ import type { Role } from './roles';
  */
 export const PERMISSIONS = [
   'audit.read',
+  'timetable.manage',
+  'timetable.read',
   'finance.read',
   'finance.manage',
   'school.read',
@@ -59,8 +61,10 @@ export type Permission = (typeof PERMISSIONS)[number];
  *   ParentStudent (BR-ROLE-005), never from the permission alone.
  */
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
-  SUPER_ADMIN: PERMISSIONS.filter(p => p !== 'finance.read' && p !== 'finance.manage'),
+  SUPER_ADMIN: PERMISSIONS.filter(p => p !== 'timetable.manage' && p !== 'timetable.read' && p !== 'finance.read' && p !== 'finance.manage'),
   SCHOOL_ADMIN: [
+    'timetable.manage',
+  'timetable.read',
     'finance.read',
     'finance.manage',
     'audit.read',
@@ -86,6 +90,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     'notifications.read',
   ],
   TEACHER: [
+    'timetable.read',
     'school.read',
     'academic_structure.read',
     'students.read',
@@ -102,6 +107,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     'notifications.read',
   ],
   PARENT: [
+    'timetable.read',
     'school.read',
     'parents.read',
     'students.read',

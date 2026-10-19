@@ -8,7 +8,7 @@ import { createAnnouncementsTestDb, seedSchool, seedUser, seedAnnouncement } fro
 import { uploadAnnouncementAttachment, removeAnnouncementAttachment } from '@/lib/modules/announcements/application/announcement-attachments';
 import type { PrivateFileStore } from '@/lib/files/storage';
 
-it('replays exact file/association metadata and all 53 fingerprints; makes no claim to recover R2 bytes', async () => {
+it('replays exact file/association metadata and all 59 fingerprints; makes no claim to recover R2 bytes', async () => {
   const source = await createAnnouncementsTestDb(); const target = await createAnnouncementsTestDb();
   try {
     for (const instance of [source, target]) await instance.client.exec('create table auth.identities (id uuid primary key, user_id uuid not null references auth.users(id))');
@@ -25,7 +25,7 @@ it('replays exact file/association metadata and all 53 fingerprints; makes no cl
     const originalAssociation = await fingerprintTable(sourceClient, 'public.announcement_attachments');
     await removeAnnouncementAttachment(source.db, actor, announcement.announcementId, announcement.versionId, item.id);
     expect(await fingerprintTable(sourceClient, 'public.announcement_attachments')).not.toEqual(originalAssociation);
-    const order = buildRestoreOrder(await loadForeignKeys(sourceClient)); expect(order).toHaveLength(53);
+    const order = buildRestoreOrder(await loadForeignKeys(sourceClient)); expect(order).toHaveLength(59);
     expect(order.indexOf('public.announcement_attachments')).toBeGreaterThan(order.indexOf('public.files'));
     expect(order.indexOf('public.announcement_attachments')).toBeGreaterThan(order.indexOf('public.announcement_versions'));
     for (const table of order) {

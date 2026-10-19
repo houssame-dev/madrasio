@@ -8,13 +8,13 @@ let client: PGlite;
 afterEach(async () => {
   await client?.close();
 });
-it('fresh replay has 27 migrations, 51 protected tables and no implicit platform grant', async () => {
+it('fresh replay has 30 migrations, 57 protected tables and no implicit platform grant', async () => {
   const test = await createTestDb();
   client = test.client;
   expect(
     (await client.query<{ n: number }>('select count(*)::int n from drizzle.__drizzle_migrations'))
       .rows[0].n,
-  ).toBe(27);
+  ).toBe(30);
   const [column] = (
     await client.query<{ is_nullable: string; column_default: string; data_type: string }>(
       "select is_nullable,column_default,data_type from information_schema.columns where table_schema='public' and table_name='users' and column_name='is_platform_admin'",
@@ -31,7 +31,7 @@ it('fresh replay has 27 migrations, 51 protected tables and no implicit platform
         "select count(*)::int n from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity",
       )
     ).rows[0].n,
-  ).toBe(51);
+  ).toBe(57);
   expect(
     (
       await client.query<{ n: number }>(

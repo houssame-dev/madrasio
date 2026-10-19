@@ -38,6 +38,7 @@ interface LocalizedNavigationItem extends NavigationItem {
 export const navigationItems: readonly LocalizedNavigationItem[] = [
   { label: copy.dashboard, labelKey: 'dashboard', href: '/dashboard', icon: Home },
   { label: 'Finance', labelKey: 'finance', href: '/finance', icon: Wallet, permission: 'finance.read', roles: ['SCHOOL_ADMIN'] },
+  { label: 'Timetable', labelKey: 'timetable', href: '/timetable', icon: CalendarCheck, permission: 'timetable.read', roles: ['SCHOOL_ADMIN', 'TEACHER', 'PARENT'] },
   { label: copy.academic, labelKey: 'academic', href: '/academic', icon: School, permission: 'academic_structure.read' },
   { label: copy.students, labelKey: 'students', href: '/students', icon: GraduationCap, permission: 'students.read', roles: STAFF_ROLES },
   { label: copy.myChildren, labelKey: 'myChildren', href: '/children', icon: GraduationCap, permission: 'students.read', roles: ['PARENT'] },

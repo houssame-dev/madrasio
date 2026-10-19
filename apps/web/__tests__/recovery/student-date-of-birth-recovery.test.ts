@@ -6,7 +6,7 @@ import { assertForeignKeyIntegrity, assertIdentityIntegrity, buildRestoreOrder }
 import type { QueryClient } from '@/scripts/recovery/snapshot';
 import { createAuthTestDb, seedSchool } from '../auth/test-helpers';
 
-it('preserves known/unknown DOB in full-row recovery and fingerprints with the current 53-table inventory', async () => {
+it('preserves known/unknown DOB in full-row recovery and fingerprints with the current 58-table inventory', async () => {
   const source = await createAuthTestDb(); const target = await createAuthTestDb();
   try {
     for (const instance of [source, target]) await instance.client.exec('create table auth.identities (id uuid primary key, user_id uuid not null references auth.users(id))');
@@ -22,7 +22,7 @@ it('preserves known/unknown DOB in full-row recovery and fingerprints with the c
     expect(await fingerprintTable(a, 'public.students')).not.toEqual(fingerprint);
     await source.seed.update(schema.students).set({ dateOfBirth: '2012-02-29' }).where(eq(schema.students.id, known.id));
     const order = buildRestoreOrder(await loadForeignKeys(a));
-    expect(order).toHaveLength(53);
+    expect(order).toHaveLength(59);
     for (const table of order) {
       const { rows } = await source.client.query<{ record: unknown }>(`select to_jsonb(t) record from ${table} t`);
       if (rows.length) await target.client.query(`insert into ${table} select * from jsonb_populate_recordset(null::${table},$1::jsonb)`, [JSON.stringify(rows.map((row) => row.record))]);

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
 import { postgresConnectionConfig } from '@school/database/connection';
-import { assertStagingMigrationTarget, assertStagingPreMigrationChain, safeDeploymentError, STAGING_PROJECT_REF, EXPECTED_TABLE_COUNT } from './contracts';
+import { assertStagingMigrationTarget, assertStagingPreMigrationChain, safeDeploymentError, STAGING_PROJECT_REF, STAGING_MIGRATION_INVENTORIES } from './contracts';
 
 async function main(): Promise<void> {
   const url = assertStagingMigrationTarget(process.env);
@@ -37,11 +37,11 @@ async function main(): Promise<void> {
           "SELECT count(*)::int AS count FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND NOT c.relrowsecurity",
         );
         if (
-          tables.rows[0]?.count !== EXPECTED_TABLE_COUNT ||
+          tables.rows[0]?.count !== STAGING_MIGRATION_INVENTORIES[appliedMigrationCount] ||
           finance.rows[0]?.count !== 8 ||
           missingRls.rows[0]?.count !== 0
         ) {
-          throw new Error('STAGING pre-migration schema differs from the verified Finance inventory.');
+          throw new Error('STAGING pre-migration schema differs from the reviewed migration-prefix inventory.');
         }
       } finally {
         await client.query('ROLLBACK');
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
     event: 'staging_pre_migration_target_verified',
     projectRef: STAGING_PROJECT_REF,
     migrations: appliedMigrationCount,
-    applicationTables: EXPECTED_TABLE_COUNT,
+    applicationTables: STAGING_MIGRATION_INVENTORIES[appliedMigrationCount],
   }));
 }
 

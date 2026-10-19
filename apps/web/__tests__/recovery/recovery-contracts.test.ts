@@ -384,9 +384,9 @@ describe('recovery archive and tools', () => {
     );
   });
 
-  it('uses one complete 51-table application allowlist plus durable Auth', () => {
-    expect(APPLICATION_TABLES).toHaveLength(51);
-    expect(new Set(RECOVERY_TABLES).size).toBe(53);
+  it('uses one complete 54-table application allowlist plus durable Auth', () => {
+    expect(APPLICATION_TABLES).toHaveLength(57);
+    expect(new Set(RECOVERY_TABLES).size).toBe(59);
     expect(RECOVERY_TABLES).toContain('auth.users');
     expect(RECOVERY_TABLES).not.toContain('auth.sessions');
     expect(RECOVERY_TABLES).not.toContain('auth.oauth_client_states');
@@ -577,7 +577,7 @@ describe('recovery archive and tools', () => {
     expect(args).toContain('--format=custom');
     expect(args).toContain('--data-only');
     expect(args).toContain('--snapshot=00000003-1');
-    expect(args.filter((item) => item === '--table')).toHaveLength(53);
+    expect(args.filter((item) => item === '--table')).toHaveLength(59);
     expect(args.join(' ')).not.toMatch(/password|database-url|session|refresh_tokens/);
   });
 
@@ -1226,14 +1226,14 @@ describe('snapshot and restore orchestration', () => {
 });
 
 describe('manifest, reconciliation, cleanup and future transport boundary', () => {
-  it('captures the exact ordered 0000-0026 repository migration contract', async () => {
+  it('captures the exact ordered 0000-0029 repository migration contract', async () => {
     const metadata = await loadMigrationMetadata(
       resolve(process.cwd(), '../../database/drizzle/migrations'),
     );
-    expect(metadata.count).toBe(27);
-    expect(metadata.latest).toBe('0026_finance-reduction-corrections');
-    expect(Object.keys(metadata.fileSha256)).toHaveLength(27);
-    expect(metadata.createdAt).toHaveLength(27);
+    expect(metadata.count).toBe(30);
+    expect(metadata.latest).toBe('0029_timetable-publications');
+    expect(Object.keys(metadata.fileSha256)).toHaveLength(30);
+    expect(metadata.createdAt).toHaveLength(30);
   });
 
   it('canonicalizes objects without locale-dependent key order and rejects unknown manifests', () => {

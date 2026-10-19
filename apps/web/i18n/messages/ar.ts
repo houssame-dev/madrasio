@@ -1,9 +1,15 @@
+import { publicationAr } from './timetable-publication';
+import { builderAr } from './timetable-builder';
+import { timetableAr } from './timetable';
 import { reportsAr } from './finance-reports';
 import { paymentAr } from './finance-payments';
 import type { Messages } from '../catalogs';
 import { financeAr } from './finance';
 
 const messages = {
+  timetablePublication: publicationAr,
+  timetableBuilder: builderAr,
+  timetable: timetableAr,
   financeReports: reportsAr,
   financePayments: paymentAr,
   finance: financeAr,
@@ -20,6 +26,7 @@ const messages = {
   navigation: {
     landmark: 'التنقل الرئيسي',
     items: {
+      timetable: 'جدول الحصص',
       finance: 'المالية',
       dashboard: 'لوحة التحكم',
       academic: 'الهيكل الدراسي',

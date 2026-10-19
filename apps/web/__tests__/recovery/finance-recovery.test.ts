@@ -32,9 +32,9 @@ it('backs up and replays the entire Finance history in FK order, rejects drift a
     await source.client.exec("insert into auth.identities select gen_random_uuid(),id,'email' from auth.users");
     const a = source.client as unknown as QueryClient, b = target.client as unknown as QueryClient;
     expect(APPLICATION_TABLES.filter(table => table.startsWith('finance_'))).toEqual(finance);
-    expect(APPLICATION_TABLES).toHaveLength(51); expect([...APPLICATION_TABLES]).toEqual([...APPLICATION_TABLES].sort());
+    expect(APPLICATION_TABLES).toHaveLength(57); expect([...APPLICATION_TABLES]).toEqual([...APPLICATION_TABLES].sort());
     await assertRecoveryInventory(a); await assertRecoveryInventory(b);
-    const order = buildRestoreOrder(await loadForeignKeys(a)); expect(order).toHaveLength(53);
+    const order = buildRestoreOrder(await loadForeignKeys(a)); expect(order).toHaveLength(59);
     expect(order.indexOf('public.finance_student_charges')).toBeGreaterThan(order.indexOf('public.finance_generation_batches'));
     expect(order.indexOf('public.finance_payment_allocations')).toBeGreaterThan(order.indexOf('public.finance_student_charges'));
     expect(order.indexOf('public.finance_payment_allocations')).toBeGreaterThan(order.indexOf('public.finance_payments'));

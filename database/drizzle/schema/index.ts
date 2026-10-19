@@ -129,3 +129,7 @@ export * from './audit';
 export * from './files';
 export * from './homework-attachments';
 export * from './finance';
+
+export * from './timetable';
+export * from './timetable-drafts';
+export * from './timetable-publications';

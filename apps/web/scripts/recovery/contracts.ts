@@ -18,7 +18,7 @@ export const PINNED_TOOLS = {
 } as const;
 export const AGE_RUNTIME_VERSION = `v${PINNED_TOOLS.age}`;
 
-/** Durable allowlist through 0024, including the complete Finance ledger. Not R2 bytes. */
+/** Durable allowlist through 0029, including Finance and timetable configuration. Not R2 bytes. */
 export const APPLICATION_TABLES = [
   'academic_periods',
   'academic_years',
@@ -69,6 +69,12 @@ export const APPLICATION_TABLES = [
   'subjects',
   'teacher_assignments',
   'teachers',
+  'timetable_configurations',
+  'timetable_drafts',
+  'timetable_lessons',
+  'timetable_loads',
+  'timetable_publications',
+  'timetable_rooms',
   'tracks',
   'users',
 ] as const;

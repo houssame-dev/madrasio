@@ -106,7 +106,13 @@ export const recoveryManifestSchema = z
     // Recognize the previous accepted schema without reclassifying it as Finance.
     // Actual restore still requires the exact source revision and migration chain.
     const legacy = value.migrations.count === 23 && value.migrations.latest === '0022_homework-actual-handin-attachments';
-    const expected = legacy ? RECOVERY_TABLES.filter(table => !table.startsWith('public.finance_')) : RECOVERY_TABLES;
+    const preTimetableHeads: Record<number, string> = { 25: '0024_finance-offline-payments', 26: '0025_school-finance-currency', 27: '0026_finance-reduction-corrections' };
+    const preTimetable = legacy || preTimetableHeads[value.migrations.count] === value.migrations.latest;
+    const foundationOnly = value.migrations.count === 28 && value.migrations.latest === '0027_timetable-foundation';
+    const draftsOnly = value.migrations.count === 29 && value.migrations.latest === '0028_timetable-weekly-drafts';
+    const expected = RECOVERY_TABLES.filter(table => !(draftsOnly && table === 'public.timetable_publications') &&
+      !(preTimetable && table.startsWith('public.timetable_')) && !(legacy && table.startsWith('public.finance_')) &&
+      !(foundationOnly && ['public.timetable_drafts', 'public.timetable_lessons', 'public.timetable_publications'].includes(table)));
     const actual = value.fingerprints.map(item => item.table).sort();
     if (JSON.stringify(actual) !== JSON.stringify([...expected].sort())) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ['fingerprints'], message: 'Recovery table inventory does not match its schema generation.' });

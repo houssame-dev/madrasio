@@ -42,6 +42,7 @@ describe('role-aware navigation', () => {
     const labels = visibleNavigationItems('PARENT').map((item) => item.label);
     expect(labels).toEqual([
      'Dashboard',
+     'Timetable',
      'My Children',
      'School announcements',
      'Notifications',
@@ -97,7 +98,7 @@ describe('localized navigation presentation', () => {
   it.each(['en', 'fr', 'ar'] as const)('preserves Parent destinations and ordering in %s', (locale) => {
     renderNavigation(<NavigationLinks role="PARENT" />, locale);
     expect(screen.getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
-      '/dashboard', '/children', '/announcements/inbox', '/notifications',
+      '/dashboard', '/timetable', '/children', '/announcements/inbox', '/notifications',
     ]);
   });
 

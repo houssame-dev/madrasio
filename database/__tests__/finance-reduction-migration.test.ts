@@ -38,6 +38,10 @@ it('upgrades populated 0025 while preserving original reduction history and priv
   await client.exec('COMMIT');
   expect((await client.query("select to_jsonb(e)-'reduction_id'-'replaces_event_id'-'reduction_before_cents'-'reduction_after_cents' row from finance_charge_events e")).rows).toEqual(before);
   expect((await client.query('select to_jsonb(c) row from finance_student_charges c')).rows).toEqual(charges);
+  // Verify the historical upgrade above, then reach the current schema for the current ACL inventory.
+  for (const file of (await readdir(migrationsFolder)).filter(n => /^\d{4}_.+\.sql$/.test(n) && Number(n.slice(0, 4)) > 26).sort()) {
+    for (const statement of (await readFile(join(migrationsFolder, file), 'utf8')).split('--> statement-breakpoint')) if (statement.trim()) await client.exec(statement);
+  }
   expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
   const previous = JSON.parse(await readFile(join(migrationsFolder, 'meta/0025_snapshot.json'), 'utf8'));
   const current = JSON.parse(await readFile(join(migrationsFolder, 'meta/0026_snapshot.json'), 'utf8'));

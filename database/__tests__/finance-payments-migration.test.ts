@@ -19,6 +19,10 @@ it('upgrades populated 0023 with private payment history tables and same-Student
   for (const sql of (await readFile(join(migrationsFolder, '0024_finance-offline-payments.sql'), 'utf8')).split('--> statement-breakpoint')) if (sql.trim()) await client.exec(sql);
   await client.exec('COMMIT; ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon,authenticated,service_role');
   expect((await client.query('select to_jsonb(s) row from schools s')).rows).toEqual(before);
+  // Verify the historical upgrade above, then reach the current schema for the current ACL inventory.
+  for (const file of (await readdir(migrationsFolder)).filter(n => /^\d{4}_.+\.sql$/.test(n) && Number(n.slice(0, 4)) > 24).sort()) {
+    for (const statement of (await readFile(join(migrationsFolder, file), 'utf8')).split('--> statement-breakpoint')) if (statement.trim()) await client.exec(statement);
+  }
   expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
   expect((await client.query("select proname from pg_proc where pronamespace='public'::regnamespace")).rows).toEqual([]);
   const previous = JSON.parse(await readFile(join(migrationsFolder, 'meta/0023_snapshot.json'), 'utf8'));

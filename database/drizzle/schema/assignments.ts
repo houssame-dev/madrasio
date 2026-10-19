@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, date, foreignKey, index, pgEnum, pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { check, date, foreignKey, index, pgEnum, pgTable, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { academicYears } from './academic-years';
 import { classes } from './classes';
@@ -65,6 +65,7 @@ export const teacherAssignments = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    unique('teacher_assignment_timetable_context_unique').on(table.schoolId, table.academicYearId, table.classId, table.subjectId, table.id),
     foreignKey({
       name: 'teacher_assignments_school_teacher_fk',
       columns: [table.schoolId, table.teacherId],

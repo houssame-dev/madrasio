@@ -34,7 +34,7 @@ describe('shared locale and catalog contract', () => {
 
   it('has identical, non-empty keys in all catalogs', () => {
     const englishKeys = keys(getCatalog('en'));
-    expect(englishKeys).toHaveLength(1357);
+    expect(englishKeys).toHaveLength(1526);
     for (const locale of SUPPORTED_LOCALES) {
       expect(keys(getCatalog(locale))).toEqual(englishKeys);
       const t = createTranslator({ locale, messages: getCatalog(locale), namespace: 'foundation' });
@@ -119,7 +119,7 @@ describe('shared locale and catalog contract', () => {
       'landmark', 'items.finance', 'items.dashboard', 'items.academic', 'items.students',
       'items.myChildren', 'items.teachers', 'items.parents', 'items.grades',
       'items.attendance', 'items.homework', 'items.announcements',
-      'items.schoolAnnouncements', 'items.notifications', 'items.platformSchools',
+      'items.schoolAnnouncements', 'items.notifications', 'items.platformSchools', 'items.timetable',
     ].sort();
     for (const locale of SUPPORTED_LOCALES) {
       const messages = getCatalog(locale).navigation;

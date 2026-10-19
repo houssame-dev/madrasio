@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const STAGING_PROJECT_REF = 'cqeaxlttezunirsmkrxz';
-export const EXPECTED_MIGRATION_COUNT = 27;
-export const EXPECTED_TABLE_COUNT = 51;
-export const EXPECTED_LATEST_MIGRATION = '0026_finance-reduction-corrections';
+export const EXPECTED_MIGRATION_COUNT = 30;
+export const EXPECTED_TABLE_COUNT = 57;
+export const EXPECTED_LATEST_MIGRATION = '0029_timetable-publications';
 export const STAGING_VERCEL_PROJECT = 'madrasio-staging';
 export const CRON_SCHEDULE = '* * * * *';
 
@@ -59,7 +59,8 @@ export function assertStagingMigrationTarget(env: NodeJS.ProcessEnv): URL {
   return url;
 }
 
-/** Permit a retry after 0026, but only on the reviewed journal or its 0025 prefix. */
+/** Pending 0027/0028 and safe retries must match an explicitly reviewed schema generation. */
+export const STAGING_MIGRATION_INVENTORIES: Readonly<Record<number, number>> = { 27: 51, 28: 54, 29: 56, 30: 57 };
 export function assertStagingPreMigrationChain(journal: unknown, appliedTimestamps: readonly string[]): void {
   const parsed = z.object({
     entries: z.array(z.object({ tag: z.string(), when: z.number().int().nonnegative().safe() })),
@@ -76,12 +77,12 @@ export function assertStagingPreMigrationChain(journal: unknown, appliedTimestam
   }
   const count = appliedTimestamps.length;
   if (
-    (count !== EXPECTED_MIGRATION_COUNT - 1 && count !== EXPECTED_MIGRATION_COUNT) ||
+    STAGING_MIGRATION_INVENTORIES[count] === undefined ||
     appliedTimestamps.some((timestamp, index) => timestamp !== String(parsed.data.entries[index].when))
   ) {
     throw new DeploymentError(
       'STAGING_MIGRATION_CHAIN_NOT_CONFIRMED',
-      'STAGING migrations must match the reviewed 0025 or 0026 journal prefix.',
+      'STAGING migrations must match the reviewed 0026, 0027, 0028 or 0029 journal prefix.',
     );
   }
 }

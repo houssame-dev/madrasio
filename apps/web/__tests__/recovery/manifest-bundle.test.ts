@@ -96,17 +96,42 @@ async function manifestFixture(rowCount: number) {
 }
 
 describe('Production manifest and bundle construction', () => {
-  it('preserves 0024 Finance bundle format while requiring its exact older migration chain', async () => {
+  it('preserves 0028 draft-only bundles with their original 58-table inventory', async () => {
     const fixture = await manifestFixture(1);
     try {
-      const current = fixture.manifest, ordered = current.migrations.ordered.slice(0, 25);
-      const previous = { ...current, migrations: { count: 25, latest: '0024_finance-offline-payments', ordered,
-        createdAt: current.migrations.createdAt.slice(0, 25), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
+      const current = fixture.manifest, ordered = current.migrations.ordered.slice(0, 29);
+      const previous = { ...current, fingerprints: current.fingerprints.filter(f => f.table !== 'public.timetable_publications'), migrations: { count: 29, latest: '0028_timetable-weekly-drafts', ordered, createdAt: current.migrations.createdAt.slice(0, 29), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
+      expect(previous.fingerprints).toHaveLength(58); expect(parseRecoveryManifest(previous)).toEqual(previous);
+      expect(() => assertRecoveryMigrationCompatibility(previous.migrations, previous.migrations)).not.toThrow();
+      expect(() => assertRecoveryMigrationCompatibility(current.migrations, previous.migrations)).toThrow('matching source revision');
+      expect(() => validateRecoveryManifest(previous)).toThrow();
+    } finally { await rm(fixture.directory, { recursive: true, force: true }); }
+  });
+  it('retains 0027 foundation-only bundles as readable history with exactly 56 fingerprints', async () => {
+    const fixture = await manifestFixture(1);
+    try {
+      const current = fixture.manifest, ordered = current.migrations.ordered.slice(0, 28);
+      const previous = { ...current, fingerprints: current.fingerprints.filter(f => !['public.timetable_drafts', 'public.timetable_lessons', 'public.timetable_publications'].includes(f.table)),
+        migrations: { count: 28, latest: '0027_timetable-foundation', ordered, createdAt: current.migrations.createdAt.slice(0, 28), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
+      expect(previous.fingerprints).toHaveLength(56); expect(parseRecoveryManifest(previous)).toEqual(previous);
+      expect(() => assertRecoveryMigrationCompatibility(previous.migrations, previous.migrations)).not.toThrow();
+      expect(() => assertRecoveryMigrationCompatibility(current.migrations, previous.migrations)).toThrow('matching source revision');
+      expect(() => validateRecoveryManifest(previous)).toThrow();
+      expect(() => parseRecoveryManifest({ ...previous, fingerprints: current.fingerprints })).toThrow();
+    } finally { await rm(fixture.directory, { recursive: true, force: true }); }
+  });
+  it.each([25, 26, 27])('preserves the pre-timetable %i-migration Finance bundle and requires its exact source chain', async count => {
+    const fixture = await manifestFixture(1);
+    try {
+      const current = fixture.manifest, ordered = current.migrations.ordered.slice(0, count);
+      const previous = { ...current, fingerprints: current.fingerprints.filter(f => !f.table.startsWith('public.timetable_')), migrations: { count, latest: ordered.at(-1)!, ordered,
+        createdAt: current.migrations.createdAt.slice(0, count), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
       expect(parseRecoveryManifest(previous)).toEqual(previous);
       expect(previous.fingerprints).toHaveLength(53);
       expect(() => assertRecoveryMigrationCompatibility(previous.migrations, previous.migrations)).not.toThrow();
       expect(() => assertRecoveryMigrationCompatibility(current.migrations, previous.migrations)).toThrow('matching source revision');
-      expect(validateRecoveryManifest(previous)).toEqual(previous);
+      // An older bundle is readable, but cannot be emitted as a current-schema backup.
+      expect(() => validateRecoveryManifest(previous)).toThrow();
     } finally { await rm(fixture.directory, { recursive: true, force: true }); }
   });
   it('recognizes unchanged 0022 bundles but never treats them as current Finance recovery points', async () => {
@@ -114,7 +139,7 @@ describe('Production manifest and bundle construction', () => {
     try {
       const current = fixture.manifest;
       const ordered = current.migrations.ordered.slice(0, 23);
-      const legacy = { ...current, fingerprints: current.fingerprints.filter(f => !f.table.startsWith('public.finance_')),
+      const legacy = { ...current, fingerprints: current.fingerprints.filter(f => !f.table.startsWith('public.finance_') && !f.table.startsWith('public.timetable_')),
         migrations: { count: 23, latest: '0022_homework-actual-handin-attachments', ordered, createdAt: current.migrations.createdAt.slice(0, 23), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
       expect(parseRecoveryManifest(legacy)).toEqual(legacy);
       expect(legacy.fingerprints).toHaveLength(45);
@@ -187,10 +212,10 @@ describe('Production manifest and bundle construction', () => {
       );
       expect(restoredManifest.format).toBe('madrasio-recovery-v1');
       expect(restoredManifest.migrations).toMatchObject({
-        count: 27,
-        latest: '0026_finance-reduction-corrections',
+        count: 30,
+        latest: '0029_timetable-publications',
       });
-      expect(restoredManifest.fingerprints).toHaveLength(53);
+      expect(restoredManifest.fingerprints).toHaveLength(59);
       expect(restoredManifest.fingerprints.every((item) => item.rowCount === rowCount)).toBe(true);
       expect(contents.get('recovery-data.dump')).toEqual(await readFile(fixture.dump));
     } finally {
@@ -207,8 +232,8 @@ describe('Production manifest and bundle construction', () => {
       /\/database\/drizzle\/migrations\/?$/,
     );
     await expect(loadMigrationMetadata(migrationsDirectory)).resolves.toMatchObject({
-      count: 27,
-      latest: '0026_finance-reduction-corrections',
+      count: 30,
+      latest: '0029_timetable-publications',
     });
     await expect(loadMigrationMetadata(join(tmpdir(), 'missing-migrations'))).rejects.toMatchObject(
       {
