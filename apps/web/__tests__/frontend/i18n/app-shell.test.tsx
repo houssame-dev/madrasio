@@ -130,12 +130,12 @@ describe('localized application shell', () => {
     }
   });
 
-  it('preserves Parent routes and closes mobile navigation after route selection', async () => {
+  it('includes Parent timetable access and closes mobile navigation after route selection', async () => {
     const user = userEvent.setup();
     renderShell('en', schoolContext('PARENT'));
     const sidebar = screen.getByTestId('desktop-sidebar');
     expect(within(sidebar).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
-      '/dashboard', '/children', '/announcements/inbox', '/notifications',
+      '/dashboard', '/timetable', '/children', '/announcements/inbox', '/notifications',
     ]);
     expect(within(sidebar).queryByRole('link', { name: 'Platform Schools' })).not.toBeInTheDocument();
     const trigger = screen.getByRole('button', { name: 'Open navigation' });
