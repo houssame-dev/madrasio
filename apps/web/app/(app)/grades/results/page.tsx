@@ -1,7 +1,13 @@
-import { Suspense } from 'react';
-import { ResultsWorkspace } from '@/components/grades/results/results-workspace';
-import { RouteLoading } from '@/components/language/route-presentation';
+import { redirect } from 'next/navigation';
 
-export default function ResultsPage() {
-  return <Suspense fallback={<RouteLoading messageKey="grades.loading" />}><ResultsWorkspace /></Suspense>;
+export default async function LegacyResultsPage({ searchParams }: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(await searchParams)) {
+    if (Array.isArray(value)) value.forEach((item) => query.append(key, item));
+    else if (value !== undefined) query.append(key, value);
+  }
+  const suffix = query.toString();
+  redirect(`/results${suffix ? `?${suffix}` : ''}`);
 }

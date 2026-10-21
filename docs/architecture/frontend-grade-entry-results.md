@@ -4,10 +4,20 @@
 
 `/grades` remains the grading entry point. `/grades/[id]` owns one exact
 Gradebook context, Assessment setup, Assessment-scoped Grade entry, and the
-persisted Gradebook matrix. `/grades/results` is a separate administrative
+persisted Gradebook matrix. `/grades/configuration` remains the configuration
+workspace. `/results` is an independent staff
 workspace with Subject, Period, and Annual Result views. Parent Result
 consumption, report cards, exports, rankings, and analytics are not part of
 this workspace.
+
+The sidebar places **Grades** (`/grades`) immediately before **Results**
+(`/results`), using the same existing role/permission checks for both. Teachers
+retain their assignment-scoped Subject Results; Parents use published Results
+through My Children only. The workspaces have no cross-workspace shortcut or
+back button; Gradebook detail navigation is unchanged. Legacy `/grades/results`
+links redirect to `/results`, preserving query parameters (including repeated
+values). API paths, calculation/publication rules and tenant authorization are
+unchanged.
 
 ## Grade entry
 

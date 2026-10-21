@@ -6,7 +6,7 @@ import { ResultsWorkspace } from '@/components/grades/results/results-workspace'
 import { classId, gradebook, gradebookId, klass, matrix, page, period, periodId, renderGrades, resultId, schoolId, student, studentId, subject, subjectResult, year, yearId } from './test-helpers';
 
 const navigation = vi.hoisted(() => ({ search: '', replace: vi.fn() }));
-vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(navigation.search), usePathname: () => '/grades/results', useRouter: () => ({ replace: navigation.replace }) }));
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(navigation.search), usePathname: () => '/results', useRouter: () => ({ replace: navigation.replace }) }));
 afterEach(() => { vi.restoreAllMocks(); navigation.search = ''; navigation.replace.mockReset(); });
 
 function setupResults() {
@@ -38,6 +38,7 @@ describe('Results workspace roles and separation', () => {
     expect(screen.getByText('Sara Amrani (S-001)')).toBeInTheDocument();
     expect(screen.getByText(/2026\/2027.*1A.*Mathematics/)).toBeInTheDocument();
     expect(screen.queryByText(/average|ranking/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Back to Gradebooks' })).not.toBeInTheDocument();
   });
 
   it('keeps Period and Annual as separate server resources for administrators', async () => {
@@ -46,7 +47,7 @@ describe('Results workspace roles and separation', () => {
     expect(screen.getByRole('button', { name: 'Period Results' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Annual Results' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Annual Results' }));
-    expect(navigation.replace).toHaveBeenCalledWith('/grades/results?resultType=ANNUAL&page=1', { scroll: false });
+    expect(navigation.replace).toHaveBeenCalledWith('/results?resultType=ANNUAL&page=1', { scroll: false });
   });
 
   it('limits Teachers to server-scoped Subject Results and hides aggregate administration', async () => {

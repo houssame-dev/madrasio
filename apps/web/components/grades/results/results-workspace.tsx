@@ -3,7 +3,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useDomainText } from '@/i18n/use-domain-text';
 import { Calculator, ChevronRight } from 'lucide-react';
-import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { Button } from '@school/ui';
@@ -61,7 +60,6 @@ export function ResultsWorkspace() {
   const gradebookLabel = (value: GradebookDto) => `${classLabel(value.classId)} · ${subjectLabel(value.subjectId)} · ${yearLabel(value.academicYearId)}`;
   const visibleClasses = academicYearId ? classes.data.filter((row) => row.academicYearId === academicYearId) : classes.data;
   return <div className="mx-auto max-w-[110rem] space-y-6">
-    <Link href="/grades" className="text-sm font-medium text-muted-foreground hover:text-foreground"><span className="inline-block rtl:rotate-180" aria-hidden="true">←</span> {t.backToGradebooks}</Link>
     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.resultsTitle}</h1><p className="mt-1 text-sm text-muted-foreground">{role === 'TEACHER' ? t.teacherResultsDescription : t.resultsDescription}</p></div>{canCalculate ? <Button type="button" onClick={() => setCalculating(true)}><Calculator className="size-4" aria-hidden="true" />{resultType === 'SUBJECT' ? t.calculateSubject : resultType === 'PERIOD' ? t.calculatePeriod : t.calculateAnnual}</Button> : null}</header>
     {notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}
     <nav aria-label={t.resultsTitle} className="flex flex-wrap gap-2">{types.filter((type) => role !== 'TEACHER' || type === 'SUBJECT').map((type) => <Button key={type} type="button" variant={resultType === type ? 'default' : 'outline'} onClick={() => updateUrl({ resultType: type, page: 1, academicPeriodId: undefined, subjectId: undefined })}>{type === 'SUBJECT' ? t.subjectResults : type === 'PERIOD' ? t.periodResults : t.annualResults}</Button>)}</nav>

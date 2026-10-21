@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const sites = [
   '(app)/academic/page.tsx', '(app)/attendance/page.tsx', '(app)/grades/page.tsx',
-  '(app)/grades/[id]/page.tsx', '(app)/grades/results/page.tsx', '(app)/homework/page.tsx', '(app)/homework/[id]/page.tsx',
+  '(app)/grades/[id]/page.tsx', '(app)/grades/results/page.tsx', '(app)/results/page.tsx', '(app)/homework/page.tsx', '(app)/homework/[id]/page.tsx',
   '(app)/teachers/page.tsx', '(app)/teachers/[id]/page.tsx',
   '(app)/students/page.tsx', '(app)/students/[id]/page.tsx',
   '(app)/parents/page.tsx', '(app)/parents/[id]/page.tsx',

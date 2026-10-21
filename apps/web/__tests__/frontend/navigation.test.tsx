@@ -22,7 +22,7 @@ function renderNavigation(ui: ReactNode, locale: SupportedLocale = 'en') {
 describe('role-aware navigation', () => {
   it('shows the full school administrator foundation', () => {
     const labels = visibleNavigationItems('SCHOOL_ADMIN').map((item) => item.label);
-    expect(labels).toEqual(expect.arrayContaining(['Finance', 'Dashboard', 'Academic Structure', 'Students', 'Teachers', 'Parents', 'Grades & Results', 'Attendance', 'Homework', 'Announcements', 'Notifications']));
+    expect(labels).toEqual(expect.arrayContaining(['Finance', 'Dashboard', 'Academic Structure', 'Students', 'Teachers', 'Parents', 'Grades', 'Results', 'Attendance', 'Homework', 'Announcements', 'Notifications']));
     expect(labels).not.toContain('Children');
   });
 
@@ -34,7 +34,7 @@ describe('role-aware navigation', () => {
 
   it('keeps teacher navigation free of administrator directories', () => {
     const labels = visibleNavigationItems('TEACHER').map((item) => item.label);
-    expect(labels).toEqual(expect.arrayContaining(['Students', 'Teachers', 'Grades & Results', 'Attendance', 'Homework', 'Announcements', 'Notifications']));
+    expect(labels).toEqual(expect.arrayContaining(['Students', 'Teachers', 'Grades', 'Results', 'Attendance', 'Homework', 'Announcements', 'Notifications']));
     expect(labels).not.toEqual(expect.arrayContaining(['Academic Structure', 'Parents']));
   });
 
@@ -47,7 +47,7 @@ describe('role-aware navigation', () => {
      'School announcements',
      'Notifications',
    ]);
-    expect(labels).not.toEqual(expect.arrayContaining(['Students', 'Teachers', 'Parents', 'Academic Structure', 'Grades & Results', 'Attendance', 'Homework', 'Announcements']));
+    expect(labels).not.toEqual(expect.arrayContaining(['Students', 'Teachers', 'Parents', 'Academic Structure', 'Grades', 'Results', 'Attendance', 'Homework', 'Announcements']));
   });
 
   it('marks the exact active route', () => {
@@ -68,6 +68,30 @@ describe('role-aware navigation', () => {
 });
 
 describe('localized navigation presentation', () => {
+  it.each([
+    ['en', 'Grades', 'Results'],
+    ['fr', 'Notes', 'Résultats'],
+    ['ar', 'الدرجات', 'النتائج'],
+  ] as const)('separates consecutive staff workspaces and active states in %s', (locale, grades, results) => {
+    for (const role of ['SCHOOL_ADMIN', 'TEACHER'] as const) {
+      navigation.pathname = '/results';
+      const view = renderNavigation(<NavigationLinks role={role} />, locale);
+      const links = screen.getAllByRole('link');
+      const gradesLink = screen.getByRole('link', { name: grades });
+      const resultsLink = screen.getByRole('link', { name: results });
+      expect(gradesLink).toHaveAttribute('href', '/grades');
+      expect(resultsLink).toHaveAttribute('href', '/results');
+      expect(links.indexOf(resultsLink)).toBe(links.indexOf(gradesLink) + 1);
+      expect(resultsLink).toHaveAttribute('aria-current', 'page');
+      expect(gradesLink).not.toHaveAttribute('aria-current');
+      navigation.pathname = '/grades/configuration';
+      view.rerender(<NextIntlClientProvider locale={locale} messages={getCatalog(locale)} timeZone="UTC"><NavigationLinks role={role} /></NextIntlClientProvider>);
+      expect(gradesLink).toHaveAttribute('aria-current', 'page');
+      expect(resultsLink).not.toHaveAttribute('aria-current');
+      view.unmount();
+    }
+  });
+
   it.each([
     ['en', 'Main navigation', 'Students', 'Platform Schools'],
     ['fr', 'Navigation principale', 'Élèves', 'Établissements de la plateforme'],

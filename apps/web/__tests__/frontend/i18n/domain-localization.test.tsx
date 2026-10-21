@@ -151,6 +151,7 @@ describe.each(SUPPORTED_LOCALES)('%s domain localization with real catalogs', (l
     mount(<GradebooksWorkspace />, locale);
     expect(await screen.findByText(grades.gradebook.name)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t('grades.createGradebook') })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: t('grades.resultsWorkspace') })).not.toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText(t('grades.status')), 'DRAFT');
     expect(navigation.replace).toHaveBeenCalledWith('/grades?status=DRAFT&page=1', { scroll: false });
   });
@@ -180,17 +181,18 @@ describe.each(SUPPORTED_LOCALES)('%s domain localization with real catalogs', (l
     expect(screen.getByRole('button', { name: t('domainUi.saveDraft') })).toBeInTheDocument();
   });
 
-  it('/grades/results keeps translated status filters machine-valued and Teacher scope narrow', async () => {
+  it('/results keeps translated status filters machine-valued and Teacher scope narrow', async () => {
     resultsFetch();
-    navigation.path = '/grades/results';
+    navigation.path = '/results';
     const t = translator(locale);
     mount(<ResultsWorkspace />, locale, 'TEACHER');
     expect(await screen.findByText('12.25')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t('grades.calculateSubject') })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: t('grades.backToGradebooks') })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t('grades.periodResults') })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t('grades.annualResults') })).not.toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText(t('grades.status')), 'FINALIZED');
-    expect(navigation.replace).toHaveBeenCalledWith('/grades/results?status=FINALIZED&page=1', { scroll: false });
+    expect(navigation.replace).toHaveBeenCalledWith('/results?status=FINALIZED&page=1', { scroll: false });
   });
 
   it('/homework translates filters and actions while preserving the authored title', async () => {

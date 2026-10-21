@@ -34,7 +34,8 @@ const messages = {
       myChildren: 'Mes enfants',
       teachers: 'Enseignants',
       parents: 'Parents',
-      grades: 'Notes et résultats',
+      grades: 'Notes',
+      results: 'Résultats',
       attendance: 'Présences',
       homework: 'Devoirs',
       announcements: 'Annonces',
@@ -312,7 +313,7 @@ const messages = {
   },
   "grades": {
     "title": "Configuration des carnets de notes",
-    "description": "Gérez les contextes précis de notation, les évaluations, la saisie des notes et les résultats calculés par le serveur.",
+    "description": "Gérez les contextes précis de notation, les évaluations et la saisie des notes.",
     "teacherDescription": "Le serveur renvoie uniquement les carnets correspondant à vos affectations actives de classe, matière et année scolaire.",
     "readOnly": "Lecture seule",
     "createGradebook": "Créer un carnet de notes",

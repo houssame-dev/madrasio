@@ -15,7 +15,7 @@ The following routes were traced from their App Router entry through their works
 - `/children` and `/children/[studentId]`
 - `/teachers` and `/teachers/[id]`
 - `/parents` and `/parents/[id]`
-- `/grades`, `/grades/[id]`, and `/grades/results`
+- `/grades`, `/grades/[id]`, and `/results` (legacy `/grades/results` redirects with filters preserved)
 - `/attendance`
 - `/homework` and `/homework/[id]`
 - `/announcements` and `/announcements/[id]`

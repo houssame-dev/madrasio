@@ -32,7 +32,8 @@ const messages = {
       myChildren: 'My Children',
       teachers: 'Teachers',
       parents: 'Parents',
-      grades: 'Grades & Results',
+      grades: 'Grades',
+      results: 'Results',
       attendance: 'Attendance',
       homework: 'Homework',
       announcements: 'Announcements',
@@ -310,7 +311,7 @@ const messages = {
   },
   "grades": {
     "title": "Gradebook setup",
-    "description": "Manage exact grading contexts, Assessments, Grade entry, and server-calculated Results.",
+    "description": "Manage exact grading contexts, Assessments, and Grade entry.",
     "teacherDescription": "Only Gradebooks inside your active Class, Subject, and Academic Year assignments are returned by the server.",
     "readOnly": "Read only",
     "createGradebook": "Create Gradebook",
