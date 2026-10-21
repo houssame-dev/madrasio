@@ -212,8 +212,8 @@ describe('Production manifest and bundle construction', () => {
       );
       expect(restoredManifest.format).toBe('madrasio-recovery-v1');
       expect(restoredManifest.migrations).toMatchObject({
-        count: 30,
-        latest: '0029_timetable-publications',
+        count: 31,
+        latest: '0030_attendance-sessions',
       });
       expect(restoredManifest.fingerprints).toHaveLength(59);
       expect(restoredManifest.fingerprints.every((item) => item.rowCount === rowCount)).toBe(true);
@@ -232,8 +232,8 @@ describe('Production manifest and bundle construction', () => {
       /\/database\/drizzle\/migrations\/?$/,
     );
     await expect(loadMigrationMetadata(migrationsDirectory)).resolves.toMatchObject({
-      count: 30,
-      latest: '0029_timetable-publications',
+      count: 31,
+      latest: '0030_attendance-sessions',
     });
     await expect(loadMigrationMetadata(join(tmpdir(), 'missing-migrations'))).rejects.toMatchObject(
       {

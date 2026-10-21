@@ -66,66 +66,13 @@ async function classContext(db: AttendanceDb, actor: AttendanceActor, classId: s
   return context;
 }
 
+/** Legacy daily history is immutable through every application write path. */
 export async function putDailyAttendance(
-  db: AttendanceDb,
-  actor: AttendanceActor,
-  classId: string,
-  date: string,
-  input: BulkAttendance,
+  db: AttendanceDb, actor: AttendanceActor, _classId: string, _date: string, _input: BulkAttendance,
 ) {
-  const context = await classContext(db, actor, classId);
-  await authorizeClass(db, actor, {
-    classId: context.class.id, academicYearId: context.class.academicYearId,
-  }, 'attendance.manage');
-  assertDate(date, context.academicYear, context.timezone);
-
-  const rows = await db.transaction(async (tx) => {
-    const transactionDb = tx as unknown as AttendanceDb;
-    const existingRows = await repo.findExistingStudentIds(
-      transactionDb,
-      actor.schoolId,
-      context.class.id,
-      date,
-      input.records.map((record) => record.studentId),
-    );
-    const existingIds = new Set(existingRows.map((record) => record.studentId));
-    if (context.class.status !== 'ACTIVE' && input.records.some((record) => !existingIds.has(record.studentId))) {
-      throw new AttendanceDomainError(
-        'ATTENDANCE_ENTRY_NOT_ALLOWED',
-        'Closed or archived Classes allow corrections to existing Attendance only.',
-      );
-    }
-
-    const written = [];
-    for (const entry of input.records) {
-      const eligible = await repo.findEligibleEnrollment(transactionDb, {
-        schoolId: actor.schoolId,
-        studentId: entry.studentId,
-        classId: context.class.id,
-        academicYearId: context.class.academicYearId,
-        date,
-      });
-      if (!eligible) {
-        throw new AttendanceDomainError(
-          'STUDENT_NOT_ELIGIBLE_FOR_ATTENDANCE',
-          'Student was not enrolled in the Class on the Attendance date.',
-        );
-      }
-      written.push(await repo.upsertAttendance(transactionDb, {
-        schoolId: actor.schoolId,
-        studentId: entry.studentId,
-        classId: context.class.id,
-        academicYearId: context.class.academicYearId,
-        attendanceDate: date,
-        status: entry.status,
-        note: entry.note ?? null,
-      }));
-    }
-    return written;
-  });
-  return { records: rows.map(view) };
+  await requireOperation(db as unknown as AuthorizationDb, actor, { permission: 'attendance.manage', scope: { kind: 'school' } });
+  throw new ForbiddenError('Attendance recording requires an authorized published session. Legacy daily records are read-only.');
 }
-
 export async function getDailyAttendance(
   db: AttendanceDb,
   actor: AttendanceActor,

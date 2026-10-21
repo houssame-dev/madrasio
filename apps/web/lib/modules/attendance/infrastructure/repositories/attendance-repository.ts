@@ -1,6 +1,6 @@
 import {
   and, asc, count, countDistinct, desc, eq, exists, gte, inArray, isNull, lte, or,
-  type SQL,
+  sql, type SQL,
 } from 'drizzle-orm';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import * as schema from '@school/database';
@@ -108,6 +108,7 @@ export async function listDailyRoster(
     ),
   );
   const attendanceJoin = and(
+    isNull(schema.attendanceRecords.publicationId),
     eq(schema.attendanceRecords.schoolId, input.schoolId),
     eq(schema.attendanceRecords.studentId, schema.students.id),
     eq(schema.attendanceRecords.classId, input.classId),
@@ -160,6 +161,11 @@ function teacherHistoryScope(db: AttendanceDb, schoolId: string, userId?: string
         eq(schema.teacherAssignments.academicYearId, schema.attendanceRecords.academicYearId),
         eq(schema.teachers.userId, userId),
         eq(schema.teachers.status, 'ACTIVE'),
+        or(isNull(schema.attendanceRecords.publicationId), and(
+          sql`${schema.attendanceRecords.session}->>'teacherAssignmentId' = ${schema.teacherAssignments.id}::text`,
+          lte(schema.teacherAssignments.effectiveFrom, schema.attendanceRecords.attendanceDate),
+          or(isNull(schema.teacherAssignments.effectiveUntil), gte(schema.teacherAssignments.effectiveUntil, schema.attendanceRecords.attendanceDate)),
+        )),
       )),
   );
 }

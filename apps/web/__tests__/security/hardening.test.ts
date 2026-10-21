@@ -83,7 +83,7 @@ describe('Task 047 security contracts', () => {
     expect(template).not.toContain('.Data');
   });
   it('requires the complete reviewed Timetable migration chain before deployment', () => {
-    expect(EXPECTED_MIGRATION_COUNT).toBe(30);
-    expect(EXPECTED_LATEST_MIGRATION).toBe('0029_timetable-publications');
+    expect(EXPECTED_MIGRATION_COUNT).toBe(31);
+    expect(EXPECTED_LATEST_MIGRATION).toBe('0030_attendance-sessions');
   });
 });

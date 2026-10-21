@@ -39,7 +39,7 @@ describe('Parent Attendance and Homework discovery', () => {
     await attendance('2025-09-01'); await attendance('2025-10-10'); await attendance('2025-10-11'); await attendance('2025-10-10', c.classBId);
     const first = await listChildAttendance(c.parentDb, actor, studentId, input());
     expect(first).toMatchObject({ data: [{ date: '2025-10-10', status: 'LATE', className: 'Class A' }], meta: { total: 2 } });
-    expect(Object.keys(first.data[0]).sort()).toEqual(['className', 'date', 'id', 'status']);
+    expect(Object.keys(first.data[0]).sort()).toEqual(['className', 'date', 'id', 'session', 'status']);
     expect((await listChildAttendance(c.parentDb, actor, studentId, { ...input(), page: 2 })).data[0].date).toBe('2025-09-01');
     expect((await listChildAttendance(c.parentDb, actor, studentId, { ...input(), dateFrom: '2025-10-10', dateTo: '2025-10-10' })).meta.total).toBe(1);
   });

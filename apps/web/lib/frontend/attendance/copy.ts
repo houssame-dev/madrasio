@@ -1,7 +1,7 @@
 export const attendanceCopy = {
   title: 'Attendance',
-  description: 'Record daily Class Attendance and review authorized Student history.',
-  daily: 'Daily roster',
+  description: 'Review session Attendance and preserved daily history.',
+  daily: 'Legacy daily history',
   history: 'Student history',
   dailyDescription: 'Choose an Academic Year, exact Class, and calendar date. The server roster determines historical eligibility.',
   historyDescription: 'Review persisted Attendance records using server-side scope, filters, and pagination.',

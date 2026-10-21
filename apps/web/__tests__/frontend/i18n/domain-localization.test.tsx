@@ -119,6 +119,7 @@ describe.each(SUPPORTED_LOCALES)('%s domain localization with real catalogs', (l
       if (url === '/api/v1/academic-years?page=1&pageSize=100' || url === '/api/v1/classes?page=1&pageSize=100') {
         return Response.json(grades.page([], 1, 100));
       }
+      if (url.startsWith('/api/v1/attendance/sessions?')) return Response.json({ data: { date: '2025-10-10', sessions: [] } });
       throw new Error('Unexpected mocked attendance context resource');
     });
     navigation.path = '/attendance';
@@ -127,7 +128,7 @@ describe.each(SUPPORTED_LOCALES)('%s domain localization with real catalogs', (l
     expect(await screen.findByRole('button', { name: t('attendance.daily') })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t('attendance.history') })).toBeInTheDocument();
     expect(screen.getByLabelText(t('attendance.date'))).toHaveAttribute('dir', 'ltr');
-    expect(screen.getByRole('heading', { name: t('attendance.selectContext') })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t('attendance.noSessions') })).toBeInTheDocument();
   });
 
   it('localizes Class search controls while preserving URL search semantics', async () => {

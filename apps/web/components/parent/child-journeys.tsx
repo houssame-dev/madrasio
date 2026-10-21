@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 import { usePeopleText } from '@/i18n/use-people-text';
 
 import { useRef, useState } from 'react';
@@ -28,6 +29,7 @@ export function ChildJourneys({ schoolId, studentId, yearId }: { schoolId: strin
 }
 type Context = { schoolId: string; studentId: string; yearId: string };
 function Attendance({ schoolId, studentId, yearId }: Context) {
+  const attendanceText = useTranslations('attendance');
   const text = usePeopleText();
 
   const [page, setPage] = useState(1);
@@ -49,7 +51,7 @@ function Attendance({ schoolId, studentId, yearId }: Context) {
       <button type="submit" className="min-h-10 rounded-md border px-4">{text("Apply dates")}</button>
     </form>
     {result.isPending ? <InlineLoading label={text("Loading attendance…")} /> : result.isError ? <ApiErrorState title={text("Attendance unavailable")} description={text("Please retry. If access has changed, return to My children.")} onRetry={() => void result.refetch()} /> : <>
-      {result.data.data.length ? <ul className="divide-y">{result.data.data.map((row) => <li key={row.id} className="py-3"><time dir="ltr" dateTime={row.date}>{row.date}</time> · {row.className} · {text(row.status)}</li>)}</ul> : <EmptyState title={text("No attendance records")} />}
+      {result.data.data.length ? <ul className="divide-y">{result.data.data.map((row) => <li key={row.id} className="py-3"><time dir="ltr" dateTime={row.date}>{row.date}</time> · {row.className} · {row.session ? <><bdi>{row.session.subjectName}</bdi> · <span dir="ltr">{row.session.start}–{row.session.end}</span> · </> : <>{attendanceText('daily')} · </>}{text(row.status)}</li>)}</ul> : <EmptyState title={text("No attendance records")} />}
       <Pagination {...result.data.meta} onPage={setPage} />
     </>}
   </section>;

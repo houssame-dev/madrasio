@@ -18,7 +18,7 @@ export const PINNED_TOOLS = {
 } as const;
 export const AGE_RUNTIME_VERSION = `v${PINNED_TOOLS.age}`;
 
-/** Durable allowlist through 0029, including Finance and timetable configuration. Not R2 bytes. */
+/** Durable allowlist through 0030, including Finance and timetable configuration. Not R2 bytes. */
 export const APPLICATION_TABLES = [
   'academic_periods',
   'academic_years',

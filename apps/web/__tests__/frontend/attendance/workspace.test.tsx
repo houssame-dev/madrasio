@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AttendanceWorkspace } from '@/components/attendance/attendance-workspace';
@@ -17,6 +17,7 @@ function setup() {
     if (url.startsWith(`/api/v1/classes/${classId}/attendance/2025-10-10?`)) return Response.json(roster);
     if (url === '/api/v1/teachers?status=ACTIVE&page=1&pageSize=100') return Response.json(page([teacher], 1, 100));
     if (url === `/api/v1/teachers/${teacherId}/assignments?status=ACTIVE&page=1&pageSize=100`) return Response.json(page([assignment], 1, 100));
+    if (url.startsWith('/api/v1/attendance/sessions?')) return Response.json({ data: { date: '2025-10-10', sessions: [] } });
     if (url.startsWith('/api/v1/students?')) return Response.json(page([], 1, 20));
     throw new Error(`Unexpected request: ${url}`);
   });
@@ -34,7 +35,7 @@ describe('Attendance workspace access and exact context', () => {
       expect(screen.getByLabelText('Attendance date')).toHaveValue('2025-10-10');
     } finally { vi.useRealTimers(); }
   });
-  it('allows SchoolAdmin management and keeps Year-driven Class options exact', async () => {
+  it('allows SchoolAdmin read-only browsing and keeps Year-driven Class options exact', async () => {
     setup(); renderAttendance(<AttendanceWorkspace />);
     expect(await screen.findByText('Sara Amrani')).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /Class A/ })).toBeInTheDocument();
@@ -44,14 +45,15 @@ describe('Attendance workspace access and exact context', () => {
     expect(navigation.replace.mock.calls.at(-1)?.[0]).not.toContain('classId=');
   });
 
-  it('narrows Teacher Class options from ACTIVE own assignments and exposes server-scoped history', async () => {
+  it('replaces arbitrary Teacher Class recording with authorized session selection', async () => {
     setup(); renderAttendance(<AttendanceWorkspace />, 'TEACHER');
-    expect(await screen.findByText('Sara Amrani')).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: /Class A/ })).toBeInTheDocument(); expect(screen.queryByRole('option', { name: /Class B/ })).not.toBeInTheDocument();
+    expect(await screen.findByText('No authorized published sessions for this date.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Class')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Legacy daily history' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save Attendance' })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Student history' }));
     expect(navigation.replace).toHaveBeenCalledWith(expect.stringContaining('section=history'), { scroll: false });
   });
-
   it('renders Teacher history through the server-scoped workflow', async () => {
     navigation.search = 'section=history'; setup(); renderAttendance(<AttendanceWorkspace />, 'TEACHER');
     expect(await screen.findByRole('heading', { name: 'Student history' })).toBeInTheDocument();
@@ -63,22 +65,4 @@ describe('Attendance workspace access and exact context', () => {
     expect(screen.getByText('Access unavailable')).toBeInTheDocument(); expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('prompts before changing date when the authoritative roster has unsaved edits', async () => {
-    setup(); const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false); renderAttendance(<AttendanceWorkspace />);
-    await userEvent.selectOptions(await screen.findByLabelText('Attendance status for Sara Amrani'), 'ABSENT');
-    await waitFor(() => expect(screen.getByText(/Unsaved Attendance changes/)).toBeInTheDocument());
-    fireEvent.change(screen.getByLabelText('Attendance date'), { target: { value: '2025-10-11' } });
-    expect(confirm).toHaveBeenCalled(); expect(navigation.replace.mock.calls.some(([url]) => String(url).includes('date=2025-10-11'))).toBe(false);
-  });
-
-  it.each([
-    ['Academic Year', otherYear.id],
-    ['Class', ''],
-  ])('prompts before changing %s when the roster is dirty', async (label, value) => {
-    setup(); const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false); renderAttendance(<AttendanceWorkspace />);
-    await userEvent.selectOptions(await screen.findByLabelText('Attendance status for Sara Amrani'), 'ABSENT');
-    await userEvent.selectOptions(screen.getByLabelText(label), value);
-    expect(confirm).toHaveBeenCalledWith('Discard unsaved Attendance changes?');
-    expect(navigation.replace).not.toHaveBeenCalled();
-  });
 });

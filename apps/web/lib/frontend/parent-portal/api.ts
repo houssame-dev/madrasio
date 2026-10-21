@@ -2,7 +2,7 @@ import { apiRequest } from '@/lib/frontend/api-client';
 
 import type { ChildAcademicYear, ChildPlacement, ParentResultPage, ParentResultType } from './types';
 
-export interface ChildAttendanceRow { id: string; date: string; status: string; className: string }
+export interface ChildAttendanceRow { id: string; date: string; status: string; className: string; session?: Pick<import('@school/database').PublishedTimetableLesson, 'subjectName' | 'start' | 'end'> | null }
 export interface ChildHomeworkRow { id: string; title: string; description: string | null; dueDate: string; status: string; subjectName: string; periodName: string }
 export interface ChildReadPage<T> { data: T[]; meta: { page: number; pageSize: number; total: number } }
 

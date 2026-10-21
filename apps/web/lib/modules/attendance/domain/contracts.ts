@@ -33,6 +33,15 @@ export const bulkAttendanceSchema = z.object({
 export type AttendanceEntry = z.output<typeof attendanceEntrySchema>;
 export type BulkAttendance = z.output<typeof bulkAttendanceSchema>;
 
+export const sessionQuerySchema = z.object({ date: calendarDateSchema }).strict();
+export const sessionIdentitySchema = sessionQuerySchema.extend({ publicationId: uuid, lessonKey: uuid }).strict();
+export const sessionAttendanceSchema = z.object({
+  records: z.array(attendanceEntrySchema.extend({ expectedVersion: z.number().int().positive().nullable() }).strict()).min(1).max(100),
+}).strict().superRefine((value, context) => {
+  if (new Set(value.records.map(r => r.studentId)).size !== value.records.length) context.addIssue({ code: z.ZodIssueCode.custom, path: ['records'], message: 'Duplicate Students.' });
+});
+export type SessionIdentity = z.output<typeof sessionIdentitySchema>;
+
 export interface PageInput { page: number; pageSize: number }
 export interface AttendanceHistoryInput extends PageInput {
   academicYearId?: string;

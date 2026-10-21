@@ -1,37 +1,36 @@
-# Frontend Attendance
+# Frontend Attendance — session-based V1
 
-## Information architecture and permissions
+`/attendance` defaults to Published sessions. Teachers choose a School-local date
+and one of their own applicable published lessons, with Class, Subject and time
+visible. There is no arbitrary Class/date recording form. The server resolves
+Teacher identity, exact Assignment and dated enrollment; browser choices confer
+no authority. A lesson cannot be edited before its start, after replacement on
+the selected date, or without current authorized scope.
 
-`/attendance` is one operational workspace with URL-backed Daily roster and Student history sections. It consumes the committed Task 021 APIs and creates no parallel Attendance model. `SCHOOL_ADMIN` and membership-scoped `SUPER_ADMIN` receive current-School management. `TEACHER` receives Daily and history workflows subject to exact server scope. `PARENT` is denied raw Attendance UI; the future child-facing portal is outside this feature.
+The selected session loads a paginated authoritative roster. Teachers may mark
+Present/Absent/Late/Excused, optionally add a note, save atomically and correct an
+existing row using its expected version. Missing remains unmarked. Mark unmarked
+present changes local drafts only. The client never retries ambiguous saves.
+Stale/denied saves retain edits and show localized reload/error guidance.
 
-Frontend permission checks are presentation only. Every roster, write, and history request remains subject to server authentication, active User, current School, permission, Teacher scope, tenant, historical eligibility, and Class-state checks.
+School Admins can browse all published sessions and Student history but have no
+status inputs, bulk marking, editable notes or save actions. Legacy daily history
+is an explicitly read-only Admin tab. Teachers cannot use the legacy daily PUT,
+even by direct request. Grade, Result and Timetable publication permissions are
+unchanged; Parents continue through My Children only.
 
-## Daily context and calendar dates
+Student and Parent histories distinguish preserved daily records from session
+records with Subject and start/end labels. No daily record is synthesized from
+multiple lessons, and no legacy row is assigned to an arbitrary session. Parent
+DTOs omit staff identifiers and notes, preserving existing child isolation.
 
-Daily Attendance requires an explicit Academic Year, Class, and `YYYY-MM-DD` calendar date. There is no global current Academic Year. If exactly one Year is ACTIVE it may be preselected as a local convenience. Changing Year clears Class, and Class choices are filtered to that exact Year. Teacher choices are further narrowed using the Teacher's own ACTIVE profiles and ACTIVE assignments; the Attendance backend remains authoritative and Subject is irrelevant.
+EN/FR/AR share aligned typed catalogs. School time is authoritative; dates and
+clock ranges stay LTR inside the RTL layout and names use bidi isolation. Existing
+responsive tables, status controls, buttons, labels, alerts and focus conventions
+are reused. No new UI library or standard control was introduced.
 
-The browser preserves the date string directly and never serializes it through a UTC timestamp. Task 055 derives today using the authoritative `schools.timezone`: the authenticated `/me.currentSchool.timezone` supplies client presentation, while the backend reads the School row independently. Both use the shared School-time adapter. Future School dates and dates outside the selected Year are rejected. The Teacher dashboard Attendance shortcut uses the same School date. Historical date-only rows are never rewritten when a timezone changes; invalid timezone configuration fails closed.
-
-## Authoritative roster and historical eligibility
-
-`GET /api/v1/classes/:classId/attendance/:date` is the only roster source. The UI never constructs the roster from `/students`. It renders every returned Student without checking current Enrollment status or placement. Historical eligibility is already resolved by the server from inclusive StudentEnrollment effective dates, so a transferred Student can remain visible in their previous Class for a historical date.
-
-Each row shows Student identity, one of `PRESENT`, `ABSENT`, `LATE`, or `EXCUSED`, and an optional plain-text note. `attendance: null` is displayed as **Not marked** but is not persisted or treated as a fifth status. The explicit “Mark unmarked present” action changes only currently null, untouched form rows and performs no request until Save.
-
-## Atomic entry, corrections, and unsaved state
-
-The dense roster uses purpose-built controlled state plus Zod validation. One Save sends 1–100 unique changed Students through `PUT /api/v1/classes/:classId/attendance/:date`; no per-row writes or optimistic persistence occur. Blank notes become `null`, notes are bounded to 1,000 characters, and exact enum values are submitted.
-
-An ACTIVE Class permits new rows and corrections. For CLOSED or ARCHIVED Classes, persisted rows remain editable for backend-approved corrections, while null rows expose no creation controls. A failed atomic batch retains every edit and never claims partial success. Dirty count, browser-unload protection, and confirmations for Year, Class, date, section, and roster-page changes prevent accidental loss. There is no autosave or browser persistence.
-
-## Student history and caching
-
-Student history uses backend Student search/pagination and `GET /api/v1/students/:studentId/attendance`. It supports Academic Year, Class, status, date range, and backend metadata pagination, displaying the persisted date, historical Class, Year, status, and note. Teacher history is available because the backend applies ACTIVE Teacher profile and exact Class+AcademicYear assignment scope in SQL. Parents never fetch it.
-
-Attendance query keys include current School and exact Class/date/page or Student/filter context. Successful saves invalidate the exact daily roster and affected Student history prefixes only. The Task 025 School switch still clears the entire QueryClient, preventing prior-School reuse.
-
-## Boundaries, responsive behavior, and accessibility
-
-Attendance writes call only the Attendance endpoint. They create no Grade, Result, Homework, Notification, or Outbox request, and the UI calculates no percentages, rates, rankings, or trends. Task 055 corrects School-date interpretation only: no schema, migration, event, export, realtime, or Parent portal expansion is included.
-
-The roster and history use semantic tables inside horizontal overflow containers, with a sticky Student row-header column for dense screens. Controls carry Student-specific accessible labels, status is always textual, feedback uses status/alert semantics, and all inputs and actions are keyboard operable. The server remains authoritative for all domain decisions.
+Unsaved edits are protected on session/date/page/tab changes, link navigation and
+full-document unload. A failed save keeps the draft. Loading, empty (no published
+sessions), read-only, missing roster and retry states are explicit. Session and
+history caches are School-scoped and invalidated after successful saves. School
+switching still clears the QueryClient through the existing shell contract.

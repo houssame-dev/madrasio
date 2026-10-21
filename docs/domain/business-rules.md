@@ -613,28 +613,34 @@ Attendance is an independent domain.
 
 ### BR-ATTENDANCE-002 — Attendance Record Belongs to a Student and Class Context
 
-For the V1 daily model, the logical context is:
+For new V1 records, the logical context is School + published Timetable publication
++ stable lesson key + actual date + Student. A session must be applicable on that
+weekday/date, inside its publication/effective replacement and academic bounds.
+School-local lesson start must have arrived. Drafts, missing lessons, future or
+replaced occurrences are not writable.
 
-```text
-Student
-+
-Class
-+
-Attendance Date
-```
+### BR-ATTENDANCE-003 — Session Identity and Legacy History
 
-### BR-ATTENDANCE-003 — One Logical Daily Attendance Record
+At most one record exists per Student/session. Different lessons on the same date
+remain separate. Legacy daily Class/date records retain their original meaning,
+NULL session references and daily uniqueness; they are read-only and never assigned
+to a lesson or silently collapsed with session records.
 
-A Student must not have duplicate daily attendance records for the same Class context unless the domain explicitly introduces session-level attendance.
+### BR-ATTENDANCE-004 — Exact Teacher Scope; Admin Read Only
 
-### BR-ATTENDANCE-004 — Teacher Scope Is Required
+Only an ACTIVE Teacher with their own exact ACTIVE TeacherAssignment for the
+published Class/Subject/Year and session date may write. Verified User, School and
+membership lifecycle, dated enrollment and tenant integrity are rechecked inside
+the transaction. School Admins are read-only, including direct/legacy APIs. Parent
+access remains read-only and child-scoped through ParentStudent.
 
-Teacher attendance operations must respect TeacherAssignment scope.
+### BR-ATTENDANCE-005 — Atomic and Traceable Corrections
 
-### BR-ATTENDANCE-005 — Corrections Are Explicit
-
-Correcting Attendance is a distinct business operation and should be traceable where required.
-
+Expected row versions prevent lost updates. Identical repeats are no-ops; differing
+stale requests fail the entire batch. The School lock serializes publication and
+Attendance writes. Corrections preserve row/session identity and append an atomic
+audit with actor, timestamp, old/new values and affected session. Transfers and
+later configuration/assignment changes do not rewrite stored history.
 ### BR-ATTENDANCE-006 — Attendance Alerts Are Rule-Based
 
 An attendance event does not automatically generate a notification unless the approved business rule says it should.

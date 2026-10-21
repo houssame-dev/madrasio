@@ -258,8 +258,15 @@ const messages = {
     "transitionDescription": "{resource} will move to {status} according to the committed lifecycle. Existing history will remain available."
   },
   "attendance": {
-    "description": "Record daily Class Attendance and review authorized Student history.",
-    "daily": "Daily roster",
+    "staleSession": "Attendance changed. Reload the session before saving again.",
+    "sessionSaveFailed": "The session could not be saved. Check access, session time and Student eligibility, then reload.",
+    "sessions": "Published sessions",
+    "sessionDescription": "Teachers record attendance for their own started published lessons. School administrators can browse without editing.",
+    "selectSession": "Select a scheduled session",
+    "noSessions": "No authorized published sessions for this date.",
+    "readOnlySession": "Read-only session. Recording is available only to its assigned Teacher after it starts.",
+    "description": "Review session Attendance and preserved daily history.",
+    "daily": "Legacy daily history",
     "history": "Student history",
     "dailyDescription": "Choose an Academic Year, exact Class, and calendar date. The server roster determines historical eligibility.",
     "historyDescription": "Review persisted Attendance records using server-side scope, filters, and pagination.",

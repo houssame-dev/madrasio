@@ -58,6 +58,8 @@ describe('role → permission mapping (PRD.md §6, Task 005 §6)', () => {
     expect(roleHasPermission('TEACHER', 'teachers.read')).toBe(true);
     expect(roleHasPermission('TEACHER', 'grades.enter')).toBe(true);
     expect(roleHasPermission('TEACHER', 'attendance.manage')).toBe(true);
+    expect(roleHasPermission('SCHOOL_ADMIN', 'attendance.manage')).toBe(false);
+    expect(roleHasPermission('SUPER_ADMIN', 'attendance.manage')).toBe(false);
     expect(roleHasPermission('TEACHER', 'announcements.create')).toBe(true);
   });
 

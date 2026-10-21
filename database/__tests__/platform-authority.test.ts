@@ -14,7 +14,7 @@ it('fresh replay has 30 migrations, 57 protected tables and no implicit platform
   expect(
     (await client.query<{ n: number }>('select count(*)::int n from drizzle.__drizzle_migrations'))
       .rows[0].n,
-  ).toBe(30);
+  ).toBe(31);
   const [column] = (
     await client.query<{ is_nullable: string; column_default: string; data_type: string }>(
       "select is_nullable,column_default,data_type from information_schema.columns where table_schema='public' and table_name='users' and column_name='is_platform_admin'",

@@ -260,8 +260,15 @@ const messages = {
     "transitionDescription": "{resource} passera à l’état {status} selon le cycle de vie prévu. L’historique restera disponible."
   },
   "attendance": {
-    "description": "Saisissez les présences quotidiennes par classe et consultez l’historique autorisé des élèves.",
-    "daily": "Liste quotidienne",
+    "staleSession": "Les présences ont changé. Rechargez la séance avant de réessayer.",
+    "sessionSaveFailed": "Impossible d’enregistrer la séance. Vérifiez les droits, l’horaire et l’inscription des élèves, puis rechargez.",
+    "sessions": "Séances publiées",
+    "sessionDescription": "Les enseignants saisissent les présences de leurs propres cours publiés déjà commencés. Les administrateurs consultent sans modifier.",
+    "selectSession": "Sélectionner une séance prévue",
+    "noSessions": "Aucune séance publiée autorisée à cette date.",
+    "readOnlySession": "Séance en lecture seule. Seul son enseignant affecté peut saisir les présences après son début.",
+    "description": "Consultez les présences par séance et l’historique quotidien conservé.",
+    "daily": "Historique quotidien antérieur",
     "history": "Historique de l’élève",
     "dailyDescription": "Choisissez une année scolaire, une classe précise et une date. Le serveur détermine l’éligibilité historique.",
     "historyDescription": "Consultez les présences enregistrées avec les autorisations, filtres et pages gérés par le serveur.",

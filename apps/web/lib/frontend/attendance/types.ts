@@ -9,6 +9,7 @@ export interface DailyAttendanceDto {
   note: string | null;
   createdAt: string;
   updatedAt: string;
+  version?: number;
 }
 
 export interface AttendanceRecordDto extends Timestamps {
@@ -19,6 +20,7 @@ export interface AttendanceRecordDto extends Timestamps {
   attendanceDate: string;
   status: AttendanceStatus;
   note: string | null;
+  session?: import('@school/database').PublishedTimetableLesson | null;
 }
 
 export interface DailyRosterRow {
@@ -31,9 +33,15 @@ export interface DailyRosterResponse {
     class: ClassDto;
     attendanceDate: string;
     students: DailyRosterRow[];
+    session?: AttendanceSession;
   };
   meta: PageMeta;
 }
+
+export interface AttendanceSession extends SessionLesson {
+  publicationId: string; date: string; classId: string; academicYearId: string; className: string; writable: boolean;
+}
+type SessionLesson = import('@school/database').PublishedTimetableLesson;
 
 export interface AttendanceEntryInput {
   studentId: string;

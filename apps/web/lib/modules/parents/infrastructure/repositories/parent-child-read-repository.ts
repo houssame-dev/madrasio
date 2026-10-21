@@ -23,11 +23,11 @@ export async function listChildAttendance(db: ParentsDb, schoolId: string, stude
     exists(db.select({ id: e.id }).from(e).where(and(eq(e.schoolId, schoolId), eq(e.studentId, studentId),
       eq(e.classId, a.classId), eq(e.academicYearId, a.academicYearId), lte(e.effectiveFrom, a.attendanceDate),
       or(isNull(e.effectiveUntil), gte(e.effectiveUntil, a.attendanceDate))))));
-  const data = await db.select({ id: a.id, date: a.attendanceDate, status: a.status, className: schema.classes.name })
+  const data = await db.select({ id: a.id, date: a.attendanceDate, status: a.status, className: schema.classes.name, session: a.session })
     .from(a).innerJoin(schema.classes, and(eq(schema.classes.schoolId, schoolId), eq(schema.classes.id, a.classId)))
     .where(condition).orderBy(desc(a.attendanceDate), desc(a.id)).limit(input.pageSize).offset((input.page - 1) * input.pageSize);
   const [total] = await db.select({ value: count() }).from(a).where(condition);
-  return { data, meta: { page: input.page, pageSize: input.pageSize, total: total.value } };
+  return { data: data.map(row => ({ ...row, session: row.session ? { subjectName: row.session.subjectName, start: row.session.start, end: row.session.end } : null })), meta: { page: input.page, pageSize: input.pageSize, total: total.value } };
 }
 
 /** Same inclusive due-date eligibility as the existing Homework domain; EXISTS avoids duplicate targets. */

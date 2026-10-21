@@ -212,10 +212,10 @@ describe('authorization and tenant integrity', () => {
     expect((await listFinance(db, b, { page: 1, search: '' })).charges).toHaveLength(0);
     await expect(test.seed.insert(s.feeStructures).values({ schoolId: other.schoolId, academicYearId: other.yearId, feeTypeId: structure.feeTypeId, amountCents: 100, cadence: 'MONTHLY', periods, createdBy: b.userId, updatedBy: b.userId })).rejects.toThrow();
   });
-  it('replays the current 30-migration schema with all application ACL protections intact', async () => {
+  it('replays the current 31-migration schema with all application ACL protections intact', async () => {
     await test.client.exec('create role anon;create role authenticated;create role service_role');
     expect((await test.client.query(applicationSecurityAuditSql)).rows).toEqual([]);
-    expect((await test.client.query('select count(*)::int as n from drizzle.__drizzle_migrations')).rows).toEqual([{ n: 30 }]);
+    expect((await test.client.query('select count(*)::int as n from drizzle.__drizzle_migrations')).rows).toEqual([{ n: 31 }]);
   });
 });
 

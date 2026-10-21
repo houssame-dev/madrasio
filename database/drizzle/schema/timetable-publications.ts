@@ -20,6 +20,7 @@ export const timetablePublications = pgTable('timetable_publications', {
   publishedBy: uuid('published_by').notNull().references(() => users.id, { onDelete: 'restrict' }),
   publishedAt: timestamp('published_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => [
+  unique('timetable_publication_context_id_unique').on(t.schoolId, t.academicYearId, t.classId, t.id),
   foreignKey({ columns: [t.schoolId, t.academicYearId, t.classId, t.draftId], foreignColumns: [timetableDrafts.schoolId, timetableDrafts.academicYearId, timetableDrafts.classId, timetableDrafts.id], name: 'timetable_publication_draft_fk' }).onDelete('restrict'),
   unique('timetable_publication_sequence_unique').on(t.schoolId, t.classId, t.sequence),
   unique('timetable_publication_date_unique').on(t.schoolId, t.classId, t.effectiveFrom),

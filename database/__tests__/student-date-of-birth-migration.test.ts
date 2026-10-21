@@ -12,7 +12,7 @@ afterEach(async () => { await client?.close(); });
 it('replays the current chain with nullable date-only DOB, 30 migrations and 56-table security', async () => {
   ({ client } = await createTestDb());
   await client.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;');
-  expect((await client.query<{ count: number }>('select count(*)::int count from drizzle.__drizzle_migrations')).rows[0]!.count).toBe(30);
+  expect((await client.query<{ count: number }>('select count(*)::int count from drizzle.__drizzle_migrations')).rows[0]!.count).toBe(31);
   expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
   expect((await client.query("select data_type,is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='students' and column_name='date_of_birth'")).rows).toEqual([
     { data_type: 'date', is_nullable: 'YES', column_default: null },

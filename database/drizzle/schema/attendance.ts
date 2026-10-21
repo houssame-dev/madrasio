@@ -1,4 +1,7 @@
-import { date, foreignKey, index, pgEnum, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { check, date, foreignKey, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { timetablePublications, type PublishedTimetableLesson } from './timetable-publications';
+import { users } from './users';
 
 import { academicYears } from './academic-years';
 import { classes } from './classes';
@@ -24,61 +27,17 @@ import { students } from './students';
 export const attendanceStatus = pgEnum('attendance_status', ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']);
 
 /**
- * AttendanceRecord — the attendance state of ONE Student in ONE Class context
- * for ONE attendance date (BR-ATTENDANCE-002, domain-model §40, Task 007 §1).
+ * Session identity: School + publication + lesson + calendar date + Student.
+ * The publication/context FK and partial unique indexes preserve tenant identity.
+ * Session JSON is copied exclusively from the applicable immutable publication.
  *
- * Conceptual identity:
+ * Legacy daily rows keep NULL session references and their original daily unique
+ * identity. No migration assigns them to a lesson; all application writes now use
+ * the session service. Date/enrollment/Teacher applicability is checked under the
+ * same School lock as publication, not inferred from current student placement.
  *
- *   Student + Class + Attendance Date → AttendanceRecord
- *
- * `attendance_date` is a calendar DATE (Task 007 §15): it is the attended day,
- * NOT the record creation timestamp. `created_at` records when the row was
- * written.
- *
- * The Class is Academic-Year specific (BR-CLASS-002, BR-ACADEMIC-004), so the
- * record preserves the AcademicYear context through the Class relationship.
- * A direct `academic_year_id` column IS stored here because there is a clear
- * database-integrity reason (Task 007 §5 exception): it lets the SAME-School
- * and Class↔AcademicYear integrity be enforced at the database level by the
- * triple composite FK `(school_id, academic_year_id, class_id)` — the exact
- * pattern used by `student_enrollments`, `teacher_assignments`,
- * `subject_results`/`period_results`/`annual_results` and `result_publications`.
- *
- * Tenant integrity (BR-INTEGRITY-002, ADR-007): every reference is guarded by
- * a composite FK against the same-School target, so a valid UUID from another
- * School can never make a record valid (Task 007 §4):
- *
- *   (school_id, student_id)       → students(school_id, id)
- *   (school_id, academic_year_id) → academic_years(school_id, id)
- *   (school_id, academic_year_id, class_id) → classes(school_id, academic_year_id, id)
- *
- * One logical daily record (BR-ATTENDANCE-003, Task 007 §3/§20): the UNIQUE
- * constraint `(school_id, class_id, student_id, attendance_date)` is the
- * logical identity. It is NOT `student_id + attendance_date` — a Student may
- * have historically attended different Classes, so the same Student + date in
- * different Classes must remain structurally possible (Task 007 §10).
- *
- * Student enrollment validity on the attendance date (Task 007 §6) —
- * `StudentEnrollment.effective_from <= attendance_date <= effective_until` —
- * CANNOT be expressed by a safe normal FK/constraint (it is a date-range join,
- * and triggers are prohibited). It is therefore NOT enforced here; it is an
- * Application-layer invariant, documented and exposed by the minimal domain
- * helper `apps/web/lib/modules/attendance/domain`. A historical AttendanceRecord
- * must remain valid even after the Student later transfers classes: it always
- * points to the Class it was recorded against and is never rewritten to the
- * Student's current Class (Task 007 §7, BR-GLOBAL-003).
- *
- * Corrections are allowed as an explicit business operation (BR-ATTENDANCE-005,
- * Task 007 §8/§29): `status` is mutable so ABSENT → EXCUSED does not require
- * delete + re-insert. No revision-history table exists yet (Task 007 §8).
- *
- * `note` is optional human-entered metadata (Task 007 §9). Business logic must
- * not be encoded into free text; it is NOT required for any status.
- *
- * DELETE behavior is RESTRICT everywhere (Task 007 §18): historical attendance
- * must never disappear because a Student is archived, a Class is closed, an
- * enrollment ends, a TeacherAssignment ends or a ParentStudent relationship
- * ends.
+ * Corrections preserve identity, use expected versions and append an atomic audit.
+ * All FKs are RESTRICT. See docs/architecture/attendance-api.md and BR-ATTENDANCE.
  */
 export const attendanceRecords = pgTable(
   'attendance_records',
@@ -93,6 +52,12 @@ export const attendanceRecords = pgTable(
     attendanceDate: date('attendance_date').notNull(),
     status: attendanceStatus('status').notNull().default('PRESENT'),
     note: text('note'),
+    // NULL denotes an unchanged legacy daily record. New writes require a published session.
+    publicationId: uuid('publication_id'),
+    lessonKey: uuid('lesson_key'),
+    session: jsonb('session').$type<PublishedTimetableLesson>(),
+    version: integer('version').notNull().default(1),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'restrict' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -113,12 +78,16 @@ export const attendanceRecords = pgTable(
       foreignColumns: [classes.schoolId, classes.academicYearId, classes.id],
     }).onDelete('restrict'),
     // Logical identity: one daily record per School + Class + Student + Date.
-    unique('attendance_records_school_class_student_date_unique').on(
+    uniqueIndex('attendance_records_legacy_daily_unique').on(
       table.schoolId,
       table.classId,
       table.studentId,
       table.attendanceDate,
-    ),
+    ).where(sql`${table.publicationId} is null`),
+    uniqueIndex('attendance_records_session_student_unique').on(table.schoolId, table.publicationId, table.lessonKey, table.attendanceDate, table.studentId).where(sql`${table.publicationId} is not null`),
+    foreignKey({ name: 'attendance_records_publication_context_fk', columns: [table.schoolId, table.academicYearId, table.classId, table.publicationId], foreignColumns: [timetablePublications.schoolId, timetablePublications.academicYearId, timetablePublications.classId, timetablePublications.id] }).onDelete('restrict'),
+    check('attendance_records_session_check', sql`(${table.publicationId} is null and ${table.lessonKey} is null and ${table.session} is null) or (${table.publicationId} is not null and ${table.lessonKey} is not null and ${table.session} is not null and jsonb_typeof(${table.session})='object' and coalesce(${table.session}->>'lessonKey'=${table.lessonKey}::text,false))`),
+    check('attendance_records_version_check', sql`${table.version}>0`),
     // Query-driven indexes (Task 007 §19). The (school_id, class_id) lookup is
     // already served by the unique constraint above (leftmost prefix), so no
     // separate index is added for it.

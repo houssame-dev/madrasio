@@ -61,7 +61,7 @@ export type Permission = (typeof PERMISSIONS)[number];
  *   ParentStudent (BR-ROLE-005), never from the permission alone.
  */
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
-  SUPER_ADMIN: PERMISSIONS.filter(p => p !== 'timetable.manage' && p !== 'timetable.read' && p !== 'finance.read' && p !== 'finance.manage'),
+  SUPER_ADMIN: PERMISSIONS.filter(p => p !== 'attendance.manage' && p !== 'timetable.manage' && p !== 'timetable.read' && p !== 'finance.read' && p !== 'finance.manage'),
   SCHOOL_ADMIN: [
     'timetable.manage',
   'timetable.read',
@@ -81,7 +81,6 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     'grades.manage',
     'grades.publish',
     'attendance.read',
-    'attendance.manage',
     'homework.read',
     'homework.manage',
     'announcements.read',
