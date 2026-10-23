@@ -30,12 +30,12 @@ export function AssignmentForm({ schoolId, teacherId, years, subjects, activeAss
     if (activeAssignments.some((assignment) => assignment.academicYearId === values.academicYearId && assignment.classId === values.classId && assignment.subjectId === values.subjectId)) { setError(t.duplicateSelection); return; }
     mutation.mutate(values);
   })}>
-    {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}<p className="text-sm text-muted-foreground">{t.assignmentSeparate}</p>
+    {error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}<p className="text-sm text-muted-foreground">{t.assignmentSeparate}</p>
     <Field label={t.academicYear} htmlFor="assignment-year" error={text(form.formState.errors.academicYearId?.message)}><select id="assignment-year" className={selectClassName} {...form.register('academicYearId')}><option value="">{t.selectYear}</option>{eligibleYears.map((year) => <option key={year.id} value={year.id}>{year.name} — {text(year.status)}</option>)}</select></Field>
     <Field label={t.className} htmlFor="assignment-class" error={text(form.formState.errors.classId?.message)} hint={classes.data?.length === 0 ? t.noClasses : undefined}><select id="assignment-class" className={selectClassName} disabled={!yearId || classes.isPending || classes.isError} {...form.register('classId')}><option value="">{t.selectClass}</option>{classes.data?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
     <Field label={t.subject} htmlFor="assignment-subject" error={text(form.formState.errors.subjectId?.message)} hint={eligibleSubjects.length === 0 ? t.noSubjects : undefined}><select id="assignment-subject" className={selectClassName} {...form.register('subjectId')}><option value="">{t.selectSubject}</option>{eligibleSubjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}{subject.code ? ` (${subject.code})` : ''}</option>)}</select></Field>
     <Field label={t.effectiveFrom} htmlFor="assignment-from" error={text(form.formState.errors.effectiveFrom?.message)}><input id="assignment-from" type="date" dir="ltr" className={inputClassName} {...form.register('effectiveFrom')} /></Field>
-    {classes.isError ? <InlineFeedback kind="error">{t.noClasses}</InlineFeedback> : null}<FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={t.create} />
+    {classes.isError ? <InlineFeedback brand kind="error">{t.noClasses}</InlineFeedback> : null}<FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={t.create} />
   </form>;
 }
 
@@ -46,7 +46,7 @@ export function EndAssignmentForm({ assignment, onCancel, onSaved }: { assignmen
   const form = useForm<EndAssignmentFormValues>({ resolver: zodResolver(endAssignmentFormSchema), defaultValues: { effectiveUntil: '' } }); const [error, setError] = useState<string>();
   const mutation = useMutation({ mutationFn: teachersApi.endAssignment.bind(null, assignment.id), onSuccess: async () => { setError(undefined); await onSaved(); }, onError: (value) => { if (!mapTeacherValidation(value, form.setError)) setError(text(teacherErrorMessage(value))); } });
   return <form className="space-y-4" noValidate onSubmit={form.handleSubmit((values) => { if (values.effectiveUntil < assignment.effectiveFrom) { form.setError('effectiveUntil', { message: t.endDateBefore }); return; } mutation.mutate(values); })}>
-    {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}<p className="text-sm text-muted-foreground">{t.endDescription}</p><p className="text-sm text-muted-foreground">{t.reassignmentSeparate}</p>
+    {error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}<p className="text-sm text-muted-foreground">{t.endDescription}</p><p className="text-sm text-muted-foreground">{t.reassignmentSeparate}</p>
     <Field label={t.effectiveUntil} htmlFor="assignment-until" error={text(form.formState.errors.effectiveUntil?.message)}><input id="assignment-until" type="date" dir="ltr" min={assignment.effectiveFrom} className={inputClassName} {...form.register('effectiveUntil')} /></Field>
     <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={t.confirmEnd} />
   </form>;

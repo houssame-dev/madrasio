@@ -34,14 +34,14 @@ export function AnnouncementPublications({ schoolId, announcementId, versions, c
   const versionNumber = (id: string) => versions.find((item) => item.id === id)?.versionNumber;
   return <section className="space-y-4 rounded-lg border bg-card p-5">
     <SectionHeader title={t.publications} description={t.publicationsHint} />
-    {feedback ? <InlineFeedback kind="success">{text(feedback)}</InlineFeedback> : null}
-    {query.isError ? <ApiErrorState description={text(announcementErrorMessage(query.error))} onRetry={() => void query.refetch()} /> : <TableShell headers={[t.publication, t.version, t.status, t.scheduledAt, t.publishedAt, t.recipients, t.actions]} loading={query.isPending}>
+    {feedback ? <InlineFeedback brand kind="success">{text(feedback)}</InlineFeedback> : null}
+    {query.isError ? <ApiErrorState description={text(announcementErrorMessage(query.error))} onRetry={() => void query.refetch()} /> : <TableShell responsive headers={[t.publication, t.version, t.status, t.scheduledAt, t.publishedAt, t.recipients, t.actions]} loading={query.isPending}>
       {query.data?.data.length === 0 ? <EmptyTableRow columns={7} /> : query.data?.data.map((item) => <tr key={item.id}>
         <td dir="ltr" className="px-4 py-3">#{item.publicationVersion}</td><td dir="ltr" className="px-4 py-3">v{item.versionNumber ?? versionNumber(item.announcementVersionId) ?? '?'}</td>
-        <td className="px-4 py-3"><StatusBadge status={item.status} label={text(item.status)} /></td>
+        <td className="px-4 py-3"><StatusBadge brand status={item.status} label={text(item.status)} /></td>
         <td dir="ltr" className="px-4 py-3">{item.scheduledAt ? formatSchoolInstant(item.scheduledAt, timezone) : '—'}</td>
         <td dir="ltr" className="px-4 py-3">{item.publishedAt ? formatSchoolInstant(item.publishedAt, timezone) : '—'}</td>
-        <td className="px-4 py-3">{item.recipientCount}</td><td className="px-4 py-3">{canPublish && item.status === 'SCHEDULED' ? <div className="flex gap-2">
+        <td className="px-4 py-3">{item.recipientCount}</td><td className="px-4 py-3">{canPublish && item.status === 'SCHEDULED' ? <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={() => { setFeedback(''); setReschedule(item); }}>{msg('deliveryUi.rescheduleNumber', { number: item.publicationVersion })}</Button>
           <Button type="button" variant="outline" onClick={() => { mutation.reset(); setFeedback(''); setCancel(item); }}>{msg('deliveryUi.cancelNumber', { number: item.publicationVersion })}</Button>
         </div> : '—'}</td>

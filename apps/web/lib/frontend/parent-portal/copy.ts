@@ -1,6 +1,6 @@
 export const parentPortalCopy = {
   dashboardTitle: 'Family workspace',
-  dashboardDescription: 'Your current related children and persisted school notifications.',
+  dashboardDescription: "Follow your children’s school life, published results and school updates.",
   myChildren: 'My children',
   childrenDescription: 'Children returned by your active Parent profiles and current relationships in this school.',
   relatedChildren: 'Related children',

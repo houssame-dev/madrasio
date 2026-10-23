@@ -1,10 +1,11 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDomainText } from '@/i18n/use-domain-text';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@school/ui';
-import { Field, InlineFeedback, Modal, Pagination, inputClassName, selectClassName } from '@/components/academic/ui';
+import { Field, InlineFeedback, Modal, Pagination, TableShell, inputClassName, selectClassName } from '@/components/academic/ui';
 import { ApiErrorState, InlineLoading } from '@/components/ui/states';
 import { gradesApi } from '@/lib/frontend/grades/api';
 import { useGradeCopy } from '@/i18n/use-domain-copy';
@@ -28,6 +29,7 @@ export function GradeEntryDialog({ open, schoolId, gradebookId, assessment, onCl
   assessment: AssessmentDto | null;
   onClose: () => void;
 }) {
+  const ui = useTranslations('learningUi');
   const text = useDomainText();
   const t = useGradeCopy();
   const queryClient = useQueryClient(); const [page, setPage] = useState(1);
@@ -90,17 +92,17 @@ export function GradeEntryDialog({ open, schoolId, gradebookId, assessment, onCl
   };
   return <Modal open={open} title={assessment ? t.gradeEntryTitle(assessment.title) : t.enterGrades} description={assessment ? t.gradeEntryDescription(assessment.maximumScore) : undefined} onClose={close}>
     {!assessment ? null : matrix.isPending ? <InlineLoading label={t.loading} /> : matrix.isError ? <ApiErrorState title={t.unavailable} onRetry={() => void matrix.refetch()} /> : <div className="space-y-4">
-      {dirty.size > 0 ? <InlineFeedback kind="error">{t.unsavedChanges}: {dirty.size}</InlineFeedback> : null}
-      {notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}
-      {mutation.isError ? <InlineFeedback kind="error">{text(gradeErrorMessage(mutation.error))}</InlineFeedback> : null}
+      {dirty.size > 0 ? <InlineFeedback brand kind="warning">{t.unsavedChanges}: {dirty.size}</InlineFeedback> : null}
+      {notice ? <InlineFeedback brand kind="success">{notice}</InlineFeedback> : null}
+      {mutation.isError ? <InlineFeedback brand kind="error">{text(gradeErrorMessage(mutation.error))}</InlineFeedback> : null}
       <p className="text-xs text-muted-foreground">{t.rosterLimit}</p>
-      <div className="overflow-x-auto rounded-lg border"><table className="w-full min-w-[42rem] text-sm"><thead className="border-b bg-muted/60"><tr><th className="px-4 py-3 text-start">{t.student}</th><th className="px-4 py-3 text-start">{t.gradeState}</th><th className="px-4 py-3 text-start">{t.score}</th></tr></thead><tbody className="divide-y">{rows?.map(({ student }) => {
+      <p className="text-sm text-muted-foreground">{ui('entry')}</p><TableShell responsive headers={[t.student, t.gradeState, t.score]}>{rows?.map(({ student }) => {
         const name = `${student.firstName} ${student.lastName}`; const draft = drafts[student.id] ?? { state: '', score: '' };
         const error = errors[student.id];
-        return <tr key={student.id}><th scope="row" className="px-4 py-3 text-start font-medium">{name}<span className="block text-xs font-normal text-muted-foreground">{student.studentCode ?? t.none}</span></th><td dir="auto" className="px-4 py-3"><label className="sr-only" htmlFor={`grade-state-${student.id}`}>{t.stateFor(name)}</label><select id={`grade-state-${student.id}`} aria-label={t.stateFor(name)} className={selectClassName} value={draft.state} onChange={(event) => { const state = event.target.value as GradeState | ''; change(student.id, { state, score: state === 'VALID' ? draft.score : '' }); }}><option value="">{t.selectState}</option>{states.map((state) => <option key={state} value={state}>{t.gradeStates[state]}</option>)}</select></td><td dir="auto" className="px-4 py-3"><Field label="" htmlFor={`grade-score-${student.id}`} error={error}><input id={`grade-score-${student.id}`} aria-label={t.scoreFor(name)} aria-invalid={!!error} className={inputClassName} inputMode="decimal" dir="ltr" disabled={draft.state !== 'VALID'} value={draft.score} onChange={(event) => change(student.id, { score: event.target.value })} /></Field></td></tr>;
-      })}</tbody></table></div>
+        return <tr key={student.id}><th scope="row" className="px-4 py-3 text-start font-medium">{name}<span className="block text-xs font-normal text-muted-foreground">{student.studentCode ?? t.none}</span></th><td dir="auto" className="px-4 py-3"><label className="sr-only" htmlFor={`grade-state-${student.id}`}>{t.stateFor(name)}</label><select id={`grade-state-${student.id}`} aria-label={t.stateFor(name)} className={selectClassName} disabled={mutation.isPending} value={draft.state} onChange={(event) => { const state = event.target.value as GradeState | ''; change(student.id, { state, score: state === 'VALID' ? draft.score : '' }); }}><option value="">{t.selectState}</option>{states.map((state) => <option key={state} value={state}>{t.gradeStates[state]}</option>)}</select></td><td dir="auto" className="px-4 py-3"><Field label="" htmlFor={`grade-score-${student.id}`} error={error}><input id={`grade-score-${student.id}`} aria-label={t.scoreFor(name)} aria-invalid={!!error} className={inputClassName} inputMode="decimal" dir="ltr" disabled={mutation.isPending || draft.state !== 'VALID'} value={draft.score} onChange={(event) => change(student.id, { score: event.target.value })} /></Field></td></tr>;
+      })}</TableShell>
       {matrix.data ? <Pagination page={matrix.data.meta.page} pageSize={matrix.data.meta.pageSize} total={matrix.data.meta.total} onPage={(next) => { if (dirty.size === 0 || window.confirm(t.unsavedPrompt)) setPage(next); }} /> : null}
-      <div className="flex justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={close}>{t.cancel}</Button><Button type="button" disabled={mutation.isPending || dirty.size === 0} onClick={save}>{t.save}</Button></div>
+      <div className="flex flex-wrap justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={close}>{t.cancel}</Button><Button type="button" disabled={mutation.isPending || dirty.size === 0} onClick={save}>{mutation.isPending ? ui('saving') : t.save}</Button></div>
     </div>}
   </Modal>;
 }

@@ -7,7 +7,7 @@ import { ApiClientError } from '@/lib/frontend/api-client';
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCheck } from 'lucide-react';
 import { Button } from '@school/ui';
-import { InlineFeedback, Pagination, inputClassName } from '@/components/academic/ui';
+import { InlineFeedback, Pagination, StatusBadge, inputClassName } from '@/components/academic/ui';
 import { useAttendanceCopy } from '@/i18n/use-domain-copy';
 import { attendanceApi } from '@/lib/frontend/attendance/api';
 import { attendanceKeys } from '@/lib/frontend/attendance/queries';
@@ -30,6 +30,7 @@ export function AttendanceRoster({ schoolId, classId: _classId, date: _date, ros
   const text = useDomainText();
   const t = useAttendanceCopy();
   const sessionText = useTranslations('attendance');
+  const ui = useTranslations('attendanceUi');
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
@@ -80,24 +81,41 @@ export function AttendanceRoster({ schoolId, classId: _classId, date: _date, ros
     mutation.mutate(parsed.data.records);
   };
   const markAll = () => {
-    const unmarked = rows.filter(({ student, attendance }) => attendance === null && !drafts[student.id]?.status);
+    const unmarked = rows.filter(({ student, attendance }) => attendance === null && !dirty.has(student.id) && !drafts[student.id]?.status);
     if (unmarked.length === 0) return;
     setDrafts((current) => ({ ...current, ...Object.fromEntries(unmarked.map(({ student }) => [student.id, { status: 'PRESENT' as const, note: current[student.id]?.note ?? '' }])) }));
     setDirty((current) => new Set([...current, ...unmarked.map(({ student }) => student.id)]));
     setNotice(undefined); setValidationError(undefined);
   };
   const inactiveClass = roster.data.class.status !== 'ACTIVE';
-  return <div className="space-y-4">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm text-muted-foreground">{t.historicalRoster}</p><p className="text-xs text-muted-foreground">{t.rosterLimit}</p></div>{canEdit && !inactiveClass ? <Button type="button" variant="outline" onClick={markAll}><CheckCheck className="size-4" aria-hidden="true" />{t.markAllPresent}</Button> : null}</div>
-    {!canEdit ? null : !inactiveClass ? <p className="text-xs text-muted-foreground">{t.markAllPresentHint}</p> : <InlineFeedback kind="error">{t.closedClass}</InlineFeedback>}
-    {dirty.size > 0 ? <InlineFeedback kind="error">{t.unsaved}: {dirty.size}</InlineFeedback> : null}
-    {notice ? <InlineFeedback kind="success">{notice}</InlineFeedback> : null}
-    {validationError ? <InlineFeedback kind="error">{text(validationError)}</InlineFeedback> : null}
-    {mutation.isError ? <InlineFeedback kind="error">{mutation.error instanceof ApiClientError && mutation.error.status === 409 ? sessionText('staleSession') : sessionText('sessionSaveFailed')}</InlineFeedback> : null}
-    <div className="overflow-x-auto rounded-lg border"><table className="w-full min-w-[52rem] text-sm"><thead className="border-b bg-muted/60"><tr><th className="sticky start-0 z-10 bg-muted px-4 py-3 text-start">{t.student}</th><th className="px-4 py-3 text-start">{t.status}</th><th className="px-4 py-3 text-start">{t.note}</th></tr></thead><tbody className="divide-y">{rows.map(({ student, attendance }) => {
+  const StudentHeading = roster.data.session ? 'h3' : 'h2';
+  return <div className="space-y-4" aria-busy={mutation.isPending}>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="space-y-1"><p className="text-sm text-muted-foreground">{ui('rosterHint')}</p></div>
+      {canEdit && !inactiveClass ? <Button type="button" variant="outline" className="h-auto min-h-10 shrink-0 whitespace-normal" disabled={mutation.isPending} onClick={markAll}><CheckCheck className="size-4 shrink-0" aria-hidden="true" />{t.markAllPresent}</Button> : null}
+    </div>
+    {canEdit && !inactiveClass ? <p className="text-sm text-muted-foreground">{ui('bulkHint')}</p> : canEdit ? <InlineFeedback kind="error">{t.closedClass}</InlineFeedback> : null}
+    {validationError ? <InlineFeedback kind="error">{validationError === 'Note must contain at most 1,000 characters.' ? ui('noteTooLong') : text(validationError)}</InlineFeedback> : null}
+    {mutation.isError ? <div className="space-y-2"><InlineFeedback kind="error">{mutation.error instanceof ApiClientError && mutation.error.status === 409 ? sessionText('staleSession') : sessionText('sessionSaveFailed')}</InlineFeedback><p className="text-sm text-muted-foreground">{ui('editsKept')}</p></div> : null}
+    <div className="hidden grid-cols-[minmax(0,1fr)_minmax(10rem,0.8fr)_minmax(0,1.3fr)] gap-4 px-4 text-sm font-medium text-muted-foreground md:grid" aria-hidden="true"><span>{t.student}</span><span>{t.status}</span><span>{t.note}</span></div>
+    <ul aria-label={t.student} className="space-y-3">{rows.map(({ student, attendance }) => {
       const name = `${student.firstName} ${student.lastName}`; const draft = drafts[student.id] ?? { status: attendance?.status ?? '', note: attendance?.note ?? '' }; const creationLocked = inactiveClass && attendance === null;
-      return <tr key={student.id}><th dir="auto" scope="row" className="sticky start-0 bg-background px-4 py-3 text-start font-medium">{name}<span className="block text-xs font-normal text-muted-foreground">{student.studentCode ?? '—'} · {attendance ? t.statuses[attendance.status] : t.notMarked}</span></th><td dir="auto" className="min-w-48 px-4 py-3">{canEdit ? <AttendanceStatusControl name={name} value={draft.status} disabled={creationLocked} onChange={(status) => update(student.id, { status })} /> : <span>{attendance ? t.statuses[attendance.status] : t.notMarked}</span>}</td><td dir="auto" className="min-w-80 px-4 py-3"><label className="sr-only" htmlFor={`attendance-note-${student.id}`}>{t.noteFor(name)}</label>{canEdit ? <input id={`attendance-note-${student.id}`} aria-label={t.noteFor(name)} className={inputClassName} maxLength={1000} disabled={creationLocked || !draft.status} value={draft.note} onChange={(event) => update(student.id, { note: event.target.value })} /> : <p className="whitespace-pre-wrap">{attendance?.note ?? '—'}</p>}</td></tr>;
-    })}</tbody></table></div>
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Pagination {...roster.meta} onPage={(page) => { if (dirty.size > 0 && !window.confirm(t.unsavedPrompt)) return; onDirtyChange(false); onPage(page); }} />{canEdit ? <Button type="button" disabled={dirty.size === 0 || mutation.isPending} onClick={save}>{t.save}</Button> : null}</div>
+      const changed = dirty.has(student.id);
+      return <li key={student.id} className={`grid min-w-0 gap-4 rounded-lg border bg-card p-4 md:grid-cols-[minmax(0,1fr)_minmax(10rem,0.8fr)_minmax(0,1.3fr)] ${changed ? 'border-ring' : ''}`}>
+        <div className="min-w-0 space-y-2 break-words">
+          <StudentHeading className="font-semibold"><bdi>{name}</bdi></StudentHeading>
+          <p className="text-xs text-muted-foreground"><bdi>{student.studentCode ?? '—'}</bdi></p>
+          <p className="text-xs text-muted-foreground">{ui('recordedStatus')}: {attendance ? t.statuses[attendance.status] : t.notMarked}</p>
+          {changed ? <span className="inline-flex rounded-md border border-primary/30 bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">{ui('changed')}</span> : null}
+        </div>
+        <div className="min-w-0 space-y-1.5"><p className="text-sm font-medium md:sr-only">{t.status}</p>{canEdit ? <AttendanceStatusControl name={name} value={draft.status} disabled={creationLocked || mutation.isPending} onChange={(status) => update(student.id, { status })} /> : <StatusBadge status={attendance?.status ?? 'UNMARKED'} label={attendance ? t.statuses[attendance.status] : t.notMarked} />}</div>
+        <div className="min-w-0 space-y-1.5"><label className="block text-sm font-medium md:sr-only" htmlFor={`attendance-note-${student.id}`}>{t.note}</label>{canEdit ? <input id={`attendance-note-${student.id}`} aria-label={t.noteFor(name)} className={inputClassName} maxLength={1000} disabled={creationLocked || !draft.status || mutation.isPending} value={draft.note} onChange={(event) => update(student.id, { note: event.target.value })} /> : <p className="break-words whitespace-pre-wrap text-sm">{attendance?.note ?? '—'}</p>}</div>
+      </li>;
+    })}</ul>
+    <div className="space-y-3 [&_nav]:flex-wrap [&_nav>div]:shrink-0"><Pagination {...roster.meta} onPage={(page) => { if (dirty.size > 0 && !window.confirm(t.unsavedPrompt)) return; onDirtyChange(false); onPage(page); }} /></div>
+    {canEdit ? <div className="flex flex-col gap-3 rounded-lg border bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <p role="status" aria-live="polite" className="text-sm font-medium">{mutation.isPending ? ui('saving') : dirty.size > 0 ? `${t.unsaved}: ${dirty.size}` : notice ?? ui('ready')}</p>
+      <Button type="button" disabled={dirty.size === 0 || mutation.isPending} onClick={save}>{mutation.isPending ? ui('saving') : t.save}</Button>
+    </div> : null}
   </div>;
 }

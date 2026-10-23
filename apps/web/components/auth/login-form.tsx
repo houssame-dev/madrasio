@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
-import { Building2, LoaderCircle } from 'lucide-react';
+import { LoaderCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -14,12 +14,12 @@ import { loginSchema, type LoginValues } from '@/lib/frontend/auth/schemas';
 import { getBrowserSupabase } from '@/lib/supabase/browser';
 import { navigateAfterAuth } from '@/lib/frontend/language/auth-navigation';
 import { useBeginAccountTransition } from '@/components/language/account-lifetime-host';
+import { BrandMark } from '@/components/branding/brand-mark';
 
 export function LoginForm() {
   const t = useTranslations('auth');
   const recovery = useTranslations('recovery');
   const validation = useTranslations('validation');
-  const foundation = useTranslations('foundation');
   const queryClient = useQueryClient();
   const beginAccountTransition = useBeginAccountTransition();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -51,12 +51,11 @@ export function LoginForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+    <main className="flex min-h-screen items-center justify-center bg-background p-4">
       <section className="w-full max-w-md rounded-lg border bg-card p-6 shadow-sm" aria-labelledby="login-title">
-        <div className="mb-6 flex items-start gap-3">
-          <span className="rounded-md bg-primary p-2 text-primary-foreground" aria-hidden="true"><Building2 className="size-5" /></span>
+        <div className="mb-6 space-y-5">
+          <BrandMark className="h-12 w-48" priority />
           <div>
-            <p className="text-sm font-medium text-muted-foreground">{foundation('appName')}</p>
             <h1 id="login-title" className="text-2xl font-semibold">{t('loginTitle')}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{t('loginDescription')}</p>
           </div>

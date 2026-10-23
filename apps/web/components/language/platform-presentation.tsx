@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { AccessDeniedState } from '@/components/ui/states';
 import { LogoutButton } from '@/components/auth/logout-button';
 import { LanguagePreferenceSlot } from '@/components/language/preference-slot';
+import { ThemeSelector } from '@/components/theme/theme-selector';
 
 export function PlatformDeniedPresentation() {
   const t = useTranslations('platformUi');
@@ -16,10 +17,10 @@ export function PlatformDeniedPresentation() {
 export function PlatformPresentation({ children }: { children: ReactNode }) {
   const t = useTranslations();
   return <div className="min-h-screen p-4 md:p-8">
-    <nav aria-label={t('platformUi.navigation')} className="mb-6 flex flex-wrap items-center gap-4">
+    <nav aria-label={t('platformUi.navigation')} className="mb-6 flex flex-wrap items-center gap-4 rounded-md border bg-chrome p-3 text-chrome-foreground">
       <Link className="underline" href="/platform/schools">{t('navigation.items.platformSchools')}</Link>
       <Link className="underline" href="/dashboard">{t('platformUi.workspace')}</Link>
-      <LogoutButton /><LanguagePreferenceSlot placement="platform" />
+      <ThemeSelector /><LogoutButton /><LanguagePreferenceSlot placement="platform" />
     </nav>
     {children}
   </div>;

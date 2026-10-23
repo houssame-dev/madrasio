@@ -8,7 +8,8 @@ import { CheckCheck, LoaderCircle } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { Button } from '@school/ui';
-import { selectClassName } from '@/components/academic/ui';
+import { useTranslations } from 'next-intl';
+import { InlineFeedback, selectClassName } from '@/components/academic/ui';
 import { useAppContext } from '@/components/app/app-context';
 import { AccessDeniedWithReturn } from '@/components/app/route-access';
 import { ApiErrorState } from '@/components/ui/states';
@@ -23,6 +24,7 @@ import { NotificationsList } from './notifications-list';
 
 export function NotificationsWorkspace() {
   const t = useNotificationCopy();
+  const ui = useTranslations('communicationUi');
   const text = useDeliveryText();
   const { notificationStatusLabels, notificationSourceLabels } = useNotificationLabels();
   const app = useAppContext();
@@ -72,11 +74,11 @@ export function NotificationsWorkspace() {
           </Button>
         </div>
       </header>
-      <section aria-label={t.filters} className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2">
+      <p className="text-sm leading-6 text-muted-foreground">{ui('readHelp')}</p><section aria-label={t.filters} className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2">
         <label className="grid gap-1.5 text-sm font-medium">{t.status}<select className={selectClassName} value={status} onChange={(event) => updateUrl({ status: event.target.value, page: 1 })}>{notificationReadStatuses.map((value) => <option key={value} value={value}>{notificationStatusLabels[value]}</option>)}</select></label>
         <label className="grid gap-1.5 text-sm font-medium">{t.source}<select className={selectClassName} value={sourceType ?? ''} onChange={(event) => updateUrl({ sourceType: event.target.value || undefined, page: 1 })}><option value="">{t.allSources}</option>{notificationSourceTypes.map((value) => <option key={value} value={value}>{notificationSourceLabels[value]}</option>)}</select></label>
       </section>
-      {feedback ? <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{feedback}</p> : null}
+      {feedback ? <InlineFeedback brand kind="success">{feedback}</InlineFeedback> : null}
       {markAll.isError ? <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{text(notificationErrorMessage(markAll.error))}</p> : null}
       {list.isError ? <ApiErrorState title={t.unavailable} description={text(notificationErrorMessage(list.error))} onRetry={() => void list.refetch()} /> : <NotificationsList result={list.data} loading={list.isPending} status={status} sourceType={sourceType} onOpen={setSelectedId} onPage={(next) => updateUrl({ page: next })} />}
       <NotificationDetail schoolId={schoolId} notificationId={selectedId} onClose={() => setSelectedId(null)} />

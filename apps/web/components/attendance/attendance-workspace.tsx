@@ -25,6 +25,7 @@ import { can } from '@/lib/frontend/permissions';
 export function AttendanceWorkspace() {
   const t = useAttendanceCopy();
   const sessionText = useTranslations('attendance');
+  const ui = useTranslations('attendanceUi');
   const app = useAppContext(); const schoolId = app.currentSchool?.id; const role = app.currentSchool?.role;
   const searchParams = useSearchParams(); const pathname = usePathname(); const router = useRouter();
   const section = searchParams.get('section') === 'history' ? 'history' : searchParams.get('section') === 'daily' && role !== 'TEACHER' ? 'daily' : 'sessions';
@@ -44,8 +45,8 @@ export function AttendanceWorkspace() {
   const selectedYear = years.data.find((year) => year.id === academicYearId);
   const historyClasses = role === 'TEACHER' ? classes.data.filter((klass) => (teacherClasses.data ?? []).includes(klass.id)) : classes.data;
   return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
-    <header><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.description}</p></header>
-    <nav aria-label={t.title} className="flex flex-wrap gap-2"><Button type="button" variant={section === 'sessions' ? 'default' : 'outline'} onClick={() => change({ section: 'sessions' })}>{sessionText('sessions')}</Button>{role !== 'TEACHER' ? <Button type="button" variant={section === 'daily' ? 'default' : 'outline'} onClick={() => change({ section: 'daily' })}>{t.daily}</Button> : null}<Button type="button" variant={section === 'history' ? 'default' : 'outline'} onClick={() => change({ section: 'history' })}>{t.history}</Button></nav>
+    <header className="space-y-2 border-b pb-5"><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.description}</p>{role !== 'TEACHER' ? <p className="text-sm font-medium">{ui('adminReadOnly')}</p> : null}</header>
+    <nav aria-label={t.title} className="flex flex-wrap gap-2"><Button type="button" aria-current={section === 'sessions' ? 'page' : undefined} className="h-auto min-h-11 whitespace-normal" variant={section === 'sessions' ? 'default' : 'outline'} onClick={() => change({ section: 'sessions' })}>{sessionText('sessions')}</Button>{role !== 'TEACHER' ? <Button type="button" aria-current={section === 'daily' ? 'page' : undefined} className="h-auto min-h-11 whitespace-normal" variant={section === 'daily' ? 'default' : 'outline'} onClick={() => change({ section: 'daily' })}>{t.daily}</Button> : null}<Button type="button" aria-current={section === 'history' ? 'page' : undefined} className="h-auto min-h-11 whitespace-normal" variant={section === 'history' ? 'default' : 'outline'} onClick={() => change({ section: 'history' })}>{t.history}</Button></nav>
     {section === 'sessions' ? <SessionAttendancePanel schoolId={schoolId} timezone={app.currentSchool!.timezone} onDirtyChange={setDirty} /> : section === 'daily' ? <><AttendanceContextControls years={years.data} classes={availableClasses} academicYearId={academicYearId} classId={classId} date={date} teacherScoped={role === 'TEACHER'} onYear={(value) => change({ academicYearId: value || undefined, classId: undefined })} onClass={(value) => change({ classId: value || undefined })} onDate={(value) => change({ date: value || undefined })} /><p className="text-xs text-muted-foreground">{t.schoolTimezone}</p><DailyAttendancePanel key={`${academicYearId}:${classId}:${date}`} schoolId={schoolId} timezone={app.currentSchool!.timezone} academicYear={selectedYear} classId={classId} date={date} onDirtyChange={setDirty} /></> : <AttendanceHistory schoolId={schoolId} years={years.data} classes={historyClasses} />}
   </PageContainer>;
 }

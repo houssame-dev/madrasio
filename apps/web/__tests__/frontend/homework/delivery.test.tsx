@@ -70,3 +70,14 @@ it('retains a selected upload request ID and displays controlled failure without
   expect(writes).toHaveLength(1);
   expect(new Headers(writes[0]![1]?.headers).get('idempotency-key')).toMatch(/^[0-9a-f-]{36}$/);
 });
+
+it('retains unsaved submission content after a controlled failure without leaking provider details', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ error: { code: 'CONFLICT', message: 'Private transport detail' } }, { status: 409 }));
+  renderHomework(<SubmissionForm schoolId={schoolId} homeworkId={publishedHomework.id} studentId={studentId} onCancel={vi.fn()} onSaved={vi.fn()} />, 'TEACHER');
+  const content = screen.getByRole('textbox'); await userEvent.type(content, 'Preserve this draft');
+  expect(screen.getByText('Unsaved changes')).toBeVisible();
+  await userEvent.click(screen.getByRole('button', { name: 'Record Submission' }));
+  expect(await screen.findByRole('alert')).toBeVisible(); expect(content).toHaveValue('Preserve this draft');
+  expect(screen.queryByText('Private transport detail')).not.toBeInTheDocument();
+  expect(fetch).toHaveBeenCalledTimes(1);
+});

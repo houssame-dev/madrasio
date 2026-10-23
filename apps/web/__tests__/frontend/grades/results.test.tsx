@@ -97,3 +97,15 @@ describe('Exact Result calculation routes', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/curriculum-subjects'))).toBe(false);
   });
 });
+
+it('explains Teacher working results without exposing publication controls', async () => {
+  const requests = setupResults(); renderGrades(<ResultsWorkspace />, 'TEACHER');
+  await screen.findByText('12.25');
+  expect(screen.getByText('Review and calculate Subject results within your teaching scope. School administrators control finalization and publication.')).toBeVisible();
+  await userEvent.click(screen.getByRole('button', { name: 'View Result' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(await within(dialog).findByText('Working result — publication is a separate step')).toBeVisible();
+  expect(within(dialog).queryByRole('button', { name: 'Publish Result' })).not.toBeInTheDocument();
+  expect(within(dialog).queryByRole('button', { name: 'Finalize' })).not.toBeInTheDocument();
+  expect(requests.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+});

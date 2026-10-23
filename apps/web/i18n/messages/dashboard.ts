@@ -1,0 +1,62 @@
+export const dashboardEn = {
+  "adminIntro": "Manage your school day, plan teaching and keep student finances organized.",
+  "schoolTimeZone": "School time zone",
+  "schoolDay": "School day",
+  "planning": "Planning & finance",
+  "stayConnected": "Stay connected",
+  "dailyTasks": "Daily teaching tasks",
+  "students": "Find students, review their profiles and manage enrollment.",
+  "teachers": "Review teachers and their teaching assignments.",
+  "attendance": "View attendance records and open available lesson rosters.",
+  "academic": "Organize academic years, classes and curricula.",
+  "timetable": "Open weekly timetables and published lesson times.",
+  "finance": "Manage fees, student charges and offline payments.",
+  "announcements": "Create and follow class and school announcements.",
+  "schoolAnnouncements": "Read announcements shared by your school.",
+  "notifications": "Review school updates and items that need your attention.",
+  "homework": "Prepare homework and follow student submissions.",
+  "grades": "Open gradebooks and record assessment results.",
+  "childResults": "Published results for {name}"
+} as const;
+
+export const dashboardFr = {
+  "adminIntro": "Gérez la vie scolaire, préparez les enseignements et suivez les finances des élèves.",
+  "schoolTimeZone": "Fuseau horaire de l’établissement",
+  "schoolDay": "Vie scolaire",
+  "planning": "Organisation et finances",
+  "stayConnected": "Rester informé",
+  "dailyTasks": "Au quotidien",
+  "students": "Retrouvez les élèves, leurs dossiers et leurs inscriptions.",
+  "teachers": "Consultez les enseignants et leurs affectations.",
+  "attendance": "Consultez les présences et les listes des séances disponibles.",
+  "academic": "Organisez les années scolaires, les classes et les programmes.",
+  "timetable": "Consultez les emplois du temps et les horaires publiés.",
+  "finance": "Gérez les frais, les échéances et les paiements hors ligne.",
+  "announcements": "Créez et suivez les annonces de classe et d’établissement.",
+  "schoolAnnouncements": "Lisez les annonces partagées par votre établissement.",
+  "notifications": "Consultez les actualités et les éléments qui demandent votre attention.",
+  "homework": "Préparez les devoirs et suivez les travaux rendus.",
+  "grades": "Ouvrez les cahiers de notes et saisissez les résultats des évaluations.",
+  "childResults": "Résultats publiés de {name}"
+} as const;
+
+export const dashboardAr = {
+  "adminIntro": "تابع شؤون المدرسة ونظّم التدريس وأدر الشؤون المالية للتلاميذ.",
+  "schoolTimeZone": "المنطقة الزمنية للمدرسة",
+  "schoolDay": "الحياة المدرسية",
+  "planning": "التنظيم والشؤون المالية",
+  "stayConnected": "ابقَ على اطلاع",
+  "dailyTasks": "مهام التدريس اليومية",
+  "students": "ابحث عن التلاميذ وراجع ملفاتهم وأدر تسجيلاتهم.",
+  "teachers": "راجع المعلمين وإسنادات التدريس الخاصة بهم.",
+  "attendance": "استعرض سجلات الحضور وافتح قوائم الحصص المتاحة.",
+  "academic": "نظّم السنوات الدراسية والأقسام والمناهج.",
+  "timetable": "افتح جداول الحصص الأسبوعية والمواعيد المنشورة.",
+  "finance": "أدر الرسوم والمبالغ المستحقة والمدفوعات غير الإلكترونية.",
+  "announcements": "أنشئ إعلانات الأقسام والمدرسة وتابعها.",
+  "schoolAnnouncements": "اقرأ الإعلانات التي تشاركها مدرستك.",
+  "notifications": "راجع مستجدات المدرسة والعناصر التي تتطلب انتباهك.",
+  "homework": "حضّر الواجبات وتابع تسليمات التلاميذ.",
+  "grades": "افتح دفاتر النقط وسجّل نتائج التقييمات.",
+  "childResults": "النتائج المنشورة لـ {name}"
+} as const;

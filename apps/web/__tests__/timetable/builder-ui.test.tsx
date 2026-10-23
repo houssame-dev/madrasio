@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
@@ -69,4 +69,19 @@ it('keeps local lessons after a stale save, with an explicit discard/reload acti
 it('shows missing configuration, closed context and read errors without unsafe writes', async () => {
   fixture.draft.configuration = null; fixture.draft.effectiveConfiguration = null; fixture.draft.editable = false;
   const { t } = await open(); expect(screen.getByText(t.noConfiguration)).toBeInTheDocument(); expect(screen.getByText(t.readonly)).toBeInTheDocument(); expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+});
+
+
+it('warns before leaving a dirty draft and removes the navigation guard after saving', async () => {
+  const { user, t } = await open(); await add(user, t);
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  const link = document.createElement('a'); link.href = '/dashboard'; document.body.append(link);
+  try {
+    expect(fireEvent.click(link)).toBe(false);
+    expect(confirm).toHaveBeenCalledWith('Discard unsaved timetable changes?');
+    const unload = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(unload); expect(unload.defaultPrevented).toBe(true);
+    expect(screen.getByText(t.unsaved)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.save })); await screen.findByText(t.saved);
+    const afterSave = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(afterSave); expect(afterSave.defaultPrevented).toBe(false);
+  } finally { link.remove(); confirm.mockRestore(); }
 });

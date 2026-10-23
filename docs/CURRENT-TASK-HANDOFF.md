@@ -1,6 +1,44 @@
 # Madrasio - Current Task Handoff
 
-## Current owner direction — 2026-10-16
+## Current release checkpoint — 2026-10-23
+
+**V1 UI/UX implementation and local quality verification complete; release actions
+and real-account STAGING acceptance are not performed or authorized here.**
+
+Local `main` remains at `fbb451a0ff4f5202603543fcd94b5b71fd57fc6c`.
+All nine UI/UX phases and the original Teacher timetable improvement remain
+uncommitted. See [the authoritative current project handoff](PROJECT-STATE.md#current-handoff--v1-uiux-release-checkpoint-2026-10-23)
+for scope, validation, migration review and release boundaries.
+
+Saved local evidence: **1,497 distinct passing tests / 163 files; 2 existing skips
+and 21 TODOs; 63 synthetic Chromium contexts; lint, typecheck, production build
+and diff checks exit 0**. These are local results, not new CI, deployed-SHA or
+hosted acceptance. Existing skipped/TODO evidence is not counted as passing.
+Real-account STAGING login/session behavior, School switching, tenant/Parent-child/
+Teacher isolation, persisted Finance/receipts and notification delivery still
+require separately authorized acceptance.
+
+Proposed release: **158 exact paths**, including the two synchronized documents,
+UI, tests, translations and official branding/configuration. Exclude and preserve
+`attendance-sessions-new-files.zip`, `attendance-sessions-review.diff` and
+`attendance-sessions-review.patch`. No dependency, API, schema or migration change
+is proposed. The committed local chain is 31 entries through 0030; hosted ledger
+freshness is unknown. The unchanged 0010 snapshot-parent discrepancy is recorded
+in PROJECT-STATE for separate review before future migration generation.
+
+Next: review the exact selective inventory and obtain Git checkpoint authorization.
+Before any push approval, account for automatic CI **and STAGING migration/deploy**
+on `main`, including existing target/TLS/ledger/recovery safeguards. Then verify
+workflow/exact-SHA outcomes and separately authorize real-account STAGING acceptance.
+Production and onboarding remain outside this checkpoint. Do not stage, commit,
+push, deploy, run migrations or contact providers from this handoff alone.
+
+The older direction and reconstruction below are preserved historical evidence.
+Their former "current", ADR and admission statements are not active instructions;
+accepted current ADRs and the repository's simplified cookie-locale strategy remain
+unchanged. No retired ADR is recreated and no old approval is inferred.
+
+## Historical owner direction — 2026-10-16
 
 TASK_066_SIMPLIFIED_MULTILINGUAL_V1 replaces the prepared account-persistence/navigation strategy with a validated browser presentation cookie and full-document reload. ADR-024, ADR-025 and ADR-026 are removed and impose no active requirements. Current source and PROJECT-STATE.md govern current status and executed validation. The reconstruction below is preserved historical evidence, not implementation instructions or acceptance for the new V1. No hosted operation, migration application or deployment is authorized.
 

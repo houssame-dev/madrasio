@@ -89,3 +89,85 @@ describe('Teacher session roster and Admin read-only access', () => {
     expect(screen.queryByRole('button', { name: 'Save Attendance' })).not.toBeInTheDocument();
   });
 });
+
+
+describe('Attendance recording feedback and safe bulk actions', () => {
+  it('marks only pristine unmarked records and sends no saved or drafted rows to the batch', async () => {
+    const fetch = setup();
+    renderAttendance(<SessionAttendancePanel schoolId={schoolId} timezone="UTC" onDirtyChange={vi.fn()} />, 'TEACHER'); await open();
+    await userEvent.click(screen.getByRole('button', { name: 'Mark unmarked present' }));
+    expect(screen.getByLabelText('Attendance status for Sara Amrani')).toHaveValue('PRESENT');
+    expect(screen.getByLabelText('Attendance status for Omar Bennani')).toHaveValue('LATE');
+    expect(screen.getByLabelText('Attendance note for Omar Bennani')).toHaveValue('Bus delay');
+    expect(screen.getAllByText('Changed')).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: 'Save Attendance' }));
+    await screen.findByText('Attendance saved atomically.');
+    const write = fetch.mock.calls.find(([, init]) => init?.method === 'PUT');
+    expect(JSON.parse(String(write?.[1]?.body))).toEqual({ records: [{ studentId, status: 'PRESENT', note: null, expectedVersion: null }] });
+  });
+  it('never overwrites an existing draft status or note during bulk marking', async () => {
+    setup(); renderAttendance(<SessionAttendancePanel schoolId={schoolId} timezone="UTC" onDirtyChange={vi.fn()} />, 'TEACHER'); await open();
+    await userEvent.selectOptions(screen.getByLabelText('Attendance status for Sara Amrani'), 'EXCUSED');
+    await userEvent.type(screen.getByLabelText('Attendance note for Sara Amrani'), 'Approved absence');
+    await userEvent.click(screen.getByRole('button', { name: 'Mark unmarked present' }));
+    expect(screen.getByLabelText('Attendance status for Sara Amrani')).toHaveValue('EXCUSED');
+    expect(screen.getByLabelText('Attendance note for Sara Amrani')).toHaveValue('Approved absence');
+    expect(screen.getByLabelText('Attendance status for Omar Bennani')).toHaveValue('LATE');
+  });
+  it('exposes saving feedback and locks the submitted controls until the request settles', async () => {
+    const fetch = setup(); const original = fetch.getMockImplementation()!;
+    let release: () => void = () => { throw new Error('Save has not started'); };
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    fetch.mockImplementation(async (input, init) => { if (init?.method === 'PUT') await pending; return original(input, init); });
+    renderAttendance(<SessionAttendancePanel schoolId={schoolId} timezone="UTC" onDirtyChange={vi.fn()} />, 'TEACHER'); await open();
+    await userEvent.selectOptions(screen.getByLabelText('Attendance status for Sara Amrani'), 'PRESENT');
+    await userEvent.click(screen.getByRole('button', { name: 'Save Attendance' }));
+    expect(await screen.findByRole('button', { name: 'Saving attendance…' })).toBeDisabled();
+    expect(screen.getByLabelText('Attendance status for Sara Amrani')).toBeDisabled();
+    expect(screen.getByLabelText('Attendance note for Sara Amrani')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Mark unmarked present' })).toBeDisabled();
+    await act(async () => release()); await screen.findByText('Attendance saved atomically.');
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === 'PUT')).toHaveLength(1);
+  });
+  it('keeps correction values and the expected version after a conflict without automatically retrying', async () => {
+    const fetch = setup(true, false, true);
+    renderAttendance(<SessionAttendancePanel schoolId={schoolId} timezone="UTC" onDirtyChange={vi.fn()} />, 'TEACHER'); await open();
+    await userEvent.selectOptions(screen.getByLabelText('Attendance status for Omar Bennani'), 'EXCUSED');
+    await userEvent.clear(screen.getByLabelText('Attendance note for Omar Bennani'));
+    await userEvent.type(screen.getByLabelText('Attendance note for Omar Bennani'), 'Correction reason');
+    await userEvent.click(screen.getByRole('button', { name: 'Save Attendance' }));
+    await screen.findByText('Your edits are still here. They have not been saved.');
+    expect(screen.getByLabelText('Attendance status for Omar Bennani')).toHaveValue('EXCUSED');
+    expect(screen.getByLabelText('Attendance note for Omar Bennani')).toHaveValue('Correction reason');
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === 'PUT')).toHaveLength(1);
+    expect(screen.getByText(/Unsaved Attendance changes: 1/)).toBeInTheDocument();
+  });
+  it('protects dirty roster pagination and keeps the current status selection', async () => {
+    const fetch = setup(); const original = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (input, init) => {
+      const response = await original(input, init);
+      if (String(input).startsWith('/api/v1/attendance/session?') && !init?.method) return Response.json({ ...await response.json(), meta: { page: 1, pageSize: 100, total: 101 } });
+      return response;
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderAttendance(<SessionAttendancePanel schoolId={schoolId} timezone="UTC" onDirtyChange={vi.fn()} />, 'TEACHER'); await open();
+    await userEvent.selectOptions(screen.getByLabelText('Attendance status for Sara Amrani'), 'ABSENT');
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(window.confirm).toHaveBeenCalledWith('Discard unsaved Attendance changes?');
+    expect(screen.getByLabelText('Attendance status for Sara Amrani')).toHaveValue('ABSENT');
+    expect(fetch.mock.calls.some(([url]) => String(url).includes('page=2'))).toBe(false);
+  });
+});
+
+
+it('retains invalid note edits and reports validation without sending a write', async () => {
+  const fetch = setup();
+  renderAttendance(<SessionAttendancePanel schoolId={schoolId} timezone="UTC" onDirtyChange={vi.fn()} />, 'TEACHER'); await open();
+  await userEvent.selectOptions(screen.getByLabelText('Attendance status for Sara Amrani'), 'PRESENT');
+  // Exercise the submit boundary even if a browser/assistive input bypasses maxLength.
+  fireEvent.change(screen.getByLabelText('Attendance note for Sara Amrani'), { target: { value: 'x'.repeat(1001) } });
+  await userEvent.click(screen.getByRole('button', { name: 'Save Attendance' }));
+  expect(screen.getByRole('alert')).toHaveTextContent('Note must contain at most 1,000 characters.');
+  expect(screen.getByLabelText('Attendance note for Sara Amrani')).toHaveValue('x'.repeat(1001));
+  expect(fetch.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+});

@@ -3,9 +3,34 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GradeEntryDialog } from '@/components/grades/grade-entry/grade-entry-dialog';
 import { GradebookGradesPanel } from '@/components/grades/grade-entry/gradebook-grades-panel';
+import { gradesApi } from '@/lib/frontend/grades/api';
 import { assessment, assessmentId, gradebookId, matrix, renderGrades, schoolId, studentId, validGrade } from './test-helpers';
 
 afterEach(() => vi.restoreAllMocks());
+
+it('locks grade inputs while saving and preserves the exact changed-student request', async () => {
+  setup();
+  let finish: (() => void) | undefined;
+  const save = vi.spyOn(gradesApi, 'putAssessmentGrades').mockImplementation(() => new Promise(resolve => { finish = () => resolve({ grades: [validGrade] }); }));
+  renderGrades(<GradeEntryDialog open schoolId={schoolId} gradebookId={gradebookId} assessment={{ ...assessment, status: 'PUBLISHED' }} onClose={vi.fn()} />);
+  const score = await screen.findByLabelText('Score for Sara Amrani');
+  await userEvent.clear(score); await userEvent.type(score, '11.25');
+  await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  expect(await screen.findByRole('button', { name: 'Saving…' })).toBeDisabled();
+  expect(score).toBeDisabled(); expect(screen.getByLabelText('Grade state for Sara Amrani')).toBeDisabled();
+  expect(save).toHaveBeenCalledWith(assessmentId, [{ studentId, state: 'VALID', score: '11.25' }]);
+  expect(finish).toBeDefined(); finish?.();
+  await screen.findByText('Grades saved. Results were not recalculated automatically.');
+  expect(score).toBeEnabled(); expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+});
+
+it('keeps dirty grades when dismissal is declined', async () => {
+  setup(); const close = vi.fn(), confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  renderGrades(<GradeEntryDialog open schoolId={schoolId} gradebookId={gradebookId} assessment={{ ...assessment, status: 'PUBLISHED' }} onClose={close} />);
+  const score = await screen.findByLabelText('Score for Sara Amrani'); await userEvent.clear(score); await userEvent.type(score, '9.50');
+  await userEvent.click(within(screen.getByRole('dialog')).getAllByRole('button', { name: 'Cancel' }).at(-1)!);
+  expect(confirm).toHaveBeenCalled(); expect(close).not.toHaveBeenCalled(); expect(score).toHaveValue('9.50');
+});
 
 function setup(error = false) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {

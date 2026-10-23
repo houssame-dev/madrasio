@@ -1,4 +1,5 @@
 'use client';
+import { FinanceTable } from './presentation';
 import { formatMoney } from '@/lib/modules/finance/domain/csv';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
@@ -10,7 +11,7 @@ import { AccessDeniedWithReturn } from '@/components/app/route-access';
 import { can } from '@/lib/frontend/permissions';
 import type { paymentDetail } from '@/lib/modules/finance/application/payments';
 export function PaymentReceipt({ id }: { id: string }) {
-  const common = useTranslations('finance'), t = useTranslations('financePayments'), locale = useLocale();
+  const ui = useTranslations('financeUi'); const common = useTranslations('finance'), t = useTranslations('financePayments'), locale = useLocale();
   const context = useAppContext();
   const allowed = can(context.currentSchool?.role, 'finance.read');
   const query = useQuery({ queryKey: ['finance-receipt', context.user.id, context.currentSchool?.id, context.currentSchool?.role, id], queryFn: () => apiRequest<{ data: Awaited<ReturnType<typeof paymentDetail>> }>(`/api/v1/finance/payments/${id}`), enabled: allowed, retry: false, staleTime: 0 });
@@ -20,8 +21,8 @@ export function PaymentReceipt({ id }: { id: string }) {
   const { payment: p, allocations, reversal: r } = query.data.data;
   const money = (n: number) => formatMoney(n, locale, p.currency);
   const time = (v: unknown) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: p.schoolTimezone }).format(new Date(String(v)));
-  return <section id="finance-receipt" className="mx-auto max-w-4xl space-y-4 rounded-lg border bg-background p-4 sm:p-6">
-    <style>{'@media print{body *{visibility:hidden}#finance-receipt,#finance-receipt *{visibility:visible}#finance-receipt{position:absolute;inset:0;width:100%;max-width:none;border:0;padding:0}.finance-no-print{display:none!important}tr{break-inside:avoid}}@page{margin:16mm}'}</style>
+  return <section id="finance-receipt" className="mx-auto max-w-4xl space-y-4 rounded-lg border bg-card p-4 sm:p-6">
+    <style>{'@media print{body *{visibility:hidden}#finance-receipt,#finance-receipt *{visibility:visible}#finance-receipt{position:absolute;inset:0;width:100%;max-width:none;border:0;padding:0;background:#fff;color:#000}#finance-receipt *{color:inherit;background:transparent}.finance-no-print{display:none!important}tr{break-inside:avoid}}@page{margin:16mm}'}</style>
     <div className="finance-no-print flex flex-wrap gap-3"><Link className="underline" href="/finance">{t('back')}</Link><Button onClick={() => window.print()}>{t('print')}</Button><a className="underline" href={`/api/v1/finance/payments/${p.id}/receipt?download=1`}>{t('download')}</a><Button variant="outline" onClick={() => void query.refetch()}>{t('reload')}</Button></div>
     <h1 className="text-2xl font-semibold">{t('receipt')}</h1><p>{t('notice')}</p><p className="finance-no-print">{t('printHelp')}</p>
     <dl className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_2fr]">
@@ -31,6 +32,6 @@ export function PaymentReceipt({ id }: { id: string }) {
     </dl>
     <p className="font-semibold">{t(r ? 'REVERSED' : 'RECORDED')}</p>
     {r ? <div className="space-y-2 border p-3"><p>{t('reversalNotice')}</p><p className="break-all">{t('reversalReference')}: <bdi>{r.reversalReference}</bdi></p><p dir="auto">{r.reason}</p><p className="break-all">{t('reversedBy')}: <bdi>{r.reversedBy}</bdi></p><p>{t('reversedAt')}: {time(r.reversedAt)}</p></div> : null}
-    <div className="overflow-x-auto"><table className="w-full text-sm"><caption>{t('allocation')}</caption><thead><tr>{(['fee', 'period', 'dueDate', 'allocated'] as const).map(k => <th className="p-2 text-start" key={k}>{t(k)}</th>)}</tr></thead><tbody>{allocations.map(a => <tr key={a.id}><td className="p-2" dir="auto">{a.feeName}</td><td className="p-2"><bdi>{a.period === 'once' ? common('once') : a.period}</bdi></td><td className="p-2"><bdi>{a.dueDate}</bdi></td><td className="p-2">{money(a.amountCents)}</td></tr>)}</tbody></table></div>
+    <p className="text-sm text-muted-foreground">{ui('receiptSnapshot')}</p><FinanceTable caption={t('allocation')} columns={(['fee', 'period', 'dueDate', 'allocated'] as const).map(k => t(k))} rows={allocations.map(a => ({ id: a.id, cells: [<bdi key="fee">{a.feeName}</bdi>, <bdi key="period">{a.period === 'once' ? common('once') : a.period}</bdi>, <bdi key="date">{a.dueDate}</bdi>, money(a.amountCents)] }))} />
   </section>;
 }

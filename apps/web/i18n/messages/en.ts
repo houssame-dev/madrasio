@@ -1,3 +1,10 @@
+import { communicationUiEn } from './communication-ui';
+import { learningUiEn } from './learning-ui';
+import { managementUiEn } from './management-ui';
+import { financeUiEn } from './finance-ui';
+import { timetableUiEn } from './timetable-ui';
+import { attendanceUiEn } from './attendance-ui';
+import { dashboardEn } from './dashboard';
 import { publicationEn } from './timetable-publication';
 import { builderEn } from './timetable-builder';
 import { timetableEn } from './timetable';
@@ -5,6 +12,14 @@ import { reportsEn } from './finance-reports';
 import { paymentEn } from './finance-payments';
 import { financeEn } from './finance';
 const messages = {
+  communicationUi: communicationUiEn,
+  learningUi: learningUiEn,
+  managementUi: managementUiEn,
+  financeUi: financeUiEn,
+  timetableUi: timetableUiEn,
+  attendanceUi: attendanceUiEn,
+  dashboardUi: dashboardEn,
+  theme: { label: 'Theme', light: 'Light', dark: 'Dark', system: 'System' },
   timetablePublication: publicationEn,
   timetableBuilder: builderEn,
   timetable: timetableEn,
@@ -939,7 +954,7 @@ const messages = {
   },
   "parentPortal": {
     "dashboardTitle": "Family workspace",
-    "dashboardDescription": "Your current related children and persisted school notifications.",
+    "dashboardDescription": "Follow your children’s school life, published results and school updates.",
     "childrenDescription": "Children returned by your active Parent profiles and current relationships in this school.",
     "relatedChildren": "Related children",
     "dashboardOverview": "Family overview",
@@ -976,7 +991,7 @@ const messages = {
   },
   "teachingDashboard": {
     "teacherTitle": "My teaching workspace",
-    "teacherDescription": "Your active assignment context and shortcuts for this school.",
+    "teacherDescription": "Your classes, lessons and teaching tasks in one place.",
     "loading": "Loading your teaching workspace…",
     "unavailable": "Teaching workspace unavailable",
     "unavailableDescription": "Your current Teacher profile or assignments could not be loaded. Please try again.",
@@ -993,11 +1008,11 @@ const messages = {
     "assignedSubjects": "Assigned subjects",
     "overview": "Teaching overview",
     "myClasses": "My classes",
-    "myClassesDescription": "Classes are grouped for navigation; each Subject assignment remains an independent server-authorized scope.",
+    "myClassesDescription": "Open a class to take attendance, prepare homework or work on its gradebooks.",
     "takeAttendance": "Take attendance",
     "openGradebooks": "Open gradebooks",
     "myWork": "My work",
-    "myWorkDescription": "Open existing operational modules. Every destination rechecks your current scope.",
+    "myWorkDescription": "Share updates with your classes and keep up with school notifications.",
     "announcementsDescription": "Create and manage only the class-scoped Announcements authorized by your active assignments.",
     "viewProfile": "View my Teacher profile",
     "homeworkFilterNote": "Homework opens with the supported Academic Year and Class filters; Subject remains visible here because the Homework list has no Subject filter.",

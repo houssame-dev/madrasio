@@ -38,7 +38,7 @@ export function ResultActions({ schoolId, result, onChanged }: {
   const title = selected?.action === 'FINALIZE' ? t.finalizeTitle : selected?.action === 'PUBLISH' ? t.publishResultTitle : t.reviseTitle;
   const description = selected?.action === 'FINALIZE' ? t.finalizeDescription : selected?.action === 'PUBLISH' ? t.publishResultDescription : t.reviseDescription;
   return <div className="space-y-3"><div className="flex flex-wrap gap-2">{result.status === 'CALCULATED' ? <Button type="button" onClick={() => choose('FINALIZE')}>{t.finalize}</Button> : <><Button type="button" onClick={() => choose('PUBLISH')}>{t.publishResult}</Button><Button type="button" variant="outline" onClick={() => choose('REVISE')}>{t.reviseResult}</Button></>}</div>
-    {mutation.isError && !selected ? <InlineFeedback kind="error">{text(gradeErrorMessage(mutation.error))}</InlineFeedback> : null}
+    {mutation.isError && !selected ? <InlineFeedback brand kind="error">{text(gradeErrorMessage(mutation.error))}</InlineFeedback> : null}
     <ConfirmDialog open={!!selected} title={title} description={description} pending={mutation.isPending} error={mutation.isError ? text(gradeErrorMessage(mutation.error)) : undefined} onClose={() => { setSelected(undefined); mutation.reset(); }} onConfirm={() => selected && mutation.mutate(selected)} />
   </div>;
 }

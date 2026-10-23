@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 import { PageContainer } from '@/components/ui/page-container';
 import { useDomainText } from '@/i18n/use-domain-text';
 
@@ -24,6 +25,7 @@ import { HomeworkForm } from './homework-form';
 import { HomeworkTable } from './homework-table';
 
 export function HomeworkWorkspace() {
+  const ui = useTranslations('learningUi');
   const text = useDomainText();
   const t = useHomeworkCopy();
   const app = useAppContext(); const schoolId = app.currentSchool?.id; const role = app.currentSchool?.role;
@@ -44,17 +46,17 @@ export function HomeworkWorkspace() {
   if (years.isError || classes.isError || subjects.isError || scope.isError) return <ApiErrorState title={t.unavailable} onRetry={() => { void years.refetch(); void classes.refetch(); void subjects.refetch(); void scope.refetch(); }} />;
   const availableClasses = academicYearId ? classes.data.filter((item) => item.academicYearId === academicYearId) : classes.data;
   return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{role === 'TEACHER' ? t.teacherDescription : t.description}</p></div>{canManage && scope.data.length > 0 ? <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{t.create}</Button> : null}</header>
-    {canManage && scope.data.length === 0 ? <InlineFeedback kind="error">{t.authorScopeMissing}</InlineFeedback> : null}
-    <section className="space-y-3" aria-labelledby="homework-filters"><h2 id="homework-filters" className="text-sm font-semibold">{t.filters}</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-      <form className="flex gap-2 sm:col-span-2" onSubmit={(event) => { event.preventDefault(); updateUrl({ search: searchDraft.trim() || undefined, page: 1 }); }}><label className="sr-only" htmlFor="homework-search">{t.search}</label><input id="homework-search" className={inputClassName} value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder={t.search} /><Button type="submit" variant="outline"><Search className="size-4" aria-hidden="true" />{t.search}</Button></form>
-      <select aria-label={t.academicYear} className={selectClassName} value={academicYearId ?? ''} onChange={(event) => updateUrl({ academicYearId: event.target.value || undefined, classId: undefined, page: 1 })}><option value="">{t.allYears}</option>{years.data.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-      <select aria-label={text("Class")} className={selectClassName} value={classId ?? ''} onChange={(event) => updateUrl({ classId: event.target.value || undefined, page: 1 })}><option value="">{t.allClasses}</option>{availableClasses.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-      <select aria-label={t.status} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{homeworkStatuses.map((item) => <option key={item} value={item}>{text(item)}</option>)}</select>
-      <input aria-label={t.dueFrom} type="date" dir="ltr" className={inputClassName} value={dueFrom ?? ''} onChange={(event) => updateUrl({ dueFrom: event.target.value || undefined, page: 1 })} />
-      <input aria-label={t.dueTo} type="date" dir="ltr" className={inputClassName} value={dueTo ?? ''} onChange={(event) => updateUrl({ dueTo: event.target.value || undefined, page: 1 })} />
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{role === 'TEACHER' ? t.teacherDescription : t.description}</p></div>{canManage && scope.data.length > 0 ? <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{t.create}</Button> : null}</header><p className="rounded-lg border bg-card p-4 text-sm leading-relaxed text-muted-foreground">{ui('homework')}</p>
+    {canManage && scope.data.length === 0 ? <InlineFeedback brand kind="error">{t.authorScopeMissing}</InlineFeedback> : null}
+    <section className="space-y-3 rounded-lg border bg-card p-4" aria-labelledby="homework-filters"><h2 id="homework-filters" className="text-sm font-semibold">{t.filters}</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <form className="flex flex-wrap gap-2 sm:col-span-2" onSubmit={(event) => { event.preventDefault(); updateUrl({ search: searchDraft.trim() || undefined, page: 1 }); }}><label className="sr-only" htmlFor="homework-search">{t.search}</label><input id="homework-search" className={inputClassName} value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder={t.search} /><Button type="submit" variant="outline"><Search className="size-4" aria-hidden="true" />{t.search}</Button></form>
+      <label className="min-w-0"><span className="mb-1.5 block text-sm font-medium">{t.academicYear}</span><select aria-label={t.academicYear} className={selectClassName} value={academicYearId ?? ''} onChange={(event) => updateUrl({ academicYearId: event.target.value || undefined, classId: undefined, page: 1 })}><option value="">{t.allYears}</option>{years.data.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label className="min-w-0"><span className="mb-1.5 block text-sm font-medium">{text("Class")}</span><select aria-label={text("Class")} className={selectClassName} value={classId ?? ''} onChange={(event) => updateUrl({ classId: event.target.value || undefined, page: 1 })}><option value="">{t.allClasses}</option>{availableClasses.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label className="min-w-0"><span className="mb-1.5 block text-sm font-medium">{t.status}</span><select aria-label={t.status} className={selectClassName} value={status ?? ''} onChange={(event) => updateUrl({ status: event.target.value || undefined, page: 1 })}><option value="">{t.allStatuses}</option>{homeworkStatuses.map((item) => <option key={item} value={item}>{text(item)}</option>)}</select></label>
+      <label className="min-w-0"><span className="mb-1.5 block text-sm font-medium">{t.dueFrom}</span><input aria-label={t.dueFrom} type="date" dir="ltr" className={inputClassName} value={dueFrom ?? ''} onChange={(event) => updateUrl({ dueFrom: event.target.value || undefined, page: 1 })} /></label>
+      <label className="min-w-0"><span className="mb-1.5 block text-sm font-medium">{t.dueTo}</span><input aria-label={t.dueTo} type="date" dir="ltr" className={inputClassName} value={dueTo ?? ''} onChange={(event) => updateUrl({ dueTo: event.target.value || undefined, page: 1 })} /></label>
     </div></section>
-    {invalidRange ? <InlineFeedback kind="error">{t.invalidRange}</InlineFeedback> : list.isError ? <ApiErrorState title={t.unavailable} onRetry={() => void list.refetch()} /> : <HomeworkTable result={list.data} loading={list.isPending} years={years.data} subjects={subjects.data} onPage={(next) => updateUrl({ page: next })} />}
-    <Modal open={creating} title={t.create} description={t.authorScopeMissing} onClose={() => setCreating(false)}>{creating ? <HomeworkForm schoolId={schoolId} years={years.data} subjects={subjects.data} assignments={scope.data} onCancel={() => setCreating(false)} /> : null}</Modal>
+    {invalidRange ? <InlineFeedback brand kind="error">{t.invalidRange}</InlineFeedback> : list.isError ? <ApiErrorState title={t.unavailable} onRetry={() => void list.refetch()} /> : <HomeworkTable result={list.data} loading={list.isPending} years={years.data} subjects={subjects.data} onPage={(next) => updateUrl({ page: next })} />}
+    <Modal open={creating} title={t.create} description={ui('homework')} onClose={() => setCreating(false)}>{creating ? <HomeworkForm schoolId={schoolId} years={years.data} subjects={subjects.data} assignments={scope.data} onCancel={() => setCreating(false)} /> : null}</Modal>
   </PageContainer>;
 }

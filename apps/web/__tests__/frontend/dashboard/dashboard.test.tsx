@@ -24,11 +24,16 @@ describe('role-aware Dashboard', () => {
     expect(urls.every((url) => !url.includes('schoolId=') && !url.includes('userId='))).toBe(true);
   });
 
-  it('preserves the neutral dashboard for SchoolAdmin without Teacher requests', () => {
+  it('shows School Admin workflow groups without additional data requests', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch');
     renderDashboard(<Dashboard />, 'SCHOOL_ADMIN');
     expect(screen.getByRole('heading', { name: 'Your school workspace' })).toBeInTheDocument();
     expect(screen.queryByText('Take attendance')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'School day' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link').map(link => link.getAttribute('href'))).toEqual([
+      '/students', '/teachers', '/attendance', '/academic', '/timetable', '/finance', '/announcements', '/notifications',
+    ]);
+    expect(screen.queryByText('Application foundation')).not.toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

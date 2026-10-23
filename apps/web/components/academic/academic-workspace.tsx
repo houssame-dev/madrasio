@@ -14,7 +14,7 @@ import { StructureSection } from './structure-section';
 import { SubjectsSection } from './subjects-section';
 import { TracksSection } from './tracks-section';
 import { YearsSection } from './years-section';
-import { ManagementPageHeader } from './ui';
+import { ManagementGuide, ManagementPageHeader } from './ui';
 
 const sections = ['years', 'structure', 'tracks', 'subjects', 'curricula', 'classes'] as const;
 type Section = (typeof sections)[number];
@@ -52,7 +52,7 @@ export function AcademicWorkspace() {
   if (!role || !can(role, 'academic_structure.read')) return <AccessDeniedWithReturn />;
   const canManage = can(role, 'academic_structure.manage');
   const shared = { schoolId: context.currentSchool!.id, canManage, page, status, onPage: (nextPage: number) => updateUrl({ page: nextPage }), onStatus: (nextStatus?: string) => updateUrl({ status: nextStatus, page: 1 }) };
-  return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6"><ManagementPageHeader readOnly={!canManage} /><nav aria-label={t.academicSections} className="flex gap-1 overflow-x-auto rounded-lg border bg-card p-1">{sections.map((item) => <button key={item} type="button" aria-current={section === item ? 'page' : undefined} className={cn('shrink-0 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground', section === item && 'bg-accent text-accent-foreground')} onClick={() => updateUrl({ section: item, page: 1, status: undefined, search: undefined })}>{t.sections[item]}</button>)}</nav>
+  return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6"><ManagementPageHeader readOnly={!canManage} /><nav aria-label={t.academicSections} className="grid grid-cols-2 gap-1 rounded-lg border bg-card p-1 sm:grid-cols-3 xl:grid-cols-6">{sections.map((item) => <button key={item} type="button" aria-current={section === item ? 'page' : undefined} className={cn('min-w-0 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', section === item && 'bg-accent text-accent-foreground')} onClick={() => updateUrl({ section: item, page: 1, status: undefined, search: undefined })}>{t.sections[item]}</button>)}</nav><ManagementGuide area={section} />
     {section === 'years' ? <YearsSection {...shared} /> : null}
     {section === 'structure' ? <StructureSection schoolId={shared.schoolId} canManage={canManage} page={page} onPage={shared.onPage} /> : null}
     {section === 'tracks' ? <TracksSection {...shared} /> : null}

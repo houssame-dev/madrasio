@@ -20,6 +20,7 @@ import { AnnouncementBody } from './announcement-body';
 export function RecipientAnnouncements() {
   const text = useDeliveryText();
   const msg = useTranslations();
+  const ui = useTranslations('communicationUi');
   const app = useAppContext(); const school = app.currentSchool;
   const search = useSearchParams(); const router = useRouter(); const pathname = usePathname();
   const raw = Number(search.get('page') ?? 1); const page = Number.isSafeInteger(raw) && raw > 0 ? raw : 1;
@@ -29,11 +30,11 @@ export function RecipientAnnouncements() {
   if (!allowed || !school) return <AccessDeniedWithReturn />;
   return <PageContainer variant="READING_CONTENT" className="space-y-5">
     <h1 className="text-2xl font-semibold">{text("School announcements")}</h1>
-    <p>{text("Published messages sent to you. Each publication retains its own content and recipient history.")}</p>
+    <p className="text-sm leading-6 text-muted-foreground">{text("Published messages sent to you. Each publication retains its own content and recipient history.")}</p><p className="rounded-lg border bg-muted/30 p-3 text-sm">{ui('recipientHelp')}</p>
     {query.isPending ? <PageLoading label={text("Loading announcements…")} /> : query.isError ? <ApiErrorState description={text("Announcements could not be loaded.")} onRetry={() => void query.refetch()} /> : <>
-      {query.data.data.length === 0 ? <p>{text("No published announcements on this page.")}</p> : <ul className="space-y-3">{query.data.data.map((item) => <li key={item.id} className="rounded-lg border p-4">
-        <Link className="font-semibold underline focus-visible:ring-2" href={`/announcements/inbox/${item.id}`}><bdi>{item.title}</bdi></Link>
-        <p className="text-sm">{msg('deliveryUi.publicationCaption', { publication: item.publicationVersion, version: item.versionNumber })} · <time dir="ltr" dateTime={item.publishedAt}>{formatSchoolInstant(item.publishedAt, school.timezone)}</time></p>
+      {query.data.data.length === 0 ? <p>{text("No published announcements on this page.")}</p> : <ul className="space-y-3">{query.data.data.map((item) => <li key={item.id} className="min-w-0 rounded-lg border bg-card p-4 break-words">
+        <Link className="inline-flex min-h-10 items-center font-semibold underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring" href={`/announcements/inbox/${item.id}`}><bdi>{item.title}</bdi></Link>
+        <p className="mt-2 text-sm text-muted-foreground">{msg('deliveryUi.publicationCaption', { publication: item.publicationVersion, version: item.versionNumber })} · <time dir="ltr" dateTime={item.publishedAt}>{formatSchoolInstant(item.publishedAt, school.timezone)}</time></p>
       </li>)}</ul>}
       <Pagination {...query.data.meta} onPage={(next) => router.replace(`${pathname}?page=${next}`)} />
     </>}
@@ -51,7 +52,7 @@ export function RecipientAnnouncement({ publicationId }: { publicationId: string
   const item = query.data?.data;
   return <PageContainer variant="READING_CONTENT" className="space-y-5">
     <Link className="underline focus-visible:ring-2" href="/announcements/inbox">{text("Back to School announcements")}</Link>
-    {query.isPending ? <PageLoading label={text("Loading announcement…")} /> : query.isError ? <ApiErrorState title={text("Announcement unavailable")} description={text("This publication is unavailable for your current access.")} onRetry={() => void query.refetch()} /> : item ? <article className="space-y-4">
+    {query.isPending ? <PageLoading label={text("Loading announcement…")} /> : query.isError ? <ApiErrorState title={text("Announcement unavailable")} description={text("This publication is unavailable for your current access.")} onRetry={() => void query.refetch()} /> : item ? <article className="min-w-0 space-y-4 rounded-lg border bg-card p-4 sm:p-6 break-words">
       <h1 className="text-2xl font-semibold"><bdi>{item.title}</bdi></h1>
       <p>{msg('deliveryUi.publicationCaption', { publication: item.publicationVersion, version: item.versionNumber })} · <time dir="ltr" dateTime={item.publishedAt}>{formatSchoolInstant(item.publishedAt, school.timezone)}</time></p>
       <AnnouncementBody body={item.body} bodyFormat={item.bodyFormat} />

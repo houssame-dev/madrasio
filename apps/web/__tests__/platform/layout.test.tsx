@@ -18,6 +18,7 @@ vi.mock('@/components/auth/logout-button', () => ({
 }));
 import PlatformLayout from '@/app/platform/layout';
 import { AuthenticatedAccountLifetimeHost } from '@/components/language/account-lifetime-host';
+import { ThemeProvider } from '@/components/theme/theme-provider';
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.locale = 'en';
@@ -53,9 +54,10 @@ it('redirects unauthenticated users to login', async () => {
 
 it.each(['en', 'fr', 'ar'] as const)('localizes %s platform navigation after the server authority guard', async (locale) => {
   mocks.locale = locale;
-  render(<NextIntlClientProvider locale={locale} messages={getCatalog(locale)} timeZone="UTC">{await PlatformLayout({ children: <p>Original child</p> })}</NextIntlClientProvider>);
+  render(<NextIntlClientProvider locale={locale} messages={getCatalog(locale)} timeZone="UTC"><ThemeProvider>{await PlatformLayout({ children: <p>Original child</p> })}</ThemeProvider></NextIntlClientProvider>);
   expect(mocks.guard).toHaveBeenCalledWith({}, 'session-user');
   expect(screen.getByRole('navigation', { name: getCatalog(locale).platformUi.navigation })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: getCatalog(locale).navigation.items.platformSchools })).toHaveAttribute('href', '/platform/schools');
   expect(screen.getByRole('link', { name: getCatalog(locale).platformUi.workspace })).toHaveAttribute('href', '/dashboard');
+  expect(screen.getByRole('combobox', { name: getCatalog(locale).theme.label })).toBeEnabled();
 });

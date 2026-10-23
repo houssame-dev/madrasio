@@ -45,3 +45,22 @@ it('retains the balance-linked Student even when absent from the first search pa
   expect(screen.getByLabelText(getCatalog('en').financePayments.student)).toHaveValue('linked');
   expect(fetcher.mock.calls.some(([path]) => String(path).includes('/payments?page=1&studentId=linked'))).toBe(true);
 });
+it('retains payment edits and the request key after a version conflict without automatic retry', async () => {
+  const user = userEvent.setup(), t = getCatalog('en').financePayments; show('en');
+  await screen.findByRole('option', { name: 'Amina Test' }); await user.selectOptions(screen.getByLabelText(t.student), 'student');
+  await user.type(screen.getByLabelText(t.amount), '150.00');
+  await waitFor(() => expect(screen.getByRole('button', { name: t.suggest })).toBeEnabled());
+  await user.click(screen.getByRole('button', { name: t.suggest })); await user.click(screen.getByLabelText(t.confirm));
+  const previous = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation(async (path, init) => String(path) === '/api/v1/finance/payments' ? Response.json({ error: { code: 'CONFLICT', message: 'Private diagnostic' } }, { status: 409 }) : previous(path, init));
+  await user.click(screen.getByRole('button', { name: t.record }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(t.conflict);
+  expect(screen.queryByText('Private diagnostic')).not.toBeInTheDocument();
+  expect(screen.getByLabelText(t.amount)).toHaveValue('150.00');
+  expect(screen.getByLabelText(`${t.allocated} Tuition 2025-12`)).toHaveValue('100.00');
+  expect(fetcher.mock.calls.filter(([path]) => String(path) === '/api/v1/finance/payments')).toHaveLength(1);
+  await user.click(screen.getByRole('button', { name: t.record }));
+  await waitFor(() => expect(fetcher.mock.calls.filter(([path]) => String(path) === '/api/v1/finance/payments')).toHaveLength(2));
+  const bodies = fetcher.mock.calls.filter(([path]) => String(path) === '/api/v1/finance/payments').map(([, init]) => JSON.parse(String(init?.body)));
+  expect(bodies[0]).toEqual(bodies[1]);
+});

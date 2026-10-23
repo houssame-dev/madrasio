@@ -293,11 +293,11 @@ describe.each(SUPPORTED_LOCALES)('%s people and Parent portal localization', (lo
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('renders the Parent dashboard through the existing role branch and unread plurals', async () => {
+  it('renders the Parent dashboard through the existing role branch and localized notification shortcut', async () => {
     portalFetch(); const t = translator(locale);
     keep(parents.renderParents(localized(<Dashboard />, locale), 'PARENT'));
     expect(await screen.findByRole('heading', { name: t('parentPortal.dashboardTitle') })).toBeInTheDocument();
-    expect(screen.getByText(t('parentPortal.unreadDescription', { count: 2 }))).toBeInTheDocument();
+    expect(screen.getByText(t('dashboardUi.notifications'))).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: t('teachingDashboard.teacherTitle') })).not.toBeInTheDocument();
   });
 

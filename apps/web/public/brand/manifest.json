@@ -1,0 +1,42 @@
+{
+  "source": "Owner-supplied Madrasio Logo V2 PNGs",
+  "processing": "Originals unchanged; transparent-margin trim and proportional PNG resize only.",
+  "images": {
+    "logo-colored": {
+      "original": "Logo Colored.png",
+      "sha256": "65ae8fd4d529ebf8f9f3e2d36240ac932f7a8dc374cb9382422da6f44c327572",
+      "width": 192,
+      "height": 167
+    },
+    "logo-black": {
+      "original": "Logo Black.png",
+      "sha256": "7e090c57298c43fc189c6fbfc3c0b4c8be5ed35e3f7c03dc749de612893bd0e5",
+      "width": 192,
+      "height": 169
+    },
+    "logo-white": {
+      "original": "Logo White.png",
+      "sha256": "3a7300fe3f54a87c2e73eda39876d6d8073488ebf8ddf00e71579eb771a91cd4",
+      "width": 192,
+      "height": 173
+    },
+    "wordmark-colored": {
+      "original": "Wordmark Logo Colored.png",
+      "sha256": "b3e961c87c613876ea1c57e24d0db42effbbebc7dea62a29e21dfc4e9e5f8ac1",
+      "width": 640,
+      "height": 174
+    },
+    "wordmark-black": {
+      "original": "Wordmark Logo Black.png",
+      "sha256": "2084ac3f4c38e344d77240e8333e9f821d6be2347522cee13b3cc508f332d4e2",
+      "width": 640,
+      "height": 174
+    },
+    "wordmark-white": {
+      "original": "Wordmark Logo White.png",
+      "sha256": "b2d3bcff1b00a25e450d70ad054060c9f2e46b1d55e99871459a88a470874b5a",
+      "width": 640,
+      "height": 178
+    }
+  }
+}

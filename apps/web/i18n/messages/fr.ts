@@ -1,3 +1,10 @@
+import { communicationUiFr } from './communication-ui';
+import { learningUiFr } from './learning-ui';
+import { managementUiFr } from './management-ui';
+import { financeUiFr } from './finance-ui';
+import { timetableUiFr } from './timetable-ui';
+import { attendanceUiFr } from './attendance-ui';
+import { dashboardFr } from './dashboard';
 import { publicationFr } from './timetable-publication';
 import { builderFr } from './timetable-builder';
 import { timetableFr } from './timetable';
@@ -7,6 +14,14 @@ import type { Messages } from '../catalogs';
 import { financeFr } from './finance';
 
 const messages = {
+  communicationUi: communicationUiFr,
+  learningUi: learningUiFr,
+  managementUi: managementUiFr,
+  financeUi: financeUiFr,
+  timetableUi: timetableUiFr,
+  attendanceUi: attendanceUiFr,
+  dashboardUi: dashboardFr,
+  theme: { label: 'Thème', light: 'Clair', dark: 'Sombre', system: 'Système' },
   timetablePublication: publicationFr,
   timetableBuilder: builderFr,
   timetable: timetableFr,
@@ -941,7 +956,7 @@ const messages = {
   },
   "parentPortal": {
     "dashboardTitle": "Espace famille",
-    "dashboardDescription": "Vos enfants actuellement liés et les notifications enregistrées de l’établissement.",
+    "dashboardDescription": "Suivez la scolarité de vos enfants, leurs résultats publiés et les nouvelles de l’établissement.",
     "childrenDescription": "Enfants issus de vos profils parents actifs et des liens actuels dans cet établissement.",
     "relatedChildren": "Enfants liés",
     "dashboardOverview": "Vue d’ensemble de la famille",
@@ -978,7 +993,7 @@ const messages = {
   },
   "teachingDashboard": {
     "teacherTitle": "Mon espace enseignant",
-    "teacherDescription": "Vos affectations actives et les raccourcis de cet établissement.",
+    "teacherDescription": "Vos classes, vos cours et vos tâches pédagogiques au même endroit.",
     "loading": "Chargement de votre espace enseignant…",
     "unavailable": "Espace enseignant indisponible",
     "unavailableDescription": "Impossible de charger votre profil enseignant ou vos affectations actuelles. Veuillez réessayer.",
@@ -995,11 +1010,11 @@ const messages = {
     "assignedSubjects": "Matières affectées",
     "overview": "Vue d’ensemble de l’enseignement",
     "myClasses": "Mes classes",
-    "myClassesDescription": "Les classes sont regroupées pour la navigation ; chaque affectation de matière conserve son périmètre autorisé par le serveur.",
+    "myClassesDescription": "Accédez aux présences, aux devoirs et aux cahiers de notes de chaque classe.",
     "takeAttendance": "Saisir les présences",
     "openGradebooks": "Ouvrir les carnets de notes",
     "myWork": "Mon travail",
-    "myWorkDescription": "Ouvrir les modules opérationnels existants. Chaque destination vérifie à nouveau votre périmètre actuel.",
+    "myWorkDescription": "Partagez des nouvelles avec vos classes et consultez les notifications de l’établissement.",
     "announcementsDescription": "Créer et gérer uniquement les annonces de classe autorisées par vos affectations actives.",
     "viewProfile": "Voir mon profil enseignant",
     "homeworkFilterNote": "Les devoirs s’ouvrent avec les filtres d’année scolaire et de classe pris en charge. La matière reste affichée ici, car la liste des devoirs ne permet pas de la filtrer.",

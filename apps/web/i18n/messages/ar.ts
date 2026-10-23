@@ -1,3 +1,10 @@
+import { communicationUiAr } from './communication-ui';
+import { learningUiAr } from './learning-ui';
+import { managementUiAr } from './management-ui';
+import { financeUiAr } from './finance-ui';
+import { timetableUiAr } from './timetable-ui';
+import { attendanceUiAr } from './attendance-ui';
+import { dashboardAr } from './dashboard';
 import { publicationAr } from './timetable-publication';
 import { builderAr } from './timetable-builder';
 import { timetableAr } from './timetable';
@@ -7,6 +14,14 @@ import type { Messages } from '../catalogs';
 import { financeAr } from './finance';
 
 const messages = {
+  communicationUi: communicationUiAr,
+  learningUi: learningUiAr,
+  managementUi: managementUiAr,
+  financeUi: financeUiAr,
+  timetableUi: timetableUiAr,
+  attendanceUi: attendanceUiAr,
+  dashboardUi: dashboardAr,
+  theme: { label: 'المظهر', light: 'فاتح', dark: 'داكن', system: 'النظام' },
   timetablePublication: publicationAr,
   timetableBuilder: builderAr,
   timetable: timetableAr,
@@ -941,7 +956,7 @@ const messages = {
   },
   "parentPortal": {
     "dashboardTitle": "فضاء الأسرة",
-    "dashboardDescription": "أبناؤك المرتبطون حاليًا والإشعارات المحفوظة للمؤسسة.",
+    "dashboardDescription": "تابع الحياة المدرسية لأبنائك ونتائجهم المنشورة ومستجدات المدرسة.",
     "childrenDescription": "الأبناء المرتبطون بملفاتك النشطة كوليّ أمر وبارتباطاتك الحالية في هذه المؤسسة.",
     "relatedChildren": "الأبناء المرتبطون",
     "dashboardOverview": "نظرة عامة على الأسرة",
@@ -978,7 +993,7 @@ const messages = {
   },
   "teachingDashboard": {
     "teacherTitle": "فضائي التعليمي",
-    "teacherDescription": "مهامك النشطة واختصارات هذه المؤسسة.",
+    "teacherDescription": "أقسامك وحصصك ومهامك التعليمية في مكان واحد.",
     "loading": "جارٍ تحميل فضائك التعليمي…",
     "unavailable": "الفضاء التعليمي غير متاح",
     "unavailableDescription": "تعذّر تحميل ملفك كمعلّم أو مهامك الحالية. يُرجى إعادة المحاولة.",
@@ -995,11 +1010,11 @@ const messages = {
     "assignedSubjects": "المواد المسندة",
     "overview": "نظرة عامة على التدريس",
     "myClasses": "أقسامي",
-    "myClassesDescription": "تُجمَّع الأقسام لتسهيل التصفّح؛ ويحتفظ كل إسناد لمادة بنطاقه المستقل الذي يصرّح به الخادم.",
+    "myClassesDescription": "افتح القسم لتسجيل الحضور أو إعداد الواجبات أو متابعة دفاتر النقط.",
     "takeAttendance": "تسجيل الحضور",
     "openGradebooks": "فتح دفاتر النقط",
     "myWork": "عملي",
-    "myWorkDescription": "فتح الوحدات العملية الحالية. تتحقّق كل وجهة مجدّدًا من نطاق صلاحياتك الحالي.",
+    "myWorkDescription": "شارك المستجدات مع أقسامك وتابع إشعارات المدرسة.",
     "announcementsDescription": "إنشاء وإدارة إعلانات الأقسام التي تسمح بها مهامك النشطة فقط.",
     "viewProfile": "عرض ملفّي كمعلّم",
     "homeworkFilterNote": "تُفتح الواجبات باستخدام مرشّحات السنة الدراسية والقسم المتاحة. تبقى المادة ظاهرة هنا لأن قائمة الواجبات لا تدعم ترشيحها.",

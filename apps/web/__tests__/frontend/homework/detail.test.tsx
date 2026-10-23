@@ -8,7 +8,7 @@ import { assignmentA, assignmentB, classA, classAId, classB, classBId, homework,
 afterEach(() => vi.restoreAllMocks());
 
 function setup(options: { value?: HomeworkDto; targets?: HomeworkTargetDto[]; rosterValue?: HomeworkRosterSubmissionDto | null; submissionValue?: HomeworkSubmissionDto; parent?: boolean; detailError?: boolean } = {}) {
-  const value = options.value ?? homework; const targets = options.targets ?? []; const rosterValue = options.rosterValue === undefined ? null : options.rosterValue; const submissionValue = options.submissionValue ?? submission;
+  const value = options.value ?? homework; let targets = options.targets ?? []; const rosterValue = options.rosterValue === undefined ? null : options.rosterValue; const submissionValue = options.submissionValue ?? submission;
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const url = String(input); const method = (init as RequestInit | undefined)?.method;
     if (url === `/api/v1/homeworks/${homeworkId}` && !method) return options.detailError ? Response.json({ error: { code: 'NOT_FOUND', featureCode: 'HOMEWORK_NOT_FOUND', message: 'hidden' } }, { status: 404 }) : Response.json({ data: value });
@@ -27,7 +27,7 @@ function setup(options: { value?: HomeworkDto; targets?: HomeworkTargetDto[]; ro
     if (url === `/api/v1/teachers/${teacherId}`) return Response.json({ data: teacher });
     if (url === `/api/v1/homeworks/${homeworkId}/targets` && !method) return Response.json({ data: targets });
     if (url === `/api/v1/homeworks/${homeworkId}/students?page=1&pageSize=50`) return Response.json(roster(rosterValue));
-    if (url === `/api/v1/homeworks/${homeworkId}/targets` && method === 'POST') return Response.json({ data: [target] }, { status: 201 });
+    if (url === `/api/v1/homeworks/${homeworkId}/targets` && method === 'POST') { targets = [target]; return Response.json({ data: targets }, { status: 201 }); }
     if (url === `/api/v1/homeworks/${homeworkId}/submissions` && method === 'POST') return Response.json({ data: submissionValue }, { status: 201 });
     if (url === `/api/v1/homework-submissions/${submissionId}` && !method) return Response.json({ data: submissionValue });
     if (url === `/api/v1/homework-submissions/${submissionId}` && method === 'PATCH') return Response.json({ data: { ...submissionValue, status: 'LATE' } });
@@ -46,6 +46,8 @@ describe('Homework detail lifecycle and targets', () => {
   it('adds multiple CLASS targets through the dedicated endpoint and exposes no removal UI', async () => {
     const fetchMock = setup(); renderHomework(<HomeworkDetailWorkspace homeworkId={homeworkId} />); await screen.findByText('No Classes are targeted yet.'); await userEvent.click(screen.getByLabelText('Class A')); await userEvent.click(screen.getByLabelText('Class B')); await userEvent.click(screen.getByRole('button', { name: 'Add Class targets' }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => String(url) === `/api/v1/homeworks/${homeworkId}/targets` && (init as RequestInit | undefined)?.method === 'POST' && JSON.stringify(JSON.parse(String((init as RequestInit).body)).classIds) === JSON.stringify([classAId, classBId]))).toBe(true));
+    await screen.findByText('Class targets added.');
+    expect(screen.queryByText('No Classes are targeted yet.')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
   });
 

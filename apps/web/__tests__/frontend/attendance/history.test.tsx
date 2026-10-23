@@ -35,3 +35,21 @@ describe('Student Attendance history', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes(`students/${studentId}/attendance`))).toBe(false);
   });
 });
+
+
+it('keeps session and legacy history distinguishable and hides stale records for invalid filters', async () => {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async input => String(input).startsWith('/api/v1/students?')
+    ? Response.json(page([sara], 1, 20))
+    : Response.json(page([historyRecord, { ...historyRecord, id: 'session-history', note: 'Lesson note', session: { subjectName: 'Mathematics', start: '08:00', end: '09:00' } }], 1, 20)));
+  renderAttendance(<AttendanceHistory schoolId={schoolId} years={[year, otherYear]} classes={[klass, otherClass]} />);
+  await screen.findByRole('option', { name: 'Amrani, Sara (S-001)' });
+  await userEvent.selectOptions(screen.getByLabelText('Student'), studentId);
+  expect(await screen.findByText('Legacy daily history')).toBeInTheDocument();
+  expect(screen.getByText('Mathematics')).toBeInTheDocument();
+  expect(screen.getByText('08:00–09:00')).toHaveAttribute('dir', 'ltr');
+  await userEvent.type(screen.getByLabelText('Date from'), '2025-10-20');
+  await userEvent.type(screen.getByLabelText('Date to'), '2025-10-10');
+  expect(screen.getByLabelText('Date to')).toHaveAttribute('aria-invalid', 'true');
+  expect(screen.queryByText('Medical')).not.toBeInTheDocument();
+  expect(screen.queryByText('Lesson note')).not.toBeInTheDocument();
+});

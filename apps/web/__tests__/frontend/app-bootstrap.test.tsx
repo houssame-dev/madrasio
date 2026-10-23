@@ -59,7 +59,8 @@ describe('/me application bootstrap', () => {
     const close = within(dialog).getByRole('button', { name: 'Close navigation' });
     expect(close).toHaveFocus();
     await userEvent.tab({ shift: true });
-    expect(within(dialog).getByRole('combobox', { name: 'Switch current school' })).toHaveFocus();
+    expect(within(dialog).getByRole('combobox', { name: 'Switch current school' })).toBeEnabled();
+    expect(within(dialog).getByRole('button', { name: 'Log out' })).toHaveFocus();
     await userEvent.tab();
     expect(close).toHaveFocus();
     await userEvent.keyboard('{Escape}');

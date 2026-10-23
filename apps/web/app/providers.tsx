@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode, useState } from 'react';
 
 import { ApiClientError } from '@/lib/frontend/api-client';
+import { ThemeProvider } from '@/components/theme/theme-provider';
 
 export function createAppQueryClient() {
   return new QueryClient({
@@ -33,5 +34,5 @@ export function createAppQueryClient() {
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createAppQueryClient);
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return <ThemeProvider><QueryClientProvider client={queryClient}>{children}</QueryClientProvider></ThemeProvider>;
 }

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslations } from 'next-intl';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useDomainText } from '@/i18n/use-domain-text';
@@ -24,6 +25,7 @@ export function HomeworkForm({ schoolId, years, subjects, assignments, onCancel 
   assignments: TeacherAssignmentDto[];
   onCancel: () => void;
 }) {
+  const learning = useTranslations('learningUi');
   const text = useDomainText();
   const t = useHomeworkCopy();
   const router = useRouter(); const queryClient = useQueryClient(); const [error, setError] = useState<string>();
@@ -47,7 +49,8 @@ export function HomeworkForm({ schoolId, years, subjects, assignments, onCancel 
     setError(undefined); mutation.mutate(values);
   };
   return <form className="space-y-4" noValidate onSubmit={form.handleSubmit(submit)}>
-    {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}
+    {form.formState.isDirty ? <InlineFeedback brand kind="warning">{learning('unsaved')}</InlineFeedback> : null}
+    {error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}
     <Field label={t.academicYear} htmlFor="homework-year" error={text(form.formState.errors.academicYearId?.message)}><select id="homework-year" className={selectClassName} {...form.register('academicYearId', { onChange: () => { form.setValue('academicPeriodId', ''); form.setValue('subjectId', ''); } })}><option value="">{t.selectYear}</option>{eligibleYears.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}</select></Field>
     <div className="grid gap-4 sm:grid-cols-2"><Field label={t.academicPeriod} htmlFor="homework-period" error={text(form.formState.errors.academicPeriodId?.message)}><select id="homework-period" className={selectClassName} disabled={!yearId || periods.isPending} {...form.register('academicPeriodId')}><option value="">{t.selectPeriod}</option>{eligiblePeriods.map((period) => <option key={period.id} value={period.id}>{period.name}</option>)}</select></Field><Field label={t.subject} htmlFor="homework-subject" error={text(form.formState.errors.subjectId?.message)}><select id="homework-subject" className={selectClassName} disabled={!yearId} {...form.register('subjectId')}><option value="">{t.selectSubject}</option>{eligibleSubjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}{subject.code ? ` (${subject.code})` : ''}</option>)}</select></Field></div>
     <Field label={t.titleField} htmlFor="homework-title" error={text(form.formState.errors.title?.message)}><input id="homework-title" className={inputClassName} {...form.register('title')} /></Field>

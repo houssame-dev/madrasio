@@ -1,8 +1,118 @@
 # Madrasio — Current Project State
 
-Last updated: **2026-10-19**
+Last updated: **2026-10-23**
 
-## Current handoff — Timetable V1 Phase 3 (2026-10-19)
+## Current handoff — V1 UI/UX release checkpoint (2026-10-23)
+
+**ALL NINE UI/UX PHASES COMPLETE LOCALLY; LOCAL QUALITY VERIFICATION PASSED.
+UNCOMMITTED RELEASE CANDIDATE — CI, HOSTED ACCEPTANCE AND RELEASE NOT IMPLIED.**
+
+Repository `houssame-dev/madrasio`, local `main`, committed baseline
+`fbb451a0ff4f5202603543fcd94b5b71fd57fc6c` is unchanged. Remote freshness and
+hosted state were not queried. This checkpoint edits only PROJECT-STATE and the
+current handoff; it does not stage, commit, push, deploy or execute migrations.
+All prior source, tests, assets and the original Teacher day-first timetable work
+are preserved. Older dated handoffs below are historical evidence, including
+statements that were current at their own checkpoint; this section governs the
+present local release handoff. Accepted ADRs and their register are unchanged.
+
+### Delivered local scope
+
+Phases **1A/1B, 2A/2B/2C and 3A/3B/3C/3D** cover approved semantic design tokens
+and locally persisted Light/Dark/System themes; official branding, icons,
+sidebar/navbar and short-screen navigation; role-aware dashboards; Attendance;
+Timetable; offline Finance; Academic Structure and People; Grades/Results/Homework;
+and Announcements/Notifications. EN/FR/AR, Arabic RTL, responsive presentation,
+keyboard operation and existing authorization/business rules are retained.
+The original Teacher day-first timetable improvement remains in the candidate.
+No new package, API, schema or migration is part of this UI/UX release.
+
+Final quality verification fixed shared-modal background scrolling and outside
+focus escape, with nested-safe scroll locking, top-dialog focus containment and
+stable close callbacks. At 320x568, Save/Cancel are reachable, content scrolls,
+Tab stays inside, Escape restores the trigger and the background is blocked.
+Three focused modal tests were added; one unused recipient-view binding was removed.
+No unresolved P0/P1/P2 product defect was observed in that local verification.
+This is not a guarantee of defect-free operation or completed V1 release acceptance.
+
+### Verified local evidence and remaining acceptance
+
+The saved final-quality diagnostics (`final-ui-quality/REPORT.md`, integrity and
+per-job result records in the external local validation workspace) establish:
+
+- **1,497 distinct passing tests across 163 files**, with **2 existing skips and
+  21 existing TODOs**. Nothing was newly disabled. The selected cross-product run
+  passed 1,494 tests in 162 files; the final UI rerun passed 961 in 116 files and
+  the focused modal/forms run passed 54 in 10 files. These overlap and are not
+  summed as independent tests. This was not a new full-root `pnpm test` run.
+- **63 successful synthetic Chromium contexts**: short-screen dialogs (3),
+  branding/navigation (15), dashboards (9), Academic Structure/People (3),
+  Attendance (3), Timetable (9), Finance (3), Grades/Results/Homework (9),
+  Announcements/Notifications (9). Coverage includes School Admin/Teacher/Parent,
+  EN/FR/AR, 320/768/1440px plus 1024px and 320x568 navigation, Light/Dark/System,
+  OS preference changes, keyboard navigation, forms and failure/unsaved feedback.
+- Root lint and typecheck, production build in a separate dotenv-free copy with
+  synthetic loopback configuration, and `git diff --check`: **exit 0**. Installed
+  tooling was reused; no packages were installed. The relocated-copy pnpm metadata
+  warning was not a dependency change. Browser external requests were blocked.
+
+The two skips and 21 TODOs remain deferred evidence, not passes. They include
+historical complex-language/navigation proof placeholders; do not revive that
+retired strategy as a prerequisite or silently delete its historical evidence.
+Real-account **STAGING login/session transitions, School switching, tenant and
+Parent-child/Teacher isolation, persisted Finance/balances/receipts and notification
+delivery** remain unverified by these synthetic browser checks. Local domain/API
+isolation regressions do not substitute for deployed real-identity acceptance.
+Firefox/WebKit and physical screen-reader acceptance were not performed.
+No new GitHub CI/STAGING success or Production verification is claimed here.
+
+### Proposed selective release inventory and migration review
+
+The proposed candidate is **158 exact paths**: 93 UI/provider/presentation-helper
+files, 27 tests, 10 translation files, 19 official branding/favicon assets,
+7 styling/app-metadata/registry-tool files and these 2 documentation files.
+This includes `components.json` (existing Base UI setup), theme/native-select
+helpers, original official PNGs, generated branded icons/manifest and the asset
+generator. It excludes dependencies, local credentials, scanner/validation reports,
+build output, screenshots and operator receipts. The exact path manifest and
+categorized inventory are retained externally as `ui-release-checkpoint` evidence;
+review those paths rather than using an indiscriminate `git add .`.
+
+**Explicitly excluded, preserved unchanged:**
+`attendance-sessions-new-files.zip`, `attendance-sessions-review.diff`, and
+`attendance-sessions-review.patch`. They are review artifacts, not release source.
+All implementation files must retain the final verified bytes during staging.
+
+The repository contains **31 committed migrations (indices 0-30), through
+`0030_attendance-sessions`**, 31 SQL files and 31 snapshots. Every journal tag has
+its SQL file; the latest snapshot references 0029. The latest snapshot contains
+57 public application tables. There are **no modified or untracked database,
+SQL, snapshot or journal files** and no migration is proposed for this release.
+This source inventory is not a fresh statement of any hosted migration ledger.
+A historical, already-committed metadata discrepancy exists: `0010_snapshot.json`
+has a parent ID different from `0009_snapshot.json`'s ID. Both files are unchanged
+from HEAD. The installed Drizzle migrator reads journal/SQL rather than snapshots;
+record this separately for review before future migration generation. Do not repair
+historical snapshots or infer migration-application approval from this UI checkpoint.
+
+### Next separately authorized release sequence
+
+1. Review this handoff and the exact candidate/exclusions; authorize selective
+   staging and a local Git commit separately. This checkpoint performs neither.
+2. Before authorizing push, review the normal STAGING target/TLS, migration-ledger
+   and recovery safeguards. **Push to `main` triggers both CI and Deploy STAGING**;
+   the latter validates/tests/builds, checks the target, runs the existing migration
+   chain, verifies schema, promotes `staging-release` and deploys the exact SHA.
+   It is not a CI-only action. No hosted state or safeguard was freshly verified here.
+3. Only with explicit push/automatic-STAGING execution authorization, run the normal
+   workflows and verify their exact commit/deployed-SHA outcomes. Local passes do
+   not stand in for those future workflow results.
+4. After successful deployment, separately authorize real-account STAGING acceptance
+   for the roles, isolation boundaries and persisted journeys listed above.
+5. Production release, customer onboarding and provider changes remain separate
+   authorization boundaries. No automatic follow-on execution is authorized.
+
+## Historical handoff — Timetable V1 Phase 3 (2026-10-19)
 
 **LOCAL PUBLICATION, HISTORY AND TEACHER/PARENT VIEWS IMPLEMENTED; HOSTED RELEASE NOT AUTHORIZED.**
 Repository `houssame-dev/madrasio`, `main`, HEAD

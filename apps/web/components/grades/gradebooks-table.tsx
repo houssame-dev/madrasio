@@ -34,7 +34,7 @@ export function GradebooksTable({ schoolId, result, loading, years, classes, sub
   const subjectName = new Map(subjects.map((row) => [row.id, row.name]));
 
   return <div className="space-y-4">
-    <TableShell headers={[t.name, t.academicYear, t.period, t.class, t.subject, t.configurationVersion, t.status, t.actions]} loading={loading}>
+    <TableShell responsive headers={[t.name, t.academicYear, t.period, t.class, t.subject, t.configurationVersion, t.status, t.actions]} loading={loading}>
       {result?.data.length === 0 ? <EmptyTableRow columns={8} /> : result?.data.map((gradebook) => {
         const label = gradebook.name ?? `${className.get(gradebook.classId) ?? t.unknown} · ${subjectName.get(gradebook.subjectId) ?? t.unknown}`;
         return <tr key={gradebook.id}>
@@ -44,7 +44,7 @@ export function GradebooksTable({ schoolId, result, loading, years, classes, sub
           <td dir="auto" className="px-4 py-3">{className.get(gradebook.classId) ?? t.unknown}</td>
           <td dir="auto" className="px-4 py-3">{subjectName.get(gradebook.subjectId) ?? t.unknown}</td>
           <td dir="auto" className="px-4 py-3 font-mono text-xs">{gradebook.gradingConfigurationVersionId}</td>
-          <td dir="auto" className="px-4 py-3"><StatusBadge status={gradebook.status} label={text(gradebook.status)} /></td>
+          <td dir="auto" className="px-4 py-3"><StatusBadge brand status={gradebook.status} label={text(gradebook.status)} /></td>
           <td dir="auto" className="px-4 py-3 text-end"><Link href={`/grades/${gradebook.id}`} aria-label={t.openDetail(label)} className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t.open}<ExternalLink className="size-4" aria-hidden="true" /></Link></td>
         </tr>;
       })}

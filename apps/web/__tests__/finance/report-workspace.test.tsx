@@ -42,7 +42,7 @@ it('retains year/Class/student filters in requests and rejects invalid collectio
   fireEvent.click(screen.getByRole('button', { name: 'Collections' }));
   fireEvent.change(screen.getByLabelText('Received from'), { target: { value: '2026-03-01' } });
   fireEvent.change(screen.getByLabelText('Received through'), { target: { value: '2026-02-01' } });
-  expect(screen.getByRole('alert')).toHaveTextContent(getCatalog('en').finance.invalid);
+  expect(screen.getByRole('alert')).toHaveTextContent(getCatalog('en').financeUi.dateRange);
   expect(fetcher.mock.calls.some(([path]) => String(path).includes('from=2026-03-01&to=2026-02-01'))).toBe(false);
 });
 it('shows sanitized report failures and a usable retry', async () => {

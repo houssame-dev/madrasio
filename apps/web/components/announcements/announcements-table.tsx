@@ -11,11 +11,11 @@ export function AnnouncementsTable({ result, loading, onPage }: { result?: Annou
   const t = useAnnouncementCopy();
   const text = useDeliveryText();
   const timezone = useAppContext().currentSchool!.timezone;
-  return <div className="space-y-4"><TableShell headers={[t.titleField, t.status, t.latestVersion, t.updated, t.actions]} loading={loading}>
+  return <div className="space-y-4"><TableShell responsive headers={[t.titleField, t.status, t.latestVersion, t.updated, t.actions]} loading={loading}>
     {result?.data.length === 0 ? <EmptyTableRow columns={5} /> : result?.data.map((item) => <tr key={item.id}>
-      <td className="max-w-sm px-4 py-3"><p dir="auto" className="truncate font-medium">{item.latestVersion?.title ?? '—'}</p><p dir="auto" className="mt-1 truncate text-xs text-muted-foreground">{item.latestVersion?.body ?? ''}</p></td>
-      <td className="px-4 py-3"><StatusBadge status={item.status} label={text(item.status)} /></td><td dir="ltr" className="px-4 py-3 tabular-nums">{item.latestVersion ? `v${item.latestVersion.versionNumber}` : '—'}</td><td dir="ltr" className="px-4 py-3 tabular-nums">{formatSchoolInstant(item.updatedAt, timezone)}</td>
-      <td className="px-4 py-3 text-end"><Link className="inline-flex h-9 items-center rounded-md border border-input px-3 text-sm font-medium hover:bg-accent" href={`/announcements/${item.id}`}>{t.details}</Link></td>
+      <td className="max-w-sm px-4 py-3"><p dir="auto" className="break-words font-medium">{item.latestVersion?.title ?? '—'}</p><p dir="auto" className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">{item.latestVersion?.body ?? ''}</p></td>
+      <td className="px-4 py-3"><StatusBadge brand status={item.status} label={text(item.status)} /></td><td dir="ltr" className="px-4 py-3 tabular-nums">{item.latestVersion ? `v${item.latestVersion.versionNumber}` : '—'}</td><td dir="ltr" className="px-4 py-3 tabular-nums">{formatSchoolInstant(item.updatedAt, timezone)}</td>
+      <td className="px-4 py-3 text-end"><Link className="inline-flex h-9 items-center rounded-md border border-input px-3 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href={`/announcements/${item.id}`}>{t.details}</Link></td>
     </tr>)}
   </TableShell>{result ? <Pagination {...result.meta} onPage={onPage} /> : null}</div>;
 }

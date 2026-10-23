@@ -16,6 +16,7 @@ import { invalidateHomeworkSubmission } from '@/lib/frontend/homework/mutations'
 import { submissionFormSchema, type SubmissionFormValues } from '@/lib/frontend/homework/schemas';
 
 export function SubmissionForm({ schoolId, homeworkId, studentId, submissionId, initialContent = '', onCancel, onSaved }: { schoolId: string; homeworkId: string; studentId: string; submissionId?: string; initialContent?: string; onCancel: () => void; onSaved: () => void }) {
+  const learning = useTranslations('learningUi');
   const text = useDomainText();
   const ui = useTranslations('domainUi');
   const t = useHomeworkCopy();
@@ -35,6 +36,6 @@ export function SubmissionForm({ schoolId, homeworkId, studentId, submissionId, 
     }
     mutation.mutate({ ...values, actualHandedInAt: actualHandedInAt ?? '' });
   };
-  return <form className="space-y-4" noValidate onSubmit={form.handleSubmit(submit)}>{error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}<Field label={t.content} htmlFor={`submission-content-${studentId}`} error={text(form.formState.errors.content?.message)} hint={`${t.plainText} ${t.lateOwned}`}><textarea id={`submission-content-${studentId}`} className={`${inputClassName} min-h-40 py-2`} {...form.register('content')} /></Field><Field label={t.actualHandedInAt} htmlFor={`submission-actual-${studentId}`} error={text(form.formState.errors.actualHandedInAt?.message)} hint={ui('handInHint', { timezone: app.currentSchool?.timezone ?? text('School timezone unavailable') })}><input id={`submission-actual-${studentId}`} type="datetime-local" dir="ltr" className={inputClassName} {...form.register('actualHandedInAt')} /></Field><FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={submissionId ? t.resubmit : t.createSubmission} /></form>;
+  return <form className="space-y-4" noValidate onSubmit={form.handleSubmit(submit)}>{form.formState.isDirty ? <InlineFeedback brand kind="warning">{learning('unsaved')}</InlineFeedback> : null}{error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}<Field label={t.content} htmlFor={`submission-content-${studentId}`} error={text(form.formState.errors.content?.message)} hint={`${t.plainText} ${t.lateOwned}`}><textarea id={`submission-content-${studentId}`} className={`${inputClassName} min-h-40 py-2`} {...form.register('content')} /></Field><Field label={t.actualHandedInAt} htmlFor={`submission-actual-${studentId}`} error={text(form.formState.errors.actualHandedInAt?.message)} hint={ui('handInHint', { timezone: app.currentSchool?.timezone ?? text('School timezone unavailable') })}><input id={`submission-actual-${studentId}`} type="datetime-local" dir="ltr" className={inputClassName} {...form.register('actualHandedInAt')} /></Field><FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={submissionId ? t.resubmit : t.createSubmission} /></form>;
 }
 

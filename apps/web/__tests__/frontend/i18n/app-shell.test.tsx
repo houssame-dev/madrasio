@@ -68,11 +68,11 @@ describe('localized application shell', () => {
     const user = userEvent.setup();
     const view = renderShell(locale, { ...schoolContext(), memberships: [] });
     const sidebar = screen.getByTestId('desktop-sidebar');
-    expect(sidebar).toHaveClass('md:flex', 'start-0', 'border-e', 'w-[var(--app-sidebar-width)]');
-    expect(within(sidebar).getByText('Madrasio')).toBeInTheDocument();
+    expect(sidebar).toHaveClass('lg:flex', 'start-0', 'border-e', 'w-[var(--app-sidebar-width)]');
+    expect(within(sidebar).getByRole('img', { name: 'Madrasio' })).toHaveAttribute('data-brand', 'wordmark');
     expect(within(sidebar).getByRole('navigation', { name: landmark })).toBeInTheDocument();
-    expect(screen.getByText(currentSchool)).toBeInTheDocument();
-    expect(screen.getByText(schoolAdmin)).toBeInTheDocument();
+    expect(screen.getAllByText(currentSchool)).toHaveLength(2);
+    expect(screen.getAllByText(schoolAdmin)).toHaveLength(2);
     expect(screen.getByRole('heading', { name: 'Caller content' })).toBeInTheDocument();
     const toggle = within(sidebar).getByRole('button', { name: collapse });
     expect(toggle.querySelector('svg')).toHaveClass('rtl:rotate-180');
@@ -80,13 +80,14 @@ describe('localized application shell', () => {
     await user.click(toggle);
     expect(sidebar).toHaveClass('w-[var(--app-sidebar-collapsed-width)]');
     expect(within(sidebar).getByRole('button', { name: expand })).toBe(toggle);
-    expect(within(sidebar).queryByText('Madrasio')).not.toBeInTheDocument();
+    expect(within(sidebar).getByRole('img', { name: 'Madrasio' })).toHaveAttribute('data-brand', 'logo');
     await user.click(toggle);
     expect(within(sidebar).getByRole('button', { name: collapse })).toBe(toggle);
     expect(sidebar).toHaveClass('w-[var(--app-sidebar-width)]');
+    expect(within(sidebar).getByRole('img', { name: 'Madrasio' })).toHaveAttribute('data-brand', 'wordmark');
 
     const trigger = screen.getByRole('button', { name: open });
-    expect(trigger).toHaveClass('md:hidden');
+    expect(trigger).toHaveClass('lg:hidden');
     expect(trigger).toHaveAttribute('type', 'button');
     expect(trigger.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -94,17 +95,26 @@ describe('localized application shell', () => {
     const dialog = screen.getByRole('dialog', { name: landmark });
     expect(dialog).toHaveClass('start-0', 'inset-y-0');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
+    const scrollRegion = within(dialog).getByTestId('drawer-scroll-region');
+    expect(scrollRegion).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto', 'overscroll-contain');
+    expect(scrollRegion).toContainElement(within(dialog).getByRole('navigation', { name: landmark }));
+    expect(scrollRegion).toContainElement(within(dialog).getByRole('combobox', { name: getCatalog(locale).languagePreference.label }));
+    expect(scrollRegion).toContainElement(within(dialog).getByRole('button', { name: getCatalog(locale).auth.logout }));
     expect(dialog).toHaveClass('w-[min(20rem,85vw)]');
-    expect(within(dialog).getByText('Madrasio')).toBeInTheDocument();
+    expect(within(dialog).getByRole('img', { name: 'Madrasio' })).toHaveAttribute('data-brand', 'wordmark');
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(trigger.closest('[aria-hidden="true"]')).not.toBeNull();
     const dismiss = within(dialog).getByRole('button', { name: close });
     expect(dismiss).toHaveFocus();
     await user.tab({ shift: true });
-    const links = within(dialog).getAllByRole('link');
-    expect(links[links.length - 1]).toHaveFocus();
+    expect(within(dialog).getByRole('button', { name: getCatalog(locale).auth.logout })).toHaveFocus();
+    expect(within(dialog).getByRole('combobox', { name: getCatalog(locale).theme.label })).toBeInTheDocument();
+    expect(within(dialog).getByRole('combobox', { name: getCatalog(locale).languagePreference.label })).toBeEnabled();
     await user.tab();
     expect(dismiss).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe('');
     expect(trigger).toHaveFocus();
 
     await user.click(trigger);
@@ -124,8 +134,8 @@ describe('localized application shell', () => {
       ['TEACHER', teacher], ['PARENT', parent],
     ] as const) {
       const roleView = renderShell(locale, schoolContext(role));
-      expect(screen.getByText(label)).toBeInTheDocument();
-      expect(screen.getByText('Caller School')).toBeInTheDocument();
+      expect(screen.getAllByText(label)).toHaveLength(2);
+      expect(screen.getAllByText('Caller School')).toHaveLength(2);
       roleView.unmount();
     }
   });

@@ -92,11 +92,11 @@ export function GradingRulesForm({
       )}
     >
       {mutation.isError ? (
-        <InlineFeedback kind="error">{text(configurationFailure(mutation.error))}</InlineFeedback>
+        <InlineFeedback brand kind="error">{text(configurationFailure(mutation.error))}</InlineFeedback>
       ) : null}
       {form.formState.errors.rules ? (
         <div id="grading-rules-errors" tabIndex={-1}>
-          <InlineFeedback kind="error">{text("Check numeric ranges, passing score, required types and rule settings. Maximum and passing scores must be positive; passing score cannot exceed maximum. Weights must be 0–100 and rounding scale 0–6.")}</InlineFeedback>
+          <InlineFeedback brand kind="error">{text("Check numeric ranges, passing score, required types and rule settings. Maximum and passing scores must be positive; passing score cannot exceed maximum. Weights must be 0–100 and rounding scale 0–6.")}</InlineFeedback>
         </div>
       ) : null}
       {creating ? (
@@ -244,10 +244,10 @@ function ConfigurationEditor({
   return (
     <section className="space-y-4" aria-label={text("Configuration versions")}>
       <h2 className="text-xl font-semibold">
-        {detail.name} <StatusBadge status={detail.status} label={text(detail.status)} />
+        {detail.name} <StatusBadge brand status={detail.status} label={text(detail.status)} />
       </h2>
       {mutation.isError ? (
-        <InlineFeedback kind="error">{text(configurationFailure(mutation.error))}</InlineFeedback>
+        <InlineFeedback brand kind="error">{text(configurationFailure(mutation.error))}</InlineFeedback>
       ) : null}
       <p className="text-sm">{text("Activation archives the previous active version, without rebinding Gradebooks or recalculating results. Select one consistent version for all Gradebooks that will be aggregated together.")}</p>
       {detail.status !== 'ARCHIVED' ? (
@@ -299,7 +299,7 @@ function ConfigurationEditor({
       {detail.versions.map((version) => (
         <article key={version.id} className="space-y-3 rounded border p-4">
           <h3 className="font-semibold">
-            {ui('version', { version: version.versionNumber })} <StatusBadge status={version.status} label={text(version.status)} />
+            {ui('version', { version: version.versionNumber })} <StatusBadge brand status={version.status} label={text(version.status)} />
           </h3>
           {!version.editable ? (
             <p>{text("Rules are read-only to preserve academic history or because the configuration is inactive. For future changes, use a new draft under an active configuration.")}</p>
@@ -378,10 +378,10 @@ function SchoolConfigurationWorkspace({ schoolId }: { schoolId: string }) {
   return (
     <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
       <Link href="/grades" className="underline">{text("Back to Gradebook setup")}</Link>
-      <h1 className="text-2xl font-semibold">{text("Grading configuration")}</h1>
+      <h1 className="break-words text-2xl font-semibold">{text("Grading configuration")}</h1>
       <p>{text("School-owned calculation rules. Drafts are editable; activated and archived versions preserve historical meaning.")}</p>
       {success ? (
-        <InlineFeedback kind="success">{text("Grading configuration saved. Existing academic records were not recalculated.")}</InlineFeedback>
+        <InlineFeedback brand kind="success">{text("Grading configuration saved. Existing academic records were not recalculated.")}</InlineFeedback>
       ) : null}
       {creating ? (
         <PageContainer variant="FORM_DETAIL">

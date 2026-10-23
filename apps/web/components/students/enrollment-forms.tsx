@@ -30,11 +30,11 @@ export function EnrollmentForm({ schoolId, studentId, years, initialYearId, onCa
   useEffect(() => { form.setValue('classId', ''); }, [form, yearId]);
   const mutation = useMutation({ mutationFn: studentsApi.createEnrollment.bind(null, studentId), onSuccess: async () => { setError(undefined); await onSaved(); }, onError: (value) => { if (!mapStudentValidation(value, form.setError)) setError(text(studentErrorMessage(value))); } });
   return <form className="space-y-4" noValidate onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
-    {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}<p className="text-sm text-muted-foreground">{t.enrollmentSeparate}</p>
+    {error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}<p className="text-sm text-muted-foreground">{t.enrollmentSeparate}</p>
     <Field label={t.academicYear} htmlFor="enrollment-year" error={text(form.formState.errors.academicYearId?.message)}><select id="enrollment-year" className={selectClassName} {...form.register('academicYearId')}><option value="">{t.selectYear}</option>{eligibleYears.map((year) => <option key={year.id} value={year.id}>{year.name} — {text(year.status)}</option>)}</select></Field>
     <Field label={t.className} htmlFor="enrollment-class" error={text(form.formState.errors.classId?.message)} hint={classes.data?.length === 0 ? t.noClasses : undefined}><select id="enrollment-class" className={selectClassName} disabled={!yearId || classes.isPending || classes.isError} {...form.register('classId')}><option value="">{t.selectClass}</option>{classes.data?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
     <Field label={t.effectiveFrom} htmlFor="enrollment-from" error={text(form.formState.errors.effectiveFrom?.message)}><input id="enrollment-from" type="date" dir="ltr" className={inputClassName} {...form.register('effectiveFrom')} /></Field>
-    {classes.isError ? <InlineFeedback kind="error">{t.noClasses}</InlineFeedback> : null}<FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={t.create} />
+    {classes.isError ? <InlineFeedback brand kind="error">{t.noClasses}</InlineFeedback> : null}<FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={t.create} />
   </form>;
 }
 
@@ -50,7 +50,7 @@ export function TransferForm({ studentId, year, classes, current, onCancel, onSa
     if (values.effectiveDate <= current.effectiveFrom) { form.setError('effectiveDate', { message: t.transferDateAfter }); return; }
     mutation.mutate(values);
   })}>
-    {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}<InlineFeedback kind="success">{t.transferDescription}</InlineFeedback>
+    {error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}<InlineFeedback brand kind="success">{t.transferDescription}</InlineFeedback>
     <input type="hidden" {...form.register('academicYearId')} /><Field label={t.academicYear} htmlFor="transfer-year"><p id="transfer-year" className="rounded-md border bg-muted px-3 py-2 text-sm">{year.name}</p></Field>
     <Field label={t.targetClass} htmlFor="transfer-class" error={text(form.formState.errors.toClassId?.message)} hint={targets.length === 0 ? t.noClasses : undefined}><select id="transfer-class" className={selectClassName} {...form.register('toClassId')}><option value="">{t.selectClass}</option>{targets.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
     <Field label={t.transferDate} htmlFor="transfer-date" error={text(form.formState.errors.effectiveDate?.message)}><input id="transfer-date" type="date" dir="ltr" min={current.effectiveFrom} className={inputClassName} {...form.register('effectiveDate')} /></Field>
@@ -69,7 +69,7 @@ export function EndEnrollmentForm({ enrollment, onCancel, onSaved }: { enrollmen
     if (values.effectiveUntil < enrollment.effectiveFrom) { form.setError('effectiveUntil', { message: t.endDateBefore }); return; }
     mutation.mutate(values);
   })}>
-    {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}<p className="text-sm text-muted-foreground">{t.endDescription}</p>
+    {error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}<p className="text-sm text-muted-foreground">{t.endDescription}</p>
     <Field label={t.effectiveUntil} htmlFor="enrollment-until" error={text(form.formState.errors.effectiveUntil?.message)}><input id="enrollment-until" type="date" dir="ltr" min={enrollment.effectiveFrom} className={inputClassName} {...form.register('effectiveUntil')} /></Field>
     <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={t.confirmEnd} />
   </form>;

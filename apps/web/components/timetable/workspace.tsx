@@ -29,6 +29,7 @@ export function TimetableWorkspace() {
   return <Screen key={`${context.user.id}:${context.currentSchool!.id}`} schoolId={context.currentSchool!.id} timezone={context.currentSchool!.timezone} />;
 }
 function Screen({ schoolId, timezone }: { schoolId: string; timezone: string }) {
+  const ui = useTranslations('timetableUi');
   const t = useTranslations('timetable'); const builderT = useTranslations('timetableBuilder'); const [draftDirty, setDraftDirty] = useState(false); const cache = useQueryClient(); const [year, setYear] = useState('');
   const [tab, setTab] = useState<'configuration' | 'rooms' | 'loads' | 'builder' | 'published'>('configuration');
   const [message, setMessage] = useState<'saved' | 'error' | 'conflict' | 'invalid' | null>(null);
@@ -48,11 +49,13 @@ function Screen({ schoolId, timezone }: { schoolId: string; timezone: string }) 
   const selectedYear = data.years.find(y => y.id === data.selectedYearId);
   const busy = mutation.isPending || query.isFetching;
   const readOnly = !selectedYear || !['PLANNED', 'ACTIVE'].includes(selectedYear.status);
-  return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6" aria-busy={busy}>
-    <header><h1 className="text-2xl font-semibold">{t('title')}</h1><p className="text-muted-foreground">{t('description')}</p></header>
+  return <PageContainer variant="MANAGEMENT_WIDE" className="min-w-0 space-y-6 [&_input]:min-w-0 [&_select]:min-w-0 [&_button]:h-auto [&_button]:min-h-10 [&_button]:whitespace-normal" aria-busy={busy}>
+    <header className="space-y-2 border-b pb-5"><h1 className="text-2xl font-semibold">{t('title')}</h1><p className="text-muted-foreground">{t('description')}</p></header>
     <p className="text-sm">{t('timezone')}: <bdi>{timezone}</bdi></p>
-    <nav aria-label={t('title')} className="flex flex-wrap gap-2">{(['configuration', 'rooms', 'loads', 'builder', 'published'] as const).map(value => <Button key={value} variant={tab === value ? 'default' : 'outline'} aria-current={tab === value ? 'page' : undefined} disabled={draftDirty} onClick={() => { setTab(value); setMessage(null); }}>{value === 'builder' ? builderT('title') : value === 'published' ? t('published') : t(value)}</Button>)}</nav>
-    {message ? <p role={message === 'saved' ? 'status' : 'alert'} className="rounded-md border p-3">{t(message)}{message === 'conflict' ? <Button variant="outline" onClick={() => void query.refetch()}>{t('retry')}</Button> : null}</p> : null}
+    <nav aria-label={t('title')} className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">{(['configuration', 'rooms', 'loads', 'builder', 'published'] as const).map(value => <Button key={value} variant={tab === value ? 'default' : 'outline'} aria-current={tab === value ? 'page' : undefined} disabled={draftDirty} onClick={() => { setTab(value); setMessage(null); }}>{value === 'builder' ? builderT('title') : value === 'published' ? t('published') : t(value)}</Button>)}</nav>
+    <p className="rounded-lg border bg-card p-4 text-sm leading-relaxed text-muted-foreground">{ui(`${tab}Hint`)}</p>
+    {readOnly && tab !== 'rooms' && tab !== 'published' ? <p role="status" className="text-sm font-medium">{ui('readOnlyYear')}</p> : null}
+    {message ? <p role={message === 'saved' ? 'status' : 'alert'} className={`rounded-md border p-3 text-sm ${message === 'saved' ? 'bg-card' : 'border-destructive/30 bg-destructive/5 text-destructive'}`}>{t(message)}{message === 'conflict' ? <Button variant="outline" onClick={() => void query.refetch()}>{t('retry')}</Button> : null}</p> : null}
     {tab !== 'rooms' && tab !== 'published' ? <><Field label={t('year')} htmlFor="tt-year"><select id="tt-year" className={inputClassName} value={data.selectedYearId ?? ''} disabled={busy || draftDirty} onChange={e => { setYear(e.target.value); setMessage(null); }}>{!data.years.length ? <option value="">{t('selectYear')}</option> : null}{data.years.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}</select></Field><p className="text-sm text-muted-foreground">{t('history')}</p></> : null}
     {tab === 'builder' ? <TimetableBuilder key={data.selectedYearId} data={data} schoolId={schoolId} onDirtyChange={setDraftDirty} /> : null}
     {tab === 'published' ? <PublishedTimetables embedded /> : null}
@@ -82,16 +85,16 @@ function WeekEditor({ current, scope, data, t, disabled, save }: { current?: Sta
   const [inherit, setInherit] = useState(scope !== 'school' && (!current || !current.enabled));
   function slot(day: number, index: number, patch: Partial<TimetableDay['slots'][number]>) { setDays(rows => rows.map(d => d.day === day ? { ...d, slots: d.slots.map((s, i) => i === index ? { ...s, ...patch } : s) } : d)); }
   async function submit(e: FormEvent) { e.preventDefault(); await save('configurations', { academicYearId: data.selectedYearId, stageId: scope.startsWith('stage:') ? scope.slice(6) : null, levelId: scope.startsWith('level:') ? scope.slice(6) : null, expectedRevision: current?.revision ?? 0, enabled: !inherit, days }); }
-  return <form onSubmit={e => void submit(e)} className="space-y-4 rounded-lg border p-4">
+  return <form onSubmit={e => void submit(e)} className="space-y-4 rounded-lg border bg-card p-4">
     {current ? <p>{t('revision')} {current.revision}</p> : <p>{t('empty')}</p>}
-    {scope !== 'school' ? <label className="flex items-center gap-2"><input type="checkbox" checked={inherit} disabled={disabled} onChange={e => setInherit(e.target.checked)} />{t('inherit')}</label> : null}
+    {scope !== 'school' ? <label className="flex items-center gap-2"><input className="size-4 shrink-0 accent-primary" type="checkbox" checked={inherit} disabled={disabled} onChange={e => setInherit(e.target.checked)} />{t('inherit')}</label> : null}
     <p className="text-sm text-muted-foreground">{t('intervals')}</p>
     <fieldset disabled={disabled || inherit} className="space-y-4"><legend className="font-semibold">{t('workingDays')}</legend>
       {weekdays.map((label, index) => {
         const day = index + 1; const row = days.find(d => d.day === day);
         return <div key={day} className="space-y-3 rounded-md border p-3">
-          <label className="flex items-center gap-2 font-medium"><input type="checkbox" checked={!!row} onChange={e => setDays(previous => e.target.checked ? [...previous, { day, slots: [{ kind: 'LESSON' as const, start: '08:00', end: '09:00' }] }].sort((a, b) => a.day - b.day) : previous.filter(d => d.day !== day))} />{t(label)}</label>
-          {row?.slots.map((value, i) => <div key={i} className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+          <label className="flex items-center gap-2 font-medium"><input className="size-4 shrink-0 accent-primary" type="checkbox" checked={!!row} onChange={e => setDays(previous => e.target.checked ? [...previous, { day, slots: [{ kind: 'LESSON' as const, start: '08:00', end: '09:00' }] }].sort((a, b) => a.day - b.day) : previous.filter(d => d.day !== day))} />{t(label)}</label>
+          {row?.slots.map((value, i) => <div key={i} className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
             <Field label={t('kind')} htmlFor={`tt-kind-${day}-${i}`}><select className={inputClassName} id={`tt-kind-${day}-${i}`} value={value.kind} onChange={e => slot(day, i, { kind: e.target.value as 'LESSON' | 'BREAK' })}><option value="LESSON">{t('LESSON')}</option><option value="BREAK">{t('BREAK')}</option></select></Field>
             <Field label={t('start')} htmlFor={`tt-start-${day}-${i}`}><input dir="ltr" type="time" required className={inputClassName} id={`tt-start-${day}-${i}`} value={value.start} onChange={e => slot(day, i, { start: e.target.value })} /></Field>
             <Field label={t('end')} htmlFor={`tt-end-${day}-${i}`}><input dir="ltr" type="time" required className={inputClassName} id={`tt-end-${day}-${i}`} value={value.end} onChange={e => slot(day, i, { end: e.target.value })} /></Field>
@@ -106,15 +109,15 @@ function WeekEditor({ current, scope, data, t, disabled, save }: { current?: Sta
 function Rooms({ data, t, disabled, save }: { data: State; t: Copy; disabled: boolean; save: Save }) {
   const [edit, setEdit] = useState<State['rooms'][number] | null>(null);
   return <section className="space-y-4" aria-label={t('rooms')}><p>{t('roomNotice')}</p>
-    <form key={edit?.id ?? 'new'} className="grid items-end gap-3 rounded-lg border p-4 sm:grid-cols-2" onSubmit={e => {
+    <form key={edit?.id ?? 'new'} className="grid items-end gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2" onSubmit={e => {
       e.preventDefault(); const form = e.currentTarget; const f = new FormData(form);
       void save('rooms', { ...(edit ? { id: edit.id } : {}), expectedRevision: edit?.revision ?? 0, name: String(f.get('name')), kind: String(f.get('kind')), active: f.get('active') === 'on' }).then(ok => { if (ok) { setEdit(null); form.reset(); } });
     }}><Field label={t('name')} htmlFor="tt-room-name"><input id="tt-room-name" name="name" className={inputClassName} required maxLength={100} defaultValue={edit?.name} disabled={disabled} /></Field>
       <Field label={t('kind')} htmlFor="tt-room-kind"><select id="tt-room-kind" name="kind" className={inputClassName} defaultValue={edit?.kind ?? 'ROOM'} disabled={disabled}><option value="ROOM">{t('ROOM')}</option><option value="LAB">{t('LAB')}</option></select></Field>
-      <label className="flex items-center gap-2"><input type="checkbox" name="active" defaultChecked={edit?.active ?? true} disabled={disabled} />{t('active')}</label>
+      <label className="flex items-center gap-2"><input className="size-4 shrink-0 accent-primary" type="checkbox" name="active" defaultChecked={edit?.active ?? true} disabled={disabled} />{t('active')}</label>
       <div className="flex flex-wrap gap-2"><Button disabled={disabled}>{t(edit ? 'save' : 'addRoom')}</Button>{edit ? <Button type="button" variant="outline" onClick={() => setEdit(null)}>{t('cancel')}</Button> : null}</div>
     </form>
-    {!data.rooms.length ? <p>{t('empty')}</p> : <ul className="grid gap-3 sm:grid-cols-2">{data.rooms.map(r => <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"><span><bdi>{r.name}</bdi> · {t(r.kind)} · {t(r.active ? 'active' : 'inactive')}</span><Button variant="outline" disabled={disabled} onClick={() => setEdit(r)}>{t('edit')}</Button></li>)}</ul>}
+    {!data.rooms.length ? <p>{t('empty')}</p> : <ul className="grid gap-3 sm:grid-cols-2">{data.rooms.map(r => <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3"><span><bdi>{r.name}</bdi> · {t(r.kind)} · {t(r.active ? 'active' : 'inactive')}</span><Button variant="outline" disabled={disabled} onClick={() => setEdit(r)}>{t('edit')}</Button></li>)}</ul>}
   </section>;
 }
 function Loads({ data, t, disabled, save }: { data: State; t: Copy; disabled: boolean; save: Save }) {
@@ -128,7 +131,7 @@ function Loads({ data, t, disabled, save }: { data: State; t: Copy; disabled: bo
   function begin(value: State['loads'][number]) { setClassId(value.classId); setSubjectId(value.subjectId); setEdit(value); }
   return <section className="space-y-4" aria-label={t('loads')}><p>{t('loadNotice')}</p>{!data.classes.length ? <p>{t('noClasses')}</p> : <>
     <Field label={t('class')} htmlFor="tt-class"><select className={inputClassName} id="tt-class" value={classId} disabled={disabled} onChange={e => { setClassId(e.target.value); setSubjectId(''); setEdit(null); }}>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
-    <form key={`${classId}:${subjectId}:${edit?.id ?? ''}`} className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2" onSubmit={e => {
+    <form key={`${classId}:${subjectId}:${edit?.id ?? ''}`} className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2" onSubmit={e => {
       e.preventDefault(); const f = new FormData(e.currentTarget);
       void save('loads', { academicYearId: data.selectedYearId, classId, subjectId, teacherAssignmentId: String(f.get('assignment')), roomId: String(f.get('room')) || null, lessonsPerWeek: Number(f.get('lessons')), durationMinutes: Number(f.get('duration')), expectedRevision: current?.revision ?? 0, enabled: true });
     }}>
@@ -142,7 +145,7 @@ function Loads({ data, t, disabled, save }: { data: State; t: Copy; disabled: bo
     </form>
     {!data.loads.filter(l => l.classId === classId).length ? <p>{t('empty')}</p> : <ul className="grid gap-3 sm:grid-cols-2">{data.loads.filter(l => l.classId === classId).map(l => {
       const assignment = data.assignments.find(a => a.assignment.id === l.teacherAssignmentId);
-      return <li key={l.id} className="space-y-2 rounded-lg border p-4"><h2 className="font-semibold"><bdi>{data.subjects.find(s => s.id === l.subjectId)?.name}</bdi></h2><p>{t('lessons')}: {l.lessonsPerWeek} · {t('duration')}: {l.durationMinutes}</p><p>{t('weeklyMinutes')}: {l.lessonsPerWeek * l.durationMinutes} · {t('revision')} {l.revision} · {t(l.enabled ? 'active' : 'retired')}</p><p><bdi>{assignment?.teacherFirstName} {assignment?.teacherName}</bdi></p>{assignment?.assignment.status !== 'ACTIVE' || assignment?.teacherStatus !== 'ACTIVE' ? <p>{t('assignmentUnavailable')}</p> : null}<p><bdi>{data.rooms.find(r => r.id === l.roomId)?.name ?? t('noRoom')}</bdi>{l.roomId && !data.rooms.find(r => r.id === l.roomId)?.active ? ` · ${t('roomUnavailable')}` : ''}</p><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={disabled} onClick={() => begin(l)}>{t('edit')}</Button>{l.enabled ? <Button variant="outline" disabled={disabled} onClick={() => void save('loads', { academicYearId: l.academicYearId, classId: l.classId, subjectId: l.subjectId, teacherAssignmentId: l.teacherAssignmentId, roomId: l.roomId, lessonsPerWeek: l.lessonsPerWeek, durationMinutes: l.durationMinutes, expectedRevision: l.revision, enabled: false })}>{t('retire')}</Button> : null}</div></li>;
+      return <li key={l.id} className="space-y-2 rounded-lg border bg-card p-4"><h2 className="font-semibold"><bdi>{data.subjects.find(s => s.id === l.subjectId)?.name}</bdi></h2><p>{t('lessons')}: {l.lessonsPerWeek} · {t('duration')}: {l.durationMinutes}</p><p>{t('weeklyMinutes')}: {l.lessonsPerWeek * l.durationMinutes} · {t('revision')} {l.revision} · {t(l.enabled ? 'active' : 'retired')}</p><p><bdi>{assignment?.teacherFirstName} {assignment?.teacherName}</bdi></p>{assignment?.assignment.status !== 'ACTIVE' || assignment?.teacherStatus !== 'ACTIVE' ? <p>{t('assignmentUnavailable')}</p> : null}<p><bdi>{data.rooms.find(r => r.id === l.roomId)?.name ?? t('noRoom')}</bdi>{l.roomId && !data.rooms.find(r => r.id === l.roomId)?.active ? ` · ${t('roomUnavailable')}` : ''}</p><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={disabled} onClick={() => begin(l)}>{t('edit')}</Button>{l.enabled ? <Button variant="outline" disabled={disabled} onClick={() => void save('loads', { academicYearId: l.academicYearId, classId: l.classId, subjectId: l.subjectId, teacherAssignmentId: l.teacherAssignmentId, roomId: l.roomId, lessonsPerWeek: l.lessonsPerWeek, durationMinutes: l.durationMinutes, expectedRevision: l.revision, enabled: false })}>{t('retire')}</Button> : null}</div></li>;
     })}</ul>}
   </>}</section>;
 }

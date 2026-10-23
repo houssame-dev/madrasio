@@ -14,7 +14,7 @@ export function NavigationLinks({ role, platformAuthority, collapsed = false, on
   const itemLabel = useTranslations('navigation.items');
 
   return (
-    <nav aria-label={t('landmark')} className="grid gap-1 px-2">
+    <nav aria-label={t('landmark')} className="grid gap-1.5 px-3">
       {platformAuthority === 'SUPER_ADMIN' ? <Link href="/platform/schools" className="px-3 py-2 text-sm underline" onClick={onNavigate}>{itemLabel('platformSchools')}</Link> : null}
       {visibleNavigationItems(role).map((item) => {
         const active = isActiveNavigationPath(pathname, item.href);
@@ -28,12 +28,12 @@ export function NavigationLinks({ role, platformAuthority, collapsed = false, on
             aria-current={active ? 'page' : undefined}
             title={collapsed ? label : undefined}
             className={cn(
-              'flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
-              active && 'bg-accent text-accent-foreground',
+              'flex min-h-11 items-center gap-3 rounded-md border border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus-visible:ring-inset motion-reduce:transition-none',
+              active && 'border-primary/20 bg-accent font-semibold text-accent-foreground shadow-sm hover:bg-accent hover:text-accent-foreground',
               collapsed && 'justify-center px-2',
             )}
           >
-            <Icon className="size-5 shrink-0" aria-hidden="true" />
+            <Icon className="size-[1.125rem] shrink-0" strokeWidth={1.75} aria-hidden="true" />
             {collapsed ? <span className="sr-only">{label}</span> : <span>{label}</span>}
           </Link>
         );

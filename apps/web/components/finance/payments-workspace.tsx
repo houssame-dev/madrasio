@@ -1,4 +1,5 @@
 'use client';
+import { FinanceTable } from './presentation';
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
@@ -15,6 +16,7 @@ type Detail = Awaited<ReturnType<typeof paymentDetail>>;
 interface StudentOption { id: string; firstName: string; lastName: string }
 
 export function PaymentsWorkspace({ schoolId, timezone, currency, initialStudentId = '' }: { schoolId: string; timezone: string; currency: string; initialStudentId?: string }) {
+  const ui = useTranslations('financeUi');
   const common = useTranslations('finance'), t = useTranslations('financePayments'), locale = useLocale(), cache = useQueryClient();
   const [studentId, setStudentId] = useState(initialStudentId), [search, setSearch] = useState(''), [amount, setAmount] = useState('');
   const [method, setMethod] = useState<'CASH' | 'BANK_TRANSFER' | 'CHEQUE'>('CASH'), [date, setDate] = useState(schoolToday(timezone)), [reference, setReference] = useState('');
@@ -64,13 +66,14 @@ export function PaymentsWorkspace({ schoolId, timezone, currency, initialStudent
   }
   const p = detail.data?.data;
   return <section className="space-y-5" aria-label={t('title')} aria-busy={mutation.isPending}>
-    <h2 className="text-xl font-semibold">{t('title')}</h2><p>{t('notice')}</p>
-    {message ? <p role={message === 'success' ? 'status' : 'alert'}>{t(message)}</p> : null}
-    <Field label={t('search')} htmlFor="payment-search"><input id="payment-search" className={inputClassName} value={search} onChange={e => setSearch(e.target.value)} /></Field>
+    <h2 className="text-xl font-semibold">{t('title')}</h2><p className="text-sm text-muted-foreground">{t('notice')}</p>
+    {message ? <p className="rounded-lg border bg-card p-4" role={message === 'success' ? 'status' : 'alert'}>{t(message)}</p> : null}
+    <div className="grid min-w-0 gap-3 sm:grid-cols-2"><Field label={t('search')} htmlFor="payment-search"><input id="payment-search" className={inputClassName} value={search} onChange={e => setSearch(e.target.value)} /></Field>
     {students.isError ? <p role="alert">{t('error')}<Button onClick={() => void students.refetch()}>{t('reload')}</Button></p> : null}
     <Field label={t('student')} htmlFor="payment-student"><select id="payment-student" className={inputClassName} disabled={mutation.isPending} value={studentId} onChange={e => { setStudentId(e.target.value); setPage(1); setValues({}); setConfirmed(false); setDetailId(''); setReason(''); setReverseConfirmed(false); setMessage(null); }}><option value="">{t('select')}</option>{studentId && options.data?.data.student && !students.data?.data.some(s => s.id === studentId) ? <option value={studentId}>{options.data.data.student.firstName} {options.data.data.student.lastName}</option> : null}{students.data?.data.map(s => <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>)}</select></Field>
-    <form className="min-w-0 space-y-4 rounded-lg border p-4" onSubmit={e => { e.preventDefault(); void save(); }}>
-      <fieldset disabled={mutation.isPending} className="min-w-0 space-y-4"><div className="grid gap-3 sm:grid-cols-2">
+    </div><p className="text-sm text-muted-foreground">{ui('paymentContext')}</p>
+    <form className="min-w-0 space-y-4 rounded-lg border bg-card p-4" onSubmit={e => { e.preventDefault(); void save(); }}>
+      <fieldset disabled={mutation.isPending || !studentId} className="min-w-0 space-y-4"><legend className="mb-3 w-full min-w-0 font-semibold"><bdi className="block break-words">{options.data?.data.student?.firstName ? `${options.data.data.student.firstName} ${options.data.data.student.lastName}` : t('student')}</bdi> · <bdi>{currency}</bdi></legend><div className="grid gap-3 sm:grid-cols-2">
         <Field label={t('amount')} htmlFor="payment-amount" required><input id="payment-amount" className={inputClassName} dir="ltr" inputMode="decimal" required value={amount} onChange={e => { setAmount(e.target.value); setConfirmed(false); }} /></Field>
         <Field label={t('method')} htmlFor="payment-method"><select id="payment-method" className={inputClassName} value={method} onChange={e => { const v = e.target.value; if (v === 'CASH' || v === 'BANK_TRANSFER' || v === 'CHEQUE') setMethod(v); setConfirmed(false); }}>{(['CASH', 'BANK_TRANSFER', 'CHEQUE'] as const).map(v => <option key={v} value={v}>{t(v)}</option>)}</select></Field>
         <Field label={t('receivedOn')} htmlFor="payment-date" required><input id="payment-date" type="date" dir="ltr" min="1900-01-01" max={schoolToday(timezone)} required className={inputClassName} value={date} onChange={e => { setDate(e.target.value); setConfirmed(false); }} /></Field>
@@ -83,16 +86,18 @@ export function PaymentsWorkspace({ schoolId, timezone, currency, initialStudent
         setValues(suggested); setConfirmed(false);
       }}>{t('suggest')}</Button>
       {options.data?.data.hasMore ? <p>{t('allocationLimit')}</p> : null}
-      <div className="overflow-x-auto"><table className="w-full text-sm"><caption className="text-start">{t('allocation')}</caption><thead><tr>{(['fee', 'period', 'dueDate', 'remaining', 'allocated'] as const).map(k => <th className="p-2 text-start" key={k}>{t(k)}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id}><td className="p-2" dir="auto">{row.feeName}</td><td className="p-2"><bdi>{row.period === 'once' ? common('once') : row.period}</bdi></td><td className="p-2"><bdi>{row.dueDate}</bdi></td><td className="p-2">{money(balance(row))}</td><td className="p-2"><input className={`${inputClassName} min-w-24`} aria-label={`${t('allocated')} ${row.feeName} ${row.period}`} dir="ltr" inputMode="decimal" value={values[row.id] ?? ''} onChange={e => { setValues({ ...values, [row.id]: e.target.value }); setConfirmed(false); }} /></td></tr>)}</tbody></table></div>
-      <p>{t('total')}: {money(allocated)} · {t('difference')}: {money(received - allocated)}</p>
+      <h3 className="font-semibold">{t('allocation')}</h3><p className="text-sm text-muted-foreground" id="payment-allocation-hint">{ui('allocationHint')}</p>
+      <FinanceTable caption={t('allocation')} columns={(['fee', 'period', 'dueDate', 'remaining', 'allocated'] as const).map(k => t(k))} rows={rows.map(row => ({ id: row.id, cells: [<bdi key="fee">{row.feeName}</bdi>, <bdi key="period">{row.period === 'once' ? common('once') : row.period}</bdi>, <bdi key="date">{row.dueDate}</bdi>, money(balance(row)), <input key="amount" className={inputClassName} aria-label={`${t('allocated')} ${row.feeName} ${row.period}`} aria-describedby="payment-allocation-hint" dir="ltr" inputMode="decimal" value={values[row.id] ?? ''} onChange={e => { setValues({ ...values, [row.id]: e.target.value }); setConfirmed(false); }} />] }))} />
+      {studentId && options.isSuccess && !rows.length ? <p className="rounded-md bg-muted p-3">{common('empty')}</p> : null}
+      <dl className="grid gap-3 rounded-lg bg-muted p-3 sm:grid-cols-3">{[[t('amount'), received], [t('total'), allocated], [t('difference'), received - allocated]].map(([label, value]) => <div key={label}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="break-words font-semibold tabular-nums">{money(Number(value))}</dd></div>)}</dl>
       {invalid ? <p role="alert">{t('invalid')}</p> : null}
       <label className="flex min-h-10 items-center gap-2"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />{t('confirm')}</label>
-      <Button disabled={!ready}>{t('record')}</Button></fieldset>
+      <Button disabled={!ready || mutation.isPending}>{mutation.isPending ? ui('saving') : t('record')}</Button></fieldset>
     </form>
     <h2 className="text-xl font-semibold">{t('history')}</h2>
-    {history.isPending ? <p role="status">{t('loading')}</p> : history.isError ? <p role="alert">{t('error')}<Button onClick={() => void history.refetch()}>{t('reload')}</Button></p> : !history.data.data.items.length ? <p>{t('empty')}</p> : history.data.data.items.map(({ payment, reversal }) => <article key={payment.id} className="space-y-2 rounded-md border p-3"><p dir="auto">{payment.studentName} · {money(payment.amountCents, payment.currency)} · {t(reversal ? 'REVERSED' : 'RECORDED')}</p><p><bdi className="break-all">{payment.receiptReference}</bdi> · <bdi>{payment.receivedOn}</bdi> · {t(payment.method)}</p><Button variant="outline" onClick={() => { setDetailId(payment.id); setReason(''); setReverseConfirmed(false); }}>{t('receipt')}</Button></article>)}
+    {history.isPending ? <p role="status">{t('loading')}</p> : history.isError ? <p role="alert">{t('error')}<Button onClick={() => void history.refetch()}>{t('reload')}</Button></p> : !history.data.data.items.length ? <p>{t('empty')}</p> : history.data.data.items.map(({ payment, reversal }) => <article key={payment.id} className="space-y-2 min-w-0 rounded-md border bg-card p-3"><div className="flex flex-wrap items-start justify-between gap-2"><h3 className="min-w-0 break-words font-semibold" dir="auto">{payment.studentName}</h3><span className="rounded-md border bg-muted px-2 py-1 text-xs font-semibold">{t(reversal ? 'REVERSED' : 'RECORDED')}</span></div><p className="text-xl font-semibold tabular-nums">{money(payment.amountCents, payment.currency)}</p><p><bdi className="break-all">{payment.receiptReference}</bdi> · <bdi>{payment.receivedOn}</bdi> · {t(payment.method)}</p><Button variant="outline" onClick={() => { setDetailId(payment.id); setReason(''); setReverseConfirmed(false); }}>{t('receipt')}</Button></article>)}
     <div className="flex gap-2"><Button variant="outline" disabled={page <= 1} onClick={() => setPage(v => v - 1)}>{t('previous')}</Button><Button variant="outline" disabled={page * 50 >= (history.data?.data.total ?? 0)} onClick={() => setPage(v => v + 1)}>{t('next')}</Button></div>
-    {detailId ? <section className="space-y-3 rounded-lg border p-4" aria-label={t('receipt')}>
+    {detailId ? <section className="space-y-3 rounded-lg border bg-card p-4" aria-label={t('receipt')}>
       {detail.isPending ? <p role="status">{t('loading')}</p> : detail.isError ? <p role="alert">{t('error')}<Button onClick={() => void detail.refetch()}>{t('reload')}</Button></p> : p ? <>
         <h3 className="font-semibold break-all">{p.payment.receiptReference}</h3><p>{t(p.reversal ? 'REVERSED' : 'RECORDED')} · {money(p.payment.amountCents, p.payment.currency)}</p>
         <p dir="auto">{p.payment.studentName}</p><p>{t(p.payment.method)} · <bdi>{p.payment.receivedOn}</bdi></p>

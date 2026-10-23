@@ -5,6 +5,7 @@ import { Bell, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useAppContext } from '@/components/app/app-context';
+import { DashboardActions } from '@/components/dashboard/dashboard-actions';
 import { ChildCard } from '@/components/parent/child-card';
 import { ApiErrorState, EmptyState, InlineLoading } from '@/components/ui/states';
 import { notificationsApi } from '@/lib/frontend/notifications/api';
@@ -35,8 +36,9 @@ export function ParentDashboard() {
   if (children.length === 0) return <div className="mx-auto max-w-7xl space-y-6">{header}<EmptyState title={t.noChildren} description={t.noChildrenDescription} action={<Link className={actionClass} href="/notifications"><Bell className="size-4" aria-hidden="true" />{t.notifications}</Link>} /></div>;
   const unreadCount = unread.data?.count;
   return <div className="mx-auto max-w-7xl space-y-8">{header}
-    <section className="grid gap-3 sm:grid-cols-2" aria-label={t.dashboardOverview}><CountCard label={t.relatedChildren} value={children.length} icon={<GraduationCap className="size-5" />} /><CountCard label={t.unreadNotifications} value={unread.isError || unreadCount === undefined ? '—' : unreadCount} icon={<Bell className="size-5" />} /></section>
-    <section className="space-y-4" aria-labelledby="parent-dashboard-children"><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 id="parent-dashboard-children" className="text-xl font-semibold">{t.myChildren}</h2><p className="mt-1 text-sm text-muted-foreground">{t.childrenDescription}</p></div><Link className={actionClass} href="/children">{t.viewAllChildren}</Link></div><div className="grid gap-4 sm:grid-cols-2">{children.map((child) => <ChildCard child={child} key={child.id} />)}</div></section>
-    <Link href="/notifications" className="block rounded-lg border bg-card p-4 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="flex items-center gap-2 font-medium"><Bell className="size-4" aria-hidden="true" />{t.notifications}</span><span className="mt-2 block text-sm text-muted-foreground">{t.notificationsDescription(unreadCount)}</span></Link>
+    <section className="grid grid-cols-2 gap-3" aria-label={t.dashboardOverview}><CountCard label={t.relatedChildren} value={children.length} icon={<GraduationCap className="size-5" />} /><CountCard label={t.unreadNotifications} value={unread.isError || unreadCount === undefined ? '—' : unreadCount} icon={<Bell className="size-5" />} /></section>
+    <section className="space-y-4" aria-labelledby="parent-dashboard-children"><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 id="parent-dashboard-children" className="text-xl font-semibold">{t.myChildren}</h2><p className="mt-1 text-sm text-muted-foreground">{t.childrenDescription}</p></div><Link className={actionClass} href="/children">{t.viewAllChildren}</Link></div><div className="grid gap-4 sm:grid-cols-2">{children.map((child) => <ChildCard child={child} key={child.id} showResults />)}</div></section>
+
+    <DashboardActions workflows="family" />
   </div>;
 }

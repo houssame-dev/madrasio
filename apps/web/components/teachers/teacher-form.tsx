@@ -30,7 +30,7 @@ export function TeacherForm({ initial, onCancel, onSaved }: { initial?: TeacherD
     onError: (value) => { if (!mapTeacherValidation(value, form.setError)) setError(text(teacherErrorMessage(value))); },
   });
   return <form className="space-y-4" noValidate onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
-    {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}
+    {error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}
     <div className="grid gap-4 sm:grid-cols-2">
       <Field required label={t.firstName} htmlFor="teacher-first-name" error={text(form.formState.errors.firstName?.message)}><input id="teacher-first-name" dir="auto" className={inputClassName} aria-invalid={!!form.formState.errors.firstName} {...form.register('firstName')} /></Field>
       <Field required label={t.lastName} htmlFor="teacher-last-name" error={text(form.formState.errors.lastName?.message)}><input id="teacher-last-name" dir="auto" className={inputClassName} aria-invalid={!!form.formState.errors.lastName} {...form.register('lastName')} /></Field>

@@ -37,7 +37,7 @@ export function AssessmentForm({ gradebookId, period, initial, onCancel, onSaved
     if (values.assessmentDate && (values.assessmentDate < period.startDate || values.assessmentDate > period.endDate)) { form.setError('assessmentDate', { message: t.dateHint(period.startDate, period.endDate) }); return; }
     mutation.mutate(values);
   })}>
-    {error ? <InlineFeedback kind="error">{error}</InlineFeedback> : null}
+    {error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}
     <Field label={t.titleField} htmlFor="assessment-title" error={text(form.formState.errors.title?.message)}><input id="assessment-title" className={inputClassName} aria-invalid={!!form.formState.errors.title} {...form.register('title')} /></Field>
     <Field label={t.type} htmlFor="assessment-type" error={text(form.formState.errors.assessmentType?.message)}><select id="assessment-type" className={selectClassName} {...form.register('assessmentType')}>{assessmentTypes.map((value) => <option key={value} value={value}>{t.typeLabels[value]}</option>)}</select></Field>
     <div className="grid gap-4 sm:grid-cols-2"><Field label={t.maximumScore} htmlFor="assessment-maximum" error={text(form.formState.errors.maximumScore?.message)} hint={t.decimalHint}><input id="assessment-maximum" type="text" inputMode="decimal" dir="ltr" className={inputClassName} aria-invalid={!!form.formState.errors.maximumScore} {...form.register('maximumScore')} /></Field><Field label={t.weight} htmlFor="assessment-weight" error={text(form.formState.errors.weight?.message)} hint={t.weightHint}><input id="assessment-weight" type="text" inputMode="decimal" dir="ltr" className={inputClassName} aria-invalid={!!form.formState.errors.weight} {...form.register('weight')} /></Field></div>
