@@ -60,7 +60,8 @@ describe('Parent portal dashboard and children', () => {
     expect(within(screen.getByText('Related children').closest('article')!).getByText('1')).toBeInTheDocument();
     expect(within(screen.getByText('Unread notifications').closest('article')!).getByText('5')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Notifications/ })).toHaveAttribute('href', '/notifications');
-    expect(screen.queryByText(/Take attendance|Open gradebooks|Announcements/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^Announcements/ })).toHaveAttribute('href', '/announcements/inbox');
+    expect(screen.queryByText(/Take attendance|Open gradebooks/)).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.map((call) => String(call[0])).sort()).toEqual(['/api/v1/me/parent-profiles', '/api/v1/notifications/unread-count']);
   });
 

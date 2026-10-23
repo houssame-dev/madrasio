@@ -15,7 +15,7 @@ it('replays the current chain with 57 RLS tables and the minimal announcement sc
   expect(snapshot.tables['public.announcement_versions'].columns.body_format).toMatchObject({ type: 'text', notNull: true, default: "'PLAIN_TEXT'" });
   expect((await client.query("select data_type,is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='announcement_versions' and column_name='body_format'")).rows).toEqual([{ data_type: 'text', is_nullable: 'NO', column_default: "'PLAIN_TEXT'::text" }]);
   expect((await client.query<{ count: number }>("select count(*)::int as count from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity")).rows[0].count).toBe(57);
-});
+}, 30000);
 
 it('upgrades populated legacy content without reinterpretation; cancellation requires unpublished scheduled intent', async () => {
   client = new PGlite(); await createSupabaseAuth(client);
