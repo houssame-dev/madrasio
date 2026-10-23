@@ -26,6 +26,7 @@ export interface NavigationItem {
   icon: LucideIcon;
   permission?: Permission;
   roles?: readonly Role[];
+  hrefByRole?: Partial<Record<Role, string>>;
 }
 
 const ADMIN_ROLES = ['SCHOOL_ADMIN', 'SUPER_ADMIN'] as const satisfies readonly Role[];
@@ -49,8 +50,7 @@ export const navigationItems: readonly LocalizedNavigationItem[] = [
   { label: copy.results, labelKey: 'results', href: '/results', icon: ChartNoAxesCombined, permission: 'grades.read', roles: STAFF_ROLES },
   { label: copy.attendance, labelKey: 'attendance', href: '/attendance', icon: CalendarCheck, permission: 'attendance.read', roles: STAFF_ROLES },
   { label: copy.homework, labelKey: 'homework', href: '/homework', icon: BookOpen, permission: 'homework.read', roles: STAFF_ROLES },
-  { label: copy.announcements, labelKey: 'announcements', href: '/announcements', icon: Megaphone, permission: 'announcements.read', roles: STAFF_ROLES },
-  { label: 'School announcements', labelKey: 'schoolAnnouncements', href: '/announcements/inbox', icon: Megaphone, permission: 'announcements.read', roles: ['PARENT', 'TEACHER'] },
+  { label: copy.announcements, labelKey: 'announcements', href: '/announcements', icon: Megaphone, permission: 'announcements.read', roles: [...STAFF_ROLES, 'PARENT'], hrefByRole: { PARENT: '/announcements/inbox' } },
   { label: copy.notifications, labelKey: 'notifications', href: '/notifications', icon: Bell, permission: 'notifications.read' },
 ] as const;
 
@@ -60,10 +60,10 @@ export function isNavigationItemVisible(item: NavigationItem, role: Role): boole
 }
 
 export function visibleNavigationItems(role: Role): LocalizedNavigationItem[] {
-  return navigationItems.filter((item) => isNavigationItemVisible(item, role));
+  return navigationItems.filter((item) => isNavigationItemVisible(item, role))
+    .map((item) => ({ ...item, href: item.hrefByRole?.[role] ?? item.href }));
 }
 
 export function isActiveNavigationPath(pathname: string, href: string): boolean {
-  if (href === '/announcements' && pathname.startsWith('/announcements/inbox')) return false;
   return pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
 }

@@ -44,10 +44,10 @@ describe('role-aware navigation', () => {
      'Dashboard',
      'Timetable',
      'My Children',
-     'School announcements',
+     'Announcements',
      'Notifications',
    ]);
-    expect(labels).not.toEqual(expect.arrayContaining(['Students', 'Teachers', 'Parents', 'Academic Structure', 'Grades', 'Results', 'Attendance', 'Homework', 'Announcements']));
+    expect(labels).not.toEqual(expect.arrayContaining(['Students', 'Teachers', 'Parents', 'Academic Structure', 'Grades', 'Results', 'Attendance', 'Homework']));
   });
 
   it('marks the exact active route', () => {
@@ -68,6 +68,31 @@ describe('role-aware navigation', () => {
 });
 
 describe('localized navigation presentation', () => {
+  it.each(['en', 'fr', 'ar'] as const)('unifies Announcements destinations and nested active states in %s', (locale) => {
+    const label = getCatalog(locale).navigation.items.announcements;
+    for (const role of ['SCHOOL_ADMIN', 'TEACHER', 'PARENT'] as const) {
+      const href = role === 'PARENT' ? '/announcements/inbox' : '/announcements';
+      expect(visibleNavigationItems(role).filter(item => item.labelKey === 'announcements')).toHaveLength(1);
+      for (const path of role === 'PARENT'
+        ? ['/announcements/inbox', '/announcements/inbox/publication-id']
+        : ['/announcements', '/announcements/announcement-id', '/announcements/inbox', '/announcements/inbox/publication-id']) {
+        for (const collapsed of [false, true]) {
+          navigation.pathname = path;
+          const onNavigate = vi.fn();
+          const view = renderNavigation(<NavigationLinks role={role} collapsed={collapsed} onNavigate={onNavigate} />, locale);
+          const links = screen.getAllByRole('link').filter(link => link.getAttribute('href')?.startsWith('/announcements'));
+          expect(links).toHaveLength(1);
+          const link = screen.getByRole('link', { name: label });
+          expect(link).toHaveAttribute('href', href);
+          expect(link).toHaveAttribute('aria-current', 'page');
+          link.click();
+          expect(onNavigate).toHaveBeenCalledOnce();
+          view.unmount();
+        }
+      }
+    }
+  });
+
   it.each([
     ['en', 'Grades', 'Results'],
     ['fr', 'Notes', 'Résultats'],

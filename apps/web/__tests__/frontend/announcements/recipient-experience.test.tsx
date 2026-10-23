@@ -35,7 +35,7 @@ describe('recipient announcement journey', () => {
   });
 
   it.each(['PARENT', 'TEACHER'] as const)('offers ordinary %s inbox navigation, paging and publication links without author controls', async (role) => {
-    expect(visibleNavigationItems(role)).toContainEqual(expect.objectContaining({ href: '/announcements/inbox' }));
+    expect(visibleNavigationItems(role)).toContainEqual(expect.objectContaining({ href: role === 'PARENT' ? '/announcements/inbox' : '/announcements', labelKey: 'announcements' }));
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const page = new URL(String(input), 'http://local').searchParams.get('page');
       return Response.json({ data: [{ ...published, title: page === '2' ? 'Next page notice' : published.title }], meta: { page: Number(page), pageSize: 20, total: 21 } });
@@ -57,7 +57,7 @@ describe('recipient announcement journey', () => {
     expect(screen.getByText(/Content v3/)).toHaveTextContent('2026-06-15 12:00 (America/New_York)');
     expect(container.querySelector('strong')).toHaveTextContent('Safe notice');
     expect(container.querySelector('script')).toBeNull();
-    expect(screen.getByRole('link', { name: 'Back to School announcements' })).toHaveAttribute('href', '/announcements/inbox');
+    expect(screen.getByRole('link', { name: 'Back to Announcements' })).toHaveAttribute('href', '/announcements/inbox');
   });
   it('does not reinterpret legacy HTML-looking plain text', () => {
     const { container } = render(<AnnouncementBody body="<img src=x onerror=attack()>" />);

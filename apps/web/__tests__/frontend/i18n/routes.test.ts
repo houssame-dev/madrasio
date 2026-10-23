@@ -7,10 +7,10 @@ describe('unprefixed application routing', () => {
   it('preserves existing navigation paths', () => {
     expect(navigationItems.map((item) => item.href)).toEqual([
       '/dashboard', '/finance', '/timetable', '/academic', '/students', '/children', '/teachers', '/parents',
-      '/grades', '/results', '/attendance', '/homework', '/announcements', '/announcements/inbox', '/notifications',
+      '/grades', '/results', '/attendance', '/homework', '/announcements', '/notifications',
     ]);
     expect(isActiveNavigationPath('/students/student-id', '/students')).toBe(true);
-    expect(isActiveNavigationPath('/announcements/inbox', '/announcements')).toBe(false);
+    expect(isActiveNavigationPath('/announcements/inbox', '/announcements')).toBe(true);
   });
 
   it.each(['/grades', '/grades/gradebook-id', '/grades/configuration'])('keeps %s in Grades only', (path) => {
@@ -22,6 +22,11 @@ describe('unprefixed application routing', () => {
     expect(isActiveNavigationPath('/results', '/results')).toBe(true);
     expect(isActiveNavigationPath('/results', '/grades')).toBe(false);
     expect(isActiveNavigationPath('/results-other', '/results')).toBe(false);
+  });
+
+  it('does not highlight Announcements for unrelated prefix lookalikes', () => {
+    expect(isActiveNavigationPath('/announcements-other', '/announcements')).toBe(false);
+    expect(isActiveNavigationPath('/announcements/inbox-other', '/announcements/inbox')).toBe(false);
   });
 
   it('retains auth/platform entries and adds no locale segments or middleware', () => {

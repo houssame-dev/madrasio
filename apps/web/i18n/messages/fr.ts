@@ -1089,6 +1089,7 @@ const messages = {
     "parentTransition": "Ce changement de statut du parent n’est pas disponible depuis son état actuel."
   },
   "announcementUi": {
+    "inbox": "Boîte de réception",
     "description": "Créer des annonces versionnées, cibler les publics autorisés et publier dans le périmètre de l’établissement.",
     "teacherDescription": "Seules vos annonces dont les dernières cibles restent dans vos affectations de classe actives sont affichées.",
     "create": "Créer une annonce",

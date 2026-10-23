@@ -70,6 +70,7 @@ afterEach(() => {
 function announcementFetch() {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
+    if (url.startsWith('/api/v1/teachers?')) return Response.json(a.page([], 1, 100));
     if (url.endsWith('/attachments')) return Response.json({ data: [] });
     if (url.startsWith('/api/v1/me/announcements/' + a.publicationId)) return Response.json({ data: recipient });
     if (url.startsWith('/api/v1/me/announcements?')) return Response.json(a.page([recipient]));
@@ -100,6 +101,20 @@ function platformReads() {
 }
 
 describe.each(SUPPORTED_LOCALES)('%s announcement, notification and platform source', (locale) => {
+  it('offers Teacher Inbox and return links even without active authoring assignments', async () => {
+    announcementFetch(); const t = translator(locale);
+    const management = view(<AnnouncementsWorkspace />, locale, 'TEACHER');
+    await screen.findByText(a.version.title);
+    const inbox = screen.getByRole('link', { name: t('announcementUi.inbox') });
+    expect(inbox).toHaveAttribute('href', '/announcements/inbox');
+    expect(inbox).toHaveClass('focus-visible:ring-2');
+    expect(screen.queryByRole('button', { name: t('announcementUi.create') })).not.toBeInTheDocument();
+    management.unmount(); navigation.path = '/announcements/inbox';
+    view(<RecipientAnnouncements />, locale, 'TEACHER');
+    expect(await screen.findByRole('link', { name: recipient.title })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t('announcementUi.inbox') })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: t('announcementUi.back') })).toHaveAttribute('href', '/announcements');
+  });
   it('/announcements translates UI but retains saved text and filter machine values', async () => {
     announcementFetch(); const t = translator(locale);
     const result = view(<AnnouncementsWorkspace />, locale);
@@ -127,7 +142,9 @@ describe.each(SUPPORTED_LOCALES)('%s announcement, notification and platform sou
     view(<RecipientAnnouncements />, locale, 'PARENT');
     expect(await screen.findByRole('link', { name: recipient.title })).toHaveAttribute('href', '/announcements/inbox/' + a.publicationId);
     expect(screen.getByText(t('deliveryUi.publicationCaption', { publication: 2, version: 1 }), { exact: false })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t('navigation.items.schoolAnnouncements') })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t('navigation.items.announcements') })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: t('announcementUi.back') })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: t('announcementUi.inbox') })).not.toBeInTheDocument();
   });
   it('/announcements/inbox/[id] retains exact historical content and timestamp', async () => {
     announcementFetch(); const t = translator(locale);

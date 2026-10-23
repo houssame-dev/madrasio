@@ -70,6 +70,9 @@ it.each(['en', 'fr', 'ar'] as const)('keeps Parent Results child-scoped and adds
   });
   show('PARENT', locale);
   await screen.findByRole('heading', { name: 'Nora Test' });
+  const announcements = screen.getByRole('link', { name: new RegExp('^' + getCatalog(locale).navigation.items.announcements) });
+  expect(announcements).toHaveAttribute('href', '/announcements/inbox');
+  expect(screen.queryByRole('link', { name: new RegExp('^' + getCatalog(locale).navigation.items.schoolAnnouncements) })).not.toBeInTheDocument();
   expect(screen.getAllByRole('link').map(link => link.getAttribute('href'))).toEqual([
     '/children', '/children/child-one', '/children/child-one#results', '/timetable', '/announcements/inbox', '/notifications',
   ]);

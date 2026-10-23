@@ -1087,6 +1087,7 @@ const messages = {
     "parentTransition": "That Parent lifecycle change is not available from the current status."
   },
   "announcementUi": {
+    "inbox": "Inbox",
     "description": "Create versioned announcements, target approved audiences, and publish within authoritative School scope.",
     "teacherDescription": "Only announcements you authored and whose latest targets remain within your active Class assignments are returned.",
     "create": "Create Announcement",

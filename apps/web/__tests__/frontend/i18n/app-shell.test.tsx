@@ -61,6 +61,29 @@ const labels: ShellLabels[] = [
 ];
 
 describe('localized application shell', () => {
+  it.each(labels)('keeps one localized Announcements entry in desktop and mobile navigation in %s', async (locale, open) => {
+    const user = userEvent.setup();
+    const label = getCatalog(locale).navigation.items.announcements;
+    for (const role of ['SCHOOL_ADMIN', 'TEACHER', 'PARENT'] as const) {
+      const view = renderShell(locale, schoolContext(role));
+      const href = role === 'PARENT' ? '/announcements/inbox' : '/announcements';
+      const desktop = within(screen.getByTestId('desktop-sidebar'));
+      expect(desktop.getAllByRole('link', { name: label })).toHaveLength(1);
+      expect(desktop.getByRole('link', { name: label })).toHaveAttribute('href', href);
+      const trigger = screen.getByRole('button', { name: open });
+      await user.click(trigger);
+      const dialog = within(screen.getByRole('dialog'));
+      expect(dialog.getAllByRole('link', { name: label })).toHaveLength(1);
+      const destination = dialog.getByRole('link', { name: label });
+      expect(destination).toHaveAttribute('href', href);
+      destination.addEventListener('click', event => event.preventDefault(), { once: true });
+      await user.click(destination);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(trigger).toHaveFocus();
+      view.unmount();
+    }
+  });
+
   it.each(labels)('preserves %s sidebar and mobile control behavior', async (
     locale, open, close, collapse, expand, currentSchool, superAdmin, schoolAdmin,
     teacher, parent, landmark,
