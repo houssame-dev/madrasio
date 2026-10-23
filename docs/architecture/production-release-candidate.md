@@ -176,7 +176,9 @@ secret. It idempotently manages only:
 - Vault names `sms_production_app_origin` and `sms_production_cron_secret`;
 - Cron jobs `sms-production-process-scheduled-announcements` and
   `sms-production-process-outbox`;
-- one-minute authenticated HTTP invocations of the existing internal routes.
+- five-minute (`*/5 * * * *`) authenticated HTTP invocations of the existing internal routes, effective from the October 23, 2026 polling optimization (original deployment used one-minute polling).
+
+The two Production jobs remain independent of STAGING, and the slower cadence may delay a scheduled publication followed by Outbox notification processing by up to roughly two five-minute cycles.
 
 Cron SQL contains only Vault lookups and HTTP invocation. It does not publish,
 resolve recipients, mutate Outbox business state, or create Notifications.

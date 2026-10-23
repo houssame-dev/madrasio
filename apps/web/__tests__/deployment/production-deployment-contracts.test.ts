@@ -12,6 +12,7 @@ import {
   parseProductionOrigin,
   PRODUCTION_CONFIRMATION,
   PRODUCTION_CRON_JOBS,
+  PRODUCTION_CRON_SCHEDULE,
   PRODUCTION_VAULT_SECRET_NAMES,
 } from '@/scripts/deployment/production-contracts';
 import {
@@ -157,6 +158,7 @@ describe('Production deployment target contracts', () => {
 
   it('uses Production-only Vault/job names and never embeds a secret', () => {
     expect(PRODUCTION_CRON_JOBS).toHaveLength(2);
+    expect(PRODUCTION_CRON_SCHEDULE).toBe('*/5 * * * *');
     for (const job of PRODUCTION_CRON_JOBS) {
       const command = buildProductionCronCommand(job.path);
       expect(command).toContain(PRODUCTION_VAULT_SECRET_NAMES.origin);

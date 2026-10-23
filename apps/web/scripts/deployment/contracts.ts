@@ -5,7 +5,7 @@ export const EXPECTED_MIGRATION_COUNT = 31;
 export const EXPECTED_TABLE_COUNT = 57;
 export const EXPECTED_LATEST_MIGRATION = '0030_attendance-sessions';
 export const STAGING_VERCEL_PROJECT = 'madrasio-staging';
-export const CRON_SCHEDULE = '* * * * *';
+export const CRON_SCHEDULE = '*/5 * * * *';
 
 export const CRON_JOBS = [
   {
