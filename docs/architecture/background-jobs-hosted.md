@@ -179,7 +179,8 @@ registration and hosted invocation remain acceptance steps and must not occur
 until the stable Vercel origin and matching server secret exist. Realtime
 delivery, exponential backoff, dead-letter
 queues, and broader observability are also outside this task. Durable database
-state and repeatable five-minute STAGING polling are sufficient for the current load; Production retains its independent one-minute cadence.
+state and repeatable five-minute polling in STAGING and Production are sufficient
+for the current load. Each environment's Cron jobs remain independently configured.
 
 Task 045 may proceed: Outbox projection, retries, concurrency, scheduled
 publication, protected routes, Parent Notification API/UI, and identity-free
