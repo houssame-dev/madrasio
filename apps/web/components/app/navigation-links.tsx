@@ -15,7 +15,7 @@ export function NavigationLinks({ role, platformAuthority, collapsed = false, on
 
   return (
     <nav aria-label={t('landmark')} className="grid gap-1.5 px-3">
-      {platformAuthority === 'SUPER_ADMIN' ? <Link href="/platform/schools" className="px-3 py-2 text-sm underline" onClick={onNavigate}>{itemLabel('platformSchools')}</Link> : null}
+      {platformAuthority === 'SUPER_ADMIN' && role !== 'SCHOOL_ADMIN' ? <Link href="/platform/schools" className="px-3 py-2 text-sm underline" onClick={onNavigate}>{itemLabel('platformSchools')}</Link> : null}
       {visibleNavigationItems(role).map((item) => {
         const active = isActiveNavigationPath(pathname, item.href);
         const Icon = item.icon;

@@ -33,8 +33,8 @@ async function unique<T>(operation: () => Promise<T>): Promise<T> {
   }
 }
 
-export async function listAcademicYears(db: AcademicStructureDb, actor: Actor, input: PageInput & StatusFilter<'PLANNED' | 'ACTIVE' | 'CLOSED' | 'ARCHIVED'>) {
-  await read(db, actor); const result = await repo.listAcademicYears(db, actor.schoolId, paging(input), input.status); return page(result.rows.map(view), result.total, input);
+export async function listAcademicYears(db: AcademicStructureDb, actor: Actor, input: PageInput & StatusFilter<'PLANNED' | 'ACTIVE' | 'CLOSED' | 'ARCHIVED'> & {search?:string}) {
+  await read(db, actor); const result = await repo.listAcademicYears(db, actor.schoolId, paging(input), input.status, input.search); return page(result.rows.map(view), result.total, input);
 }
 export async function getAcademicYear(db: AcademicStructureDb, actor: Actor, id: string) { await read(db, actor); const row = await repo.findAcademicYear(db, actor.schoolId, id); return view(row ?? notFound('Academic year')); }
 export async function createAcademicYear(db: AcademicStructureDb, actor: Actor, input: AcademicYearCreate) {

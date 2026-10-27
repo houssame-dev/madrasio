@@ -38,6 +38,7 @@
     "test:recovery": "vitest run __tests__/recovery"
   },
   "dependencies": {
+    "@base-ui/react": "^1.9.0",
     "@hookform/resolvers": "^3.9.1",
     "@school/config": "workspace:*",
     "@school/database": "workspace:*",

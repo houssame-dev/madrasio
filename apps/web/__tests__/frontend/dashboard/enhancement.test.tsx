@@ -26,18 +26,17 @@ function show(role: Role, locale: SupportedLocale, shortcutsOnly = false) {
   </NextIntlClientProvider>);
 }
 
-it.each(['en', 'fr', 'ar'] as const)('provides localized Admin workflow groups and keyboard links in %s without fetching statistics', async locale => {
-  const fetcher = vi.spyOn(globalThis, 'fetch');
+it.each(['en', 'fr', 'ar'] as const)('provides localized Admin overview and keyboard links in %s through scoped reads', async locale => {
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async input => String(input) === '/api/v1/dashboard' ? Response.json({ data: { date: '2026-10-24', timezone: 'Africa/Casablanca', years: [], academicYear: null, selectedYear: null, metrics: null, lessons: [] } }) : Response.json({data:[],meta:{total:0,page:1,pageSize:4}}));
   const view = show('SCHOOL_ADMIN', locale);
   const catalog = getCatalog(locale);
-  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(catalog.workspace.dashboardHeading);
-  expect(screen.getByRole('heading', { name: catalog.dashboardUi.planning })).toBeInTheDocument();
-  expect(screen.getByText('Africa/Casablanca')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(catalog.application.title);
+  expect(screen.getByRole('heading', { name: catalog.application.recentAnnouncements })).toBeInTheDocument();
+  expect(await screen.findByText('Africa/Casablanca')).toBeInTheDocument();
   expect(view.container.firstChild).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
   await userEvent.tab();
   expect(screen.getAllByRole('link')[0]).toHaveFocus();
-  expect(screen.getAllByRole('link')[0]).toHaveClass('focus-visible:ring-2');
-  expect(fetcher).not.toHaveBeenCalled();
+  expect(fetcher.mock.calls.every(([url]) => !String(url).includes('schoolId=') && !String(url).includes('userId='))).toBe(true);
 });
 
 it.each(['SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'SUPER_ADMIN'] as const)('never exposes a shortcut outside the existing navigation scope for %s', role => {
@@ -55,8 +54,8 @@ it.each(['en', 'fr', 'ar'] as const)('keeps Teacher tasks, scoped assignments an
   const fetcher = successfulDashboardFetch();
   show('TEACHER', locale);
   const catalog = getCatalog(locale);
-  await screen.findByRole('heading', { name: catalog.dashboardUi.dailyTasks });
-  expect(screen.getByRole('link', { name: new RegExp('^' + catalog.navigation.items.timetable) })).toHaveAttribute('href', '/timetable');
+  await screen.findByRole('heading', { name: catalog.teacherWorkspace.classes });
+  expect(screen.getAllByRole('link', { name: new RegExp('^' + catalog.navigation.items.timetable) })[0]).toHaveAttribute('href', '/timetable');
   expect(screen.getByRole('heading', { name: '1A' })).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /^Finance/ })).not.toBeInTheDocument();
   expect(fetcher.mock.calls.every(([url]) => !String(url).includes('schoolId=') && !String(url).includes('userId='))).toBe(true);
@@ -66,16 +65,14 @@ it.each(['en', 'fr', 'ar'] as const)('keeps Parent Results child-scoped and adds
   vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
     if (String(input) === '/api/v1/me/parent-profiles') return Response.json({ data: [{ parent: { id: 'parent' }, children: [{ student: { id: 'child-one', firstName: 'Nora', lastName: 'Test', studentCode: 'S1' } }] }] });
     if (String(input) === '/api/v1/notifications/unread-count') return Response.json({ data: { count: 2 } });
+    if (String(input).endsWith('/academic-years') || String(input).includes('/me/announcements') || String(input).includes('/notifications?')) return Response.json({ data: [] });
     throw new Error('Unexpected Parent dashboard request');
   });
   show('PARENT', locale);
   await screen.findByRole('heading', { name: 'Nora Test' });
-  const announcements = screen.getByRole('link', { name: new RegExp('^' + getCatalog(locale).navigation.items.announcements) });
-  expect(announcements).toHaveAttribute('href', '/announcements/inbox');
+  expect(screen.getByRole('link', { name: getCatalog(locale).parentWorkspace.profile })).toHaveAttribute('href', '/children/child-one');
+  expect(screen.getByRole('heading', { name: getCatalog(locale).parentWorkspace.announcements }).parentElement!.querySelector('a')).toHaveAttribute('href', '/announcements/inbox');
   expect(screen.queryByRole('link', { name: new RegExp('^' + getCatalog(locale).navigation.items.schoolAnnouncements) })).not.toBeInTheDocument();
-  expect(screen.getAllByRole('link').map(link => link.getAttribute('href'))).toEqual([
-    '/children', '/children/child-one', '/children/child-one#results', '/timetable', '/announcements/inbox', '/notifications',
-  ]);
   expect(screen.queryByText('Other child')).not.toBeInTheDocument();
 });
 
@@ -84,7 +81,7 @@ it('keeps cached Parent children separate for different School contexts', async 
   let activeSchool = schoolId;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async input => String(input) === '/api/v1/notifications/unread-count'
     ? Response.json({ data: { count: 0 } })
-    : Response.json({ data: [{ parent: { id: 'parent' }, children: [{ student: { id: activeSchool, firstName: activeSchool === schoolId ? 'First' : 'Second', lastName: 'Child', studentCode: null } }] }] }));
+    : String(input) !== '/api/v1/me/parent-profiles' ? Response.json({data:[]}) : Response.json({ data: [{ parent: { id: 'parent' }, children: [{ student: { id: activeSchool, firstName: activeSchool === schoolId ? 'First' : 'Second', lastName: 'Child', studentCode: null } }] }] }));
   function School({ id }: { id: string }) {
     return <NextIntlClientProvider locale="en" messages={getCatalog('en')} timeZone="UTC"><QueryClientProvider client={client}><AppContextProvider value={{ user: { id: userId }, currentSchool: { id, role: 'PARENT', timezone: 'UTC' }, memberships: [] }}><Dashboard /></AppContextProvider></QueryClientProvider></NextIntlClientProvider>;
   }

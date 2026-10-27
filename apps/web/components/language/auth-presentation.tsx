@@ -7,34 +7,100 @@ import { SetPasswordForm } from '@/components/auth/set-password-form';
 import { LanguageSelector } from './language-selector';
 import { ThemeSelector } from '@/components/theme/theme-selector';
 import { BrandMark } from '@/components/branding/brand-mark';
+import { ChevronLeft, LockKeyhole, Mail, ShieldAlert, ShieldCheck, UsersRound } from 'lucide-react';
 
 export function RecoveryPresentation() {
-  const t = useTranslations('recovery');
-  return <main className="flex min-h-screen items-center justify-center bg-background p-4">
-    <section className="w-full max-w-md space-y-4 rounded-lg border bg-card p-6" aria-labelledby="recovery-title">
-      <div className="flex flex-wrap items-center justify-end gap-3"><ThemeSelector /><LanguageSelector compact /></div>
-      <BrandMark className="h-12 w-48" priority />
-      <h1 id="recovery-title" className="text-2xl font-semibold">{t('title')}</h1>
-      <p>{t('description')}</p><RecoveryForm />
-      <Link href="/login" className="text-primary underline">{t('back')}</Link>
-    </section>
-  </main>;
+  const t = useTranslations('recoveryShowcase');
+  const shared = useTranslations('authShowcase');
+  return (
+    <main className="auth-page auth-recover">
+      <div className="auth-shell">
+        <section className="auth-welcome" aria-labelledby="recovery-title">
+          <BrandMark className="auth-brand" priority />
+          <h1 id="recovery-title">
+            <span className="recovery-desktop-title">
+              {t('heroFirst')}
+              <br />
+              {t('heroLast')}
+            </span>
+            <span className="recovery-mobile-title">{t('title')}</span>
+          </h1>
+          <p className="auth-desktop-intro">{t('heroIntro')}</p>
+          <p className="auth-mobile-intro">{t('description')}</p>
+          <ul className="auth-benefits">
+            {(
+              [
+                [Mail, 'secureTitle', 'secureBody'],
+                [ShieldCheck, 'safeTitle', 'safeBody'],
+                [UsersRound, 'learningTitle', 'learningBody'],
+              ] as const
+            ).map(([Icon, title, body]) => (
+              <li key={title}>
+                <span className="auth-benefit-icon">
+                  <Icon aria-hidden="true" />
+                </span>
+                <div>
+                  <h2>{t(title)}</h2>
+                  <p>{t(body)}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section className="auth-card" aria-label={t('title')}>
+          <header className="auth-card-heading">
+            <h2>{t('title')}</h2>
+            <p>{t('description')}</p>
+          </header>
+          <div className="auth-preferences">
+            <LanguageSelector auth label={t('language')} />
+            <ThemeSelector auth />
+          </div>
+          <RecoveryForm presentation="showcase" />
+          <div className="recovery-back">
+            <Link href="/login">
+              <ChevronLeft aria-hidden="true" />
+              {t('back')}
+            </Link>
+          </div>
+          <footer className="auth-privacy">
+            <ShieldCheck aria-hidden="true" />
+            <p>
+              {shared('privacy')}
+              <br />
+              {shared('privacyDetail')}
+            </p>
+          </footer>
+        </section>
+      </div>
+    </main>
+  );
 }
 
-/** Boolean comes from the unchanged server Auth check; no raw error is passed. */
+/** The unchanged server session check alone controls whether the form mounts. */
 export function SetPasswordPresentation({ invalid }: { invalid: boolean }) {
   const t = useTranslations('recovery');
-  const password = useTranslations('password');
-  return <main className="flex min-h-screen items-center justify-center bg-background p-4">
-    <section className="w-full max-w-md rounded-lg border bg-card p-6 shadow-sm" aria-labelledby="password-title">
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-3"><ThemeSelector /><LanguageSelector compact /></div>
-      <BrandMark className="mb-5 h-12 w-48" priority />
-      <h1 id="password-title" className="text-2xl font-semibold">{password('title')}</h1>
-      {invalid ? <div className="mt-4 space-y-4">
-        <p className="text-sm text-muted-foreground">{t('invalid')}</p>
-        <Link className="block text-sm text-primary underline" href="/auth/recover">{t('title')}</Link>
-        <Link className="text-sm font-medium text-primary underline-offset-4 hover:underline" href="/login">{t('back')}</Link>
-      </div> : <div className="mt-4"><p className="mb-4 text-sm text-muted-foreground">{t('passwordIntro')}</p><SetPasswordForm /></div>}
-    </section>
+  const visual = useTranslations('passwordShowcase');
+  const shared = useTranslations('authShowcase');
+  const controls = useTranslations('recoveryShowcase');
+  return <main className="auth-page auth-recover auth-password">
+    <div className="auth-shell">
+      <section className="auth-welcome" aria-labelledby="password-title">
+        <BrandMark className="auth-brand" priority />
+        <h1 id="password-title"><span className="recovery-desktop-title">{invalid ? visual('invalidTitle') : <>{visual('heroFirst')}<br />{visual('heroLast')}</>}</span><span className="recovery-mobile-title">{visual(invalid ? 'invalidTitle' : 'mobileTitle')}</span></h1>
+        <p className="auth-desktop-intro">{invalid ? visual('invalidHelp') : visual('description')}</p>
+        <p className="auth-mobile-intro">{invalid ? visual('invalidHelp') : visual('description')}</p>
+        <ul className="auth-benefits">
+          {([[ShieldCheck, 'secureTitle', 'secureBody'], [LockKeyhole, 'accessTitle', 'accessBody'], [UsersRound, 'schoolTitle', 'schoolBody']] as const).map(([Icon, title, body]) => <li key={title}><span className="auth-benefit-icon"><Icon aria-hidden="true" /></span><div><h2>{visual(title)}</h2><p>{visual(body)}</p></div></li>)}
+        </ul>
+      </section>
+      <section className="auth-card" aria-label={visual(invalid ? 'invalidTitle' : 'title')}>
+        <header className="auth-card-heading"><h2>{visual(invalid ? 'invalidTitle' : 'title')}</h2><p>{visual(invalid ? 'invalidHelp' : 'description')}</p></header>
+        <div className="auth-preferences"><LanguageSelector auth label={controls('language')} /><ThemeSelector auth /></div>
+        {invalid ? <div className="password-invalid"><div role="status"><ShieldAlert aria-hidden="true" /><p>{t('invalid')}</p></div><Link className="auth-submit password-recover-link" href="/auth/recover">{t('title')}</Link></div> : <SetPasswordForm presentation="showcase" />}
+        <div className="recovery-back"><Link href="/login"><ChevronLeft aria-hidden="true" />{controls('back')}</Link></div>
+        <footer className="auth-privacy"><ShieldCheck aria-hidden="true" /><p>{shared('privacy')}<br />{shared('privacyDetail')}</p></footer>
+      </section>
+    </div>
   </main>;
 }

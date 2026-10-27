@@ -1,0 +1,185 @@
+/* Communication content only. Shared shell, themes and other workspaces retain their rules. */
+.cm-workspace {
+  min-width: 0;
+  max-width: 1600px;
+  margin-inline: auto;
+}
+.cm-reading {
+  max-width: 1100px;
+}
+.cm-workspace h1 {
+  font-size: clamp(25px, 2.2vw, 34px);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+.cm-workspace h2 {
+  font-size: 19px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.cm-workspace h3 {
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+[dir='rtl'] .cm-workspace h1 {
+  line-height: 1.5;
+  letter-spacing: normal;
+}
+.cm-workspace :is(button, a) {
+  min-height: 42px;
+  height: auto;
+  white-space: normal;
+}
+.cm-workspace :is(input, select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  background: hsl(var(--card));
+}
+.cm-workspace :is(p, li, time, label, td, th) {
+  overflow-wrap: anywhere;
+}
+.cm-workspace p {
+  line-height: 1.65;
+}
+.cm-workspace > section,
+.cm-detail > header,
+.cm-workspace article,
+.cm-workspace li.rounded-lg {
+  border-radius: 12px;
+  background-color: hsl(var(--card));
+}
+.cm-detail > section,
+.cm-detail > header {
+  padding: 20px;
+}
+.cm-workspace .cm-primary,
+.cm-form button[type='submit'] {
+  background: #fca311;
+  color: #101828;
+}
+.cm-workspace .cm-primary:hover:not(:disabled),
+.cm-form button[type='submit']:hover:not(:disabled) {
+  background: #ffb733;
+}
+.cm-context {
+  padding: 12px;
+  border-radius: 9px;
+  background: hsl(var(--muted));
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+}
+.cm-review {
+  display: grid;
+  gap: 16px;
+}
+.cm-review > section {
+  min-width: 0;
+  padding-block: 12px;
+  border-block-end: 1px solid hsl(var(--border));
+}
+.cm-review ul {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+.cm-review .cm-preview {
+  max-height: 240px;
+  overflow: auto;
+}
+.cm-workspace [type='file'] {
+  padding: 12px;
+  border: 1px dashed hsl(var(--input));
+  border-radius: 9px;
+}
+.cm-workspace [type='file']::file-selector-button {
+  margin-inline-end: 12px;
+  padding: 8px 12px;
+  border: 1px solid hsl(var(--input));
+  border-radius: 7px;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+[role='dialog']:has(.cm-workspace) {
+  max-width: 760px;
+}
+.cm-workspace :focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+@media (min-width: 1280px) {
+  .cm-detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  .cm-detail > * {
+    margin-top: 0 !important;
+    min-width: 0;
+  }
+  .cm-detail > a,
+  .cm-detail > header,
+  .cm-detail > .cm-publications {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 767px) {
+  .cm-workspace h1 {
+    font-size: 25px;
+  }
+  .cm-workspace > section,
+  .cm-detail > header {
+    padding: 16px;
+  }
+  .cm-workspace table[role='table'] tbody tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cm-workspace table[role='table'] td {
+    padding: 10px 12px;
+  }
+  .cm-workspace table[role='table'] td:first-child,
+  .cm-workspace table[role='table'] td:last-child {
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+  .cm-workspace table[role='table'] td:first-child {
+    font-weight: 600;
+  }
+  .cm-workspace table[role='table'] td:last-child :is(button, a) {
+    width: 100%;
+    justify-content: center;
+  }
+  .cm-workspace time {
+    white-space: normal;
+    flex-shrink: 1;
+  }
+}
+@media (max-width: 359px) {
+  .cm-workspace .flex.justify-end {
+    flex-direction: column;
+  }
+}
+
+@media (min-width: 1280px) {
+  .cm-detail {
+    align-items: start;
+  }
+  .cm-detail > .cm-versions,
+  .cm-detail > section:has(> .flex > .cm-primary) {
+    grid-column: 1 / -1;
+  }
+  .cm-versions > ol {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .cm-versions > ol > li {
+    margin-top: 0;
+  }
+}
+.cm-workspace button[type='submit'] {
+  background: #fca311;
+  color: #101828;
+}

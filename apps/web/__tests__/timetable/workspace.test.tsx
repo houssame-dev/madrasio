@@ -8,7 +8,7 @@ import type { Role } from '@/lib/authorization/roles';
 import { AppContextProvider } from '@/components/app/app-context';
 import { getCatalog } from '@/i18n/catalogs';
 import { TimetableWorkspace } from '@/components/timetable/workspace';
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(), useRouter: () => ({ replace: vi.fn() }) }));
 const fetcher = vi.fn<typeof fetch>(); const clients: QueryClient[] = [];
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const state = { years: [{ id: id(1), name: '2026/27', status: 'ACTIVE', startDate: '2026-09-01', endDate: '2027-07-01' }], selectedYearId: id(1), stages: [{ id: id(2), name: 'Primary', status: 'ACTIVE' }], levels: [{ id: id(3), name: 'Level 1', stageId: id(2), status: 'ACTIVE' }], rooms: [], configurations: [], loads: [], classes: [{ id: id(4), name: '1A', levelId: id(3), curriculumVersionId: id(5), status: 'ACTIVE' }], subjects: [{ id: id(6), name: 'Math', status: 'ACTIVE' }], curriculumSubjects: [{ subjectId: id(6), curriculumVersionId: id(5), status: 'ACTIVE' }], assignments: [{ assignment: { id: id(7), classId: id(4), subjectId: id(6), status: 'ACTIVE', effectiveFrom: '2026-09-01', effectiveUntil: null }, teacherFirstName: 'Amina', teacherName: 'Test', teacherStatus: 'ACTIVE' }], effective: [{ classId: id(4), configurationId: null }] };

@@ -7,7 +7,8 @@ const ThemeContext = createContext<{ theme: ThemePreference; ready: boolean; set
 export const useTheme = () => useContext(ThemeContext);
 
 function applyTheme(value: ThemePreference) {
-  const dark = value === 'dark' || value === 'system' && !!window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  const dark = value === 'dark' || value === 'midnight' || value === 'system' && !!window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme = value === 'system' ? (dark ? 'midnight' : 'light') : value;
   document.documentElement.classList.toggle('dark', dark);
   document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
 }

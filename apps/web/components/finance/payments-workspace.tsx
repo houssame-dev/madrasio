@@ -16,6 +16,7 @@ type Detail = Awaited<ReturnType<typeof paymentDetail>>;
 interface StudentOption { id: string; firstName: string; lastName: string }
 
 export function PaymentsWorkspace({ schoolId, timezone, currency, initialStudentId = '' }: { schoolId: string; timezone: string; currency: string; initialStudentId?: string }) {
+  const tuition=useTranslations('tuition'); const [reviewing,setReviewing]=useState(false);
   const ui = useTranslations('financeUi');
   const common = useTranslations('finance'), t = useTranslations('financePayments'), locale = useLocale(), cache = useQueryClient();
   const [studentId, setStudentId] = useState(initialStudentId), [search, setSearch] = useState(''), [amount, setAmount] = useState('');
@@ -43,7 +44,8 @@ export function PaymentsWorkspace({ schoolId, timezone, currency, initialStudent
       allocations.push({ chargeId, amountCents }); allocated += amountCents;
     }
   } catch { invalid = true; }
-  const ready = !!studentId && received > 0 && allocated === received && !invalid && allocations.length > 0 && confirmed && !!date && !options.isFetching;
+  const canReview = !!studentId && received > 0 && allocated === received && !invalid && allocations.length > 0 && !!date && !options.isFetching;
+  const ready = canReview && confirmed && reviewing;
   function fail(error: unknown) { setMessage(error instanceof ApiClientError && error.status === 409 ? 'conflict' : 'error'); }
   async function save() {
     if (!ready) { setMessage('invalid'); return; }
@@ -53,7 +55,7 @@ export function PaymentsWorkspace({ schoolId, timezone, currency, initialStudent
     setMessage(null);
     try {
       const result = await mutation.mutateAsync({ path: '/api/v1/finance/payments', body: { ...payload, requestKey: request.current.id } });
-      setDetailId(result.data.id); setValues({}); setAmount(''); setReference(''); setConfirmed(false); request.current = null; setMessage('success');
+      setDetailId(result.data.id); setValues({}); setAmount(''); setReference(''); setConfirmed(false); setReviewing(false); request.current = null; setMessage('success');
       await cache.invalidateQueries({ queryKey: key });
     } catch (error) { fail(error); }
   }
@@ -66,33 +68,32 @@ export function PaymentsWorkspace({ schoolId, timezone, currency, initialStudent
   }
   const p = detail.data?.data;
   return <section className="space-y-5" aria-label={t('title')} aria-busy={mutation.isPending}>
-    <h2 className="text-xl font-semibold">{t('title')}</h2><p className="text-sm text-muted-foreground">{t('notice')}</p>
+    <h2 className="text-xl font-semibold">{tuition('record')}</h2><ol className="tu-payment-steps" aria-label={tuition('record')}>{(['stepStudent','stepDetails','stepAllocation','stepReview'] as const).map((key,i)=><li key={key} aria-current={(!studentId?0:!received?1:!reviewing?2:3)===i?'step':undefined}><span>{i+1}</span>{tuition(key)}</li>)}</ol><p className="text-sm text-muted-foreground">{t('notice')}</p>
     {message ? <p className="rounded-lg border bg-card p-4" role={message === 'success' ? 'status' : 'alert'}>{t(message)}</p> : null}
     <div className="grid min-w-0 gap-3 sm:grid-cols-2"><Field label={t('search')} htmlFor="payment-search"><input id="payment-search" className={inputClassName} value={search} onChange={e => setSearch(e.target.value)} /></Field>
     {students.isError ? <p role="alert">{t('error')}<Button onClick={() => void students.refetch()}>{t('reload')}</Button></p> : null}
-    <Field label={t('student')} htmlFor="payment-student"><select id="payment-student" className={inputClassName} disabled={mutation.isPending} value={studentId} onChange={e => { setStudentId(e.target.value); setPage(1); setValues({}); setConfirmed(false); setDetailId(''); setReason(''); setReverseConfirmed(false); setMessage(null); }}><option value="">{t('select')}</option>{studentId && options.data?.data.student && !students.data?.data.some(s => s.id === studentId) ? <option value={studentId}>{options.data.data.student.firstName} {options.data.data.student.lastName}</option> : null}{students.data?.data.map(s => <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>)}</select></Field>
+    <Field label={t('student')} htmlFor="payment-student"><select id="payment-student" className={inputClassName} disabled={mutation.isPending} value={studentId} onChange={e => { setStudentId(e.target.value); setPage(1); setValues({}); setConfirmed(false); setReviewing(false); setDetailId(''); setReason(''); setReverseConfirmed(false); setMessage(null); }}><option value="">{t('select')}</option>{studentId && options.data?.data.student && !students.data?.data.some(s => s.id === studentId) ? <option value={studentId}>{options.data.data.student.firstName} {options.data.data.student.lastName}</option> : null}{students.data?.data.map(s => <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>)}</select></Field>
     </div><p className="text-sm text-muted-foreground">{ui('paymentContext')}</p>
     <form className="min-w-0 space-y-4 rounded-lg border bg-card p-4" onSubmit={e => { e.preventDefault(); void save(); }}>
       <fieldset disabled={mutation.isPending || !studentId} className="min-w-0 space-y-4"><legend className="mb-3 w-full min-w-0 font-semibold"><bdi className="block break-words">{options.data?.data.student?.firstName ? `${options.data.data.student.firstName} ${options.data.data.student.lastName}` : t('student')}</bdi> · <bdi>{currency}</bdi></legend><div className="grid gap-3 sm:grid-cols-2">
-        <Field label={t('amount')} htmlFor="payment-amount" required><input id="payment-amount" className={inputClassName} dir="ltr" inputMode="decimal" required value={amount} onChange={e => { setAmount(e.target.value); setConfirmed(false); }} /></Field>
-        <Field label={t('method')} htmlFor="payment-method"><select id="payment-method" className={inputClassName} value={method} onChange={e => { const v = e.target.value; if (v === 'CASH' || v === 'BANK_TRANSFER' || v === 'CHEQUE') setMethod(v); setConfirmed(false); }}>{(['CASH', 'BANK_TRANSFER', 'CHEQUE'] as const).map(v => <option key={v} value={v}>{t(v)}</option>)}</select></Field>
-        <Field label={t('receivedOn')} htmlFor="payment-date" required><input id="payment-date" type="date" dir="ltr" min="1900-01-01" max={schoolToday(timezone)} required className={inputClassName} value={date} onChange={e => { setDate(e.target.value); setConfirmed(false); }} /></Field>
-        <Field label={t('reference')} htmlFor="payment-reference"><input id="payment-reference" className={inputClassName} maxLength={100} value={reference} onChange={e => { setReference(e.target.value); setConfirmed(false); }} /></Field>
+        <Field label={t('amount')} htmlFor="payment-amount" required><input id="payment-amount" className={inputClassName} dir="ltr" inputMode="decimal" required value={amount} onChange={e => { setAmount(e.target.value); setConfirmed(false); setReviewing(false); }} /></Field>
+        <Field label={t('method')} htmlFor="payment-method"><select id="payment-method" className={inputClassName} value={method} onChange={e => { const v = e.target.value; if (v === 'CASH' || v === 'BANK_TRANSFER' || v === 'CHEQUE') setMethod(v); setConfirmed(false); setReviewing(false); }}>{(['CASH', 'BANK_TRANSFER', 'CHEQUE'] as const).map(v => <option key={v} value={v}>{t(v)}</option>)}</select></Field>
+        <Field label={t('receivedOn')} htmlFor="payment-date" required><input id="payment-date" type="date" dir="ltr" min="1900-01-01" max={schoolToday(timezone)} required className={inputClassName} value={date} onChange={e => { setDate(e.target.value); setConfirmed(false); setReviewing(false); }} /></Field>
+        <Field label={t('reference')} htmlFor="payment-reference"><input id="payment-reference" className={inputClassName} maxLength={100} value={reference} onChange={e => { setReference(e.target.value); setConfirmed(false); setReviewing(false); }} /></Field>
       </div>
       {options.isFetching ? <p role="status">{t('loading')}</p> : options.isError ? <p role="alert">{t('error')}<Button type="button" onClick={() => void options.refetch()}>{t('reload')}</Button></p> : null}
       <Button type="button" variant="outline" disabled={!received || !rows.length || options.isFetching} onClick={() => {
         let left = received; const suggested: Record<string, string> = {};
         for (const row of rows) { const n = Math.min(left, balance(row)); if (n > 0) suggested[row.id] = (n / 100).toFixed(2); left -= n; }
-        setValues(suggested); setConfirmed(false);
+        setValues(suggested); setConfirmed(false); setReviewing(false);
       }}>{t('suggest')}</Button>
       {options.data?.data.hasMore ? <p>{t('allocationLimit')}</p> : null}
       <h3 className="font-semibold">{t('allocation')}</h3><p className="text-sm text-muted-foreground" id="payment-allocation-hint">{ui('allocationHint')}</p>
-      <FinanceTable caption={t('allocation')} columns={(['fee', 'period', 'dueDate', 'remaining', 'allocated'] as const).map(k => t(k))} rows={rows.map(row => ({ id: row.id, cells: [<bdi key="fee">{row.feeName}</bdi>, <bdi key="period">{row.period === 'once' ? common('once') : row.period}</bdi>, <bdi key="date">{row.dueDate}</bdi>, money(balance(row)), <input key="amount" className={inputClassName} aria-label={`${t('allocated')} ${row.feeName} ${row.period}`} aria-describedby="payment-allocation-hint" dir="ltr" inputMode="decimal" value={values[row.id] ?? ''} onChange={e => { setValues({ ...values, [row.id]: e.target.value }); setConfirmed(false); }} />] }))} />
+      <FinanceTable caption={t('allocation')} columns={(['fee', 'period', 'dueDate', 'remaining', 'allocated'] as const).map(k => t(k))} rows={rows.map(row => ({ id: row.id, cells: [<bdi key="fee">{row.feeName}</bdi>, <bdi key="period">{row.period === 'once' ? common('once') : row.period}</bdi>, <bdi key="date">{row.dueDate}</bdi>, money(balance(row)), <input key="amount" className={inputClassName} aria-label={`${t('allocated')} ${row.feeName} ${row.period}`} aria-describedby="payment-allocation-hint" dir="ltr" inputMode="decimal" value={values[row.id] ?? ''} onChange={e => { setValues({ ...values, [row.id]: e.target.value }); setConfirmed(false); setReviewing(false); }} />] }))} />
       {studentId && options.isSuccess && !rows.length ? <p className="rounded-md bg-muted p-3">{common('empty')}</p> : null}
       <dl className="grid gap-3 rounded-lg bg-muted p-3 sm:grid-cols-3">{[[t('amount'), received], [t('total'), allocated], [t('difference'), received - allocated]].map(([label, value]) => <div key={label}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="break-words font-semibold tabular-nums">{money(Number(value))}</dd></div>)}</dl>
       {invalid ? <p role="alert">{t('invalid')}</p> : null}
-      <label className="flex min-h-10 items-center gap-2"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />{t('confirm')}</label>
-      <Button disabled={!ready || mutation.isPending}>{mutation.isPending ? ui('saving') : t('record')}</Button></fieldset>
+      {!reviewing?<Button type="button" disabled={!canReview||mutation.isPending} onClick={()=>setReviewing(true)}>{tuition('review')}</Button>:<section className="tu-payment-review" aria-label={tuition('review')}><h3>{tuition('review')}</h3><p className="tu-copy">{tuition('reviewHint')}</p><dl><div><dt>{t('student')}</dt><dd><bdi>{options.data?.data.student.firstName} {options.data?.data.student.lastName}</bdi></dd></div><div><dt>{t('receivedOn')}</dt><dd>{date}</dd></div><div><dt>{t('method')}</dt><dd>{t(method)}</dd></div><div><dt>{t('reference')}</dt><dd><bdi>{reference||'—'}</bdi></dd></div><div><dt>{t('total')}</dt><dd><bdi>{money(allocated)}</bdi></dd></div></dl><ul>{allocations.map(a=><li key={a.chargeId}><bdi>{rows.find(r=>r.id===a.chargeId)?.feeName}</bdi> · <bdi>{money(a.amountCents)}</bdi></li>)}</ul><label className="flex min-h-10 items-center gap-2"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} />{t('confirm')}</label><div className="flex flex-wrap gap-3"><Button type="button" variant="outline" onClick={()=>{setReviewing(false);setConfirmed(false);}}>{tuition('edit')}</Button><Button disabled={!ready||mutation.isPending}>{mutation.isPending?ui('saving'):t('record')}</Button></div></section>}</fieldset>
     </form>
     <h2 className="text-xl font-semibold">{t('history')}</h2>
     {history.isPending ? <p role="status">{t('loading')}</p> : history.isError ? <p role="alert">{t('error')}<Button onClick={() => void history.refetch()}>{t('reload')}</Button></p> : !history.data.data.items.length ? <p>{t('empty')}</p> : history.data.data.items.map(({ payment, reversal }) => <article key={payment.id} className="space-y-2 min-w-0 rounded-md border bg-card p-3"><div className="flex flex-wrap items-start justify-between gap-2"><h3 className="min-w-0 break-words font-semibold" dir="auto">{payment.studentName}</h3><span className="rounded-md border bg-muted px-2 py-1 text-xs font-semibold">{t(reversal ? 'REVERSED' : 'RECORDED')}</span></div><p className="text-xl font-semibold tabular-nums">{money(payment.amountCents, payment.currency)}</p><p><bdi className="break-all">{payment.receiptReference}</bdi> · <bdi>{payment.receivedOn}</bdi> · {t(payment.method)}</p><Button variant="outline" onClick={() => { setDetailId(payment.id); setReason(''); setReverseConfirmed(false); }}>{t('receipt')}</Button></article>)}

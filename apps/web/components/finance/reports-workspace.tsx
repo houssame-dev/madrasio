@@ -77,7 +77,7 @@ export function ReportsWorkspace({ schoolId, timezone, years, classes, onPayment
     {balanceId ? <StudentOverview key={balanceId} schoolId={schoolId} id={balanceId} onClose={() => setBalance('')} onPayments={onPayments} /> : null}
   </section>;
 }
-function StudentOverview({ schoolId, id, onClose, onPayments }: { schoolId: string; id: string; onClose: () => void; onPayments: (id: string) => void }) {
+export function StudentOverview({ schoolId, id, onClose, onPayments }: { schoolId: string; id: string; onClose: () => void; onPayments: (id: string) => void }) {
   const t = useTranslations('financeReports'), c = useTranslations('finance'), locale = useLocale(); const [page, setPage] = useState(1);
   const balance = useQuery({ queryKey: ['finance', schoolId, 'balance', id, page], queryFn: () => apiRequest<{ data: Balance }>(`/api/v1/finance/students/${id}/balance?page=${page}`), retry: false });
   const d = balance.data?.data; const money = (n: number) => formatMoney(n, locale, d?.currency ?? 'MAD');

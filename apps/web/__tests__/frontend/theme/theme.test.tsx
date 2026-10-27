@@ -27,7 +27,7 @@ it.each(['en', 'fr', 'ar'] as const)('selects localized Light/Dark/System modes 
   const t = getCatalog(locale).theme, user = userEvent.setup(); const view = mount(locale, true);
   const control = screen.getByRole('combobox', { name: t.label });
   expect(control).toBeEnabled(); expect(control).toHaveValue('system');
-  expect(screen.getAllByRole('option').map(option => option.textContent)).toEqual([t.light, t.dark, t.system]);
+  expect(screen.getAllByRole('option').map(option => option.textContent)).toEqual([t.light, t.mist, t.midnight, t.dark, t.system]);
   await user.selectOptions(control, 'dark'); expect(document.documentElement).toHaveClass('dark');
   expect(document.documentElement.style.colorScheme).toBe('dark'); expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
   osDark(false); expect(document.documentElement).toHaveClass('dark');
@@ -69,9 +69,16 @@ it('renders the pre-paint initializer ahead of visible content and a stable SSR 
   expect(html).toContain(THEME_INIT_SCRIPT); expect(html).toContain('value="system" selected=""'); expect(html).toContain('disabled=""');
   expect(html).toContain('dir="rtl"'); expect(html).toContain('lang="ar"');
 });
-it.each(['light', 'dark', 'system', 'invalid'])('pre-paint initialization agrees with the mounted provider for %s', preference => {
+it.each(['light', 'mist', 'midnight', 'dark', 'system', 'invalid'])('pre-paint initialization agrees with the mounted provider for %s', preference => {
   localStorage.setItem(THEME_STORAGE_KEY, preference); scheme.matches = true;
   runInNewContext(THEME_INIT_SCRIPT, { window, document, localStorage });
   const initial = document.documentElement.classList.contains('dark'); mount();
-  expect(document.documentElement.classList.contains('dark')).toBe(initial); expect(initial).toBe(preference !== 'light');
+  expect(document.documentElement.classList.contains('dark')).toBe(initial); expect(initial).toBe(preference !== 'light' && preference !== 'mist');
+});
+
+it.each(['mist', 'midnight'] as const)('applies and restores the %s showcase theme', async value => {
+  mount(); await userEvent.selectOptions(screen.getByRole('combobox'), value);
+  expect(document.documentElement.dataset.theme).toBe(value);
+  expect(document.documentElement.classList.contains('dark')).toBe(value === 'midnight');
+  expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe(value);
 });

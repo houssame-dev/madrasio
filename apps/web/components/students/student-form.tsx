@@ -31,7 +31,7 @@ export function StudentForm({ initial, onCancel, onSaved }: { initial?: StudentD
     onSuccess: async (student) => { setError(undefined); await onSaved(student); },
     onError: (value) => { if (!mapStudentValidation(value, form.setError)) setError(text(studentErrorMessage(value))); },
   });
-  return <form className="space-y-4" noValidate onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+  return <form className="pp-workspace pp-profile-form space-y-4" noValidate onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
     {error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}
     <div className="grid gap-4 sm:grid-cols-2">
       <Field required label={t.firstName} htmlFor="student-first-name" error={text(form.formState.errors.firstName?.message)}><input id="student-first-name" dir="auto" className={inputClassName} aria-invalid={!!form.formState.errors.firstName} {...form.register('firstName')} /></Field>

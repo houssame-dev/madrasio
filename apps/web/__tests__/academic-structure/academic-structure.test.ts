@@ -51,6 +51,16 @@ describe('AcademicYear and AcademicPeriod application rules', () => {
     expect((await app.listClasses(db, b, input)).data).toEqual([]);
     expect((await app.listCurricula(db, b, { page: 1, pageSize: 10, search: 'national' })).data).toEqual([]);
   });
+  it('searches academic year names literally within tenant, status and paginated totals', async()=>{
+    const a=await actor();
+    const selected=await app.createAcademicYear(db,a,{name:'2026/2027',startDate:'2026-09-01',endDate:'2027-06-30'});
+    await app.createAcademicYear(db,a,{name:'2027/2028',startDate:'2027-09-01',endDate:'2028-06-30'});
+    expect(await app.listAcademicYears(db,a,{page:1,pageSize:1,search:'2026',status:'PLANNED'})).toMatchObject({data:[{id:selected.id}],meta:{total:1}});
+    expect((await app.listAcademicYears(db,a,{page:1,pageSize:10,search:'%'})).data).toEqual([]);
+    expect((await app.listAcademicYears(db,a,{page:1,pageSize:10,search:'2026',status:'ACTIVE'})).data).toEqual([]);
+    const b=await actor('SCHOOL_ADMIN','Other school');
+    expect((await app.listAcademicYears(db,b,{page:1,pageSize:10,search:'2026'})).data).toEqual([]);
+  });
   it('lists only the current School, creates safely, and hides foreign detail', async () => {
     const a = await actor(); const yearA = await app.createAcademicYear(db, a, { name: '2025/2026', startDate: '2025-09-01', endDate: '2026-07-01' });
     const b = await actor('SCHOOL_ADMIN', 'School B'); await app.createAcademicYear(db, b, { name: '2026/2027', startDate: '2026-09-01', endDate: '2027-07-01' });

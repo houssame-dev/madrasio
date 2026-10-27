@@ -44,6 +44,7 @@ describe('/me application bootstrap', () => {
     expect(await screen.findByText('Protected content')).toBeInTheDocument();
     expect(screen.getByTestId('desktop-sidebar')).toBeInTheDocument();
     expect(screen.getByTestId('mobile-navigation-trigger')).toHaveAccessibleName('Open navigation');
+    await userEvent.click(screen.getByRole('button', { name: 'School and account' }));
     expect(screen.getAllByText('Atlas School').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument();
   });
@@ -51,16 +52,18 @@ describe('/me application bootstrap', () => {
   it('keeps the multi-School mobile topbar compact and traps focus in its navigation dialog', async () => {
     renderBootstrap(async () => Response.json({ data: { user: { id: 'user' }, currentSchool: { id: schoolA, role: 'SCHOOL_ADMIN' }, memberships: [{ schoolId: schoolA, schoolName: 'Atlas School', role: 'SCHOOL_ADMIN', status: 'ACTIVE' }, { schoolId: schoolB, schoolName: 'Rif School', role: 'TEACHER', status: 'ACTIVE' }] } }));
     const trigger = await screen.findByRole('button', { name: 'Open navigation' });
-    expect(screen.getByRole('combobox', { name: 'Switch current school' })).toHaveClass('w-28');
-    expect(screen.getByRole('button', { name: 'Log out' })).toHaveClass('w-10');
+    expect(screen.queryByRole('combobox', { name: 'Switch current school' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'School and account' }));
+    expect(screen.getByRole('combobox', { name: 'Switch current school' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Log out' })).toBeEnabled();
+    await userEvent.keyboard('{Escape}');
 
     await userEvent.click(trigger);
     const dialog = screen.getByRole('dialog', { name: 'Main navigation' });
     const close = within(dialog).getByRole('button', { name: 'Close navigation' });
     expect(close).toHaveFocus();
     await userEvent.tab({ shift: true });
-    expect(within(dialog).getByRole('combobox', { name: 'Switch current school' })).toBeEnabled();
-    expect(within(dialog).getByRole('button', { name: 'Log out' })).toHaveFocus();
+    expect(within(dialog).getAllByRole('link').at(-1)).toHaveFocus();
     await userEvent.tab();
     expect(close).toHaveFocus();
     await userEvent.keyboard('{Escape}');

@@ -26,6 +26,7 @@ it.each<SupportedLocale>(['en', 'fr', 'ar'])('allows editable oldest-first alloc
   const old = screen.getByLabelText(`${t.allocated} Tuition 2025-12`), next = screen.getByLabelText(`${t.allocated} Tuition 2026-01`);
   expect(old).toHaveValue('100.00'); expect(next).toHaveValue('50.00');
   await user.clear(old); await user.type(old, '50.00'); await user.clear(next); await user.type(next, '100.00');
+  await user.click(screen.getByRole('button', { name: getCatalog(locale).tuition.review }));
   expect(screen.getByRole('button', { name: t.record })).toBeDisabled(); await user.click(screen.getByLabelText(t.confirm));
   fetcher.mockResolvedValueOnce(Response.json({ data: { id: 'payment' } })); await user.click(screen.getByRole('button', { name: t.record }));
   await waitFor(() => expect(fetcher.mock.calls.some(c => String(c[0]) === '/api/v1/finance/payments')).toBe(true));
@@ -36,8 +37,8 @@ it.each<SupportedLocale>(['en', 'fr', 'ar'])('allows editable oldest-first alloc
 it('blocks mismatched allocations and invalid money', async () => {
   const user = userEvent.setup(), t = getCatalog('en').financePayments; show('en');
   await screen.findByRole('option', { name: 'Amina Test' }); await user.selectOptions(screen.getByLabelText(t.student), 'student');
-  await user.type(screen.getByLabelText(t.amount), '1.001'); await user.click(screen.getByLabelText(t.confirm));
-  expect(screen.getByRole('button', { name: t.record })).toBeDisabled(); expect(screen.getByRole('alert')).toHaveTextContent(t.invalid);
+  await user.type(screen.getByLabelText(t.amount), '1.001');
+  expect(screen.getByRole('button', { name: getCatalog('en').tuition.review })).toBeDisabled(); expect(screen.getByRole('alert')).toHaveTextContent(t.invalid);
 });
 it('retains the balance-linked Student even when absent from the first search page', async () => {
   fetcher.mockImplementation(async path => Response.json({ data: String(path).includes('/students?') ? [] : String(path).includes('/options?') ? { student: { id: 'linked', firstName: 'Historical', lastName: 'Student' }, charges: [], hasMore: false } : { items: [], total: 0, page: 1 } }));
@@ -50,7 +51,7 @@ it('retains payment edits and the request key after a version conflict without a
   await screen.findByRole('option', { name: 'Amina Test' }); await user.selectOptions(screen.getByLabelText(t.student), 'student');
   await user.type(screen.getByLabelText(t.amount), '150.00');
   await waitFor(() => expect(screen.getByRole('button', { name: t.suggest })).toBeEnabled());
-  await user.click(screen.getByRole('button', { name: t.suggest })); await user.click(screen.getByLabelText(t.confirm));
+  await user.click(screen.getByRole('button', { name: t.suggest })); await user.click(screen.getByRole('button', { name: getCatalog('en').tuition.review })); await user.click(screen.getByLabelText(t.confirm));
   const previous = fetcher.getMockImplementation()!;
   fetcher.mockImplementation(async (path, init) => String(path) === '/api/v1/finance/payments' ? Response.json({ error: { code: 'CONFLICT', message: 'Private diagnostic' } }, { status: 409 }) : previous(path, init));
   await user.click(screen.getByRole('button', { name: t.record }));

@@ -1,4 +1,5 @@
 'use client';
+import './grades.css';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useDomainText } from '@/i18n/use-domain-text';
@@ -376,7 +377,7 @@ function SchoolConfigurationWorkspace({ schoolId }: { schoolId: string }) {
   if (list.isPending) return <PageLoading />;
   if (list.isError) return <ApiErrorState onRetry={() => void list.refetch()} />;
   return (
-    <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
+    <PageContainer variant="MANAGEMENT_WIDE" className="gr-workspace space-y-6">
       <Link href="/grades" className="underline">{text("Back to Gradebook setup")}</Link>
       <h1 className="break-words text-2xl font-semibold">{text("Grading configuration")}</h1>
       <p>{text("School-owned calculation rules. Drafts are editable; activated and archived versions preserve historical meaning.")}</p>
@@ -398,11 +399,12 @@ function SchoolConfigurationWorkspace({ schoolId }: { schoolId: string }) {
       ) : (
         <Button onClick={() => setCreating(true)}>{text("Create configuration")}</Button>
       )}
-      <ul className="flex flex-wrap gap-3">
+      <ul className="gr-config-list">
         {list.data.data.map((row) => (
           <li key={row.id}>
             <Button
               variant="outline"
+              aria-pressed={selected===row.id}
               onClick={() => {
                 setSelected(row.id);
                 setSuccess(false);

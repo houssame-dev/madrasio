@@ -1,0 +1,39 @@
+/* Academic content only. Preserve all shared shell, theme and dashboard rules. */
+.academic-planning { max-width:1600px; margin-inline:auto; min-width:0; font-size:14px; line-height:1.5; }
+.academic-planning h1 {font-size:clamp(25px,2.2vw,34px);line-height:1.2;font-weight:700;letter-spacing:-.025em;}
+.academic-planning h2 {font-size:19px;line-height:1.4;font-weight:700;}
+.academic-planning h3 {font-size:15px;font-weight:650;}
+.academic-planning .ap-areas {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}
+.academic-planning .ap-area {display:flex;align-items:center;gap:13px;min-width:0;min-height:84px;padding:16px;text-align:start;border:1px solid hsl(var(--border));border-radius:12px;background:hsl(var(--card));}
+.academic-planning .ap-area>span:last-child {min-width:0;}
+.academic-planning .ap-area strong {display:block;font-size:13px;font-weight:650;}
+.academic-planning .ap-area small {display:block;font-size:11px;margin-top:4px;color:hsl(var(--muted-foreground));}
+.academic-planning .ap-area-icon {width:40px;height:40px;display:grid;place-items:center;border-radius:10px;background:var(--ws-active);color:var(--ws-active-text);flex-shrink:0;}
+.academic-planning .ap-area-icon svg {width:21px;height:21px;}
+.academic-planning .ap-area-active {border-color:hsl(var(--input));background:var(--ws-active);}
+.academic-planning .ap-subnav {display:flex;flex-wrap:wrap;gap:24px;border-bottom:1px solid hsl(var(--border));}
+.academic-planning .ap-subnav button {min-height:42px;padding:8px 2px;color:hsl(var(--muted-foreground));font-weight:600;}
+.academic-planning .ap-subnav [aria-current=page] {color:var(--ws-active-text);border-bottom:2px solid currentColor;}
+.academic-planning .ap-split {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start;}
+.academic-planning .ap-years {grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);}
+.academic-planning .ap-curricula {grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);}
+.academic-planning .ap-panel {min-width:0;padding:20px;border:1px solid hsl(var(--border));border-radius:12px;background:hsl(var(--card));box-shadow:0 5px 18px rgb(20 33 61 / 3%);}
+.academic-planning .ap-placeholder {color:hsl(var(--muted-foreground));font-size:13px;line-height:1.7;}
+.academic-planning table {min-width:0;table-layout:auto;}
+.academic-planning :is(td,th) {overflow-wrap:normal;word-break:normal;font-size:12px;padding:10px 8px;}
+.academic-planning td>span.inline-flex {white-space:nowrap;}
+.academic-planning td.font-mono {font-family:inherit;font-variant-numeric:tabular-nums;}
+.academic-planning .ap-years td:nth-child(2),.academic-planning .ap-years td:nth-child(3) {white-space:nowrap;}
+.academic-planning button.bg-primary {background:#fca311;color:#14213d;}
+.academic-planning :is(button,a,input,select,[tabindex]):focus-visible {outline:2px solid hsl(var(--ring));outline-offset:3px;}
+.academic-planning button:hover:not(:disabled) {filter:brightness(.97);}
+[dir=rtl] .academic-planning h1 {letter-spacing:normal;line-height:1.5;}
+@media(max-width:1100px) {.academic-planning .ap-split {grid-template-columns:minmax(0,1fr);}.academic-planning .ap-areas {grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:600px) {.academic-planning .ap-areas {gap:9px;}.academic-planning .ap-area {padding:12px;gap:8px;min-height:80px;}.academic-planning .ap-area small {display:none;}.academic-planning .ap-area-icon {width:32px;height:32px;}.academic-planning .ap-area strong {font-size:12px;}.academic-planning .ap-panel {padding:16px;}.academic-planning h1 {font-size:27px;}.academic-planning .ap-subnav {gap:20px;}}
+
+@media(max-width:1279px) {
+ .academic-planning table tbody tr[role=row] {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .academic-planning table tbody td:last-child {grid-column:1/-1;}
+ .academic-planning table td>span[aria-hidden=true] {font-size:11px;}
+}
+@media(max-width:1100px) {.academic-planning .ap-classes:has(#class-name)>section:first-child {display:none;}}

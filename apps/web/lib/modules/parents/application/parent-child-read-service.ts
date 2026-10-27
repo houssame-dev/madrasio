@@ -18,7 +18,7 @@ export async function getChildPublicationHistory(db: ParentsDb, actor: Actor, st
   return publicationHistory(db, actor.schoolId, selected, page);
 }
 
-async function authorizeChild(db: ParentsDb, actor: Actor, studentId: string) {
+export async function authorizeChild(db: ParentsDb, actor: Actor, studentId: string) {
   await requireOperation(db as unknown as AuthorizationDb, actor, { permission: 'parents.read', scope: { kind: 'school' } });
   const role = (await resolveCurrentContext(db as unknown as AuthorizationDb, actor)).role as Role;
   if (role !== 'PARENT' || !actor.userId) throw new ForbiddenError();

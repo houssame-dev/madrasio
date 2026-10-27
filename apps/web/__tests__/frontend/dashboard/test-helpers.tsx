@@ -1,3 +1,4 @@
+import { schoolCalendarToday } from '@/lib/frontend/attendance/schemas';
 import { NextIntlClientProvider } from 'next-intl';
 import { getCatalog } from '@/i18n/catalogs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -36,6 +37,8 @@ export function renderDashboard(ui: ReactElement, role: Role = 'TEACHER'): Rende
 export function successfulDashboardFetch(assignments: TeacherAssignmentDto[] = [assignment], unread = 3) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
+    if (url === '/api/v1/dashboard/teacher') return Response.json({ data: { date: schoolCalendarToday('UTC'), timezone: 'UTC', asOf: new Date().toISOString(), lessons: [], pendingAttendance: 0, homeworkReview: 2 } });
+    if (url.startsWith('/api/v1/me/announcements') || url.startsWith('/api/v1/notifications?')) return Response.json(page([]));
     if (url.startsWith('/api/v1/teachers?')) return Response.json(page([teacher]));
     if (url.includes(`/api/v1/teachers/${teacherId}/assignments`)) return Response.json(page(assignments));
     if (url.startsWith('/api/v1/academic-years?')) return Response.json(page([year]));

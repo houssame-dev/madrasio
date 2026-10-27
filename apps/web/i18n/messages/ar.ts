@@ -1,3 +1,15 @@
+import { communicationsExperienceAr } from './communications-experience';
+import { homeworkExperienceAr } from './homework-experience';
+import { peopleExperienceAr } from './people-experience';
+import { gradesExperienceAr } from './grades-experience';
+import { timetableExperienceAr } from './timetable-experience';
+import { academicPlanningAr } from './academic-planning';
+import { tuitionAr } from './tuition';
+import { parentWorkspaceAr } from './parent-workspace';
+import { teacherWorkspaceAr } from './teacher-workspace';
+import { applicationAr } from './application';
+import { passwordShowcaseAr } from './password-showcase';
+import { recoveryShowcaseAr } from './recovery-showcase';
 import { communicationUiAr } from './communication-ui';
 import { learningUiAr } from './learning-ui';
 import { managementUiAr } from './management-ui';
@@ -13,7 +25,21 @@ import { paymentAr } from './finance-payments';
 import type { Messages } from '../catalogs';
 import { financeAr } from './finance';
 
+import { authShowcaseAr } from './auth-showcase';
 const messages = {
+  communicationsExperience: communicationsExperienceAr,
+  homeworkExperience: homeworkExperienceAr,
+  peopleExperience: peopleExperienceAr,
+  gradesExperience: gradesExperienceAr,
+  timetableExperience: timetableExperienceAr,
+  academicPlanning: academicPlanningAr,
+  tuition: tuitionAr,
+  parentWorkspace: parentWorkspaceAr,
+  teacherWorkspace: teacherWorkspaceAr,
+  application: applicationAr,
+  passwordShowcase: passwordShowcaseAr,
+  recoveryShowcase: recoveryShowcaseAr,
+  authShowcase: authShowcaseAr,
   communicationUi: communicationUiAr,
   learningUi: learningUiAr,
   managementUi: managementUiAr,
@@ -21,7 +47,7 @@ const messages = {
   timetableUi: timetableUiAr,
   attendanceUi: attendanceUiAr,
   dashboardUi: dashboardAr,
-  theme: { label: 'المظهر', light: 'فاتح', dark: 'داكن', system: 'النظام' },
+  theme: { mist: 'ضباب', midnight: 'منتصف الليل', label: 'المظهر', light: 'فاتح', dark: 'داكن', system: 'النظام' },
   timetablePublication: publicationAr,
   timetableBuilder: builderAr,
   timetable: timetableAr,

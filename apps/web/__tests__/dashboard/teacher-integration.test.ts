@@ -1,0 +1,26 @@
+import { afterAll, beforeAll, expect, it } from 'vitest';
+import { sessionFixture } from '../attendance/session-fixture';
+import { teacherWorkspace } from '@/lib/modules/dashboard/teacher-workspace';
+import { putSessionAttendance } from '@/lib/modules/attendance/application/session-service';
+import { createActor } from '../students/test-helpers';
+let fixture: Awaited<ReturnType<typeof sessionFixture>>;
+beforeAll(async () => { fixture = await sessionFixture(); });
+afterAll(async () => { await fixture?.test.client.close(); });
+it('integrates real published-session authorization, assignment dates and school-local attendance aggregation', async () => {
+  const database = fixture.db as unknown as Parameters<typeof teacherWorkspace>[0];
+  if (!fixture.teacherActor.userId) throw new Error('Expected authenticated local fixture');
+  const actor = { schoolId: fixture.teacherActor.schoolId, userId: fixture.teacherActor.userId };
+  const result = await teacherWorkspace(database, actor, new Date('2025-10-10T08:30:00Z'));
+  expect(result.date).toBe('2025-10-10'); expect(result.lessons).toHaveLength(2);
+  expect(result.lessons[0]).toMatchObject({ expected: 1, recorded: 0, writable: true, status: 'ongoing' });
+  expect(result.lessons[1]).toMatchObject({ writable: false, status: 'upcoming' });
+  expect(result.pendingAttendance).toBe(1); expect(result.homeworkReview).toBe(0);
+  await putSessionAttendance(fixture.db, fixture.teacherActor, fixture.identity, { records: [{ studentId: fixture.student.id, status: 'PRESENT', expectedVersion: null }] }, new Date('2025-10-10T08:30:00Z'));
+  const recorded = await teacherWorkspace(database, actor, new Date('2025-10-10T08:30:00Z'));
+  expect(recorded.lessons[0].recorded).toBe(1); expect(recorded.pendingAttendance).toBe(0);
+  const other = await createActor(fixture.test, fixture.schoolId, 'TEACHER');
+  if (!other.userId) throw new Error('Expected authenticated local fixture');
+  expect((await teacherWorkspace(database, { schoolId: other.schoolId, userId: other.userId }, new Date('2025-10-10T08:30:00Z'))).lessons).toEqual([]);
+  const outside = await teacherWorkspace(database, actor, new Date('2026-10-09T08:30:00Z'));
+  expect(outside.lessons).toEqual([]); expect(outside.pendingAttendance).toBe(0);
+});

@@ -1,4 +1,82 @@
-<h2>You have been invited</h2>
-<p>Your school has invited you to access the Madrasio.</p>
-<p><a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=invite">Accept invitation and set password</a></p>
-<p>If you did not expect this invitation, do not follow the link. Contact your school administrator.</p>
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>You've been invited to Madrasio</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .email-container { width: 100% !important; }
+      .mobile-padding { padding-left: 24px !important; padding-right: 24px !important; }
+      .hero-title { font-size: 28px !important; line-height: 36px !important; }
+      .body-text { font-size: 16px !important; line-height: 26px !important; }
+      .cta-table { width: 100% !important; }
+      .cta-link { display: block !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#14213D;-webkit-text-size-adjust:100%;">
+  <div style="display:none;font-size:1px;color:#f4f7fb;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">
+    Your school invited you to Madrasio. Accept the invitation to set your password.
+  </div>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;background-color:#f4f7fb;border-collapse:collapse;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="email-container" style="width:600px;max-width:600px;background-color:#ffffff;border-radius:24px;overflow:hidden;border-collapse:separate;border-spacing:0;">
+          <!-- Top brand accent -->
+          <tr><td style="height:8px;background-color:#FCA311;font-size:0;line-height:0;">&nbsp;</td></tr>
+          <!-- Brand -->
+          <tr>
+            <td align="center" class="mobile-padding" style="padding:32px 40px 16px;background-color:#f9fbff;">
+              <!-- Existing public Next.js logo asset served from apps/web/public/brand/wordmark-colored.png -->
+              <img src="https://madrasio-staging.vercel.app/brand/wordmark-colored.png" alt="Madrasio" width="220" style="display:block;margin:0 auto 12px;width:220px;max-width:100%;height:auto;border:0;" />
+              <p style="margin:0;font-size:12px;line-height:18px;letter-spacing:1.6px;font-weight:700;text-transform:uppercase;color:#A56800;">School Invitation</p>
+            </td>
+          </tr>
+          <!-- Main content -->
+          <tr>
+            <td align="center" class="mobile-padding" style="padding:12px 40px 8px;background-color:#ffffff;">
+              <h1 class="hero-title" style="margin:0 0 16px;font-size:34px;line-height:42px;font-weight:800;color:#14213D;">You've been invited</h1>
+              <p class="body-text" style="margin:0 0 16px;font-size:17px;line-height:28px;color:#42526b;">Your school has invited you to access <strong style="color:#14213D;">Madrasio</strong>.</p>
+              <p class="body-text" style="margin:0 0 28px;font-size:17px;line-height:28px;color:#42526b;">Accept your invitation below to set your password and get started with your account.</p>
+            </td>
+          </tr>
+          <!-- Main invitation button: original working auth URL preserved -->
+          <tr>
+            <td align="center" class="mobile-padding" style="padding:0 40px 24px;background-color:#ffffff;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="cta-table" style="border-collapse:separate;border-spacing:0;">
+                <tr>
+                  <td align="center" bgcolor="#FCA311" style="background-color:#FCA311;border-radius:14px;">
+                    <a class="cta-link" href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=invite" style="display:inline-block;padding:16px 28px;border-radius:14px;color:#000000;text-decoration:none;font-size:16px;font-weight:700;line-height:22px;">Accept invitation &amp; set password</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Security notice (kept); fallback-link box removed as requested -->
+          <tr>
+            <td class="mobile-padding" style="padding:0 40px 8px;background-color:#ffffff;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:separate;border-spacing:0;">
+                <tr>
+                  <td style="border-left:4px solid #FCA311;background-color:#fffaf2;padding:16px 18px;border-radius:12px;">
+                    <p style="margin:0;font-size:15px;line-height:24px;color:#4b5565;"><strong style="color:#14213D;">Didn't expect this invitation?</strong><br />If you were not expecting this email, please do not click the link. Contact your school administrator for help.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td align="center" class="mobile-padding" style="padding:28px 40px 36px;background-color:#ffffff;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;"><tr><td style="height:1px;font-size:0;line-height:0;background-color:#e9eef5;">&nbsp;</td></tr></table>
+              <p style="margin:20px 0 6px;font-size:14px;line-height:22px;color:#14213D;font-weight:700;">Madrasio</p>
+              <p style="margin:0;font-size:13px;line-height:21px;color:#7b8798;">School Management System</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

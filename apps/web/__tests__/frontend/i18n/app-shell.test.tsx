@@ -19,6 +19,7 @@ beforeEach(() => {
     if (String(input) === '/api/v1/notifications/unread-count') {
       return Response.json({ data: { count: 0 } });
     }
+    if (String(input) === '/api/v1/dashboard/context') return Response.json({ data: { date: '2026-10-24', timezone: 'UTC', academicYear: { id: 'year-1', name: '2026/2027' } } });
     throw new Error('Unexpected request in shell regression');
   });
 });
@@ -94,8 +95,8 @@ describe('localized application shell', () => {
     expect(sidebar).toHaveClass('lg:flex', 'start-0', 'border-e', 'w-[var(--app-sidebar-width)]');
     expect(within(sidebar).getByRole('img', { name: 'Madrasio' })).toHaveAttribute('data-brand', 'wordmark');
     expect(within(sidebar).getByRole('navigation', { name: landmark })).toBeInTheDocument();
-    expect(screen.getAllByText(currentSchool)).toHaveLength(2);
-    expect(screen.getAllByText(schoolAdmin)).toHaveLength(2);
+    expect(screen.queryByText(currentSchool)).not.toBeInTheDocument();
+    expect(screen.getAllByText(schoolAdmin)).toHaveLength(1);
     expect(screen.getByRole('heading', { name: 'Caller content' })).toBeInTheDocument();
     const toggle = within(sidebar).getByRole('button', { name: collapse });
     expect(toggle.querySelector('svg')).toHaveClass('rtl:rotate-180');
@@ -121,8 +122,7 @@ describe('localized application shell', () => {
     const scrollRegion = within(dialog).getByTestId('drawer-scroll-region');
     expect(scrollRegion).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto', 'overscroll-contain');
     expect(scrollRegion).toContainElement(within(dialog).getByRole('navigation', { name: landmark }));
-    expect(scrollRegion).toContainElement(within(dialog).getByRole('combobox', { name: getCatalog(locale).languagePreference.label }));
-    expect(scrollRegion).toContainElement(within(dialog).getByRole('button', { name: getCatalog(locale).auth.logout }));
+    expect(within(scrollRegion).getAllByRole('link')).toHaveLength(13);
     expect(dialog).toHaveClass('w-[min(20rem,85vw)]');
     expect(within(dialog).getByRole('img', { name: 'Madrasio' })).toHaveAttribute('data-brand', 'wordmark');
     expect(document.body.style.overflow).toBe('hidden');
@@ -130,9 +130,7 @@ describe('localized application shell', () => {
     const dismiss = within(dialog).getByRole('button', { name: close });
     expect(dismiss).toHaveFocus();
     await user.tab({ shift: true });
-    expect(within(dialog).getByRole('button', { name: getCatalog(locale).auth.logout })).toHaveFocus();
-    expect(within(dialog).getByRole('combobox', { name: getCatalog(locale).theme.label })).toBeInTheDocument();
-    expect(within(dialog).getByRole('combobox', { name: getCatalog(locale).languagePreference.label })).toBeEnabled();
+    expect(within(dialog).getAllByRole('link').at(-1)).toHaveFocus();
     await user.tab();
     expect(dismiss).toHaveFocus();
     await user.keyboard('{Escape}');
@@ -157,8 +155,8 @@ describe('localized application shell', () => {
       ['TEACHER', teacher], ['PARENT', parent],
     ] as const) {
       const roleView = renderShell(locale, schoolContext(role));
-      expect(screen.getAllByText(label)).toHaveLength(2);
-      expect(screen.getAllByText('Caller School')).toHaveLength(2);
+      expect(screen.getAllByText(label)).toHaveLength(1);
+      expect(screen.queryByText('Caller School')).not.toBeInTheDocument();
       roleView.unmount();
     }
   });
@@ -185,6 +183,13 @@ describe('localized application shell', () => {
     renderShell('en', { ...context, platformAuthority: 'SUPER_ADMIN' });
     expect(within(screen.getByTestId('desktop-sidebar')).getByRole('link', { name: 'Platform Schools' }))
       .toHaveAttribute('href', '/platform/schools');
+  });
+
+  it('keeps exactly thirteen School Admin links and preserves dual platform authority in the profile', async () => {
+    renderShell('en', { ...schoolContext(), platformAuthority: 'SUPER_ADMIN' });
+    expect(within(screen.getByTestId('desktop-sidebar')).getAllByRole('link')).toHaveLength(13);
+    await userEvent.click(screen.getByRole('button', { name: getCatalog('en').application.profile }));
+    expect(within(await screen.findByRole('dialog', { name: getCatalog('en').application.profile })).getByRole('link', { name: 'Platform Schools' })).toHaveAttribute('href', '/platform/schools');
   });
 
   it('keeps an empty supplied School name and renders no shell without currentSchool', () => {

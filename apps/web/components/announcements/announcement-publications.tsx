@@ -7,17 +7,36 @@ import { Button } from '@school/ui';
 import { useAppContext } from '@/components/app/app-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ConfirmDialog, InlineFeedback, Pagination, SectionHeader, StatusBadge, TableShell, EmptyTableRow } from '@/components/academic/ui';
+import {
+  ConfirmDialog,
+  InlineFeedback,
+  Pagination,
+  SectionHeader,
+  StatusBadge,
+  TableShell,
+  EmptyTableRow,
+} from '@/components/academic/ui';
 import { ApiErrorState } from '@/components/ui/states';
 import { announcementsApi } from '@/lib/frontend/announcements/api';
 import { announcementKeys } from '@/lib/frontend/announcements/queries';
 import { invalidateAnnouncement } from '@/lib/frontend/announcements/mutations';
 import { announcementErrorMessage } from '@/lib/frontend/announcements/errors';
-import type { AnnouncementPublicationDto, AnnouncementVersionDto } from '@/lib/frontend/announcements/types';
+import type {
+  AnnouncementPublicationDto,
+  AnnouncementVersionDto,
+} from '@/lib/frontend/announcements/types';
 import { AnnouncementScheduleDialog } from './announcement-schedule-dialog';
 
-export function AnnouncementPublications({ schoolId, announcementId, versions, canPublish = false }: {
-  schoolId: string; announcementId: string; versions: AnnouncementVersionDto[]; canPublish?: boolean;
+export function AnnouncementPublications({
+  schoolId,
+  announcementId,
+  versions,
+  canPublish = false,
+}: {
+  schoolId: string;
+  announcementId: string;
+  versions: AnnouncementVersionDto[];
+  canPublish?: boolean;
 }) {
   const t = useAnnouncementCopy();
   const text = useDeliveryText();
@@ -28,31 +47,148 @@ export function AnnouncementPublications({ schoolId, announcementId, versions, c
   const [cancel, setCancel] = useState<AnnouncementPublicationDto | null>(null);
   const [reschedule, setReschedule] = useState<AnnouncementPublicationDto | null>(null);
   const [feedback, setFeedback] = useState('');
-  const query = useQuery({ queryKey: [...announcementKeys.publications(schoolId, announcementId), 'page', page], queryFn: () => announcementsApi.publications(announcementId, page) });
-  const mutation = useMutation({ mutationFn: (id: string) => announcementsApi.cancel(announcementId, id),
-    onSuccess: async () => { await invalidateAnnouncement(client, schoolId, announcementId, { list: true, publications: true }); setCancel(null); setFeedback('Scheduled publication cancelled. No recipients were notified.'); } });
+  const query = useQuery({
+    queryKey: [...announcementKeys.publications(schoolId, announcementId), 'page', page],
+    queryFn: () => announcementsApi.publications(announcementId, page),
+  });
+  const mutation = useMutation({
+    mutationFn: (id: string) => announcementsApi.cancel(announcementId, id),
+    onSuccess: async () => {
+      await invalidateAnnouncement(client, schoolId, announcementId, {
+        list: true,
+        publications: true,
+      });
+      setCancel(null);
+      setFeedback('Scheduled publication cancelled. No recipients were notified.');
+    },
+  });
   const versionNumber = (id: string) => versions.find((item) => item.id === id)?.versionNumber;
-  return <section className="space-y-4 rounded-lg border bg-card p-5">
-    <SectionHeader title={t.publications} description={t.publicationsHint} />
-    {feedback ? <InlineFeedback brand kind="success">{text(feedback)}</InlineFeedback> : null}
-    {query.isError ? <ApiErrorState description={text(announcementErrorMessage(query.error))} onRetry={() => void query.refetch()} /> : <TableShell responsive headers={[t.publication, t.version, t.status, t.scheduledAt, t.publishedAt, t.recipients, t.actions]} loading={query.isPending}>
-      {query.data?.data.length === 0 ? <EmptyTableRow columns={7} /> : query.data?.data.map((item) => <tr key={item.id}>
-        <td dir="ltr" className="px-4 py-3">#{item.publicationVersion}</td><td dir="ltr" className="px-4 py-3">v{item.versionNumber ?? versionNumber(item.announcementVersionId) ?? '?'}</td>
-        <td className="px-4 py-3"><StatusBadge brand status={item.status} label={text(item.status)} /></td>
-        <td dir="ltr" className="px-4 py-3">{item.scheduledAt ? formatSchoolInstant(item.scheduledAt, timezone) : '—'}</td>
-        <td dir="ltr" className="px-4 py-3">{item.publishedAt ? formatSchoolInstant(item.publishedAt, timezone) : '—'}</td>
-        <td className="px-4 py-3">{item.recipientCount}</td><td className="px-4 py-3">{canPublish && item.status === 'SCHEDULED' ? <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={() => { setFeedback(''); setReschedule(item); }}>{msg('deliveryUi.rescheduleNumber', { number: item.publicationVersion })}</Button>
-          <Button type="button" variant="outline" onClick={() => { mutation.reset(); setFeedback(''); setCancel(item); }}>{msg('deliveryUi.cancelNumber', { number: item.publicationVersion })}</Button>
-        </div> : '—'}</td>
-      </tr>)}
-    </TableShell>}
-    {query.data ? <Pagination {...query.data.meta} onPage={setPage} /> : null}
-    <p className="text-xs text-muted-foreground">{t.scheduledBoundary}</p>
-    <ConfirmDialog open={!!cancel} title={text("Cancel scheduled publication?")} description={text("This intent stays in history as CANCELLED. If publication already won the race, cancellation will be refused. To correct content or targets, create a new Version afterward.")}
-      pending={mutation.isPending} error={mutation.isError ? text(announcementErrorMessage(mutation.error)) : undefined}
-      onClose={() => { if (!mutation.isPending) setCancel(null); }} onConfirm={() => { if (cancel && !mutation.isPending) mutation.mutate(cancel.id); }} />
-    {reschedule ? <AnnouncementScheduleDialog open schoolId={schoolId} announcementId={announcementId} versionId={reschedule.announcementVersionId} publicationId={reschedule.id}
-      onClose={() => setReschedule(null)} /> : null}
-  </section>;
+  return (
+    <section className="cm-publications space-y-4 rounded-lg border bg-card p-5">
+      <SectionHeader title={t.publications} description={t.publicationsHint} />
+      {feedback ? (
+        <InlineFeedback brand kind="success">
+          {text(feedback)}
+        </InlineFeedback>
+      ) : null}
+      {query.isError ? (
+        <ApiErrorState
+          description={text(announcementErrorMessage(query.error))}
+          onRetry={() => void query.refetch()}
+        />
+      ) : (
+        <TableShell
+          responsive
+          headers={[
+            t.publication,
+            t.version,
+            t.status,
+            t.scheduledAt,
+            t.publishedAt,
+            t.recipients,
+            t.actions,
+          ]}
+          loading={query.isPending}
+        >
+          {query.data?.data.length === 0 ? (
+            <EmptyTableRow columns={7} />
+          ) : (
+            query.data?.data.map((item) => (
+              <tr key={item.id}>
+                <td dir="ltr" className="px-4 py-3">
+                  #{item.publicationVersion}
+                </td>
+                <td dir="ltr" className="px-4 py-3">
+                  v{item.versionNumber ?? versionNumber(item.announcementVersionId) ?? '?'}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusBadge brand status={item.status} label={text(item.status)} />
+                </td>
+                <td dir="ltr" className="px-4 py-3">
+                  {item.scheduledAt ? formatSchoolInstant(item.scheduledAt, timezone) : '—'}
+                </td>
+                <td dir="ltr" className="px-4 py-3">
+                  {item.publishedAt ? formatSchoolInstant(item.publishedAt, timezone) : '—'}
+                </td>
+                <td className="px-4 py-3">{item.recipientCount}</td>
+                <td className="px-4 py-3">
+                  {canPublish && item.status === 'SCHEDULED' ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setFeedback('');
+                          setReschedule(item);
+                        }}
+                      >
+                        {msg('deliveryUi.rescheduleNumber', { number: item.publicationVersion })}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          mutation.reset();
+                          setFeedback('');
+                          setCancel(item);
+                        }}
+                      >
+                        {msg('deliveryUi.cancelNumber', { number: item.publicationVersion })}
+                      </Button>
+                    </div>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+              </tr>
+            ))
+          )}
+        </TableShell>
+      )}
+      {query.data ? <Pagination {...query.data.meta} onPage={setPage} /> : null}
+      <p className="text-xs text-muted-foreground">{t.scheduledBoundary}</p>
+      <ConfirmDialog
+        open={!!cancel}
+        title={text('Cancel scheduled publication?')}
+        description={text(
+          'This intent stays in history as CANCELLED. If publication already won the race, cancellation will be refused. To correct content or targets, create a new Version afterward.',
+        )}
+        pending={mutation.isPending}
+        error={mutation.isError ? text(announcementErrorMessage(mutation.error)) : undefined}
+        onClose={() => {
+          if (!mutation.isPending) setCancel(null);
+        }}
+        onConfirm={() => {
+          if (cancel && !mutation.isPending) mutation.mutate(cancel.id);
+        }}
+      />
+      {reschedule ? (
+        <AnnouncementScheduleDialog
+          open
+          schoolId={schoolId}
+          announcementId={announcementId}
+          versionId={reschedule.announcementVersionId}
+          publicationId={reschedule.id}
+          review={
+            <p className="cm-context">
+              {msg('deliveryUi.publicationCaption', {
+                publication: reschedule.publicationVersion,
+                version:
+                  reschedule.versionNumber ??
+                  versionNumber(reschedule.announcementVersionId) ??
+                  0,
+              })}
+              {reschedule.scheduledAt ? (
+                <>
+                  {' '}
+                  · <bdi>{formatSchoolInstant(reschedule.scheduledAt, timezone)}</bdi>
+                </>
+              ) : null}
+            </p>
+          }
+          onClose={() => setReschedule(null)}
+        />
+      ) : null}
+    </section>
+  );
 }

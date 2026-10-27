@@ -8,7 +8,7 @@ import { FinanceWorkspace } from '@/components/finance/finance-workspace';
 import { getCatalog } from '@/i18n/catalogs';
 import type { SupportedLocale } from '@school/shared';
 import type { Role } from '@/lib/authorization/roles';
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams('section=configuration'), useRouter: () => ({ replace: vi.fn() }) }));
 const fetcher = vi.fn<typeof fetch>();
 const clients: QueryClient[] = [];
 const ids = { year: '10000000-0000-4000-8000-000000000001', type: '10000000-0000-4000-8000-000000000002', structure: '10000000-0000-4000-8000-000000000003', student: '10000000-0000-4000-8000-000000000004' };
@@ -22,9 +22,11 @@ function show(locale: SupportedLocale = 'en', role: Role = 'SCHOOL_ADMIN') {
 }
 it.each<SupportedLocale>(['en', 'fr', 'ar'])('renders localized configuration, preview and confirmation in %s', async locale => {
   const t = getCatalog(locale).finance; const user = userEvent.setup(); const view = show(locale);
-  expect(await screen.findByRole('heading', { name: t.title, level: 1 })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: getCatalog(locale).tuition.title, level: 1 })).toBeInTheDocument();
   expect(view.container.firstElementChild).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
+  await user.click(screen.getByRole('button', { name: getCatalog(locale).tuition.structures }));
   expect(screen.getByRole('button', { name: t.addStructure })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: getCatalog(locale).tuition.charges }));
   await user.click(screen.getByRole('button', { name: t.generation }));
   await user.selectOptions(screen.getByLabelText(t.structure), ids.structure);
   await user.click(screen.getByLabelText('Amina Test'));
@@ -46,6 +48,8 @@ it.each<SupportedLocale>(['en', 'fr', 'ar'])('offers accessible School currency 
   const t = getCatalog(locale).finance, user = userEvent.setup();
   fetcher.mockImplementation(async () => Response.json({ data: { ...state, settings: { currency: 'EUR', locked: false }, structures: [] } }));
   show(locale);
+  await screen.findByRole('heading',{name:getCatalog(locale).tuition.title,level:1});
+  await user.click(screen.getByRole('button',{name:getCatalog(locale).tuition.currency}));
   const select = await screen.findByLabelText(t.currency);
   expect(select).toHaveValue('EUR'); expect(select).toBeEnabled();
   await user.selectOptions(select, 'GBP');
@@ -60,8 +64,9 @@ it.each<SupportedLocale>(['en', 'fr', 'ar'])('offers accessible School currency 
 });
 it('submits exact-cent configuration with explicit cross-year months and individual due dates', async () => {
   const t = getCatalog('en').finance, user = userEvent.setup(); show();
-  await screen.findByRole('heading', { name: t.title, level: 1 });
+  await screen.findByRole('heading', { name: getCatalog('en').tuition.title, level: 1 });
   await user.selectOptions(screen.getByLabelText(t.year), ids.year);
+  await user.click(screen.getByRole('button',{name:getCatalog('en').tuition.structures}));
   await user.click(screen.getByRole('button', { name: t.addStructure }));
   const form = screen.getByRole('heading', { name: t.addStructure }).closest('form')!;
   const controls = within(form);
@@ -80,9 +85,10 @@ it('submits exact-cent configuration with explicit cross-year months and individ
 it.each<Role>(['TEACHER', 'PARENT', 'SUPER_ADMIN'])('does not expose Finance or issue requests for %s', async role => { show('en', role); expect(screen.queryByRole('heading', { name: 'Finance' })).not.toBeInTheDocument(); expect(fetcher).not.toHaveBeenCalled(); });
 it('does not carry the configuration year restriction into report Class options', async () => {
   fetcher.mockImplementation(async path => Response.json({ data: String(path).includes('/reports/') ? { today: '2026-02-10', summary: { netCents: 0, paidCents: 0, outstandingCents: 0, overdueStudents: 0, students: 0 }, items: [] } : String(path).includes('/payments/students') ? [] : state }));
-  show(); const user = userEvent.setup(); await screen.findByRole('heading', { name: 'Finance', level: 1 });
+  show(); const user = userEvent.setup(); await screen.findByRole('heading', { name: getCatalog('en').tuition.title, level: 1 });
   await user.selectOptions(screen.getByLabelText(getCatalog('en').finance.year), ids.year);
   await waitFor(() => expect(fetcher.mock.calls.some(([p]) => String(p).includes(`academicYearId=${ids.year}`))).toBe(true));
-  fetcher.mockClear(); await user.click(screen.getByRole('button', { name: getCatalog('en').financeReports.title }));
-  await waitFor(() => expect(fetcher.mock.calls.some(([p]) => String(p).startsWith('/api/v1/finance?') && !String(p).includes('academicYearId'))).toBe(true));
+  fetcher.mockClear(); await user.click(screen.getByRole('button', { name: getCatalog('en').tuition.reports }));
+  expect(await screen.findByLabelText(getCatalog('en').finance.class)).toHaveValue('');
+  expect(screen.getByLabelText(getCatalog('en').finance.year)).toHaveValue('');
 });

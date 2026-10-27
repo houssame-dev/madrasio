@@ -1,4 +1,8 @@
 'use client';
+import { useSearchParams } from 'next/navigation';
+import { TuitionOverview } from './tuition-overview';
+import { StudentsBalances } from './students-balances';
+import './tuition.css';
 import { FinanceTable, ChargeStatus } from './presentation';
 import { useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -6,7 +10,6 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@school/ui';
 import { useAppContext } from '@/components/app/app-context';
 import { AccessDeniedWithReturn } from '@/components/app/route-access';
-import { PageContainer } from '@/components/ui/page-container';
 import { Field, inputClassName } from '@/components/academic/ui';
 import { apiRequest, ApiClientError } from '@/lib/frontend/api-client';
 import { can } from '@/lib/frontend/permissions';
@@ -33,11 +36,18 @@ export function FinanceWorkspace() {
 }
 
 function FinanceScreen({ schoolId, timezone }: { schoolId: string; timezone: string }) {
-  const ui = useTranslations('financeUi'); const t = useTranslations('finance'); const paymentT = useTranslations('financePayments'); const reportT = useTranslations('financeReports'); const locale = useLocale(); const cache = useQueryClient();
-  const [tab, setTab] = useState<'configuration' | 'generation' | 'charges' | 'payments' | 'reports'>('configuration');
-  const [paymentStudent, setPaymentStudent] = useState('');
-  const [year, setYear] = useState(''); const [page, setPage] = useState(1); const [search, setSearch] = useState('');
-  const [status, setStatus] = useState(''); const [studentFilter, setStudentFilter] = useState('');
+  const paymentT=useTranslations('financePayments'); const tuition = useTranslations('tuition'); const t = useTranslations('finance'); const locale = useLocale(); const cache = useQueryClient();
+  const params=useSearchParams();
+  type Tab='overview'|'students'|'configuration'|'generation'|'charges'|'payments'|'reports';
+  const initial=params?.get('section')??'overview';
+  const [tab, changeTab] = useState<Tab>(['overview','students','configuration','generation','charges','payments','reports'].includes(initial)?initial as Tab:'overview');
+  function persist(section:Tab,student?:string,academicYear?:string){const q=new URLSearchParams(window.location.search);q.set('section',section);if(student!==undefined){if(student)q.set('studentId',student);else q.delete('studentId');}if(academicYear!==undefined){if(academicYear)q.set('academicYearId',academicYear);else q.delete('academicYearId');}window.history.replaceState(window.history.state,'',`${window.location.pathname}?${q}`);}
+  function setTab(next:Tab,student?:string){changeTab(next);persist(next,student);}
+
+  const [configSection,setConfigSection]=useState('types');
+  const [paymentStudent, setPaymentStudent] = useState(params?.get('studentId')??'');
+  const [year, setYear] = useState(params?.get('academicYearId')??''); const [page, setPage] = useState(1); const [search, setSearch] = useState('');
+  const [status, setStatus] = useState(''); const [studentFilter, setStudentFilter] = useState(params?.get('studentId')??'');
   const [message, setMessage] = useState<'success' | 'error' | 'invalid' | 'conflict' | null>(null);
   const [edit, setEdit] = useState<Structure | null | undefined>(undefined);
   const [structureId, setStructureId] = useState(''); const [mode, setMode] = useState<'individual' | 'class' | 'level'>('individual');
@@ -74,19 +84,27 @@ function FinanceScreen({ schoolId, timezone }: { schoolId: string; timezone: str
   const canCancel = !!charge && charge.status === 'OPEN' && charge.allocatedCents === 0 && charge.dueDate > schoolToday(timezone);
   if (state.isPending) return <p role="status">{t('loading')}</p>;
   if (state.isError || !data) return <div role="alert"><p>{t('error')}</p><Button onClick={() => void state.refetch()}>{t('retry')}</Button></div>;
-  return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6" aria-busy={busy || state.isFetching}>
-    <header><h1 className="text-2xl font-semibold">{t('title')}</h1><p className="text-muted-foreground">{t('description')} · <bdi>{data.settings.currency}</bdi></p></header>
-    <nav aria-label={t('title')} className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">{(['configuration', 'generation', 'charges', 'payments', 'reports'] as const).map(v => <Button key={v} variant={tab === v ? 'default' : 'outline'} aria-current={tab === v ? 'page' : undefined} onClick={() => { setTab(v); if (v === 'reports') { setYear(''); setPage(1); } setMessage(null); }}>{v === 'payments' ? paymentT('title') : v === 'reports' ? reportT('title') : t(v)}</Button>)}</nav><p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">{ui(tab)}</p>
+  return <div className="tuition-workspace ws-dashboard" aria-busy={busy || state.isFetching}>
+    <header><h1 className="text-2xl font-semibold">{tuition('title')}</h1><p className="text-muted-foreground">{tuition('intro')} · <bdi>{data.settings.currency}</bdi></p></header>
+    <nav aria-label={tuition('title')} className="tu-tabs">{(['overview','students','payments','charges','configuration','reports'] as const).map(v=><button type="button" key={v} aria-current={tab===v||(v==='charges'&&tab==='generation')?'page':undefined} onClick={()=>{setTab(v);if(v==='reports'){setYear('');setPage(1);persist(v,undefined,'');}setMessage(null);}}>{tuition(v)}</button>)}</nav>
+    {tab !== 'payments' && tab !== 'reports' && tab !== 'students' ? <div className="tu-year-filter"><Field label={t('year')} htmlFor="finance-year"><select className={inputClassName} id="finance-year" value={year} disabled={busy} onChange={e => { setYear(e.target.value); persist(tab,undefined,e.target.value); setPage(1); setStructureId(''); setEdit(undefined); resetPreview(); }}><option value="">{t('all')}</option>{data.years.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}</select></Field></div> : null}
+    {tab==='overview'?<TuitionOverview schoolId={schoolId} year={year} onPayment={()=>setTab('payments')} onStudent={id=>{setStudentFilter(id);setTab('students',id);}} />:null}
+    {tab==='students'?<StudentsBalances schoolId={schoolId} students={data.students} search={search} onSearch={setSearch} studentId={studentFilter} onStudent={id=>{setStudentFilter(id);persist('students',id);}} onPayments={id=>{setPaymentStudent(id);setTab('payments',id);}} />:null}
+    {tab==='charges'||tab==='generation'?<div className="tu-subtabs"><button className="ws-action" aria-pressed={tab==='charges'} onClick={()=>setTab('charges')}>{tuition('charges')}</button><button className="ws-action" aria-pressed={tab==='generation'} onClick={()=>setTab('generation')}>{t('generation')}</button></div>:null}
     {tab === 'payments' ? <PaymentsWorkspace initialStudentId={paymentStudent} schoolId={schoolId} timezone={timezone} currency={data.settings.currency} /> : null}
-    {tab === 'reports' ? <ReportsWorkspace schoolId={schoolId} timezone={timezone} years={data.years} classes={data.classes} onPayments={id => { setPaymentStudent(id); setTab('payments'); }} /> : null}
+    {tab === 'reports' ? <ReportsWorkspace schoolId={schoolId} timezone={timezone} years={data.years} classes={data.classes} onPayments={id => { setPaymentStudent(id); setTab('payments',id); }} /> : null}
     {message ? <p role={['success'].includes(message) ? 'status' : 'alert'} className="min-w-0 rounded-md border bg-card p-3">{t(message)}</p> : null}
-    {tab !== 'payments' && tab !== 'reports' ? <Field label={t('year')} htmlFor="finance-year"><select className={inputClassName} id="finance-year" value={year} disabled={busy} onChange={e => { setYear(e.target.value); setPage(1); setStructureId(''); setEdit(undefined); resetPreview(); }}><option value="">{t('all')}</option>{data.years.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}</select></Field> : null}
+
     {tab === 'configuration' ? <section className="space-y-5" aria-label={t('configuration')}>
+      <nav className="tu-tabs" aria-label={tuition('configuration')}>{(['types','structures','currency'] as const).map(v=><button type="button" key={v} aria-current={configSection===v?'page':undefined} onClick={()=>setConfigSection(v)}>{tuition(v)}</button>)}</nav>
+      {configSection==='currency'?<div>
       <form key={data.settings.currency} className="space-y-3 min-w-0 rounded-lg border bg-card p-4" onSubmit={e => { e.preventDefault(); const currency = String(new FormData(e.currentTarget).get('currency')); void write({ path: '/api/v1/finance/settings', method: 'PATCH', body: { currency } }); }}>
         <Field label={t('currency')} htmlFor="finance-currency"><select id="finance-currency" name="currency" className={inputClassName} defaultValue={data.settings.currency} disabled={busy || data.settings.locked} aria-describedby="finance-currency-notice">{FINANCE_CURRENCIES.map(code => <option key={code} value={code}>{code} · {t(code)}</option>)}</select></Field>
         <p id="finance-currency-notice" className="text-sm text-muted-foreground">{t(data.settings.locked ? 'currencyLocked' : 'currencyNotice')}</p>
         <Button disabled={busy || data.settings.locked}>{t('save')}</Button>
       </form>
+      </div>:null}
+      {configSection==='types'?<div className="space-y-4">
       <h2 className="text-xl font-semibold">{t('feeType')}</h2>
       <form className="flex flex-wrap items-end gap-3" onSubmit={e => { e.preventDefault(); const form = e.currentTarget; const name = String(new FormData(form).get('name') ?? ''); void write({ path: '/api/v1/finance/fee-types', body: { name } }).then(ok => { if (ok) form.reset(); }); }}>
         <Field label={t('name')} htmlFor="finance-new-type" required><input className={inputClassName} id="finance-new-type" name="name" required maxLength={100} disabled={busy} /></Field><Button disabled={busy}>{t('addType')}</Button>
@@ -95,9 +113,12 @@ function FinanceScreen({ schoolId, timezone }: { schoolId: string; timezone: str
         <Field label={t('name')} htmlFor={`type-${type.id}`}><input className={inputClassName} id={`type-${type.id}`} name="name" defaultValue={type.name} maxLength={100} required disabled={busy} /></Field>
         <span>{t(type.active ? 'active' : 'inactive')}</span><Button disabled={busy}>{t('save')}</Button><Button type="button" variant="outline" disabled={busy} onClick={() => void write({ path: `/api/v1/finance/fee-types/${type.id}`, method: 'PATCH', body: { name: type.name, active: !type.active } })}>{t(type.active ? 'deactivate' : 'activate')}</Button>
       </form>)}
+      </div>:null}
+      {configSection==='structures'?<div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">{t('structure')}</h2><Button disabled={!year || busy} onClick={() => setEdit(null)}>{t('addStructure')}</Button></div><p className="text-sm text-muted-foreground">{t('structureNotice')}</p>
       {edit !== undefined ? <StructureEditor key={edit?.id ?? `new-${year}`} data={data} year={year} value={edit} busy={busy} t={t} onCancel={() => setEdit(undefined)} onInvalid={() => setMessage('invalid')} onSave={async body => { const ok = await write({ path: edit ? `/api/v1/finance/structures/${edit.id}` : '/api/v1/finance/structures', method: edit ? 'PATCH' : 'POST', body }); if (ok) setEdit(undefined); }} /> : null}
       <div className="grid gap-3 lg:grid-cols-2">{data.structures.map(s => <article key={s.id} className="space-y-2 min-w-0 rounded-lg border bg-card p-4"><h3 className="font-semibold" dir="auto">{data.types.find(f => f.id === s.feeTypeId)?.name}</h3><p>{data.years.find(y => y.id === s.academicYearId)?.name} · {s.levelId ? data.levels.find(l => l.id === s.levelId)?.name : t('schoolWide')}</p><p>{t(s.cadence)} · {money(s.amountCents, s.currency)} · {t(s.active ? 'active' : 'inactive')}</p><ul>{s.periods.map(p => <li key={p.period}><bdi>{p.period === 'once' ? t('once') : p.period}</bdi> · <bdi>{p.dueDate}</bdi></li>)}</ul><Button variant="outline" disabled={busy} onClick={() => setEdit(s)}>{t('edit')}</Button></article>)}</div>{!data.structures.length ? <p>{t('empty')}</p> : null}
+      </div>:null}
     </section> : null}
     {tab === 'generation' ? <section className="space-y-4" aria-label={t('generation')}>
       <p>{t('previewNotice')}</p>
@@ -128,7 +149,7 @@ function FinanceScreen({ schoolId, timezone }: { schoolId: string; timezone: str
         </> : null}
       </section> : null}
     </section> : null}
-  </PageContainer>;
+  </div>;
 }
 
 function StructureEditor({ data, year, value, busy, t, onSave, onCancel, onInvalid }: { data: State; year: string; value: Structure | null; busy: boolean; t: Copy; onSave: (body: unknown) => Promise<void>; onCancel: () => void; onInvalid: () => void }) {

@@ -11,3 +11,9 @@ export const securityHeaders = [
 export const privateResponseHeaders = [
   { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
 ];
+
+// Next's configured headers override a Route Handler's CSP. Keep private files
+// sandboxed at the final HTTP boundary as well as inside the download adapter.
+export const privateDownloadHeaders = [
+  { key: 'Content-Security-Policy', value: "default-src 'none'; sandbox; frame-ancestors 'none'" },
+];

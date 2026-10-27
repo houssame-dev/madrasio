@@ -1,0 +1,12 @@
+import { beforeEach,expect,it,vi } from 'vitest';
+const mock=vi.hoisted(()=>({context:vi.fn(),overview:vi.fn()}));
+vi.mock('@/lib/db/client',()=>({getDb:()=> 'db'}));
+vi.mock('@/lib/auth/require-context',()=>({requireCurrentContext:mock.context}));
+vi.mock('@/lib/modules/parents/application/dashboard-read-service',()=>({parentWeekOverview:mock.overview}));
+import { GET } from '@/app/api/v1/parent/children/[studentId]/dashboard/route';
+const schoolId='11111111-1111-4111-8111-111111111111',studentId='22222222-2222-4222-8222-222222222222',year='33333333-3333-4333-8333-333333333333',userId='44444444-4444-4444-8444-444444444444';
+const run=(query=`academicYearId=${year}`)=>GET(new Request('http://localhost/api/v1/parent/children/'+studentId+'/dashboard?'+query),{params:Promise.resolve({studentId})});
+beforeEach(()=>{vi.clearAllMocks();mock.context.mockResolvedValue({role:'PARENT',userId,schoolContext:{schoolId}});mock.overview.mockResolvedValue({homework:[]});});
+it('uses verified parent/school context and private caching',async()=>{const response=await run();expect(response.status).toBe(200);expect(mock.overview).toHaveBeenCalledWith('db',{schoolId,userId},studentId,year);expect(response.headers.get('cache-control')).toBe('private, no-store');expect(response.headers.get('vary')).toBe('Cookie');});
+it.each(['TEACHER','SCHOOL_ADMIN','SUPER_ADMIN'])('denies %s before child reads',async role=>{mock.context.mockResolvedValue({role,schoolContext:{schoolId}});expect((await run()).status).toBe(403);expect(mock.overview).not.toHaveBeenCalled();});
+it.each(['',`academicYearId=${year}&schoolId=${schoolId}`,`academicYearId=${year}&userId=x`,`academicYearId=${year}&academicYearId=${year}`,'academicYearId=invalid'])('rejects invalid or injected scope %s',async query=>{expect((await run(query)).status).toBe(400);expect(mock.overview).not.toHaveBeenCalled();});

@@ -11,7 +11,7 @@ import { PublishedTimetables } from '@/components/timetable/publication';
 import { getCatalog } from '@/i18n/catalogs';
 import { builderFixture, savedFixture, tid } from './builder-fixture';
 import { publishedFixture } from './publication-fixture';
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(), useRouter: () => ({ replace: vi.fn() }) }));
 const fetcher = vi.fn<typeof fetch>(), clients: QueryClient[] = [];
 let fixture: ReturnType<typeof builderFixture>, published: ReturnType<typeof publishedFixture>;
 beforeEach(() => {
@@ -80,7 +80,7 @@ it.each(['SCHOOL_ADMIN', 'PARENT'] as const)('retains class-based published card
   show('en', role, true); await screen.findByText('Math');
   expect(screen.getByRole('article')).toBeInTheDocument();
   expect(screen.getByRole('heading', { level: 3, name: 'Class A · Term 1 · 2025/26' })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { level: 4, name: 'Monday' })).toBeInTheDocument();
+  expect(role==='SCHOOL_ADMIN'?screen.getByRole('columnheader',{name:'Monday'}):screen.getByRole('heading', { level: 4, name: 'Monday' })).toBeInTheDocument();
   expect(screen.queryByRole('heading', { level: 2, name: 'Monday' })).not.toBeInTheDocument();
 });
 it.each<SupportedLocale>(['en', 'fr', 'ar'])('explicitly confirms publication despite understandable incomplete load warnings in %s', async locale => {

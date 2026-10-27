@@ -1,4 +1,5 @@
 'use client';
+import type { ReactNode } from 'react';
 import { usePeopleText } from '@/i18n/use-people-text';
 
 import { useQuery } from '@tanstack/react-query';
@@ -16,17 +17,17 @@ import { EndAssignmentForm } from './assignment-form';
 
 const resourceName = (rows: { id: string; name: string }[], id: string) => rows.find((row) => row.id === id)?.name ?? t.unknown;
 
-export function AssignmentsPanel({ schoolId, teacherId, years, classes, subjects, page, canManage, onPage, onChanged }: { schoolId: string; teacherId: string; years: AcademicYearDto[]; classes: ClassDto[]; subjects: SubjectDto[]; page: number; canManage: boolean; onPage: (page: number) => void; onChanged: () => Promise<void> | void }) {
+export function AssignmentsPanel({ schoolId, teacherId, years, classes, subjects, page, canManage, onPage, onChanged, createAction, personLabel }: { personLabel?: string; createAction?: ReactNode; schoolId: string; teacherId: string; years: AcademicYearDto[]; classes: ClassDto[]; subjects: SubjectDto[]; page: number; canManage: boolean; onPage: (page: number) => void; onChanged: () => Promise<void> | void }) {
   const t = useTeacherCopy();
   const text = usePeopleText();
 
   const [ending, setEnding] = useState<TeacherAssignmentDto>(); const params = { page, pageSize: 20 };
   const query = useQuery({ queryKey: teacherKeys.assignments(schoolId, teacherId, params), queryFn: () => teachersApi.assignments(teacherId, params) });
   if (query.isError) return <ApiErrorState title={t.unavailable} description={t.unavailableDescription} onRetry={() => void query.refetch()} />;
-  return <section className="space-y-4"><div><h2 id="teacher-history" tabIndex={-1} className="scroll-mt-24 text-lg font-semibold">{t.assignmentHistory}</h2><p className="mt-1 text-sm text-muted-foreground">{t.assignmentDescription}</p></div>
+  return <section className="space-y-4 pp-history-table"><div className="pp-section-heading"><div><h2 id="teacher-history" tabIndex={-1} className="scroll-mt-24 text-lg font-semibold">{t.assignmentHistory}</h2><p className="mt-1 text-sm text-muted-foreground">{t.assignmentDescription}</p></div>{createAction}</div>
     <TableShell responsive headers={[t.academicYear, t.className, t.subject, t.effectiveFrom, t.effectiveUntil, t.status, t.actions]} loading={query.isPending}>
-      {query.data?.data.length === 0 ? <EmptyTableRow columns={7} /> : query.data?.data.map((assignment) => <tr key={assignment.id}><td dir="auto" className="px-4 py-3">{resourceName(years, assignment.academicYearId)}</td><td dir="auto" className="px-4 py-3 font-medium">{resourceName(classes, assignment.classId)}</td><td dir="auto" className="px-4 py-3">{resourceName(subjects, assignment.subjectId)}</td><td dir="auto" className="px-4 py-3">{assignment.effectiveFrom}</td><td dir="auto" className="px-4 py-3">{assignment.effectiveUntil ?? t.ongoing}</td><td dir="auto" className="px-4 py-3"><StatusBadge brand status={assignment.status} label={text(assignment.status)} /></td><td dir="auto" className="px-4 py-3 text-end">{canManage && assignment.status === 'ACTIVE' ? <Button type="button" variant="outline" size="sm" onClick={() => setEnding(assignment)}>{t.endAssignment}</Button> : null}</td></tr>)}
+      {query.data?.data.length === 0 ? <EmptyTableRow columns={7} /> : query.data?.data.map((assignment) => <tr key={assignment.id}><td dir="auto" className="px-4 py-3">{resourceName(years, assignment.academicYearId)}</td><td dir="auto" className="px-4 py-3 font-medium">{resourceName(classes, assignment.classId)}</td><td dir="auto" className="px-4 py-3">{resourceName(subjects, assignment.subjectId)}</td><td dir="auto" className="px-4 py-3"><bdi dir="ltr">{assignment.effectiveFrom}</bdi></td><td dir="auto" className="px-4 py-3"><bdi dir="ltr">{assignment.effectiveUntil ?? t.ongoing}</bdi></td><td dir="auto" className="px-4 py-3"><StatusBadge brand status={assignment.status} label={text(assignment.status)} /></td><td dir="auto" className={`px-4 py-3 text-end ${canManage && assignment.status === 'ACTIVE' ? '' : 'pp-empty-action'}`}>{canManage && assignment.status === 'ACTIVE' ? <Button type="button" variant="outline" size="sm" onClick={() => setEnding(assignment)}>{t.endAssignment}</Button> : null}</td></tr>)}
     </TableShell>{query.data ? <Pagination {...query.data.meta} onPage={onPage} /> : null}
-    <Modal open={ending != null} title={t.endAssignment} description={t.endDescription} onClose={() => setEnding(undefined)}>{ending ? <EndAssignmentForm assignment={ending} onCancel={() => setEnding(undefined)} onSaved={async () => { await onChanged(); setEnding(undefined); }} /> : null}</Modal>
+    <Modal open={ending != null} title={t.endAssignment} description={t.endDescription} onClose={() => setEnding(undefined)}>{ending ? <EndAssignmentForm contextLabel={[personLabel,resourceName(years,ending.academicYearId),resourceName(classes,ending.classId),resourceName(subjects,ending.subjectId),ending.effectiveFrom].filter(Boolean).join(' · ')} assignment={ending} onCancel={() => setEnding(undefined)} onSaved={async () => { await onChanged(); setEnding(undefined); }} /> : null}</Modal>
   </section>;
 }

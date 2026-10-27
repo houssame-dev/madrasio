@@ -56,7 +56,7 @@ describe('Attendance workspace access and exact context', () => {
   });
   it('renders Teacher history through the server-scoped workflow', async () => {
     navigation.search = 'section=history'; setup(); renderAttendance(<AttendanceWorkspace />, 'TEACHER');
-    expect(await screen.findByRole('heading', { name: 'Student history' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Student history', level: 1 })).toBeInTheDocument();
     await waitFor(() => expect(vi.mocked(globalThis.fetch).mock.calls.some(([url]) => String(url).startsWith('/api/v1/students?'))).toBe(true));
   });
 

@@ -2,7 +2,7 @@
 import { useTranslations } from 'next-intl';
 
 import { useQuery } from '@tanstack/react-query';
-import { Bell, BookOpen, ClipboardList, GraduationCap, Megaphone, UserRoundCheck } from 'lucide-react';
+import { Bell, UserRoundCheck } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useAppContext } from '@/components/app/app-context';
@@ -10,19 +10,13 @@ import { ApiErrorState, InlineLoading } from '@/components/ui/states';
 import { academicApi, listAllResource } from '@/lib/frontend/academic/api';
 import { academicKeys } from '@/lib/frontend/academic/queries';
 import type { ClassDto, SubjectDto } from '@/lib/frontend/academic/types';
-import { schoolCalendarToday } from '@/lib/frontend/attendance/schemas';
 import { useTeachingCopy } from '@/i18n/use-people-copy';
 import { dashboardKeys, listSelfActiveAssignments, listSelfTeacherProfiles, selfTeacherListParams } from '@/lib/frontend/dashboard/queries';
 import { assignmentViews, groupTeacherClasses } from '@/lib/frontend/dashboard/types';
 import { notificationsApi } from '@/lib/frontend/notifications/api';
 import { notificationKeys } from '@/lib/frontend/notifications/queries';
 import { teacherKeys } from '@/lib/frontend/teachers/queries';
-import { DashboardActions } from './dashboard-actions';
-import { TeacherClassCard } from './teacher-class-card';
-
-function OverviewCard({ icon, label, value }: { icon: ReactNode; label: string; value: string | number }) {
-  return <article className="rounded-lg border bg-card p-4 shadow-sm"><span className="text-muted-foreground" aria-hidden="true">{icon}</span><p className="mt-3 text-2xl font-semibold tabular-nums">{value}</p><p className="mt-1 text-sm text-muted-foreground">{label}</p></article>;
-}
+import { TeacherDailyWorkspace } from './teacher-daily-workspace';
 
 function DashboardEmpty({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return <section className="rounded-lg border border-dashed bg-card p-8 text-center"><h2 className="text-lg font-semibold">{title}</h2><p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">{description}</p>{action ? <div className="mt-4">{action}</div> : null}</section>;
@@ -68,23 +62,8 @@ export function TeacherOperationalDashboard() {
     subject: t.unavailableSubject,
   });
   const groups = groupTeacherClasses(views);
-  const uniqueSubjects = new Set(views.map((item) => item.subjectId)).size;
   const profileLabel = profiles.data.length === 1 ? `${profiles.data[0].firstName} ${profiles.data[0].lastName}` : ui('profileCount', { count: profiles.data.length });
   const unreadCount = unread.data?.count;
 
-  return <div className="mx-auto max-w-7xl space-y-8">
-    <header><p className="text-sm font-medium text-muted-foreground"><bdi>{school?.schoolName}</bdi> · {profileLabel}</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">{t.teacherTitle}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t.teacherDescription}</p></header>
-    <DashboardActions workflows="teaching" />
-    <section aria-label={t.overview} className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-      <OverviewCard icon={<ClipboardList className="size-5" />} label={t.activeAssignments} value={views.length} />
-      <OverviewCard icon={<GraduationCap className="size-5" />} label={t.assignedClasses} value={groups.length} />
-      <OverviewCard icon={<BookOpen className="size-5" />} label={t.assignedSubjects} value={uniqueSubjects} />
-      <OverviewCard icon={<Bell className="size-5" />} label={t.unreadNotifications} value={unread.isError || unreadCount === undefined ? '—' : unreadCount} />
-    </section>
-    <section className="space-y-4" aria-labelledby="teacher-classes-heading"><div><h2 id="teacher-classes-heading" className="text-xl font-semibold">{t.myClasses}</h2><p className="mt-1 text-sm text-muted-foreground">{t.myClassesDescription}</p></div><div className="grid gap-4 lg:grid-cols-2">{groups.map((group) => <TeacherClassCard key={group.key} group={group} today={schoolCalendarToday(app.currentSchool!.timezone)} />)}</div></section>
-    <section className="space-y-4" aria-labelledby="teacher-work-heading"><div><h2 id="teacher-work-heading" className="text-xl font-semibold">{t.myWork}</h2><p className="mt-1 text-sm text-muted-foreground">{t.myWorkDescription}</p></div><div className="grid gap-3 sm:grid-cols-2">
-      <Link href="/announcements" className="rounded-lg border bg-card p-4 hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="flex items-center gap-2 font-medium"><Megaphone className="size-4" aria-hidden="true" />{t.announcements}</span><span className="mt-2 block text-sm text-muted-foreground">{t.announcementsDescription}</span></Link>
-      <Link href="/notifications" className="rounded-lg border bg-card p-4 hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="flex items-center gap-2 font-medium"><Bell className="size-4" aria-hidden="true" />{t.notifications}</span><span className="mt-2 block text-sm text-muted-foreground">{t.notificationDescription(unreadCount)}</span></Link>
-    </div></section>
-  </div>;
+  return <TeacherDailyWorkspace views={views} groups={groups} profileLabel={profileLabel} unreadCount={unreadCount} />;
 }

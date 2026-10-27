@@ -41,7 +41,7 @@ const labels = [
 describe('public and workspace localization source contracts', () => {
   it.each(labels)('renders %s login and localized validation without contacting Auth', async (locale, signIn, email, password) => {
     localized(locale, <LoginForm />);
-    expect(screen.getByRole('heading', { name: signIn })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: getCatalog(locale).authShowcase.formTitle })).toBeInTheDocument();
     expect(screen.getByLabelText(email)).toHaveAttribute('dir', 'ltr');
     expect(screen.getByLabelText(password)).toHaveAttribute('autocomplete', 'current-password');
     await userEvent.click(screen.getByRole('button', { name: signIn }));
@@ -72,15 +72,15 @@ describe('public and workspace localization source contracts', () => {
     expect(screen.getByText(getCatalog(locale).shell.roles.teacher)).toBeInTheDocument();
   });
 
-  it.each(labels)('preserves %s dashboard role branching', (locale, _signIn, _email, _password, _school, heading) => {
+  it.each(labels)('preserves %s dashboard role branching', (locale) => {
     const context: MeResponseDto = { user: { id: 'owner' }, currentSchool: { id: 'school', role: 'SCHOOL_ADMIN', timezone: 'UTC' }, memberships: [] };
     const view = localized(locale, <AppContextProvider value={context}><Dashboard /></AppContextProvider>);
-    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: getCatalog(locale).application.title })).toBeInTheDocument();
     view.unmount();
     for (const role of ['TEACHER', 'PARENT'] as const) {
       const branch = localized(locale, <AppContextProvider value={{ ...context, currentSchool: { id: 'school', role, timezone: 'UTC' } }}><Dashboard /></AppContextProvider>);
       expect(screen.getByText(role === 'TEACHER' ? 'Teacher branch' : 'Parent branch')).toBeInTheDocument();
-      expect(screen.queryByRole('heading', { name: heading })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: getCatalog(locale).application.title })).not.toBeInTheDocument();
       branch.unmount();
     }
   });

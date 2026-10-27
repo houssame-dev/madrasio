@@ -22,13 +22,15 @@ function scaled(value: string): bigint {
   return BigInt(whole) * 100n + BigInt((fraction + '00').slice(0, 2));
 }
 
-export function GradeEntryDialog({ open, schoolId, gradebookId, assessment, onClose }: {
+export function GradeEntryDialog({ open, schoolId, gradebookId, assessment, onClose, gradebookContext }: {
   open: boolean;
   schoolId: string;
   gradebookId: string;
+  gradebookContext?: string;
   assessment: AssessmentDto | null;
   onClose: () => void;
 }) {
+  const experience = useTranslations('gradesExperience');
   const ui = useTranslations('learningUi');
   const text = useDomainText();
   const t = useGradeCopy();
@@ -56,9 +58,10 @@ export function GradeEntryDialog({ open, schoolId, gradebookId, assessment, onCl
   useEffect(() => {
     if (!open || dirty.size === 0) return;
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
-    window.addEventListener('beforeunload', beforeUnload);
-    return () => window.removeEventListener('beforeunload', beforeUnload);
-  }, [dirty.size, open]);
+    const guardLink=(event:MouseEvent)=>{if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;const anchor=event.target instanceof Element?event.target.closest('a[href]'):null;if(anchor instanceof HTMLAnchorElement&&anchor.target!=='_blank'&&anchor.href!==location.href&&!window.confirm(t.unsavedPrompt)){event.preventDefault();event.stopPropagation();}};
+    window.addEventListener('beforeunload', beforeUnload);document.addEventListener('click',guardLink,true);
+    return () => {window.removeEventListener('beforeunload', beforeUnload);document.removeEventListener('click',guardLink,true);};
+  }, [dirty.size, open, t.unsavedPrompt]);
   const close = useCallback(() => { if (dirtyRef.current.size === 0 || window.confirm(t.unsavedPrompt)) onClose(); }, [onClose, t.unsavedPrompt]);
   const payload = useMemo(() => [...dirty].flatMap((studentId): GradeEntryInput[] => {
     const draft = drafts[studentId];
@@ -91,18 +94,20 @@ export function GradeEntryDialog({ open, schoolId, gradebookId, assessment, onCl
     if (!invalid) mutation.mutate(payload);
   };
   return <Modal open={open} title={assessment ? t.gradeEntryTitle(assessment.title) : t.enterGrades} description={assessment ? t.gradeEntryDescription(assessment.maximumScore) : undefined} onClose={close}>
-    {!assessment ? null : matrix.isPending ? <InlineLoading label={t.loading} /> : matrix.isError ? <ApiErrorState title={t.unavailable} onRetry={() => void matrix.refetch()} /> : <div className="space-y-4">
-      {dirty.size > 0 ? <InlineFeedback brand kind="warning">{t.unsavedChanges}: {dirty.size}</InlineFeedback> : null}
+    {!assessment ? null : matrix.isPending ? <InlineLoading label={t.loading} /> : matrix.isError ? <ApiErrorState title={t.unavailable} onRetry={() => void matrix.refetch()} /> : <div className="gr-workspace gr-entry space-y-4">
+
       {notice ? <InlineFeedback brand kind="success">{notice}</InlineFeedback> : null}
       {mutation.isError ? <InlineFeedback brand kind="error">{text(gradeErrorMessage(mutation.error))}</InlineFeedback> : null}
+      <div className="gr-savebar"><p role="status" aria-live="polite">{mutation.isPending ? ui('saving') : `${t.unsavedChanges}: ${dirty.size}`}</p><Button type="button" variant="outline" onClick={close}>{t.cancel}</Button><Button type="button" disabled={mutation.isPending || dirty.size === 0} onClick={save}>{mutation.isPending ? ui('saving') : t.save}</Button></div>
       <p className="text-xs text-muted-foreground">{t.rosterLimit}</p>
-      <p className="text-sm text-muted-foreground">{ui('entry')}</p><TableShell responsive headers={[t.student, t.gradeState, t.score]}>{rows?.map(({ student }) => {
+      <p className="gr-notice">{experience('entryContext')}</p><p className="gr-notice"><bdi>{gradebookContext ?? gradebookId}</bdi></p><TableShell responsive headers={[t.student, t.gradeState, t.score]}>{rows?.map(({ student, grades }) => {
         const name = `${student.firstName} ${student.lastName}`; const draft = drafts[student.id] ?? { state: '', score: '' };
         const error = errors[student.id];
-        return <tr key={student.id}><th scope="row" className="px-4 py-3 text-start font-medium">{name}<span className="block text-xs font-normal text-muted-foreground">{student.studentCode ?? t.none}</span></th><td dir="auto" className="px-4 py-3"><label className="sr-only" htmlFor={`grade-state-${student.id}`}>{t.stateFor(name)}</label><select id={`grade-state-${student.id}`} aria-label={t.stateFor(name)} className={selectClassName} disabled={mutation.isPending} value={draft.state} onChange={(event) => { const state = event.target.value as GradeState | ''; change(student.id, { state, score: state === 'VALID' ? draft.score : '' }); }}><option value="">{t.selectState}</option>{states.map((state) => <option key={state} value={state}>{t.gradeStates[state]}</option>)}</select></td><td dir="auto" className="px-4 py-3"><Field label="" htmlFor={`grade-score-${student.id}`} error={error}><input id={`grade-score-${student.id}`} aria-label={t.scoreFor(name)} aria-invalid={!!error} className={inputClassName} inputMode="decimal" dir="ltr" disabled={mutation.isPending || draft.state !== 'VALID'} value={draft.score} onChange={(event) => change(student.id, { score: event.target.value })} /></Field></td></tr>;
+        const savedGrade=grades.find(g=>g.assessmentId===assessment.id);
+        return <tr data-changed={dirty.has(student.id)} key={student.id}><th scope="row" className="px-4 py-3 text-start font-medium">{name}<span className="block text-xs font-normal text-muted-foreground">{student.studentCode ?? t.none}</span><small className="block text-muted-foreground">{experience('savedState')}: {savedGrade ? <>{t.gradeStates[savedGrade.state]}{savedGrade.state==='VALID'?<> · <bdi dir="ltr">{savedGrade.score}</bdi></>:null}</> : t.noPersistedGrade}</small>{dirty.has(student.id)?<span className="gr-changed">{experience('changed')}</span>:null}</th><td dir="auto" className="px-4 py-3"><label className="sr-only" htmlFor={`grade-state-${student.id}`}>{t.stateFor(name)}</label><select id={`grade-state-${student.id}`} aria-label={t.stateFor(name)} className={selectClassName} disabled={mutation.isPending} value={draft.state} onChange={(event) => { const state = event.target.value as GradeState | ''; change(student.id, { state, score: state === 'VALID' ? draft.score : '' }); }}><option value="">{t.selectState}</option>{states.map((state) => <option key={state} value={state}>{t.gradeStates[state]}</option>)}</select></td><td dir="auto" className="px-4 py-3"><Field label="" htmlFor={`grade-score-${student.id}`} error={error}><input id={`grade-score-${student.id}`} aria-label={t.scoreFor(name)} aria-invalid={!!error} className={inputClassName} inputMode="decimal" dir="ltr" disabled={mutation.isPending || draft.state !== 'VALID'} value={draft.score} onChange={(event) => change(student.id, { score: event.target.value })} /></Field></td></tr>;
       })}</TableShell>
       {matrix.data ? <Pagination page={matrix.data.meta.page} pageSize={matrix.data.meta.pageSize} total={matrix.data.meta.total} onPage={(next) => { if (dirty.size === 0 || window.confirm(t.unsavedPrompt)) setPage(next); }} /> : null}
-      <div className="flex flex-wrap justify-end gap-2 border-t pt-4"><Button type="button" variant="outline" onClick={close}>{t.cancel}</Button><Button type="button" disabled={mutation.isPending || dirty.size === 0} onClick={save}>{mutation.isPending ? ui('saving') : t.save}</Button></div>
+
     </div>}
   </Modal>;
 }

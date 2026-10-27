@@ -28,7 +28,7 @@ const params = (values: Record<string, string>) => ({ params: Promise.resolve(va
 
 describe('representative academic structure HTTP contracts', () => {
   it('accepts bounded name search only and rejects client authority on searchable lists', async () => {
-    for (const get of [classesGET, curriculaGET]) {
+    for (const get of [classesGET, curriculaGET, academicYearsGET]) {
       expect((await get(new Request('http://local?search=Atlas&status=ACTIVE&page=1'))).status).toBe(200);
       for (const query of [`search=${'x'.repeat(101)}`, 'search=Atlas&classCode=ABC', `search=Atlas&schoolId=${schoolId}`]) {
         expect((await get(new Request(`http://local?${query}`))).status).toBe(400);

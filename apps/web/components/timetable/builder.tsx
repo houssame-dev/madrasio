@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { Button } from '@school/ui';
@@ -16,7 +16,7 @@ type Copy = ReturnType<typeof useTranslations<'timetableBuilder'>>;
 const dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 const slotKey = (weekday: number, start: string, end: string) => `${weekday}|${start}|${end}`;
 
-export function TimetableBuilder({ data, schoolId, onDirtyChange }: { data: State; schoolId: string; onDirtyChange: (dirty: boolean) => void }) {
+export function TimetableBuilder({ data, schoolId, onDirtyChange, yearControl }: { data: State; schoolId: string; yearControl?:ReactNode; onDirtyChange: (dirty: boolean) => void }) {
   const t = useTranslations('timetableBuilder');
   const [periodId, setPeriodId] = useState(data.periods?.find(p => p.status === 'ACTIVE')?.id ?? data.periods?.[0]?.id ?? '');
   const [classId, setClassId] = useState(data.classes.find(c => c.status === 'ACTIVE')?.id ?? data.classes[0]?.id ?? '');
@@ -25,9 +25,9 @@ export function TimetableBuilder({ data, schoolId, onDirtyChange }: { data: Stat
   const query = useQuery({ queryKey: ['timetable-draft', schoolId, data.selectedYearId, periodId, classId],
     queryFn: () => apiRequest<{ data: Data }>(`/api/v1/timetable/draft?${new URLSearchParams({ academicYearId: data.selectedYearId!, academicPeriodId: periodId, classId })}`),
     enabled: !!data.selectedYearId && !!periodId && !!classId, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false });
-  return <section className="space-y-5" aria-label={t('title')}>
+  return <section className="tt-builder space-y-4" aria-label={t('title')}>
     <h2 className="text-xl font-semibold">{t('title')}</h2><p>{t('description')}</p>
-    <div className="grid min-w-0 gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2">
+    <div className="grid min-w-0 gap-4 rounded-lg border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3">{yearControl}
       <Field label={t('period')} htmlFor="builder-period"><select id="builder-period" className={inputClassName} value={periodId} disabled={dirty || query.isFetching} onChange={e => { setPeriodId(e.target.value); setSaved(false); }}><option value="">{t('select')}</option>{data.periods?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
       <Field label={t('class')} htmlFor="builder-class"><select id="builder-class" className={inputClassName} value={classId} disabled={dirty || query.isFetching} onChange={e => { setClassId(e.target.value); setSaved(false); }}><option value="">{t('select')}</option>{data.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
     </div>
@@ -38,6 +38,7 @@ export function TimetableBuilder({ data, schoolId, onDirtyChange }: { data: Stat
 }
 function DraftEditor({ data, busy, changed, reload, onSaved }: { data: Data; busy: boolean; changed: (dirty: boolean) => void; reload: () => Promise<void>; onSaved: () => void }) {
   const t = useTranslations('timetableBuilder'), week = useTranslations('timetable'), ui = useTranslations('timetableUi');
+  const [selectedDay,setSelectedDay]=useState(data.configuration?.days[0]?.day??1);
   const [lessons, setLessons] = useState<Lesson[]>(data.lessons), [configuration, setConfiguration] = useState(data.configuration);
   const [dirty, setDirty] = useState(false), [editing, setEditing] = useState<Lesson | null>(null);
   const [message, setMessage] = useState<'error' | 'invalid' | 'stale' | 'saved' | null>(null);
@@ -86,7 +87,7 @@ function DraftEditor({ data, busy, changed, reload, onSaved }: { data: Data; bus
   }
   function card(l: Lesson) {
     const assignment = data.assignments.find(a => a.id === l.teacherAssignmentId), teacher = data.teachers.find(v => v.id === assignment?.teacherId);
-    return <article key={l.lessonKey} className="min-w-0 space-y-2 break-words rounded-md border bg-background p-3">
+    return <article key={l.lessonKey} className="tt-lesson min-w-0 space-y-2 break-words rounded-md border bg-background p-3">
       <h4 className="font-semibold" dir="auto">{subjectName(l.subjectId)}</h4><p className="text-lg font-semibold tabular-nums"><bdi dir="ltr">{l.start}–{l.end}</bdi></p>
       <p dir="auto">{teacher ? `${teacher.firstName} ${teacher.lastName}` : t('unnamed')}</p><p dir="auto">{data.rooms.find(r => r.id === l.roomId)?.name ?? t('noRoom')}</p>
       {issues.filter(i => i.lessonKey === l.lessonKey).map(i => <p key={i.kind} className="text-sm">{t(i.kind)}</p>)}
@@ -94,7 +95,7 @@ function DraftEditor({ data, busy, changed, reload, onSaved }: { data: Data; bus
         <Button type="button" variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal py-2" disabled={disabled} onClick={() => edit(lessons.filter(v => v.lessonKey !== l.lessonKey))} aria-label={`${t('remove')} · ${subjectName(l.subjectId)} · ${dayName(l.weekday)} ${l.start}`}>{t('remove')}</Button></div>
     </article>;
   }
-  return <div className="space-y-5" aria-busy={busy || mutation.isPending}>
+  return <div className="tt-editor space-y-4" aria-busy={busy || mutation.isPending}>
     <p className="rounded-md border bg-card p-3 text-sm font-medium">{ui('draftOnly')}</p>
     <p>{data.draft ? `${t('revision')} ${data.draft.revision}` : t('newDraft')} · {t('dates')}: <bdi dir="ltr">{data.period.startDate} – {data.period.endDate}</bdi></p>
     <p className="text-sm text-muted-foreground">{t('history')}</p>{!data.editable ? <p role="status">{t('readonly')}</p> : null}
@@ -105,18 +106,19 @@ function DraftEditor({ data, busy, changed, reload, onSaved }: { data: Data; bus
     {conflicts.length ? <section role="alert" className="space-y-2 break-words rounded-md border border-destructive/30 bg-destructive/5 p-3 text-destructive"><h3 className="font-semibold">{t('conflictTitle')}</h3><p>{t('conflictHelp')}</p><ul>{conflicts.map((c, index) => <li key={index}>{t('conflict', { kind: t(c.kind === 'ROOM' ? 'ROOM_CONFLICT' : c.kind), className: c.otherClass, period: c.otherPeriod, day: dayName(c.weekday), start: c.start, end: c.end })}</li>)}</ul></section> : null}
     {issues.length ? <p role="alert">{t('invalidLessons')}</p> : null}
     {!lessons.length ? <p>{t('empty')}</p> : null}
-    <section aria-label={t('grid')} className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {configuration?.days.map(d => <section key={d.day} aria-label={dayName(d.day)} className="min-w-0 space-y-3 rounded-lg border bg-card p-4"><h3 className="font-semibold">{dayName(d.day)}</h3><ol className="space-y-3">{d.slots.map(s => <li key={slotKey(d.day, s.start, s.end)} className="space-y-2">
-        <p className="text-sm font-semibold tabular-nums"><bdi dir="ltr">{s.start}–{s.end}</bdi>{s.kind === 'BREAK' ? ` · ${t('break')}` : ''}</p>
-        {s.kind === 'LESSON' ? <>{lessons.filter(l => l.weekday === d.day && l.start === s.start && l.end === s.end).map(card)}<Button type="button" className="w-full" variant="outline" disabled={disabled} aria-label={`${t('add')} · ${dayName(d.day)} ${s.start}–${s.end}`} onClick={() => setEditing({ lessonKey: crypto.randomUUID(), weekday: d.day, start: s.start, end: s.end, subjectId: '', teacherAssignmentId: '', roomId: null })}>{t('add')}</Button></> : null}
-      </li>)}</ol></section>)}
-    </section>
+    <div className="tt-draft-actions flex flex-wrap gap-3"><Button disabled={disabled || !dirty || !configuration || !!issues.length || !!conflicts.length} onClick={() => void save()}>{mutation.isPending ? ui('saving') : t('save')}</Button>
+      <Button variant="outline" disabled={busy || mutation.isPending} onClick={() => void reload()}>{t(dirty ? 'discard' : 'reload')}</Button></div>
+    <nav className="tt-builder-days tt-day-nav" aria-label={t('grid')}>{configuration?.days.map(d=><Button type="button" key={d.day} variant="outline" aria-pressed={(configuration.days.some(v=>v.day===selectedDay)?selectedDay:configuration.days[0]?.day)===d.day} onClick={()=>setSelectedDay(d.day)}>{dayName(d.day)}</Button>)}</nav>
+    <div className="tt-week-scroll" role="region" tabIndex={0} aria-label={t('grid')}><table className="tt-week-grid"><caption className="sr-only">{t('grid')}</caption><thead><tr><th scope="col">{t('slot')}</th>{configuration?.days.map(d=><th scope="col" key={d.day}>{dayName(d.day)}</th>)}</tr></thead><tbody>
+      {[...new Map(configuration?.days.flatMap(d=>d.slots.map(s=>[`${s.start}|${s.end}`,s] as const))??[]).values()].sort((a,b)=>a.start.localeCompare(b.start)||a.end.localeCompare(b.end)).map(s=><tr key={`${s.start}|${s.end}`}><th scope="row"><bdi dir="ltr">{s.start}–{s.end}</bdi></th>{configuration?.days.map(d=>{const interval=d.slots.find(v=>v.start===s.start&&v.end===s.end);const day=configuration.days.some(v=>v.day===selectedDay)?selectedDay:configuration.days[0]?.day;return <td key={d.day} data-selected={day===d.day} data-empty={!interval}>
+      {interval?<><p className="tt-mobile-time"><bdi dir="ltr">{s.start}–{s.end}</bdi></p>{interval.kind==='BREAK'?<p className="tt-break">{t('break')}</p>:<>{lessons.filter(l=>l.weekday===d.day&&l.start===s.start&&l.end===s.end).map(card)}<Button type="button" variant="outline" disabled={disabled} aria-label={`${t('add')} · ${dayName(d.day)} ${s.start}–${s.end}`} onClick={()=>setEditing({lessonKey:crypto.randomUUID(),weekday:d.day,start:s.start,end:s.end,subjectId:'',teacherAssignmentId:'',roomId:null})}>{t('add')}</Button></>}</>:<span aria-hidden="true">—</span>}
+      </td>;})}</tr>)}
+    </tbody></table></div>
     {offGrid.length ? <section aria-label={t('offGrid')} className="space-y-3"><h3 className="font-semibold">{t('offGrid')}</h3>{offGrid.map(card)}</section> : null}
     <section aria-label={t('progress')} className="space-y-2"><h3 className="text-lg font-semibold">{t('progress')}</h3><p>{t('progressNotice')}</p>{!progress.length ? <p>{t('noRequirements')}</p> : <ul className="grid gap-3 sm:grid-cols-2">{progress.map(p => <li key={p.subjectId} className="space-y-1 rounded-md border bg-card p-3"><p dir="auto" className="font-semibold">{subjectName(p.subjectId)}</p><p>{t('count', { scheduled: String(p.scheduled), required: String(p.required), minutes: String(p.scheduledMinutes), requiredMinutes: String(p.requiredMinutes) })}</p><p>{t(p.status)}</p>{p.durationMismatch ? <p>{t('durationMismatch')}</p> : null}</li>)}</ul>}</section>
-    <div className="flex flex-wrap gap-3"><Button disabled={disabled || !dirty || !configuration || !!issues.length || !!conflicts.length} onClick={() => void save()}>{mutation.isPending ? ui('saving') : t('save')}</Button>
-      <Button variant="outline" disabled={busy || mutation.isPending} onClick={() => void reload()}>{t(dirty ? 'discard' : 'reload')}</Button></div>
-    <PublishDraft data={data} disabled={disabled || dirty || !!issues.length} />
-    <Modal open={!!editing} title={t('edit')} onClose={() => setEditing(null)}>{editing && configuration ? <LessonForm key={editing.lessonKey} value={editing} data={data} configuration={configuration} t={t} dayName={dayName} onApply={l => { edit([...lessons.filter(v => v.lessonKey !== l.lessonKey), l]); setEditing(null); }} /> : null}</Modal>
+
+    <PublishDraft data={data} disabled={disabled || dirty || !!issues.length || !!conflicts.length} />
+    <Modal open={!!editing} title={t('edit')} onClose={() => setEditing(null)}>{editing && configuration ? <LessonForm key={editing.lessonKey} value={editing} data={data} configuration={configuration} t={t} dayName={dayName} onApply={l => { setSelectedDay(l.weekday);edit([...lessons.filter(v => v.lessonKey !== l.lessonKey), l]); setEditing(null); }} /> : null}</Modal>
   </div>;
 }
 function LessonForm({ value, data, configuration, t, dayName, onApply }: { value: Lesson; data: Data; configuration: NonNullable<Data['configuration']>; t: Copy; dayName: (day: number) => string; onApply: (lesson: Lesson) => void }) {

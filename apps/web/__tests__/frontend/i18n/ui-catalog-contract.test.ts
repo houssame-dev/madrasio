@@ -16,9 +16,9 @@ function argumentsIn(message: string): string[] {
 }
 
 describe('additive public/workspace and domain UI catalogs', () => {
-  it('keeps all 1631 keys and ICU argument names aligned in EN/FR/AR', () => {
+  it('keeps all 2020 keys and ICU argument names aligned in EN/FR/AR', () => {
     const reference = leaves(getCatalog('en'));
-    expect(Object.keys(reference)).toHaveLength(1631);
+    expect(Object.keys(reference)).toHaveLength(2020);
     for (const locale of SUPPORTED_LOCALES) {
       const translated = leaves(getCatalog(locale));
       expect(Object.keys(translated).sort()).toEqual(Object.keys(reference).sort());

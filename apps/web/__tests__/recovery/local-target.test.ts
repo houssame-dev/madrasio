@@ -1,3 +1,4 @@
+import { EXPECTED_TABLE_COUNT, EXPECTED_MIGRATION_COUNT } from '@/scripts/deployment/contracts';
 import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
@@ -148,9 +149,9 @@ describe.skipIf(!live)('live local recovery target', () => {
     await expect(
       verifyLocalRecoveryTarget(state.statePath, { expectMigrated: true }),
     ).resolves.toMatchObject({
-      applicationTables: 56,
-      migrations: 25,
-      rlsTables: 56,
+      applicationTables: EXPECTED_TABLE_COUNT,
+      migrations: EXPECTED_MIGRATION_COUNT,
+      rlsTables: EXPECTED_TABLE_COUNT,
       applicationPolicies: 0,
       security: 'accepted',
     });
@@ -303,12 +304,12 @@ describe.skipIf(!live)('live local recovery target', () => {
           (select count(*)::int from pg_policies where schemaname='public') policies`,
       );
       expect(counts.rows[0]).toEqual({
-        application_tables: 58,
+        application_tables: EXPECTED_TABLE_COUNT,
         auth_identities: 1,
         auth_users: 1,
         memberships: 1,
         policies: 0,
-        rls_tables: 58,
+        rls_tables: EXPECTED_TABLE_COUNT,
         schools: 1,
         users: 1,
       });
@@ -379,9 +380,9 @@ describe.skipIf(!live)('live local recovery target', () => {
       authIdentitiesColumns: 9,
       authUsers: 0,
       authIdentities: 0,
-      applicationTables: 56,
-      migrations: 25,
-      rlsTables: 56,
+      applicationTables: EXPECTED_TABLE_COUNT,
+      migrations: EXPECTED_MIGRATION_COUNT,
+      rlsTables: EXPECTED_TABLE_COUNT,
       applicationPolicies: 0,
       security: 'accepted',
       nonLoopbackBindings: 0,

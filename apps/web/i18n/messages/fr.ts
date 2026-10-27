@@ -1,3 +1,15 @@
+import { communicationsExperienceFr } from './communications-experience';
+import { homeworkExperienceFr } from './homework-experience';
+import { peopleExperienceFr } from './people-experience';
+import { gradesExperienceFr } from './grades-experience';
+import { timetableExperienceFr } from './timetable-experience';
+import { academicPlanningFr } from './academic-planning';
+import { tuitionFr } from './tuition';
+import { parentWorkspaceFr } from './parent-workspace';
+import { teacherWorkspaceFr } from './teacher-workspace';
+import { applicationFr } from './application';
+import { passwordShowcaseFr } from './password-showcase';
+import { recoveryShowcaseFr } from './recovery-showcase';
 import { communicationUiFr } from './communication-ui';
 import { learningUiFr } from './learning-ui';
 import { managementUiFr } from './management-ui';
@@ -14,6 +26,19 @@ import type { Messages } from '../catalogs';
 import { financeFr } from './finance';
 
 const messages = {
+  communicationsExperience: communicationsExperienceFr,
+  homeworkExperience: homeworkExperienceFr,
+  peopleExperience: peopleExperienceFr,
+  gradesExperience: gradesExperienceFr,
+  timetableExperience: timetableExperienceFr,
+  academicPlanning: academicPlanningFr,
+  tuition: tuitionFr,
+  parentWorkspace: parentWorkspaceFr,
+  teacherWorkspace: teacherWorkspaceFr,
+  application: applicationFr,
+  passwordShowcase: passwordShowcaseFr,
+  recoveryShowcase: recoveryShowcaseFr,
+  authShowcase: {"welcome": "Bienvenue sur", "desktopIntro": "Votre plateforme complète de gestion scolaire pour un avenir plus organisé, connecté et serein.", "mobileIntro": "Connectez-vous pour gérer votre école en toute confiance.", "formTitle": "Connectez-vous à votre compte", "formIntro": "Retrouvez Madrasio pour gérer votre école en toute simplicité.", "operationsTitle": "Simplifiez la gestion scolaire", "operationsBody": "Gérez les élèves, le personnel et les études sur une seule plateforme.", "connectedTitle": "Restez connectés", "connectedBody": "Rapprochez les équipes, les enseignants, les parents et les élèves.", "futureTitle": "Pour un avenir meilleur", "futureBody": "Une solution fiable et sécurisée, conçue pour l’éducation moderne.", "emailPlaceholder": "vous@ecole.edu", "passwordPlaceholder": "Saisissez votre mot de passe", "showPassword": "Afficher le mot de passe", "hidePassword": "Masquer le mot de passe", "forgot": "Mot de passe oublié ?", "privacy": "Vos données sont chiffrées et sécurisées.", "privacyDetail": "Nous respectons votre vie privée."},
   communicationUi: communicationUiFr,
   learningUi: learningUiFr,
   managementUi: managementUiFr,
@@ -21,7 +46,7 @@ const messages = {
   timetableUi: timetableUiFr,
   attendanceUi: attendanceUiFr,
   dashboardUi: dashboardFr,
-  theme: { label: 'Thème', light: 'Clair', dark: 'Sombre', system: 'Système' },
+  theme: { mist: 'Brume', midnight: 'Bleu nuit', label: 'Thème', light: 'Clair', dark: 'Sombre', system: 'Système' },
   timetablePublication: publicationFr,
   timetableBuilder: builderFr,
   timetable: timetableFr,

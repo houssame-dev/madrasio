@@ -5,9 +5,11 @@ Authoritative Pass 1–3 contract (FINANCE_V1_IMPLEMENT_01/02/03). Applies along
 and ADR-023 (platform authority confers no School membership). This is student
 receivables, not SaaS subscriptions or a general ledger.
 
-- Only ACTIVE School Admin members can read/manage Finance. Verified server
-  identity and an ACTIVE School are required for every operation. No Accountant
-  role, public grant, parent/teacher access or platform-only School bypass.
+- Only ACTIVE School Admin members can read/manage the Finance administration
+  APIs. Verified server identity and an ACTIVE School are required for every
+  operation. The approved dedicated child-scoped Parent read-only exception is
+  described below; it grants no Finance permission. No Accountant role, public
+  grant, Teacher access or platform-only School bypass is introduced.
 - Schools configure named fee types, then monthly or one-time structures by
   Academic Year and optional Level. One active structure per exact year/type/level
   scope; a School-wide structure and a Level structure may coexist. Admins choose
@@ -108,8 +110,9 @@ transport failures; no automatic mutation retry.
 ## Pass 2 — Offline payments, allocations and receipts
 
 - Only current ACTIVE School Admin authority can record or reverse payments and
-  read receipts. The same School/User/member locks and server authorization
-  apply. Platform-only authority, Teachers and Parents receive no Finance access.
+  read Admin receipts. The same School/User/member locks and server authorization
+  apply. Platform-only authority and Teachers receive no Finance access; Parents
+  have only the dedicated child-scoped read exception below, with no mutations.
 - Record money already collected outside Madrasio: CASH, BANK_TRANSFER or CHEQUE.
   No gateway, online collection, cheque clearing or monetary refund is performed.
   Positive integer minor units in the School currency, School-local received date (1900 through today), method,
@@ -204,6 +207,41 @@ or provider change is authorized by implementation or local test results.
   timezone and active scope filters. Downloaded personal data must be stored safely.
 - /finance integrates reports and balances with existing controls, EN/FR/AR and RTL;
   no charting library, new standard UI primitive or dependency is introduced.
+
+## Tuition Management V1 — dedicated Parent read-only exception
+
+The approved 2026-10-25 extension reorganizes `/finance` into six URL-backed
+internal sections and adds a child-specific Parent tuition section. Existing
+School Admin financial writes, locks, exact minor-unit arithmetic, currency
+locking, immutable receipt snapshots, generation previews/idempotency and audit
+atomicity retain the contracts above. No Teacher or Parent mutation authority,
+database migration, dependency or online payment capability is added.
+
+Parents do not receive `finance.read` or `finance.manage`. Dedicated GET routes
+under `/api/v1/parent/children/:studentId/tuition` expose only the selected child's
+all-academic-year balance, paginated charges/payment history and receipt reads.
+`receipts/:paymentId` returns the Parent projection; `?download=1` returns its
+escaped self-contained HTML attachment. Every request, including receipt detail
+and download, verifies current session, ACTIVE School/membership, Parent role,
+ACTIVE Parent profile and ACTIVE ParentStudent relationship server-side. Queries
+constrain School, Student and payment identity, rejecting foreign or unrelated
+resources. Authorization, totals and rows share a read-only repeatable-read
+transaction. Strict query validation and private/no-store responses apply to
+successes and errors.
+
+Parent receipts preserve original payment and allocation snapshot names, dates,
+amounts and currency, with reversal reference/time where applicable. They exclude
+internal staff identity, reversal reasons/notes, request keys and audit metadata.
+No historical payment or receipt is edited/deleted. Browser Print / Save as PDF
+and HTML download are supported; there is no native PDF-generation endpoint.
+
+The School Admin overview composes existing reports/history in a read-only
+repeatable-read transaction: selected-year (or all-year) outstanding and overdue
+totals remain distinct from School-local month-to-date collections across years,
+net of current reversals. Class outstanding uses the charge-generation Class
+snapshot ID, so later transfers do not regroup previous debt. Frontend routing,
+presentation and bounded verification are documented in
+`docs/frontend/tuition-management.md`.
 
 ## Pending migration release/recovery boundary
 

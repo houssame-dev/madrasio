@@ -1,0 +1,87 @@
+/* Attendance content only; the approved application shell owns all theme tokens. */
+.attendance-workspace { max-width: 1600px; margin-inline: auto; min-width: 0; }
+.attendance-workspace h1 { font-size: clamp(25px,2.2vw,34px); font-weight: 700; line-height: 1.2; letter-spacing: -.025em; }
+.attendance-workspace h2 { font-size: 19px; font-weight: 700; line-height: 1.4; }
+.attendance-workspace h3 { font-size: 14px; font-weight: 700; line-height: 1.5; }
+[dir='rtl'] .attendance-workspace h1 { letter-spacing: normal; line-height: 1.5; }
+.attendance-workspace :is(input,select) { min-width: 0; max-width: 100%; background-color: hsl(var(--card)); }
+.attendance-workspace button { white-space: normal; min-height: 42px; height: auto; }
+.attendance-workspace nav { flex-wrap: wrap; }
+.at-tabs button[aria-current='page'] { background: var(--ws-active); color: var(--ws-active-text); border: 1px solid hsl(var(--input)); }
+.at-tabs button { min-width: 120px; }
+.at-card,.at-datebar { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 12px; padding: 20px; min-width: 0; }
+.at-datebar { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+.at-datebar label { width: min(320px,100%); min-width: 0; }
+.at-datebar label>span { display: block; }
+.at-notice { padding: 14px 16px; background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); border-radius: 9px; color: hsl(var(--muted-foreground)); font-size: 13px; line-height: 1.7; }
+.at-legacy { border-color: hsl(var(--input)); }
+.at-session-list { display: grid; gap: 11px; margin-top: 18px; }
+.at-session-list>li { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid hsl(var(--border)); border-radius: 10px; min-width: 0; }
+.at-time { background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 10px 12px; font-size: 13px; font-weight: 700; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.at-session-name { min-width: 0; overflow-wrap: anywhere; flex: 1; }
+.at-session-name p { color: hsl(var(--muted-foreground)); font-size: 13px; margin-top: 3px; }
+.at-session-actions { display: flex; align-items: center; justify-content: end; gap: 10px; flex-wrap: wrap; }
+.at-session-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.at-session-heading h2 { margin-block: 6px; }
+.at-session-heading>button { flex-shrink: 0; }
+.at-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.at-summary>div { border: 1px solid hsl(var(--border)); border-radius: 9px; background: hsl(var(--muted)); padding: 14px 16px; }
+.at-summary dt { color: hsl(var(--muted-foreground)); font-size: 12px; }
+.at-summary dd { font-size: 20px; font-weight: 700; margin-top: 4px; }
+.at-roster-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,.8fr) minmax(0,1.3fr); align-items: center; gap: 16px; border: 1px solid hsl(var(--border)); border-radius: 9px; background: hsl(var(--card)); padding: 12px 14px; }
+.at-roster-row>div { min-width: 0; }
+.at-changed { border-color: hsl(var(--input)); background: var(--ws-active); }
+.at-status { display: inline-flex; align-items: center; width: fit-content; padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; line-height: 1.5; background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.at-status[data-status='PRESENT'] { background: #dff5eb; color: #126441; }
+.at-status[data-status='ABSENT'] { background: #fae4e8; color: #ac243a; }
+.at-status[data-status='LATE'] { background: #fff0d9; color: #875000; }
+.at-status[data-status='EXCUSED'] { background: #f0e7fe; color: #6f38a7; }
+:is([data-theme='midnight'],[data-theme='dark']) .at-status[data-status='PRESENT'] { background: #214e44; color: #b8f9d9; }
+:is([data-theme='midnight'],[data-theme='dark']) .at-status[data-status='ABSENT'] { background: #542f43; color: #ffc1c5; }
+:is([data-theme='midnight'],[data-theme='dark']) .at-status[data-status='LATE'] { background: #554529; color: #ffd893; }
+:is([data-theme='midnight'],[data-theme='dark']) .at-status[data-status='EXCUSED'] { background: #453860; color: #ddc6ff; }
+.at-review { padding: 12px 14px; border: 1px solid hsl(var(--border)); border-radius: 9px; font-size: 13px; }
+.at-review summary { cursor: pointer; min-height: 32px; font-weight: 600; }
+.at-review li { padding-block: 5px; }
+.at-savebar { position: sticky; bottom: 12px; z-index: 10; display: flex; align-items: center; gap: 16px; padding: 14px; border: 1px solid hsl(var(--input)); border-radius: 9px; background: hsl(var(--card)); box-shadow: 0 5px 22px rgb(20 33 61 / 9%); }
+.at-savebar>button { margin-inline-start: auto; flex-shrink: 0; }
+.at-history-list { display: grid; gap: 10px; }
+.at-history-record { padding: 16px; border: 1px solid hsl(var(--border)); border-radius: 9px; min-width: 0; overflow-wrap: anywhere; }
+.at-history-record time { font-weight: 700; font-size: 14px; }
+.at-history-record p { margin-top: 5px; }
+.at-child-history .at-history-record { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+.at-child-filters { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; }
+.at-search input { flex: 1; min-width: 0; }
+@media(max-width:767px) {
+ .attendance-workspace { min-width: 0; }
+ .at-card,.at-datebar { padding: 16px; }
+ .at-tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .at-tabs button { min-width: 0; padding: 10px; }
+ .at-session-list>li { flex-wrap: wrap; padding: 14px; gap: 12px; }
+ .at-session-actions { width: 100%; }
+ .at-session-heading { align-items: start; flex-direction: column; gap: 12px; }
+ .at-summary { gap: 8px; }
+ .at-summary>div { padding: 12px 10px; }
+ .at-summary dt { font-size: 11px; overflow-wrap: anywhere; }
+ .at-summary dd { font-size: 18px; }
+ .at-roster-row { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
+ .at-roster-row>div:first-child { grid-column: 1 / -1; }
+ .at-roster-row>div>p.md\:sr-only,.at-roster-row label.md\:sr-only { font-size: 12px; }
+ .at-savebar { display: grid; gap: 8px; bottom: 8px; }
+ .at-savebar>button { width: 100%; margin: 0; }
+ .at-child-filters { grid-template-columns: minmax(0,1fr); }
+ .at-child-history .at-history-record { align-items: start; flex-direction: column; }
+}
+@media(prefers-reduced-motion:reduce) { .attendance-workspace *, .attendance-workspace *::before, .attendance-workspace *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+.at-savebar { top: calc(var(--app-topbar-height) + 8px); bottom: auto; }
+.at-roster-row { scroll-margin-top: calc(var(--app-topbar-height) + 170px); }
+.at-record-context { display: flex; gap: 6px 24px; flex-wrap: wrap; margin-top: 5px; color: hsl(var(--muted-foreground)); font-size: 12px; }
+.at-record-context>div { display: flex; gap: 6px; }
+.at-record-context>div:last-child:empty { display: none; }
+.at-record-context dd { color: hsl(var(--foreground)); }
+.at-history-record>div:first-child { align-items: center; }
+.at-child-journey { max-width: none; padding: 0; }
+@media(max-width:767px) { .at-record-context { gap: 6px 16px; } .at-savebar { top: calc(var(--app-topbar-height) + 4px); } }
+/* Approved primary action, scoped to Attendance rather than global theme tokens. */
+.attendance-workspace .at-savebar>button { background: #fca311; color: #101828; }
+.attendance-workspace .at-savebar>button:hover:not(:disabled) { background: #ffb733; }

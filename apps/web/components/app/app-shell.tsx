@@ -9,31 +9,18 @@ import type { MeResponseDto } from '@/lib/api/me';
 import { useTranslations } from 'next-intl';
 import { AppContextProvider } from './app-context';
 import { NavigationLinks } from './navigation-links';
-import { SchoolSwitcher } from './school-selector';
+import { ProfileMenu } from './profile-menu';
 import { NotificationUnreadBadge } from '@/components/notifications/notification-unread-badge';
-import { LogoutButton } from '@/components/auth/logout-button';
-import { LanguagePreferenceSlot } from '@/components/language/preference-slot';
-import { ThemeSelector } from '@/components/theme/theme-selector';
-import { LanguageSelector } from '@/components/language/language-selector';
 import { BrandMark } from '@/components/branding/brand-mark';
-
-const roleLabelKeys = {
-  SUPER_ADMIN: 'roles.superAdmin',
-  SCHOOL_ADMIN: 'roles.schoolAdmin',
-  TEACHER: 'roles.teacher',
-  PARENT: 'roles.parent',
-} as const;
 
 export function AppShell({ context, children }: { context: MeResponseDto; children: ReactNode }) {
   const t = useTranslations('shell');
-  const theme = useTranslations('theme');
   const navigation = useTranslations('navigation');
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const school = context.memberships.find((membership) => membership.schoolId === context.currentSchool?.id);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -72,11 +59,11 @@ export function AppShell({ context, children }: { context: MeResponseDto; childr
 
   return (
     <AppContextProvider value={context}>
-      <div className="min-h-screen bg-background">
+      <div className="madrasio-workspace ws-layout">
         <aside
           data-testid="desktop-sidebar"
           className={cn(
-            'fixed inset-y-0 start-0 z-30 hidden border-e bg-chrome text-chrome-foreground transition-[width] motion-reduce:transition-none lg:flex lg:flex-col',
+            'ws-sidebar fixed inset-y-0 start-0 z-30 hidden border-e transition-[width] motion-reduce:transition-none lg:flex lg:flex-col',
             collapsed ? 'w-[var(--app-sidebar-collapsed-width)]' : 'w-[var(--app-sidebar-width)]',
           )}
         >
@@ -101,38 +88,17 @@ export function AppShell({ context, children }: { context: MeResponseDto; childr
               </div>
               <div data-testid="drawer-scroll-region" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <div className="py-4"><NavigationLinks role={context.currentSchool.role} platformAuthority={context.platformAuthority} onNavigate={() => setMobileOpen(false)} /></div>
-                <div className="space-y-4 border-t p-4">
-                  <div className="[&_label]:w-full [&_select]:w-full [&_select]:max-w-none"><SchoolSwitcher memberships={context.memberships} currentSchoolId={context.currentSchool.id} /></div>
-                  <div className="flex items-center justify-between gap-3"><span className="text-sm font-medium">{theme('label')}</span><ThemeSelector /></div>
-                  <LanguageSelector />
-                  <LogoutButton />
-                </div>
               </div>
             </aside>
           </div>
         ) : null}
 
         <div ref={contentRef} aria-hidden={mobileOpen || undefined} className={cn('transition-[padding] motion-reduce:transition-none', collapsed ? 'lg:ps-[var(--app-sidebar-collapsed-width)]' : 'lg:ps-[var(--app-sidebar-width)]')}>
-          <header className="sticky top-0 z-20 flex h-[var(--app-topbar-height)] items-center gap-1 border-b bg-chrome px-[var(--app-page-padding)] text-chrome-foreground sm:gap-3">
+          <header className="ws-navbar sticky top-0 z-20 flex h-[var(--app-topbar-height)] items-center gap-1 border-b px-[var(--app-page-padding)] sm:gap-3">
             <Button ref={mobileTriggerRef} data-testid="mobile-navigation-trigger" type="button" variant="ghost" size="icon" className="shrink-0 lg:hidden" aria-label={t('navigation.open')} aria-expanded={mobileOpen} aria-controls="mobile-navigation" onClick={() => setMobileOpen(true)}><Menu className="size-5" aria-hidden="true" /></Button>
-            <div className="min-w-0 flex-1 ps-2 sm:flex sm:items-center sm:gap-5 lg:hidden">
-              <BrandMark className="h-7 w-28 shrink-0" />
-              <div className="min-w-0">
-                <p className="truncate text-xs text-muted-foreground sm:text-sm sm:font-medium sm:text-chrome-foreground">{school?.schoolName ?? t('currentSchool')}</p>
-                <p className="hidden text-xs text-muted-foreground sm:block">{t(roleLabelKeys[context.currentSchool.role])}</p>
-              </div>
-            </div>
-            <div className="hidden min-w-0 flex-1 lg:block">
-              <p className="truncate text-sm font-medium">{school?.schoolName ?? t('currentSchool')}</p>
-              <p className="truncate text-xs text-muted-foreground">{t(roleLabelKeys[context.currentSchool.role])}</p>
-            </div>
+            <div className="min-w-0 flex-1" />
             <NotificationUnreadBadge />
-            <div className="hidden items-center gap-2 lg:flex">
-              <ThemeSelector compact />
-              <LanguagePreferenceSlot placement="app-shell" />
-              <div className="shrink-0 [&_select]:w-28 [&_select]:max-w-28 xl:[&_select]:w-40 xl:[&_select]:max-w-40"><SchoolSwitcher memberships={context.memberships} currentSchoolId={context.currentSchool.id} /></div>
-              <LogoutButton variant="ghost" compact />
-            </div>
+            <ProfileMenu key={context.currentSchool.id} context={context} />
           </header>
           <main className="min-h-[calc(100vh-var(--app-topbar-height))] p-[var(--app-page-padding)]">{children}</main>
         </div>

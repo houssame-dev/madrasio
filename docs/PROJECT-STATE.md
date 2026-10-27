@@ -1,6 +1,305 @@
+# Local checkpoint — V1 launch readiness audit — 2026-10-27
+
+**LOCAL GO; HOSTED ACCEPTANCE PENDING.** All eight modules and approved designs remain intact. Targeted private-download CSP precedence correction verified on the final HTTP response and four native browser downloads. Integrated DB383 passed; web2,933 passed/5 stale shell assertions failed/50 gated skips/21TODO; corrected shell rerun26/26 closes all five failures. Seven native PostgreSQL suites38/38, live age/local Supabase recovery14/14, native snapshot1/1. Browser95 cases plus real local file/job/attendance/receipt/result/school-switch/logout checks pass. Root lint/typecheck/build58 routes and diff check pass; Product Owner also independently confirmed the root checks. No fresh all-green full-suite invocation is claimed.
+
+Full current evidence, exact counts/limitations and audit-only file inventory: `test-results/v1-launch-readiness/REPORT.md`. Auth responses/R2 bytes in browser fixtures are simulated; native DB and local recovery evidence are real. No hosted acceptance or production launch approval. Next: Product Owner report review and separate authorization for isolated hosted acceptance. No staging, commits, pushes, deployments, hosted migrations or provider changes. Earlier checkpoints below are preserved verbatim; their pending visual-review wording is historical and superseded by the Product Owner's current approval.
+
+---
+
+# Local checkpoint — Announcements & Notifications V1 — 2026-10-27
+
+Implementation and local verification completed; actual module awaits user visual review and sign-off. Scoped communication UI inherits the approved application system; all prior Authentication, shell, dashboards, modules and invitation-template work is preserved.
+
+- Exact-Version publication/scheduling review, authoritative readiness gating, fail-closed supporting reads, explicit fresh correction content/targets/files, scoped private-file READY/uncertain outcomes, immutable recipient detail and School-timezone Notification timestamps.
+- Existing APIs, backend permission/tenant boundaries, Version/publication/snapshot/Outbox contracts, schemas, migrations and dependencies unchanged.
+- Root lint/typecheck and production build58 routes pass; diff check passes. Domain/API204; final communication UI64; broader UI/i18n496+21TODO; connected1062+8gatedskips+21TODO; real local PostgreSQL17.6 three native tests with59 initial fingerprints.
+- Playwright288 cases,108 additional widths,23+9 intercepted journeys,24 approved-reference counterparts; zero final matrix contrast/overflow/clipping/page-error findings. Independent Impeccable disposition ship at captured local scope, not user approval.
+- Protected visual comparisons24:23 pixel-identical and10 tiny changed Login pixels with identical geometry. Sources unrelated to this task remain byte-identical. Native browser-anchor download fixture interception is limited; exact href/intercepted PDF GET and server private-download contracts verified. No hosted acceptance.
+- Full evidence: test-results/communications-v1/REPORT.md, SCREENSHOTS.md, preservation-final.json, impeccable-review.md; durable guide docs/frontend/communications-v1.md.
+- No staging, commit, push, PR, deployment, hosted migration, provider change or unrelated discard. Next action: user review of actual screenshots/workflows before local sign-off.
+
+---
+
+## Current handoff — Homework V1 local review checkpoint (2026-10-26)
+
+Homework now extends the existing application content with compact staff
+directory/roster records, contextual working create/target/publication/record/
+review/return/resubmission dialogs, exact academic and Student identity, and
+private files associated with their original recording. Parent Homework lists
+retain Subject/Period/due/status and child/Year links; selected-child submission
+queries/rendering fail closed for unrelated children. The focused Homework child
+route uses the existing focused-child pattern to omit unrelated Finance/Results.
+Global design, shell, backend, API, schema, migrations and dependencies remain
+outside this UI extension.
+
+Append-only targets, forward-only lifecycle, historical due-date enrollment,
+server-derived author/status/recording time, independently optional physical
+hand-in, one logical submission and Parent read-only authority remain intact.
+Uncertain uploads block new intent; success requires server-confirmed READY.
+
+The local evidence includes 24 actual application captures corresponding to the
+approved references, eight state captures and 17 passed fixture browser journeys. Focused Homework/
+recovery tests record 93 passed/two native-gated skips; the separate local native
+PostgreSQL Homework run passed both tests. All 59 initial table fingerprints
+matched; 53 unrelated tables stayed unchanged after six expected table changes.
+UI/portal/theme/shell regressions passed 500 with 21 existing TODOs; the latest
+focused copy rerun passed 67 (overlapping). The bounded connected rerun passed
+266 with seven native-only skips after the initial unbounded worker-memory
+failure. Four added localized keys bring each locale to 2016; Parent returned-work
+guidance asks the Teacher for follow-up and keeps Parent operation read-only. The independent Impeccable rendered
+review inspected every actual/reference pair, found no material issue and returned
+`ship` for this local review checkpoint. Its disposition is not module approval.
+The later four Parent copy captures and two French 320px timing captures passed
+scoped review; the reviewer appended final ship. Parent timing tiles now use one
+column below 360px, resolving both French label findings without changing the
+primary 1440px/390px reference captures. The final matrix records 288 cases and
+108 width checks with no reported errors, overflow, clipping or sampled contrast
+findings. Extra auth context/school-switch/session-handoff checks passed 34 tests
+across three files; final narrow checks passed 15 across two (overlapping). Final
+root lint/typecheck, 58-route build and diff checks passed. The optional runtime was unavailable; source guidance/independent review were used
+without a detector score. Final commands, reconciled test/matrix counts,
+protected-surface comparisons and limitations are in the report linked below.
+
+See [Homework frontend handoff](frontend/homework-v1.md),
+[verification report](../test-results/homework-v1/REPORT.md),
+[screenshot index](../test-results/homework-v1/SCREENSHOTS.md), and
+[independent review](../test-results/homework-v1/impeccable-review.md).
+User review of the actual local implementation is required before local sign-off.
+No hosted acceptance or final module approval is claimed; no staging, commit,
+push, PR, deployment, hosted migration or remote settings change was performed.
+All earlier project-state content follows unchanged, byte for byte.
+
+## Current handoff — People V1 local checkpoint (2026-10-26)
+
+Students, Teachers and Parents now extend the existing application content with
+server-backed directories, explicit identity/placement/account/history hierarchy,
+and contextual working enrollment/transfer, assignment and relationship dialogs.
+Exact person/Year/Class/Subject/date context, explicit multiple-active-Year choice,
+bounded visible-child selection, read-only Teacher scope and preserved history
+remain authoritative. Existing endpoints, security, shell and global design are
+unchanged. Mobile history now uses compact paired records with eligible actions.
+
+Root lint/typecheck/58-route build passed. Recorded overlapping runs: 283 passed /
+3 skipped focused domain; 464 passed / 12 skipped connected; 153 passed adjacent
+Grades/shell/theme; 72 passed final People UI after the history correction. Native
+PostgreSQL passed 3 concurrency/isolation/history tests: all 59 initial seeded
+table fingerprints matched; 53 unrelated tables stayed unchanged after mutations
+(excluding six expected People tables). Twenty-nine fixture workflows passed.
+The completed post-correction matrix has 288 cases/108 responsive checks and no
+reported errors, failures, overflow, clipping or sampled contrast findings.
+Protected comparisons: 16 of 18 are pixel-identical (six auth, six dashboard, four
+Grades). English desktop Login has 10 changed pixels and Set Password has 7:
+isolated glyph/antialias differences, with no material visual regression or
+layout/source change observed. Grades use baseline-equivalent scroll positions.
+
+The fresh Impeccable reviewer inspected all 24 reference/actual pairs and closed
+its single compact-mobile-history correction with a ship disposition for that
+scored fix only. This is local fixture evidence, ready for user visual review;
+no user approval, hosted acceptance, detector score or deployment is claimed.
+See `docs/frontend/people-v1.md`, `.impeccable/surfaces/people.md` and
+`test-results/people-v1/REPORT.md`, `final-captures.json`, `screenshots/`, and
+`impeccable-review.md`. All previous checkpoint bytes below are preserved.
+
+---
+## Current handoff — Grades & Results V1 local checkpoint (2026-10-26)
+
+Grades & Results now extends the existing application world across Grading Setup,
+Assessment Grade entry/matrix, separate working Results/publication, and authorized
+Parent published snapshots/history. Exact decimal strings, four persisted Grade
+states and Not entered remain distinct. Changed-only explicit bounded Grade Save
+retains failed drafts and guards dirty transitions. The editing dialog repeats
+exact Gradebook/Year/Period/Class/Subject context inside protected focus.
+
+Option B adds GET/POST `/api/v1/results/batch`: strict confirmed 1–20-entry
+server orchestration, actual database SCHOOL_ADMIN authority, exact Year/Class/type
+scope, dated enrollment, Subject Gradebook/Period and Period identity, and Annual
+without Period. Per-entry SERIALIZABLE transactions reauthorize, lock, and recheck
+SHA-256 stale tokens before existing engine/finalization/publication primitives.
+Explicit per-entry outcomes permit partial success without claiming whole-batch
+atomicity. Stable initial-publication keys replay safely; batch publication never
+implicitly revises. Immutable snapshots, frozen Parent recipients and atomic
+Outbox/audit behavior remain authoritative. No schema/migration/dependency change.
+
+Recorded focused runs passed 265, 135, 131 and 66 tests respectively (overlapping
+runs, not a unique total). Native PostgreSQL passed 3 tests including all 59
+recovery fingerprints. Root lint/typecheck/build passed. The first connected run
+recorded 965 passed / 9 failed / 11 skipped / 21 todo. All nine obsolete People
+localization expectations were corrected in tests only; the corrected 55-test
+suite passed within the final 66-test run. No full connected rerun is claimed.
+
+The final fixture browser matrix has 288 cases/108 responsive checks; final
+GradeEntry context verification has 24 cases/9 responsive checks. Both record
+zero errors, failures, overflow, clipping and sampled contrast failures. Nineteen
+fixture journeys passed. All 24 actual reference counterparts were recaptured,
+plus six EN/FR/AR desktop/mobile Subject confirmations and loading/empty/error
+states. Two Admin, two Teacher, two Parent and eight auth screenshot comparisons
+have zero changed pixels. These are fixture/local evidence, not hosted acceptance.
+
+The Impeccable review's two P2 context fixes are resolved; its final ship disposition
+covers those fixes only. Existing wide-modal GradeEntry/staff history, real UUIDs
+and supported rule definitions are deliberate adaptations to incumbent components
+and data truth. DESIGN.md/design.json/global tokens/shell/auth/dashboard and
+Attendance application logic remain unchanged by this feature. No detector score,
+user approval, hosted acceptance, deployment or Production operation is claimed.
+
+See `docs/frontend/grades-results-v1.md`, `.impeccable/surfaces/grades-results.md`
+and `test-results/grades-results-v1/` for the scoped handoff and evidence. The user
+must visually review and approve the actual implementation before local sign-off.
+All earlier milestones below are preserved as historical context.
+
+---
+## Current handoff — Attendance V1 local checkpoint (2026-10-26)
+
+Attendance now extends the existing content with day-first published-session
+cards, server-authorized Teacher recording, four statuses/Unmarked, optional
+notes, pristine current-page bulk, changed-record review and explicit versioned
+Save. The orange Save toolbar stays below the existing topbar. Before-start
+labels explain timing only; server writable remains authoritative. Counts are
+explicitly current-page counts. Failed/stale edits survive, dirty transitions
+require confirmation, and latest-record reload requires explicit discard consent.
+School Admin published rosters, legacy daily records and history remain read-only.
+Parent focused attendance retains the authorized child/year/date/history workflow;
+normal overview/results/tuition remain outside `section=attendance`.
+
+All sixteen supplied HTML references were rendered with scripts disabled and
+non-file requests blocked. The sixteen actual counterparts are identified in
+`test-results/attendance-v1/comparison-captures.json`. The independent Impeccable
+report records ship / verdict pass on F1/F2 only (orange Save and before-start
+explanation resolved), not fresh whole-surface approval or user sign-off. The
+optional detector engine/cache was unavailable; no numeric score is claimed.
+
+Recorded focused tests: 112 passed / 4 native PostgreSQL skipped; UI follow-up:
+93 passed. Native PostgreSQL 17.6 verification: 12 passed / zero skipped across
+Attendance/Timetable, resolving all native skips; owned temporary loopback-only
+containers were removed. Fourteen browser fixture journeys report zero errors.
+Root lint, typecheck and production build passed. Connected regressions finished
+328 passed / 8 native skips. Recording follow-up finished 15 passed, including
+the before-start label assertion. The completed matrix records 192 cases and
+72 responsive checks, with zero errors, failures or sampled contrast failures;
+EN/FR/AR RTL, four themes, exact backgrounds/marks and 320–1440px widths were
+checked. Six protected Admin/Teacher/Parent comparisons have zero changed pixels.
+Eight auth comparisons have five exact matches and the same three pre-task
+desktop deviations (10/7/15 pixels). No final verification run remains pending.
+
+See `docs/frontend/attendance-workspace.md`, `.impeccable/surfaces/attendance.md`
+and `test-results/attendance-v1/impeccable-review.md`. No API/schema/migration,
+dependency, global-token or shell change was introduced. Existing server integrity
+and unrelated work are preserved, including PRODUCT, DESIGN and the sidecar.
+User visual review is next. No sign-off, staging, commit, push, PR, deploy, hosted
+migration, provider setting or production/customer-data action was performed.
+Earlier handoffs below remain preserved history.
+
+---
+
+## Current handoff — Timetable V1 local checkpoint (2026-10-25)
+
+Timetable now extends the established `/timetable` content with five School Admin
+areas: teaching-week configuration, rooms, teaching requirements, weekly builder
+and published/history. The builder shares lesson handlers between desktop week
+and mobile selected-day views; Academic Year sits beside Period/Class and draft
+Save/Reload stays below the unchanged navbar. Existing revisioned forms,
+Level → Stage → School inheritance, blocking conflicts, non-blocking load
+warnings, explicit publication confirmation and immutable snapshot rules remain.
+Published snapshots supply lesson times, not break intervals; current configuration
+is never used to fabricate historical breaks. Teacher/Parent remain read-only
+with authorized published data and existing date/day/Today/child filters.
+
+All sixteen supplied HTMLs were rendered with scripts disabled/network blocked.
+The independent review opened every reference and actual counterpart individually
+and records `disposition: ship` for UI/source scope, with no material fixes.
+Actual comparison captures are `test-results/timetable-v1/screenshots/review-*`;
+confirmation captures use the viewport, others are full-page. Denser guard copy,
+inline editors, neutral lesson cards, existing filters and actual values are
+intentional adaptations to supported workflows. User visual approval remains due.
+
+Recorded local checks: focused tests **221 passed / 8 native PostgreSQL skipped**
+(27 passed files / 1 skipped); connected regressions **82 passed / 4 native
+PostgreSQL skipped** (9 passed files / 1 skipped). Root lint, typecheck and final
+production build passed. `final-results.json` records **192** fixture matrix
+cases and **126** width checks without page errors, overflow or sampled contrast
+failures; exact theme/sidebar backgrounds and desktop marks were checked.
+Separate workflow/guard reports completed **14 browser journeys**, with no errors,
+including draft moves, stale request-key reuse, conflict blockers, publication
+focus/Escape and explicit replacement, Parent isolation/states, unsaved navigation,
+configuration adoption and loading. Native feasibility was subsequently resolved:
+`native-postgres.log` records **12 passed / zero skipped** (8 timetable and 4
+attendance, 2 files), resolving all earlier native skips. Elevated Docker access
+used the existing PostgreSQL 17.6 image and two owned ephemeral loopback-only
+containers on ports 55457/55458; migrations touched only fresh local test databases.
+The containers were designated for stop/automatic removal after verification.
+The three test runs total **315 executed test cases**. This includes local native
+concurrency/recovery evidence; authenticated hosted acceptance remains unclaimed.
+Impeccable source guidance was used; missing engine 0.1.5/external-cache permission
+prevented a detector score.
+
+See `docs/frontend/timetable-workspace.md`, `.impeccable/surfaces/timetable.md`
+and `test-results/timetable-v1/impeccable-review.md` for implementation/evidence
+boundaries. No domain/API/schema/migration/dependency changes were introduced.
+PRODUCT, DESIGN and the design sidecar were preserved, as were unrelated
+Academic Planning, Tuition, shell, dashboard, authentication and invitation work.
+No staging, commit, push, PR, deployment, hosted migration, provider setting or
+production/customer-data operation was performed. Review the actual implementation
+and sixteen counterpart captures before local sign-off. Earlier handoffs below
+remain preserved history.
+
+---
 # Madrasio — Current Project State
 
-Last updated: **2026-10-23**
+Last updated: **2026-10-25**
+
+## Current handoff — Tuition Management V1 local checkpoint (2026-10-25)
+
+Tuition now extends the existing `/finance` destination with six URL-backed
+sections (Overview, Students & Balances, Payments, Charges, Fee Configuration,
+Reports), contextual student/payment navigation and explicit allocation review.
+Parent child details include all-year balances, charges, payment history and
+snapshot receipts through dedicated child-scoped read-only endpoints. Every
+tuition/receipt/download request rechecks active Parent membership/profile/link;
+Parent access grants no Finance permission or mutations. Internal staff/audit
+metadata is excluded. Browser Print / Save as PDF and HTML downloads are
+supported; there is no native PDF-generation endpoint.
+
+The new Admin overview reads existing reports/history plus bounded follow-up and
+charge-generation-Class aggregates in a read-only repeatable-read transaction.
+Parent authorization/totals/rows also share repeatable-read transactions.
+Selected-year outstanding remains distinct from School-local month-to-date
+collections across years, net of reversals. Existing financial writes, currency
+locking, integer amounts, idempotency, snapshot/history and audit rules persist.
+No database migration, dependency or online payment capability was added.
+Authentication, shared shell and role dashboards remain protected; unrelated
+local work, including the invitation email template, is preserved.
+
+Inspected saved evidence in `test-results/tuition/`: focused Finance/Parent run
+**235 passed / 15 optional PostgreSQL concurrency skipped**; refinement run
+**45 passed**; Parent security run **14 passed** (overlapping coverage).
+`final-results.json` records **48** locale/theme/viewport cases and **48**
+responsive checks without recorded overflow, contrast failure or page error.
+The Admin/Teacher/Parent regression files contain **six zero-difference captures**;
+authentication has **six exact and two tiny 7/15-pixel differences**. These are
+local fixture results, not real hosted identity or persisted-data acceptance.
+
+**Local implementation and verification complete; ready for user review.** Root
+lint/typecheck and the final-source production build completed successfully
+(`lint-final.log`, `typecheck-final.log`, `build-final.log`). The final focused
+rerun after the ResizeObserver change completed with **235 passed / 15 optional
+PostgreSQL concurrency skipped**. `journeys-results.json` records **12** final
+local browser scenarios with no failures/page errors, including payment
+review/conflict/retry, generation/CSV, Parent states, receipt print/download and
+denied direct receipt access. The inspected 390 × 844 Arabic Midnight anchor
+capture shows the full tuition heading, child name and copy below the unchanged
+64px navbar. `impeccable-verdict.md` resolves all four scored fixes and gives
+`disposition: ship` for that fix batch only, not whole-surface certification,
+hosted acceptance or detector-gate closure. User approval is still required for
+commit/release activity. Installed Impeccable source guidance was used
+from the start; engine 0.1.5 context/detector execution required unavailable
+external-cache permission, so no detector score or engine closure is reported.
+
+See `docs/frontend/tuition-management.md` and `docs/domain/finance-v1.md` for the
+implementation/security contract and evidence boundaries. Existing older release
+inventories and migration notes below are historical checkpoints, not the current
+Tuition change inventory. Existing design documentation drift is preserved;
+`DESIGN.md` and `.impeccable/design.json` were not regenerated. No staging, commit,
+push, deployment, hosted migration or provider-setting activity was performed.
 
 ## Current handoff — V1 UI/UX release checkpoint (2026-10-23)
 

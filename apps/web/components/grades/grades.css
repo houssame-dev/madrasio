@@ -1,0 +1,289 @@
+/* Grades / Results content only. Existing application fonts, themes and shell remain authoritative. */
+.gr-workspace {
+  min-width: 0;
+  max-width: 1600px;
+  margin-inline: auto;
+}
+.gr-workspace h1 {
+  font-size: clamp(25px, 2.2vw, 34px);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+.gr-workspace h2 {
+  font-size: 19px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.gr-workspace h3 {
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 700;
+}
+[dir='rtl'] .gr-workspace h1 {
+  letter-spacing: normal;
+  line-height: 1.5;
+}
+.gr-workspace button {
+  min-height: 42px;
+  height: auto;
+  white-space: normal;
+}
+.gr-workspace :is(select, input) {
+  min-width: 0;
+  max-width: 100%;
+}
+.gr-workspace :is(select, input:not([type='checkbox'])) {
+  background-color: hsl(var(--card));
+}
+.gr-workspace input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  accent-color: #fca311;
+  flex-shrink: 0;
+}
+.gr-card {
+  padding: 20px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--card));
+  min-width: 0;
+}
+.gr-notice {
+  padding: 14px 16px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  line-height: 1.7;
+}
+.gr-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.gr-tabs button[aria-pressed='true'],
+.gr-workspace nav button[aria-current='page'] {
+  background: var(--ws-active);
+  color: var(--ws-active-text);
+  border: 1px solid hsl(var(--input));
+}
+.gr-workspace .gr-primary,
+.gr-workspace header > button,
+.gr-entry .gr-savebar > button:last-child {
+  background: #fca311;
+  color: #101828;
+}
+.gr-workspace .gr-primary:hover:not(:disabled),
+.gr-entry .gr-savebar > button:last-child:hover:not(:disabled) {
+  background: #ffb733;
+}
+.gr-context {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.gr-context label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+.gr-context legend {
+  padding-inline: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.gr-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.gr-summary > div {
+  padding: 14px 16px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+  background: hsl(var(--muted));
+  min-width: 0;
+}
+.gr-summary dt {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+.gr-summary dd {
+  margin-top: 8px;
+  font-size: 20px;
+  font-weight: 700;
+}
+.gr-workspace table {
+  width: 100%;
+  font-size: 13px;
+}
+.gr-workspace thead {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+.gr-workspace :is(th, td) {
+  text-align: start;
+  vertical-align: middle;
+}
+.gr-workspace td input:not([type='checkbox']) {
+  min-width: 100px;
+}
+.gr-workspace :is(th, td) small {
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 3px;
+}
+.gr-config-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.gr-config-list > li {
+  min-width: 0;
+}
+.gr-config-list button {
+  width: 100%;
+  padding: 20px;
+  text-align: start;
+  justify-content: start;
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
+  border-radius: 12px;
+  font-weight: 600;
+}
+.gr-workspace article {
+  border-radius: 12px;
+  background: hsl(var(--card));
+}
+.gr-entry [data-changed='true'] {
+  background: var(--ws-active);
+}
+.gr-changed {
+  display: inline-block;
+  border-radius: 5px;
+  padding: 3px 7px;
+  margin-top: 5px;
+  background: var(--ws-active);
+  color: var(--ws-active-text);
+  font-size: 11px;
+}
+[role='dialog']:has(.gr-entry),
+[role='dialog']:has(.gr-result-detail) {
+  width: min(1180px, calc(100vw - 32px));
+  max-width: none;
+}
+.gr-savebar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: end;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid hsl(var(--input));
+  border-radius: 9px;
+  background: hsl(var(--card));
+}
+.gr-entry table :is(input, select) {
+  scroll-margin-block: 100px;
+}
+.gr-outcome {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-block: 12px;
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 13px;
+}
+.gr-outcome p {
+  grid-column: 1 / -1;
+  color: hsl(var(--muted-foreground));
+}
+.gr-published-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.gr-published-record {
+  padding: 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+}
+.gr-publication-history > section,
+.gr-result-detail section {
+  border-radius: 12px;
+}
+@media (max-width: 767px) {
+  .gr-context,
+  .gr-config-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gr-card {
+    padding: 16px;
+  }
+  .gr-summary {
+    gap: 8px;
+  }
+  .gr-summary > div {
+    padding: 12px 10px;
+  }
+  .gr-summary dt {
+    font-size: 11px;
+    overflow-wrap: anywhere;
+  }
+  .gr-summary dd {
+    font-size: 17px;
+  }
+  .gr-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gr-entry .gr-savebar {
+    width: 100%;
+  }
+  .gr-savebar > button {
+    flex: 1;
+  }
+  [role='dialog']:has(.gr-entry) {
+    padding: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gr-workspace *,
+  .gr-workspace *::before,
+  .gr-workspace *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+.gr-config-list button:hover {
+  background: hsl(var(--muted));
+}
+.gr-config-list button[aria-pressed='true'] {
+  background: var(--ws-active);
+  color: var(--ws-active-text);
+  border-color: hsl(var(--input));
+}
+.gr-workspace > button {
+  background: #fca311;
+  color: #101828;
+}
+.gr-savebar > p {
+  margin-inline-end: auto;
+  align-self: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+@media (max-width: 767px) {
+  .gr-savebar {
+    flex-wrap: wrap;
+  }
+  .gr-savebar > p {
+    width: 100%;
+  }
+}

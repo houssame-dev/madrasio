@@ -29,6 +29,9 @@ export async function listAllResource<T>(path: `/api/v1/${string}`, params: Omit
 }
 
 export const academicApi = {
+  curriculum: async (id:string) => (await apiRequest<DataResponse<CurriculumDto>>(`/api/v1/curricula/${id}`)).data,
+  version: async (id:string) => (await apiRequest<DataResponse<CurriculumVersionDto>>(`/api/v1/curriculum-versions/${id}`)).data,
+  year: async (id:string) => (await apiRequest<DataResponse<AcademicYearDto>>(`/api/v1/academic-years/${id}`)).data,
   years: (params?: ListParams) => listResource<AcademicYearDto>('/api/v1/academic-years', params),
   allYears: () => listAllResource<AcademicYearDto>('/api/v1/academic-years'),
   periods: (yearId: string, params?: ListParams) => listResource<AcademicPeriodDto>(`/api/v1/academic-years/${yearId}/periods`, params),

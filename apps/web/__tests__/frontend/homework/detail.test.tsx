@@ -39,7 +39,7 @@ function setup(options: { value?: HomeworkDto; targets?: HomeworkTargetDto[]; ro
 
 describe('Homework detail lifecycle and targets', () => {
   it('exposes only DRAFT → PUBLISHED with confirmation and no archive shortcut', async () => {
-    const fetchMock = setup(); renderHomework(<HomeworkDetailWorkspace homeworkId={homeworkId} />); await screen.findByText('Complete the exercises.'); expect(screen.queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument(); await userEvent.click(screen.getByRole('button', { name: 'Publish' })); expect(screen.getByText(/freezes its structure and targets/)).toBeInTheDocument(); await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    const fetchMock = setup({ targets: [target] }); renderHomework(<HomeworkDetailWorkspace homeworkId={homeworkId} />); await screen.findByText('Complete the exercises.'); expect(screen.queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument(); await userEvent.click(screen.getByRole('button', { name: 'Publish' })); expect(screen.getByText(/freezes its structure and targets/)).toBeInTheDocument(); await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => String(url) === `/api/v1/homeworks/${homeworkId}` && (init as RequestInit | undefined)?.method === 'PATCH' && JSON.parse(String((init as RequestInit).body)).status === 'PUBLISHED')).toBe(true));
   });
 

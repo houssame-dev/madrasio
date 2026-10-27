@@ -132,7 +132,8 @@ describe('localized navigation presentation', () => {
     expect(studentLink).toHaveTextContent(students);
     studentLink.click();
     expect(onNavigate).toHaveBeenCalledOnce();
-    expect(screen.getByRole('link', { name: platformSchools })).toHaveAttribute('href', '/platform/schools');
+    // School Admin keeps the approved thirteen-link sidebar; platform access lives in its profile menu.
+    expect(screen.queryByRole('link', { name: platformSchools })).not.toBeInTheDocument();
 
     view.rerender(<NextIntlClientProvider locale={locale} messages={getCatalog(locale)} timeZone="UTC">
       <NavigationLinks role="SCHOOL_ADMIN" collapsed />
@@ -142,6 +143,10 @@ describe('localized navigation presentation', () => {
     expect(collapsedLink.querySelector('.sr-only')).toHaveTextContent(students);
     expect(collapsedLink.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     expect(screen.queryByRole('link', { name: platformSchools })).not.toBeInTheDocument();
+    view.rerender(<NextIntlClientProvider locale={locale} messages={getCatalog(locale)} timeZone="UTC">
+      <NavigationLinks role="TEACHER" platformAuthority="SUPER_ADMIN" />
+    </NextIntlClientProvider>);
+    expect(screen.getByRole('link', { name: platformSchools })).toHaveAttribute('href', '/platform/schools');
   });
 
   it.each(['en', 'fr', 'ar'] as const)('preserves Parent destinations and ordering in %s', (locale) => {

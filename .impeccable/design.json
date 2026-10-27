@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-24T00:00:00Z",
+  "title": "Design System: Madrasio Authentication",
+  "extensions": {
+    "application": {
+      "scope": ".madrasio-workspace",
+      "source": "apps/web/app/workspace.css",
+      "surfaceBrief": ".impeccable/surfaces/application-dashboard.md",
+      "description": "Approved application-only shell extension for School Admin, Teacher, and Parent; operational overview for School Admin. Existing authentication fields remain unchanged.",
+      "brand": "Official colored wordmark/symbol in Light and Mist; official white wordmark/symbol in Midnight and Dark. Symbols replace wordmarks only in collapsed navigation; never mirror assets.",
+      "typography": "Existing self-hosted Madrasio Inter and Madrasio Arabic; Arabic family first in RTL. Application type does not revise authentication roles.",
+      "layout": {
+        "expandedSidebar": "248px",
+        "collapsedSidebar": "76px",
+        "desktopNavbar": "68px",
+        "mobileNavbar": "64px",
+        "dashboardMaxWidth": "1600px",
+        "desktopPadding": "28px",
+        "mobilePadding": "18px"
+      },
+      "breakpoints": [
+        { "name": "application-mobile-max", "value": "700px", "purpose": "Compact navbar, two-column metrics with final two full-width cards, stacked communication." },
+        { "name": "application-sidebar-min", "value": "1024px", "purpose": "Desktop navigation; smaller screens use the modal drawer." },
+        { "name": "application-single-operations-max", "value": "1250px", "purpose": "Stack timetable and finance; place metric icons above values." }
+      ],
+      "shadows": [
+        { "name": "application-card", "value": "0 5px 22px rgb(20 33 61 / 3%)", "purpose": "Restrained dashboard card depth." },
+        { "name": "application-profile", "value": "0 12px 36px rgb(20 33 61 / 15%)", "purpose": "Profile popover separation." }
+      ],
+      "motion": "Honor reduced motion by removing application animations/transitions. Existing drawer focus trap, Escape dismissal, focus restoration, inert background and scroll lock remain required.",
+      "profile": "Base UI Popover with DirectionProvider; school/current academic year, membership school switcher, existing language/theme preferences and logout. Portaled popup retains application scope. School Admin with platform authority retains Platform Schools in the profile, preserving thirteen sidebar destinations; other roles retain platform navigation.",
+      "rules": [
+        { "name": "The Application Scope Rule", "body": "Application overrides live under .madrasio-workspace, including the portaled profile popup. Do not promote these overrides into global or authentication tokens." },
+        { "name": "The Recording Completeness Rule", "body": "Pending attendance means incomplete records for the effective eligible roster of a started published lesson. It never represents absence. Future lessons, unavailable status, and no-roster cases remain distinct." },
+        { "name": "The Verified Context Rule", "body": "Overview reads require School Admin and existing permissions, and use server-verified school context. The context-only academic-year read is available to authorized school roles. Both return private, no-store responses." }
+      ],
+      "verification": {
+        "method": "Source inspection and manual screenshot comparison; no numeric comp score or unavailable detector/engine/build-gate closure claimed.",
+        "screenshots": "test-results/app-dashboard/screenshots/",
+        "finalCapturesChecked": ["final-en-desktop-light-profile.png", "final-ar-mobile-midnight-profile.png", "final-fr-mobile-light.png", "final-dual-authority-profile.png"],
+        "fixtureReport": "test-results/app-dashboard/final-results.json: 24 locale/device/theme cases and 24 responsive checks; no reported failures/errors; role/data-state/language/thirteen-destination/mocked school-switch/logout scenarios. Bounded fixture evidence, not live-school or generated-gate proof.",
+        "fixtureCoherence": "71 enrolled, four classes, three teachers; three lessons with one recorded, one pending and one upcoming. Verification fixture only, never a product total.",
+        "initialCaptureLimit": "initial-* predates the final currency-layout correction and coherent synthetic fixture. Fixture totals are not product rules or live-school data.",
+        "unrepairedDrift": "Pre-existing authentication documentation drift is outside this approved extension."
+      }
+    },
+    "colorMeta": {
+      "auth-orange": { "role": "primary", "displayName": "Authentication Orange" },
+      "auth-white": { "role": "neutral", "displayName": "White" },
+      "auth-mist": { "role": "neutral", "displayName": "Mist" },
+      "auth-midnight": { "role": "neutral", "displayName": "Midnight" },
+      "auth-black": { "role": "neutral", "displayName": "Dark" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Welcome", "purpose": "800 static face; approved compact Login and expanded Recovery/Password responsive sizes remain surface-specific." },
+      "title": { "displayName": "Form title", "purpose": "Desktop sign-in heading." },
+      "label": { "displayName": "Field label", "purpose": "Visible form and preference labels; Arabic uses 13px." }
+    },
+    "shadows": [
+      { "name": "auth-shell", "value": "0 10px 32px rgb(20 33 61 / 8%)", "purpose": "Desktop authentication shell only." },
+      { "name": "auth-card", "value": "0 12px 36px rgb(20 33 61 / 9%)", "purpose": "Desktop form card; removed on mobile." }
+    ],
+    "breakpoints": [
+      { "name": "auth-mobile-max", "value": "700px" },
+      { "name": "auth-compact-desktop-max", "value": "1000px" }
+    ]
+  },
+  "components": [],
+  "narrative": {
+    "overview": "Authentication-scoped implementation of the supplied Madrasio Authentication UI Showcase. Official identity assets, orange action emphasis, four background identities, and multilingual operation guide this surface. Application chrome is outside this redesign.",
+    "keyCharacteristics": ["Clear form hierarchy", "Soft desktop depth", "Direct mobile form", "English, French, and Arabic with RTL support"],
+    "rules": [{ "name": "The Surface Scope Rule", "body": "Keep authentication tokens scoped to authentication; theme compatibility does not authorize restyling application chrome.", "section": "colors" }],
+    "dos": ["Do use official wordmark-colored in Light/Mist and wordmark-white in Midnight/Dark for authentication, without overlays.", "Do preserve System theme compatibility and existing authentication behavior."],
+    "donts": ["Don't add remember-me without behavior.", "Don't generalize login composition into a global application layout."]
+  }
+}

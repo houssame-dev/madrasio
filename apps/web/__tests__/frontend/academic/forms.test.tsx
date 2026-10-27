@@ -115,6 +115,8 @@ describe('academic forms use exact contracts', () => {
     const versions = [{ id: versionId, curriculumId, curriculumName: 'National', name: 'V1', status: 'ACTIVE' as const, ...timestamps }];
     const view = renderForm(<ClassForm years={years} levels={levels} tracks={tracks} versions={versions} onCancel={vi.fn()} onSaved={vi.fn()} />);
     await userEvent.type(screen.getByLabelText('Name'), 'Class A');
+    expect(screen.getByLabelText('Academic year')).toHaveValue('');
+    await userEvent.selectOptions(screen.getByLabelText('Academic year'), yearId);
     await userEvent.click(screen.getByRole('button', { name: 'Create' }));
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/classes');
     expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({ name: 'Class A', academicYearId: yearId, levelId, trackId: null, curriculumVersionId: versionId });

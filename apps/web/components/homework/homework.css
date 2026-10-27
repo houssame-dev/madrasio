@@ -1,0 +1,284 @@
+/* Homework content only; approved application chrome and global tokens are unchanged. */
+.hw-workspace {
+  min-width: 0;
+  max-width: 1600px;
+  margin-inline: auto;
+}
+.hw-workspace h1 {
+  font-size: clamp(25px, 2.2vw, 34px);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+.hw-workspace h2 {
+  font-size: 19px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.hw-workspace h3 {
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+[dir='rtl'] .hw-workspace h1 {
+  line-height: 1.5;
+  letter-spacing: normal;
+}
+.hw-workspace :is(button, a:not([href^='#'])) {
+  min-height: 42px;
+  height: auto;
+  white-space: normal;
+}
+.hw-workspace :is(input, select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  background-color: hsl(var(--card));
+}
+.hw-workspace .hw-primary,
+.hw-form button[type='submit'] {
+  background: #fca311;
+  color: #101828;
+}
+.hw-workspace .hw-primary:hover:not(:disabled),
+.hw-form button[type='submit']:hover:not(:disabled) {
+  background: #ffb733;
+}
+.hw-card,
+.hw-detail > section,
+.hw-detail > header,
+.hw-directory {
+  min-width: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  padding: 20px;
+  background: hsl(var(--card));
+}
+.hw-directory {
+  display: grid;
+  gap: 20px;
+}
+.hw-directory .hw-filters {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.hw-summary,
+.hw-timing {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.hw-summary > div,
+.hw-timing > div {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 9px;
+  background: hsl(var(--muted));
+}
+.hw-workspace dt {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.5;
+  text-transform: none;
+  color: hsl(var(--muted-foreground));
+}
+.hw-workspace dd {
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.hw-context {
+  padding: 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+  background: hsl(var(--muted));
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.hw-context p {
+  margin-top: 6px;
+  color: hsl(var(--muted-foreground));
+}
+.hw-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.hw-form > * {
+  min-width: 0;
+  margin-top: 0;
+}
+.hw-form > .hw-full,
+.hw-form > section,
+.hw-form > p,
+.hw-form > [role='alert'],
+.hw-form > [role='status'],
+.hw-form > nav,
+.hw-form > div:last-child {
+  grid-column: 1/-1;
+}
+[role='dialog']:has(.hw-workspace) {
+  width: min(800px, calc(100vw - 32px));
+  max-width: none;
+}
+.hw-workspace :is(table, tbody) {
+  font-size: 13px;
+}
+.hw-workspace :is(th, td) {
+  text-align: start;
+  vertical-align: middle;
+}
+.hw-workspace thead {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+.hw-files li {
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+}
+.hw-files li > a {
+  align-self: center;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+.hw-files li > span:last-child {
+  grid-column: 1/-1;
+  color: hsl(var(--muted-foreground));
+}
+.hw-files input[type='file'] {
+  width: 100%;
+  border: 1px solid hsl(var(--input));
+  border-radius: 7px;
+  padding: 10px;
+  font-size: 13px;
+}
+.hw-files input::file-selector-button {
+  border: 0;
+  border-inline-end: 1px solid hsl(var(--border));
+  background: transparent;
+  color: inherit;
+  margin-inline-end: 10px;
+  padding-inline-end: 10px;
+}
+.hw-instructions {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.hw-parent-list li {
+  padding: 16px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+}
+@media (max-width: 1279px) {
+  .hw-workspace .hw-records tbody > tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    padding: 14px;
+  }
+  .hw-workspace .hw-records :is(td, th) {
+    padding: 0;
+    min-width: 0;
+  }
+  .hw-workspace .hw-records :is(td, th) > span[aria-hidden='true'] {
+    font-size: 11px;
+    line-height: 1.5;
+    margin-bottom: 2px;
+  }
+  .hw-workspace .hw-records .hw-name {
+    grid-column: 1;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .hw-workspace .hw-records .hw-name > span[aria-hidden='true'],
+  .hw-workspace .hw-records .hw-actions > span[aria-hidden='true'] {
+    display: none;
+  }
+  .hw-workspace .hw-records .hw-actions,
+  .hw-workspace .hw-records .hw-recording {
+    grid-column: 1/-1;
+  }
+  .hw-workspace .hw-records .hw-actions > a,
+  .hw-workspace .hw-records .hw-actions > button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+@media (max-width: 767px) {
+  .hw-card,
+  .hw-detail > section,
+  .hw-detail > header,
+  .hw-directory {
+    padding: 16px;
+  }
+  .hw-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hw-summary,
+  .hw-timing {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hw-workspace .hw-records .hw-recording .hw-timing {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .hw-workspace .hw-records .hw-recording .hw-timing > div {
+    padding: 8px;
+  }
+  .hw-files li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hw-files li > span:last-child {
+    grid-column: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hw-workspace *,
+  .hw-workspace *:before,
+  .hw-workspace *:after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Roster timing stays a scan-friendly summary; full first/latest history is in detail. */
+.hw-roster .hw-timing-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+}
+.hw-roster .hw-timing-compact > div {
+  padding: 0;
+  background: transparent;
+}
+.hw-roster .hw-timing-compact dd {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.hw-roster .hw-timing-compact dt {
+  font-size: 11px;
+}
+@media (min-width: 1280px) {
+  .hw-roster th:first-child {
+    width: 18%;
+  }
+  .hw-roster th:nth-child(2) {
+    width: 22%;
+  }
+  .hw-roster th:nth-child(3) {
+    width: 40%;
+  }
+  .hw-roster th:nth-child(4) {
+    width: 20%;
+  }
+}
+
+@media (max-width: 359px) {
+  .hw-detail .hw-timing { grid-template-columns: minmax(0, 1fr); }
+}

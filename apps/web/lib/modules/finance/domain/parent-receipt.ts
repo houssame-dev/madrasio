@@ -1,0 +1,13 @@
+import type { parentReceipt } from '../application/parent-reads';
+import type { SupportedLocale } from '@school/shared';
+import { getCatalog } from '@/i18n/catalogs';
+import { formatMoney } from './csv';
+type Detail=Awaited<ReturnType<typeof parentReceipt>>;
+const escape=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]!);
+/** Parent-only projection, escaped and self-contained; no staff identity, notes or request/audit metadata. */
+export function parentReceiptDocument({payment:p,allocations,reversal}:Detail,locale:SupportedLocale) {
+  const t=getCatalog(locale).financePayments,c=getCatalog(locale).finance;
+  const money=(n:number)=>escape(formatMoney(n,locale,p.currency));
+  const line=(label:string,value:unknown)=>`<dt>${escape(label)}</dt><dd dir="auto">${escape(value)}</dd>`;
+  return `<!doctype html><html lang="${locale}" dir="${locale==='ar'?'rtl':'ltr'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(t.receipt)} ${escape(p.receiptReference)}</title><style>body{font:16px system-ui,sans-serif;max-width:850px;margin:24px auto;padding:16px;color:#14213d;background:#fff;overflow-wrap:anywhere}dl{display:grid;grid-template-columns:1fr 2fr;gap:8px}dd{margin:0}table{border-collapse:collapse;width:100%}td,th{text-align:start;border-bottom:1px solid #aaa;padding:10px}.scroll{overflow:auto}@media print{.help{display:none}body{margin:0;max-width:none}tr{break-inside:avoid}}@page{margin:16mm}</style></head><body><h1>${escape(t.receipt)}</h1><p class="help">${escape(t.printHelp)}</p><dl>${line(t.receiptReference,p.receiptReference)}${line(t.school,p.schoolName)}${line(t.student,p.studentName)}${line(t.receivedOn,p.receivedOn)}${line(t.method,t[p.method])}${line(t.reference,p.reference??'—')}<dt>${escape(t.total)}</dt><dd>${money(p.amountCents)}</dd></dl><p>${escape(t[reversal?'REVERSED':'RECORDED'])}</p>${reversal?`<p>${escape(t.reversalNotice)}</p><dl>${line(t.reversalReference,reversal.reversalReference)}${line(t.reversedAt,new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeZone:p.schoolTimezone}).format(new Date(reversal.reversedAt)))}</dl>`:''}<div class="scroll"><table><caption>${escape(t.allocation)}</caption><thead><tr>${[t.fee,t.period,t.dueDate,t.allocated].map(x=>`<th>${escape(x)}</th>`).join('')}</tr></thead><tbody>${allocations.map(a=>`<tr><td>${escape(a.feeName)}</td><td>${escape(a.period==='once'?c.once:a.period)}</td><td>${escape(a.dueDate)}</td><td>${money(a.amountCents)}</td></tr>`).join('')}</tbody></table></div></body></html>`;
+}

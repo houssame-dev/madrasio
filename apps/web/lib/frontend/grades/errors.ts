@@ -27,6 +27,8 @@ const messages: Record<string, string> = {
   PUBLICATION_CONFLICT: 'This publication attempt conflicts with an existing operation. Start a new intentional attempt.',
 };
 
+export function gradeErrorCodeMessage(code: string): string { return messages[code] ?? 'The request could not be completed. Please try again.'; }
+
 export function gradeErrorMessage(error: unknown): string {
   if (!(error instanceof ApiClientError)) return 'The request could not be completed. Please try again.';
   return messages[error.featureCode ?? ''] ?? (error.status < 500 ? error.message : 'The request could not be completed. Please try again.');

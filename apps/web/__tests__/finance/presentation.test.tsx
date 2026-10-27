@@ -24,5 +24,5 @@ it('keeps one semantic row and one keyboard-operable action per record at every 
   expect(within(table).getAllByRole('columnheader')).toHaveLength(3);
   expect(within(table).getAllByRole('cell')).toHaveLength(3);
   expect(screen.getAllByRole('button', { name: 'Review' })).toHaveLength(1);
-  await user.tab(); expect(screen.getByRole('button')).toHaveFocus(); await user.keyboard('{Enter}'); expect(action).toHaveBeenCalledOnce();
+  await user.tab(); expect(screen.getByRole('group',{name:'Allocations'})).toHaveFocus(); await user.tab(); expect(screen.getByRole('button')).toHaveFocus(); await user.keyboard('{Enter}'); expect(action).toHaveBeenCalledOnce();
 });

@@ -1,5 +1,6 @@
 import { AccountLifetimeProvider } from '@/components/language/account-lifetime-host';
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, render, waitFor, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Providers } from '@/app/providers';
@@ -43,9 +44,11 @@ it.each(cases)('provides verified, membership-independent operation ownership fo
   const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     if (String(input) === '/api/v1/me') return Response.json({ data: dto });
     if (String(input) === '/api/v1/notifications/unread-count') return Response.json({ data: { count: 0 } });
+    if (String(input) === '/api/v1/dashboard/context') return Response.json({ data: { date: '2026-10-24', timezone: 'UTC', academicYear: null } });
     throw new Error('Unexpected synthetic resource');
   });
   render(<NextIntlClientProvider locale="en" messages={getCatalog('en')} timeZone="UTC"><Providers><AccountLifetimeProvider><AppBootstrap><p>Original child</p></AppBootstrap></AccountLifetimeProvider></Providers></NextIntlClientProvider>);
+  if (_name === 'school') await userEvent.click(await screen.findByRole('button', { name: getCatalog('en').application.profile }));
   await waitFor(() => expect(mocks.observed.mock.lastCall?.[0]?.isCurrent()).toBe(true));
   expect(mocks.observed.mock.lastCall?.[0]?.userId).toBe(userId);
   expect(fetchMock.mock.calls.some(([path]) => String(path).includes('/language'))).toBe(false);

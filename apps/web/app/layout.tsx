@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { getLocale } from 'next-intl/server';
 import { DocumentPresentation } from '@/components/language/document-presentation';
 import './globals.css';
+import './authentication.css';
+import './workspace.css';
 
 export const metadata: Metadata = {
   title: {

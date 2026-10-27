@@ -2,8 +2,6 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { LoginForm } from '@/components/auth/login-form';
-import { LanguageSelector } from '@/components/language/language-selector';
-import { ThemeSelector } from '@/components/theme/theme-selector';
 import { getServerSupabase } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -22,5 +20,5 @@ export default async function LoginPage() {
     // A failed anonymous session check must not make the public login route unusable.
   }
 
-  return <><div className="flex flex-wrap items-center justify-end gap-3 p-3"><ThemeSelector /><LanguageSelector compact /></div><LoginForm /></>;
+  return <LoginForm />;
 }

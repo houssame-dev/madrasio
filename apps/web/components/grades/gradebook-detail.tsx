@@ -1,4 +1,8 @@
 'use client';
+import './grades.css';
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Button } from '@school/ui';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDomainText } from '@/i18n/use-domain-text';
@@ -26,6 +30,8 @@ export function GradebookDetailWorkspace({ gradebookId }: { gradebookId: string 
 }
 
 function GradebookDetail({ gradebookId, schoolId, role }: { gradebookId: string; schoolId: string; role: 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' }) {
+  const ui = useTranslations('gradesExperience');
+  const [section,setSection]=useState<'assessments'|'matrix'>('assessments');
   const text = useDomainText();
   const t = useGradeCopy();
   const queryClient = useQueryClient();
@@ -45,7 +51,7 @@ function GradebookDetail({ gradebookId, schoolId, role }: { gradebookId: string;
   const canManage = role === 'TEACHER' ? can(role, 'grades.enter') : can(role, 'grades.manage');
   const label = value.name ?? `${klass?.name ?? t.unknown} · ${subject?.name ?? t.unknown}`;
   if (!period) return <ApiErrorState title={t.unavailable} description={t.unavailableDescription} />;
-  return <div className="mx-auto max-w-[100rem] space-y-6">
+  return <div className="gr-workspace space-y-6">
     <Link href="/grades" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4 rtl:rotate-180" aria-hidden="true" />{t.back}</Link>
     <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-3"><h1 className="text-2xl font-semibold tracking-tight">{label}</h1><StatusBadge brand status={value.status} label={text(value.status)} /></div><p className="mt-1 text-sm text-muted-foreground">{t.exactContextDescription}</p></div>{canManage ? <GradebookLifecycleActions gradebook={value} onSaved={() => invalidateGradebook(queryClient, schoolId, value.id, true)} /> : <div className="rounded-md border bg-muted px-3 py-2 text-sm">{t.readOnly}</div>}</header>
     <section className="space-y-3"><h2 className="text-lg font-semibold">{t.exactContext}</h2><dl className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -55,7 +61,7 @@ function GradebookDetail({ gradebookId, schoolId, role }: { gradebookId: string;
       <div><dt className="text-xs font-medium uppercase text-muted-foreground">{t.subject}</dt><dd dir="auto" className="mt-1">{subject?.name ?? t.unknown}</dd></div>
       <div className="sm:col-span-2"><dt className="text-xs font-medium uppercase text-muted-foreground">{t.configurationVersion}</dt><dd dir="auto" className="mt-1 break-all font-mono text-sm">{value.gradingConfigurationVersionId}</dd></div>
     </dl></section>
-    <AssessmentsPanel schoolId={schoolId} gradebook={value} period={period} canManage={canManage} />
-    <GradebookGradesPanel schoolId={schoolId} gradebookId={value.id} />
+    <nav className="gr-tabs"><Button variant={section==='assessments'?'default':'outline'} aria-pressed={section==='assessments'} onClick={()=>setSection('assessments')}>{ui('assessments')}</Button><Button variant={section==='matrix'?'default':'outline'} aria-pressed={section==='matrix'} onClick={()=>setSection('matrix')}>{ui('matrix')}</Button></nav>
+    {section==='assessments'?<AssessmentsPanel gradebookContext={`${label} · ${t.academicYear}: ${year?.name ?? t.unknown} · ${t.period}: ${period.name} · ${t.class}: ${klass?.name ?? t.unknown} · ${t.subject}: ${subject?.name ?? t.unknown}`} schoolId={schoolId} gradebook={value} period={period} canManage={canManage} /> : <GradebookGradesPanel schoolId={schoolId} gradebookId={value.id} />}
   </div>;
 }

@@ -1,0 +1,14 @@
+import { beforeEach,expect,it,vi } from 'vitest';
+const mock=vi.hoisted(()=>({context:vi.fn(),balance:vi.fn(),receipt:vi.fn()}));
+vi.mock('@/lib/db/client',()=>({getDb:()=> 'db'}));
+vi.mock('@/lib/auth/require-context',()=>({requireCurrentContext:mock.context}));
+vi.mock('@/lib/modules/finance/application/parent-reads',()=>({parentTuition:mock.balance,parentReceipt:mock.receipt}));
+vi.mock('next-intl/server',()=>({getLocale:async()=> 'ar'}));
+import { GET,receiptGET } from '@/lib/api/parent-tuition';
+const schoolId='11111111-1111-4111-8111-111111111111',studentId='22222222-2222-4222-8222-222222222222',paymentId='33333333-3333-4333-8333-333333333333',userId='44444444-4444-4444-8444-444444444444';
+const route={params:Promise.resolve({studentId,paymentId})};
+beforeEach(()=>{vi.clearAllMocks();mock.context.mockResolvedValue({role:'PARENT',userId,schoolContext:{schoolId}});mock.balance.mockResolvedValue({summary:{}});mock.receipt.mockResolvedValue({payment:{id:paymentId,receiptReference:'R-X',method:'CASH',currency:'MAD',amountCents:10000,schoolName:'School',schoolTimezone:'UTC',studentName:'Child',receivedOn:'2026-10-25'},allocations:[],reversal:null});});
+it('binds every balance and receipt read to verified school/user and route child',async()=>{const response=await GET(new Request('http://localhost/?page=2'),route);expect(response.status).toBe(200);expect(mock.balance).toHaveBeenCalledWith('db',{schoolId,userId},studentId,2);expect(response.headers.get('cache-control')).toBe('private, no-store');expect(response.headers.get('vary')).toBe('Cookie');await receiptGET(new Request('http://localhost/'),route);expect(mock.receipt).toHaveBeenCalledWith('db',{schoolId,userId},studentId,paymentId);});
+it.each(['SCHOOL_ADMIN','TEACHER','SUPER_ADMIN'])('denies %s on dedicated Parent reads',async role=>{mock.context.mockResolvedValue({role,schoolContext:{schoolId}});expect((await GET(new Request('http://localhost'),route)).status).toBe(403);expect((await receiptGET(new Request('http://localhost'),route)).status).toBe(403);expect(mock.balance).not.toHaveBeenCalled();expect(mock.receipt).not.toHaveBeenCalled();});
+it.each(['schoolId=x','studentId=x','page=1&page=2','page=-1','userId=x'])('rejects query scope injection %s',async query=>{expect((await GET(new Request('http://localhost/?'+query),route)).status).toBe(400);expect(mock.balance).not.toHaveBeenCalled();});
+it('reauthorizes the HTML download and disables active content and caching',async()=>{const response=await receiptGET(new Request('http://localhost/?download=1'),route);expect(response.status).toBe(200);expect(response.headers.get('content-type')).toContain('text/html');expect(response.headers.get('content-security-policy')).toContain("default-src 'none'");expect(response.headers.get('cache-control')).toBe('private, no-store');expect(await response.text()).toContain('dir="rtl"');expect(mock.receipt).toHaveBeenCalledOnce();});

@@ -42,7 +42,7 @@ it('confirms logical removal and denies download for incomplete uploads', async 
   await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
   await waitFor(() => expect(fetchMock.mock.calls.some(([path, init]) => String(path).endsWith(`/attachments/${item.id}`) && init?.method === 'DELETE')).toBe(true));
 });
-it('never exposes raw provider error wording and retries the same upload identity', async () => {
+it('never exposes raw provider wording or repeats an uncertain upload', async () => {
   const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_path, init) => init?.method === 'POST'
     ? Response.json({ error: { code: 'BUSINESS_RULE_VIOLATION', featureCode: 'FILE_RECONCILIATION_REQUIRED', message: 'raw-provider-secret' } }, { status: 422 })
     : Response.json({ data: [] }));
@@ -51,8 +51,7 @@ it('never exposes raw provider error wording and retries the same upload identit
   fireEvent.change(screen.getByLabelText('Add a private attachment'), { target: { files: [new File(['%PDF-1.7 fixture'], 'notice.pdf', { type: 'application/pdf' })] } });
   await userEvent.click(screen.getByRole('button', { name: 'Upload attachment' }));
   await screen.findByText(/contact an operator/); expect(screen.queryByText('raw-provider-secret')).not.toBeInTheDocument();
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Upload attachment' })).toBeEnabled());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Upload attachment' })).toBeDisabled());
   await userEvent.click(screen.getByRole('button', { name: 'Upload attachment' }));
-  const calls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST'); expect(calls).toHaveLength(2);
-  expect(new Headers(calls[0]![1]?.headers).get('idempotency-key')).toBe(new Headers(calls[1]![1]?.headers).get('idempotency-key'));
+  expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
 });

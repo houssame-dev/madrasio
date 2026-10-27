@@ -1,4 +1,5 @@
 'use client';
+import './communications.css';
 import { useTranslations } from 'next-intl';
 import { useAnnouncementCopy } from '@/i18n/use-delivery-copy';
 import { useDeliveryText } from '@/i18n/use-delivery-text';
@@ -9,7 +10,11 @@ import { AccessDeniedWithReturn } from '@/components/app/route-access';
 import { useAppContext } from '@/components/app/app-context';
 import { StatusBadge } from '@/components/academic/ui';
 import { ApiErrorState, PageLoading } from '@/components/ui/states';
-import { allAnnouncementPublications, announcementsApi, currentUserAnnouncementAssignments } from '@/lib/frontend/announcements/api';
+import {
+  allAnnouncementPublications,
+  announcementsApi,
+  currentUserAnnouncementAssignments,
+} from '@/lib/frontend/announcements/api';
 import { announcementErrorMessage } from '@/lib/frontend/announcements/errors';
 import { announcementKeys } from '@/lib/frontend/announcements/queries';
 import { academicApi, listAllResource } from '@/lib/frontend/academic/api';
@@ -27,14 +32,166 @@ export function AnnouncementDetailWorkspace({ announcementId }: { announcementId
   const t = useAnnouncementCopy();
   const ui = useTranslations('communicationUi');
   const text = useDeliveryText();
-  const app = useAppContext(); const schoolId = app.currentSchool?.id; const role = app.currentSchool?.role; const allowed = !!schoolId && !!role && role !== 'PARENT' && can(role, 'announcements.read');
-  const detail = useQuery({ queryKey: announcementKeys.detail(schoolId ?? 'no-school', announcementId), queryFn: () => announcementsApi.detail(announcementId), enabled: allowed });
-  const versions = useQuery({ queryKey: announcementKeys.versions(schoolId ?? 'no-school', announcementId), queryFn: () => announcementsApi.versions(announcementId), enabled: allowed });
-  const publications = useQuery({ queryKey: [...announcementKeys.publications(schoolId ?? 'no-school', announcementId), 'all'], queryFn: () => allAnnouncementPublications(announcementId), enabled: allowed });
-  const years = useQuery({ queryKey: academicKeys.selectors(schoolId ?? 'no-school', 'years'), queryFn: academicApi.allYears, enabled: allowed });
-  const classes = useQuery({ queryKey: academicKeys.selectors(schoolId ?? 'no-school', 'classes'), queryFn: () => listAllResource<ClassDto>('/api/v1/classes'), enabled: allowed });
-  const scope = useQuery({ queryKey: announcementKeys.authorScope(schoolId ?? 'no-school', app.user.id), queryFn: () => currentUserAnnouncementAssignments(app.user.id), enabled: allowed && role === 'TEACHER' });
-  if (!allowed || !schoolId || !role) return <AccessDeniedWithReturn />; if (detail.isPending || versions.isPending || publications.isPending || years.isPending || classes.isPending || (role === 'TEACHER' && scope.isPending)) return <PageLoading label={t.loading} />; if (detail.isError) return <ApiErrorState title={t.unavailable} description={text(announcementErrorMessage(detail.error))} onRetry={() => void detail.refetch()} />; if (!detail.data) return null;
-  const value = detail.data; const canManage = can(role, 'announcements.create'); const canPublish = can(role, 'announcements.publish'); const versionPublished = publications.data?.some((item) => item.announcementVersionId === value.latestVersion.id) ?? false; const targetsEditable = canManage && value.announcement.status !== 'ARCHIVED' && !versionPublished; const teacherClassIds = role === 'TEACHER' ? new Set((scope.data ?? []).filter((item) => item.status === 'ACTIVE').map((item) => item.classId)) : undefined;
-  return <PageContainer variant="FORM_DETAIL" className="space-y-6"><Link className="text-sm font-medium text-primary hover:underline" href="/announcements"><span aria-hidden="true" className="inline-block rtl:rotate-180">←</span> {t.back}</Link><header className="rounded-lg border bg-card p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm text-muted-foreground">v{value.latestVersion.versionNumber} · {t.current}</p><h1 className="mt-1 break-words text-2xl font-semibold tracking-tight"><bdi>{value.latestVersion.title}</bdi></h1></div><StatusBadge brand status={value.announcement.status} label={text(value.announcement.status)} /></div><AnnouncementBody body={value.latestVersion.body} bodyFormat={value.latestVersion.bodyFormat} /><p className="mt-4 rounded-md bg-muted p-3 text-sm leading-6 text-muted-foreground">{ui(versionPublished ? 'frozen' : 'unpublished')}</p></header><AnnouncementAttachments announcementId={announcementId} versionId={value.latestVersion.id} editable={targetsEditable} /><AnnouncementTargets schoolId={schoolId} announcementId={announcementId} version={value.latestVersion} years={years.data ?? []} classes={classes.data ?? []} teacherClassIds={teacherClassIds} editable={targetsEditable} /><AnnouncementPublicationActions schoolId={schoolId} detail={value} canPublish={canPublish} canManage={canManage} currentVersionPublished={versionPublished} /><AnnouncementVersions schoolId={schoolId} announcementId={announcementId} latestVersion={value.latestVersion} editable={canManage && value.announcement.status !== 'ARCHIVED'} /><AnnouncementPublications canPublish={canPublish && value.announcement.status !== 'ARCHIVED'} schoolId={schoolId} announcementId={announcementId} versions={versions.data?.data ?? []} /></PageContainer>;
+  const app = useAppContext();
+  const schoolId = app.currentSchool?.id;
+  const role = app.currentSchool?.role;
+  const allowed = !!schoolId && !!role && role !== 'PARENT' && can(role, 'announcements.read');
+  const detail = useQuery({
+    queryKey: announcementKeys.detail(schoolId ?? 'no-school', announcementId),
+    queryFn: () => announcementsApi.detail(announcementId),
+    enabled: allowed,
+  });
+  const versions = useQuery({
+    queryKey: announcementKeys.versions(schoolId ?? 'no-school', announcementId),
+    queryFn: () => announcementsApi.versions(announcementId),
+    enabled: allowed,
+  });
+  const publications = useQuery({
+    queryKey: [...announcementKeys.publications(schoolId ?? 'no-school', announcementId), 'all'],
+    queryFn: () => allAnnouncementPublications(announcementId),
+    enabled: allowed,
+  });
+  const years = useQuery({
+    queryKey: academicKeys.selectors(schoolId ?? 'no-school', 'years'),
+    queryFn: academicApi.allYears,
+    enabled: allowed,
+  });
+  const classes = useQuery({
+    queryKey: academicKeys.selectors(schoolId ?? 'no-school', 'classes'),
+    queryFn: () => listAllResource<ClassDto>('/api/v1/classes'),
+    enabled: allowed,
+  });
+  const scope = useQuery({
+    queryKey: announcementKeys.authorScope(schoolId ?? 'no-school', app.user.id),
+    queryFn: () => currentUserAnnouncementAssignments(app.user.id),
+    enabled: allowed && role === 'TEACHER',
+  });
+  if (!allowed || !schoolId || !role) return <AccessDeniedWithReturn />;
+  if (
+    detail.isPending ||
+    versions.isPending ||
+    publications.isPending ||
+    years.isPending ||
+    classes.isPending ||
+    (role === 'TEACHER' && scope.isPending)
+  )
+    return <PageLoading label={t.loading} />;
+  if (
+    detail.isError ||
+    versions.isError ||
+    publications.isError ||
+    years.isError ||
+    classes.isError ||
+    (role === 'TEACHER' && scope.isError)
+  )
+    return (
+      <ApiErrorState
+        title={t.unavailable}
+        description={text(
+          announcementErrorMessage(
+            detail.error ??
+              versions.error ??
+              publications.error ??
+              years.error ??
+              classes.error ??
+              scope.error,
+          ),
+        )}
+        onRetry={() => {
+          void Promise.all([
+            detail.refetch(),
+            versions.refetch(),
+            publications.refetch(),
+            years.refetch(),
+            classes.refetch(),
+            ...(role === 'TEACHER' ? [scope.refetch()] : []),
+          ]);
+        }}
+      />
+    );
+  if (!detail.data) return null;
+  const value = detail.data;
+  const canManage = can(role, 'announcements.create');
+  const canPublish = can(role, 'announcements.publish');
+  const versionPublished =
+    publications.data?.some((item) => item.announcementVersionId === value.latestVersion.id) ??
+    false;
+  const targetsEditable =
+    canManage && value.announcement.status !== 'ARCHIVED' && !versionPublished;
+  const teacherClassIds =
+    role === 'TEACHER'
+      ? new Set(
+          (scope.data ?? []).filter((item) => item.status === 'ACTIVE').map((item) => item.classId),
+        )
+      : undefined;
+  return (
+    <PageContainer variant="FORM_DETAIL" className="cm-workspace cm-detail space-y-6">
+      <Link className="text-sm font-medium text-primary hover:underline" href="/announcements">
+        <span aria-hidden="true" className="inline-block rtl:rotate-180">
+          ←
+        </span>{' '}
+        {t.back}
+      </Link>
+      <header className="rounded-lg border bg-card p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              v{value.latestVersion.versionNumber} · {t.current}
+            </p>
+            <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight">
+              <bdi>{value.latestVersion.title}</bdi>
+            </h1>
+          </div>
+          <StatusBadge
+            brand
+            status={value.announcement.status}
+            label={text(value.announcement.status)}
+          />
+        </div>
+        <AnnouncementBody
+          body={value.latestVersion.body}
+          bodyFormat={value.latestVersion.bodyFormat}
+        />
+        <p className="mt-4 rounded-md bg-muted p-3 text-sm leading-6 text-muted-foreground">
+          {ui(versionPublished ? 'frozen' : 'unpublished')}
+        </p>
+      </header>
+      <AnnouncementTargets
+        schoolId={schoolId}
+        announcementId={announcementId}
+        version={value.latestVersion}
+        years={years.data ?? []}
+        classes={classes.data ?? []}
+        teacherClassIds={teacherClassIds}
+        editable={targetsEditable}
+      />
+      <AnnouncementAttachments
+        announcementId={announcementId}
+        versionId={value.latestVersion.id}
+        versionNumber={value.latestVersion.versionNumber}
+        editable={targetsEditable}
+      />
+      <AnnouncementPublicationActions
+        years={years.data ?? []}
+        classes={classes.data ?? []}
+        schoolId={schoolId}
+        detail={value}
+        canPublish={canPublish}
+        canManage={canManage}
+        currentVersionPublished={versionPublished}
+      />
+      <AnnouncementVersions
+        schoolId={schoolId}
+        announcementId={announcementId}
+        latestVersion={value.latestVersion}
+        editable={canManage && value.announcement.status !== 'ARCHIVED'}
+      />
+      <AnnouncementPublications
+        canPublish={canPublish && value.announcement.status !== 'ARCHIVED'}
+        schoolId={schoolId}
+        announcementId={announcementId}
+        versions={versions.data?.data ?? []}
+      />
+    </PageContainer>
+  );
 }

@@ -9,8 +9,8 @@ function where(conditions: (SQL | undefined)[]): SQL | undefined {
   return and(...conditions.filter((condition): condition is SQL => condition !== undefined));
 }
 
-export async function listAcademicYears(db: AcademicStructureDb, schoolId: string, paging: Paging, status?: typeof schema.academicYearStatus.enumValues[number]) {
-  const condition = where([eq(schema.academicYears.schoolId, schoolId), status ? eq(schema.academicYears.status, status) : undefined]);
+export async function listAcademicYears(db: AcademicStructureDb, schoolId: string, paging: Paging, status?: typeof schema.academicYearStatus.enumValues[number], search?:string) {
+  const condition = where([eq(schema.academicYears.schoolId, schoolId), status ? eq(schema.academicYears.status, status) : undefined, search ? ilike(schema.academicYears.name, `%${search.replace(/[\\%_]/g, (char) => `\\${char}`)}%`) : undefined]);
   const [rows, totals] = await Promise.all([
     db.select().from(schema.academicYears).where(condition).orderBy(desc(schema.academicYears.createdAt), desc(schema.academicYears.id)).limit(paging.limit).offset(paging.offset),
     db.select({ value: count() }).from(schema.academicYears).where(condition),

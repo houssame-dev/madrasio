@@ -108,7 +108,7 @@ describe.each(SUPPORTED_LOCALES)('%s domain localization with real catalogs', (l
     const t = translator(locale);
     mount(<AcademicWorkspace />, locale);
     expect(await screen.findByText(t('collection.empty'))).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t('navigation.items.academic') })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t('academicPlanning.title') })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t('academic.createYear') })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: t('academic.name') })).toHaveClass('text-start');
   });

@@ -1,19 +1,12 @@
 'use client';
-import { usePeopleText } from '@/i18n/use-people-text';
-
-import { BookOpen, CalendarCheck, ClipboardList } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { BookOpen, ClipboardList, FileText, Users } from 'lucide-react';
 import Link from 'next/link';
-import { useTeachingCopy } from '@/i18n/use-people-copy';
 import { attendanceHref, gradesHref, homeworkHref, type TeacherClassView } from '@/lib/frontend/dashboard/types';
-
-const actionClass = 'inline-flex min-h-10 items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
-
 export function TeacherClassCard({ group, today }: { group: TeacherClassView; today: string }) {
-  const t = useTeachingCopy();
-  const text = usePeopleText();
-
-  return <article className="rounded-lg border bg-card p-5 shadow-sm" aria-labelledby={`teacher-class-${group.key}`}>
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{group.academicYearName}</p><h3 id={`teacher-class-${group.key}`} className="mt-1 text-lg font-semibold"><bdi>{group.className}</bdi></h3></div><Link className={actionClass} href={attendanceHref(group.academicYearId, group.classId, today)} aria-label={t.attendanceAction(group.className)}><CalendarCheck className="size-4" aria-hidden="true" />{t.takeAttendance}</Link></div>
-    <div className="mt-5 space-y-3"><h4 className="text-sm font-semibold">{t.subjects}</h4><ul className="space-y-3">{group.assignments.map((assignment) => <li key={assignment.id} className="rounded-md border bg-muted/20 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-medium">{assignment.subjectName}</p><p className="mt-1 text-xs text-muted-foreground">{t.effectiveFrom}: <time dir="ltr" dateTime={assignment.effectiveFrom}>{assignment.effectiveFrom}</time></p></div><span className="rounded-full border bg-background px-2 py-0.5 text-xs font-medium">{text(assignment.status)}</span></div><div className="mt-3 flex flex-wrap gap-2"><Link className={actionClass} href={gradesHref(assignment)} aria-label={t.gradeAction(assignment.subjectName, group.className)}><ClipboardList className="size-4" aria-hidden="true" />{t.openGradebooks}</Link><Link className={actionClass} href={homeworkHref(assignment)} aria-label={t.homeworkAction(assignment.subjectName, group.className)}><BookOpen className="size-4" aria-hidden="true" />{t.homework}</Link></div></li>)}</ul></div>
+  const t = useTranslations('teacherWorkspace');
+  return <article className="tw-class" aria-labelledby={`teacher-class-${group.key}`}>
+    <div className="tw-class-heading"><span className="ws-stat-icon ws-tone-purple"><Users aria-hidden="true" /></span><div><h3 id={`teacher-class-${group.key}`}><bdi>{group.className}</bdi></h3><p><bdi>{group.academicYearName}</bdi></p></div><Link className="ws-action ms-auto" href={attendanceHref(group.academicYearId, group.classId, today)}>{t('viewAttendance')}</Link></div>
+    {group.assignments.map(a => <div key={a.id} className="tw-class-subject"><div><strong><bdi>{a.subjectName}</bdi></strong><p className="tw-assignment-dates">{t('effective')}: <time dir="ltr">{a.effectiveFrom}</time> {t('through')} {a.effectiveUntil ? <time dir="ltr">{a.effectiveUntil}</time> : t('ongoingAssignment')}</p></div><div className="tw-class-links"><Link className="ws-action" href={gradesHref(a)} aria-label={`${t('grades')} · ${a.subjectName} · ${group.className}`}><ClipboardList aria-hidden="true" />{t('grades')}</Link><Link className="ws-action" href={homeworkHref(a)} aria-label={`${t('homework')} · ${a.subjectName} · ${group.className}`}><BookOpen aria-hidden="true" />{t('homework')}</Link><Link className="ws-action" href={`/results?${new URLSearchParams({ resultType: 'SUBJECT', academicYearId: a.academicYearId, classId: a.classId, subjectId: a.subjectId })}`} aria-label={`${t('results')} · ${a.subjectName} · ${group.className}`}><FileText aria-hidden="true" />{t('results')}</Link></div></div>)}
   </article>;
 }

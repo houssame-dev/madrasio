@@ -1,523 +1,263 @@
-# Madrasio
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/wordmark-white.png" />
+    <img src="apps/web/public/brand/wordmark-colored.png" width="380" alt="Madrasio" />
+  </picture>
+</p>
 
-> A modern, multilingual, multi-tenant school management SaaS designed for private schools.
+<h3 align="center">School management, thoughtfully connected.</h3>
 
-[![Status](https://img.shields.io/badge/status-in%20development-yellow)](https://github.com/)
-[![License](https://img.shields.io/badge/license-TBD-lightgrey)](LICENSE)
-[![Next.js](https://img.shields.io/badge/Next.js-Framework-black?logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?logo=postgresql)](https://www.postgresql.org/)
-[![Drizzle](https://img.shields.io/badge/Drizzle-ORM-C5F74F)](https://orm.drizzle.team/)
-[![Supabase](https://img.shields.io/badge/Supabase-Backend%20Services-3ECF8E?logo=supabase)](https://supabase.com/)
+<p align="center">
+  A multilingual, multi-tenant school management platform built for the everyday work of private schools.
+</p>
+
+<p align="center">
+  <a href="https://github.com/houssame-dev/madrasio/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/houssame-dev/madrasio/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://github.com/houssame-dev/madrasio/actions/workflows/deploy-staging.yml"><img alt="STAGING deployment" src="https://github.com/houssame-dev/madrasio/actions/workflows/deploy-staging.yml/badge.svg" /></a>
+  <img alt="Status: V1 in development" src="https://img.shields.io/badge/status-V1%20in%20development-FCA311" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" />
+</p>
+
+<p align="center">
+  <a href="#overview">Overview</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#technology">Technology</a> ·
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#architecture-and-security">Architecture</a> ·
+  <a href="#release-and-deployment">Deployment</a>
+</p>
 
 ---
 
 ## Overview
 
-**Madrasio** is a school management platform built for private schools that need a reliable and modern way to manage their academic, administrative, and communication workflows from a single system.
-
-The platform is designed around a **modular monolith architecture**, with strong domain boundaries, multi-tenant isolation, role-based authorization, historical academic integrity, and a web-first experience that can support future mobile clients.
-
-The initial target is **private schools in Morocco**, with support for:
-
-- Arabic
-- French
-- English
-- RTL / LTR interfaces
-
-The system is being designed as a long-term SaaS product rather than a collection of isolated CRUD screens.
-
----
-
-## Product Goals
-
-The platform aims to provide schools with a unified system for:
-
-- Managing students, teachers, and parents
-- Organizing academic years, periods, levels, tracks, subjects, curricula, and classes
-- Managing assessments, grades, and academic results
-- Tracking attendance
-- Managing homework and submissions
-- Publishing school announcements
-- Delivering in-app notifications
-- Preserving historical academic information
-- Enforcing secure, school-scoped access
-
-The project prioritizes **correctness, maintainability, security, and simplicity** over premature complexity.
-
----
-
-## Core Users
-
-### Super Admin
-
-Platform-level administration and management.
-
-### School Admin
-
-Manages school data, academic structure, users, classes, grades, attendance, homework, announcements, and related operations within the school.
-
-### Teacher
-
-Works within their assigned academic scope and can manage the academic/communication operations permitted to them.
-
-### Parent
-
-Can access information related to their own children, including:
-
-- Grades
-- Attendance
-- Homework
-- Announcements
-- Notifications
-
-### Student
-
-> Student accounts are intentionally **out of scope for V1**.
-
-Students exist as academic entities and are managed through the school/parent/teacher workflows.
-
----
-
-## V1 Modules
-
-The V1 product is organized around the following functional modules:
-
-| # | Module | Purpose |
-|---|---|---|
-| 01 | Authentication | Identity, sessions, account access |
-| 02 | Schools | School and membership management |
-| 03 | Students | Student records and academic enrollment |
-| 04 | Teachers | Teacher records and academic assignments |
-| 05 | Parents | Parent records and parent-student relationships |
-| 06 | Academic Structure | Academic years, periods, stages, levels, tracks, curricula |
-| 07 | Subjects | Subject management |
-| 08 | Classes | Academic classes and class lifecycle |
-| 09 | Grades | Gradebooks, assessments, grades, and results |
-| 10 | Attendance | Student attendance tracking |
-| 11 | Homework | Homework, targeting, submissions, and review |
-| 12 | Announcements | Rich-text announcements, targeting, revisions, and publication |
-| 13 | Notifications | In-app notifications and unread/read state |
-
-> Authentication and platform services may be grouped differently at implementation level; the table reflects the product capabilities defined during planning.
-
----
-
-## Key Domain Principles
-
-The system is built around a few important domain decisions.
-
-### Academic history is first-class
-
-Historical academic data must remain correct even when the current state changes.
-
-For example:
-
-```text
-Student
-  └── StudentEnrollment
-          ├── Class A
-          └── Class B
-```
-
-A student transferring to another class must not rewrite their previous academic history.
-
-### Teacher scope comes from assignments
-
-Teacher access is determined by:
-
-> TeacherAssignment
-
-Assignments define the relevant:
-
-- Class
-- Subject
-- Academic context
-
-### Parent scope comes from relationships and enrollment
-
-Parent access is determined using:
-
-> ParentStudent + StudentEnrollment
-
-A parent must never gain access to another student's data simply because both students belong to the same class or school.
-
-### Subject coefficients are contextual
-
-A subject does not own one universal coefficient.
-
-Instead:
-
-```text
-CurriculumVersion
-      +
-Subject
-      +
-Coefficient
-      ↓
-CurriculumSubject
-```
-
-This allows the same subject to have different coefficients in different academic contexts.
-
-### Period results are not annual results
-
-The system explicitly separates:
-
-> PeriodResult
-
-from:
-
-> AnnualResult
-
-Historical results must remain stable even when current academic configuration changes.
-
-### Homework is not automatically a grade
-
-Homework and Grades are separate domains.
-
-Any integration between them must be explicit.
-
----
-
-## Architecture
-
-The V1 system uses a **Modular Monolith** architecture.
-
-```text
-                         ┌─────────────────────┐
-                         │   Web / Mobile      │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │      Next.js        │
-                         │                     │
-                         │ UI                  │
-                         │ Server Components   │
-                         │ Route Handlers      │
-                         │ Server Actions      │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │ Application Layer   │
-                         │                     │
-                         │ Use Cases           │
-                         │ Policies            │
-                         │ Queries             │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │    Domain Layer     │
-                         │                     │
-                         │ Students            │
-                         │ Teachers            │
-                         │ Grades              │
-                         │ Attendance          │
-                         │ Homework            │
-                         │ Announcements       │
-                         │ Notifications       │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │ Drizzle ORM         │
-                         └──────────┬──────────┘
-                                    │
-                                    ▼
-                         ┌─────────────────────┐
-                         │ Supabase PostgreSQL │
-                         └─────────────────────┘
-
-                    Supporting Infrastructure
-                    ┌──────────┬──────────────┐
-                    │          │              │
-                    ▼          ▼              ▼
-                 Supabase    Cloudflare      GitHub
-                   Auth          R2          Actions
-```
-
-The architecture intentionally avoids microservices and unnecessary infrastructure in V1.
-
----
-
-## Security & Multi-Tenancy
-
-Security is enforced server-side.
-
-The authorization model follows:
-
-```text
-Authentication
-      ↓
-Active User
-      ↓
-School Membership
-      ↓
-School Context
-      ↓
-Role
-      ↓
-Permission
-      ↓
-Scope
-      ↓
-Ownership / Relationship
-      ↓
-Resource State
-      ↓
-ALLOW / DENY
-```
-
-### Tenant isolation
-
-A school is the primary tenant boundary.
-
-A user operating within School A must never be able to access School B data through:
-
-- direct resource IDs
-- query parameters
-- URL manipulation
-- bulk operations
-- client-side state
-- cached data
-
-Frontend permission checks are treated as a UX mechanism only. Backend authorization is always authoritative.
-
----
-
-## Technology Stack
-
-| Concern | Technology |
-|---|---|
-| Application | Next.js, React, TypeScript |
-| UI | Tailwind CSS, shadcn/ui |
-| Data & State | TanStack Query, Zustand |
-| Forms & Validation | React Hook Form, Zod |
-| Database | Supabase, PostgreSQL |
-| ORM | Drizzle ORM |
-| Authentication | Supabase Auth |
-| File Storage | Cloudflare R2 |
-| Testing | Vitest, Testing Library, Playwright |
-| Tooling | pnpm, GitHub Actions |
-
----
-
-## Repository Structure
-
-The repository is organized around domain modules and shared platform capabilities.
+**Madrasio** is a web-based School Management SaaS that brings academic administration, classroom workflows, parent visibility, and school finance records into one place. It is initially designed around the needs of private schools in Morocco, while maintaining tenant isolation and configurable academic structures suitable for different schools.
+
+The application uses a **modular monolith**: a single Next.js application with explicit domain, application, and infrastructure boundaries, backed by Supabase PostgreSQL and Auth. Schools share the platform but do not share access to each other's data.
+
+Madrasio is **under active V1 development**. The repository contains substantial working application functionality and automated test coverage; this is **not a claim that Production onboarding or all real-school acceptance checks are complete**.
+
+### At a glance
+
+| | |
+| --- | --- |
+| **Primary users** | School Administrators, Teachers, Parents, and Platform Administrators |
+| **Languages** | English (`en`), French (`fr`), Arabic (`ar`) |
+| **Layout direction** | LTR for English/French; RTL for Arabic |
+| **Themes** | Light, Dark, and System; device-local preference |
+| **Platform** | Responsive web application (desktop, tablet, and mobile) |
+| **Architecture** | Next.js modular monolith, versioned REST API, PostgreSQL |
+| **Current phase** | V1 verification, UX refinement, and release preparation |
+
+## Features
+
+The following capabilities are implemented in the repository. Access and edit permissions depend on the user's role, membership, academic assignments, and resource state.
+
+| Area | Capabilities |
+| --- | --- |
+| **Identity and schools** | Supabase Auth, login/logout, recovery and invitations, active school membership, school switching, separate platform administration |
+| **Academic structure** | Academic years and periods, stages, levels, tracks, subjects, classes, curriculum versions and subject coefficients |
+| **Students** | Student records, dated enrollments, transfers, current placement and historical enrollment records |
+| **Teachers** | Teacher records, active/historical assignments and assignment-scoped academic access |
+| **Parents** | Parent records, parent–student relationships, authorized child overviews and academic history |
+| **Timetable** | School/level teaching-week configuration, rooms and labs, per-class subject loads, weekly drafts, conflict checks, published schedules and publication history |
+| **Attendance** | Per-published-lesson attendance, teacher-scoped recording and correction, session histories and preserved read-only legacy daily records |
+| **Grades** | Grading configurations, gradebooks, assessments and grade entry |
+| **Results** | Subject, period and annual calculations, finalization, publication/revisions and parent-visible published results |
+| **Homework** | Assignments, targeting, submissions, attachments, reviews and teacher/parent journeys |
+| **Announcements** | Authoring, targeting, versions, scheduling, publication, attachments and recipient views |
+| **Notifications** | Persisted in-app notifications, unread counts and read state, backed by an outbox workflow |
+| **Finance / Tuition** | Fee types and structures, charge generation, balances, adjustments, offline payment recording, allocation history, reversals, receipts and reports |
+
+**Tuition V1 is offline only.** Madrasio records money collected outside the platform (for example, cash, bank transfer or cheque). It does **not** collect tuition through an online payment gateway or process refunds.
+
+**Timetable V1 is deliberately manual.** Administrators build and publish recurring weekly schedules using existing teacher assignments and available rooms; automatic timetable generation, substitution engines, and complex calendar exceptions are not included.
+
+### Roles and access
+
+| Role | Intended experience |
+| --- | --- |
+| **Platform Administrator** | Platform-level school and administrator management. Platform authority does not automatically grant membership in a school. |
+| **School Administrator** | School-scoped academic, staffing, timetable and offline finance management; **Attendance is read-only**. |
+| **Teacher** | Assigned classes/subjects, published timetable lessons, authorized lesson attendance, grades, homework and related teaching workflows. |
+| **Parent** | Read-only access to their own linked children's eligible school information, including timetable, attendance, homework and published results. |
+
+Students are managed as academic records; **student sign-in accounts are out of scope for V1**. No platform role, client-side control, or URL parameter may bypass server-side school authorization.
+
+## Experience and branding
+
+- **Language:** English, French, and Arabic use shared translation catalogs and locale-aware presentation. Arabic supports RTL layout, including direction-safe date and time display. The V1 language selection is browser/cookie-based; it is not an account-synchronized preference across devices.
+- **Theme:** Light / Dark / System, with a preference stored on the current device. The approved palette uses Prussian Blue `#14213d`, Orange `#fca311`, Black `#000000`, Alabaster `#e5e5e5`, White `#ffffff`, and red for destructive actions.
+- **Brand:** The official Madrasio colored and white logos/wordmarks are used across the application shell and authentication experience. The repository includes light/dark favicons, an Apple touch icon, and sized app icons under [`apps/web/public/brand/`](apps/web/public/brand/).
+- **UI foundations:** Tailwind CSS and shadcn/ui, configured with the **Base UI (`base-nova`)** registry style for new standard components. Existing working controls are retained rather than rewritten solely for a primitive migration.
+- **Usability:** Role-aware navigation, responsive layouts, accessible forms, loading/empty/error feedback, keyboard operation, and protected unsaved edits in supported workflows.
+
+## Technology
+
+| Layer | Main technologies |
+| --- | --- |
+| Application | Next.js 15, React 18, TypeScript |
+| UI | Tailwind CSS 3, shadcn/ui (Base UI configuration), Lucide |
+| Internationalization | `next-intl` |
+| Forms and validation | React Hook Form, Zod |
+| Data fetching and state | TanStack Query, Zustand where appropriate |
+| Database | PostgreSQL via Supabase, Drizzle ORM and versioned SQL migrations |
+| Authentication | Supabase Auth and application-owned school membership/authorization |
+| Private files | Cloudflare R2 integration and restricted application file metadata |
+| Background operations | PostgreSQL-backed transactional outbox and scheduled jobs |
+| Tests | Vitest, Testing Library, Playwright, database/migration and recovery tests |
+| Delivery | pnpm workspace, GitHub Actions, Vercel, Supabase |
+
+## Repository layout
 
 ```text
 madrasio/
-│
 ├── apps/
-│   └── web/
-│
-├── packages/
-│   ├── ui/
-│   ├── shared/
-│   └── config/
-│
+│   └── web/                  # Next.js pages, API routes, UI, i18n, tests and operators
 ├── database/
-│   └── drizzle/
-│
+│   └── drizzle/              # Schema, migrations, snapshots and journal
+├── packages/
+│   ├── config/               # Shared configuration
+│   ├── shared/               # Shared types, utilities and school-time helpers
+│   └── ui/                   # Shared UI primitives
 ├── docs/
-│   ├── product/
-│   ├── domain/
-│   ├── architecture/
-│   ├── adr/
-│   └── development/
-│
-├── scripts/
-│
-├── .github/
-│   └── workflows/
-│
-├── PRD.md
-├── README.md
-└── package.json
+│   ├── adr/                  # Architecture Decision Records
+│   ├── architecture/         # Design and implementation contracts
+│   ├── domain/               # Domain rules and module specifications
+│   ├── operations/           # Guarded operator procedures
+│   ├── security/             # Security guidance
+│   ├── PROJECT-STATE.md      # Milestones and evidence (including historical records)
+│   └── CURRENT-TASK-HANDOFF.md
+├── .github/workflows/        # CI, scanning, STAGING, Production and backup workflows
+├── .env.example              # Configuration template; no real secrets
+├── PRD.md                    # Product and engineering requirements
+└── package.json              # Workspace scripts
 ```
 
-The detailed technical structure is documented separately and should not be inferred solely from the README.
+The primary web application routes live in `apps/web/app/(app)/`, REST handlers in `apps/web/app/api/v1/`, and feature logic in `apps/web/lib/modules/`.
 
----
+## Getting started
 
-## Development Philosophy
+### Prerequisites
 
-The project follows a few strict principles:
+- **Node.js 24** is used in GitHub CI (the repository declares Node.js `>=20`).
+- **pnpm 11.22.0**, as specified by the root `packageManager` field; Corepack can manage the version.
+- A **development-only** Supabase project or disposable PostgreSQL environment, with the appropriate Supabase Auth configuration.
+- Environment-specific credentials for optional private file or background-job workflows, only if testing those integrations.
 
-### Keep V1 simple
+> **Safety:** Do not use STAGING or Production database credentials for routine local development. Never commit `.env.local`, database URLs, Auth Admin credentials or other secrets.
 
-Do not introduce infrastructure because it may be useful someday.
+### Install and configure
 
-Redis, BullMQ, WebSockets, microservices, Kafka, Kubernetes, and similar technologies are deliberately deferred until real requirements justify them.
+From the repository root:
 
-### Domain before implementation
+```bash
+git clone https://github.com/houssame-dev/madrasio.git
+cd madrasio
+corepack enable
+pnpm install --frozen-lockfile
+```
 
-Business rules are defined before database/API/UI implementation.
+Create the local web environment file from the root template:
 
-### Server-side security
+```bash
+cp .env.example apps/web/.env.local
+```
 
-The client is never trusted for authorization.
+On PowerShell, use `Copy-Item .env.example apps/web/.env.local` instead.
 
-### Historical integrity
+Set the appropriate **development** values in `apps/web/.env.local`. The minimum application settings are:
 
-Current state must never silently rewrite historical academic truth.
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Public Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe Supabase publishable key |
+| `SUPABASE_URL` | Server-side Supabase project URL |
+| `DATABASE_URL` | PostgreSQL runtime connection URL |
 
-### Explicit boundaries
+Additional variables for Auth Admin, object storage, scheduled jobs, migrations and operator commands are documented in [`.env.example`](.env.example). Server-only values must never be prefixed with `NEXT_PUBLIC_`.
 
-Modules own their business logic and data.
+### Run locally
 
-Cross-module direct writes are prohibited.
+```bash
+pnpm dev
+```
 
-### Test by risk
+Open **http://localhost:3000**. Sign-in and school features require a compatible development database, migrations, and separately provisioned test users; cloning the repository alone does not create accounts or seed a school.
 
-More testing effort is allocated to:
+Database migrations are **explicit operations**, not part of installation, build or app startup. For an isolated development database only, review the target and connection before invoking `pnpm db:migrate`. Do not run that command with hosted credentials unless an operator-approved migration procedure explicitly authorizes it.
 
-- Authorization
-- Tenant isolation
-- Grade calculations
-- Enrollment
-- Historical integrity
-- Announcement targeting
-- Notification idempotency
+### Verification commands
 
----
+```bash
+pnpm lint          # Repository lint checks
+pnpm typecheck     # TypeScript checking
+pnpm test          # Workspace unit/integration suites
+pnpm build         # Production build
+pnpm test:e2e      # Playwright suite (browser prerequisites apply)
+```
 
-## Development Status
+For targeted web tests, use `pnpm --filter @school/web exec vitest run <test-path>` (with paths relative to `apps/web`). For database migration/recovery and hosted acceptance work, follow the relevant domain and operations documentation rather than reusing an unrestricted local command.
 
-### Current phase
+## Architecture and security
 
-**Architecture & Implementation Blueprint — Complete**
+Madrasio's **school** is its primary tenant boundary. Authorization is evaluated on the server using authenticated identity, active user and school membership, role permissions, academic assignments, parent–child relationships, and the resource's lifecycle/state.
 
-| Area | Status |
-|---|---|
-| Product Design | ✅ |
-| Domain Model | ✅ |
-| Global System Review | ✅ |
-| Permissions | ✅ |
-| Architecture | ✅ |
-| Tech Stack | ✅ |
-| Implementation Blueprint | ✅ |
-| Definition of Done | ✅ |
+Important guarantees and design choices:
 
-### Next phase
+- **School isolation:** same-school checks and composite foreign keys protect cross-tenant references; application queries and service operations remain explicitly school-scoped.
+- **Least privilege:** Teacher access derives from `TeacherAssignment`; Parent visibility derives from active relationships and dated `StudentEnrollment`; frontend visibility is never a substitute for authorization.
+- **Historical integrity:** enrollments, curriculum/grading revisions, published timetables/results, payments, and audit events preserve the context needed to explain past records.
+- **Session-based attendance:** attendance is recorded against real, applicable published lessons, not arbitrary class/date choices. Older daily entries remain historical, read-only records.
+- **Financial correctness:** payment records, charge allocations, reductions, reversals, and receipts retain auditable history; money uses integer minor units.
+- **Restricted data access:** sensitive application tables use RLS and restricted API-role grants, together with server-side permissions.
+- **Secure operations:** explicit schema migrations, verified TLS connections, isolated hosted environments, guarded background jobs and recovery procedures.
 
-> Project Bootstrap
+See [architecture overview](docs/architecture/overview.md), [authorization](docs/architecture/authorization.md), [domain rules](docs/domain/business-rules.md), and [Architecture Decision Records](docs/adr/README.md) for authoritative details.
 
-The next implementation step is to create the runnable Next.js foundation and configure:
+## Release and deployment
 
-- Next.js
-- TypeScript
-- pnpm
-- Tailwind CSS
-- shadcn/ui
-- Supabase
-- Drizzle
-- Testing
-- Environment Configuration
-- CI
+| Environment | Policy |
+| --- | --- |
+| **Local development** | Developer-controlled, non-production credentials; tests and migration experiments on isolated data. |
+| **STAGING** | Dedicated Vercel and Supabase resources. Pushes to `main` trigger CI and the guarded STAGING workflow: validation, explicit migration and schema verification, exact-SHA release promotion, deployment and smoke checks. |
+| **Production** | Separate environment with a **manual**, exact-commit and approval-gated deployment workflow. Passing CI/STAGING does not authorize Production deployment or real-customer onboarding. |
 
-No business module will be implemented until the foundation passes its initial verification checkpoint.
+The [STAGING deployment runbook](docs/architecture/vercel-staging-and-cicd.md), [Production release contract](docs/architecture/production-release-candidate.md), and [backup and recovery guidance](docs/architecture/production-backup-and-recovery.md) describe the operator checks, recovery boundaries and target verification requirements.
 
----
+**Current status:** The repository's latest verified `main` CI and STAGING deployment workflows succeeded as of **October 23, 2026**. That verifies the committed release pipeline, **not** full authenticated role-by-role acceptance or readiness to onboard customers. Production backup/recovery, account and tenant boundaries, and real-school journeys must be accepted under their own release controls.
+
+### V1 scope boundaries
+
+The immediate goal is a reliable release for real schools, rather than a speculative enterprise suite. The following are **not** part of the current V1 commitment:
+
+- Online tuition gateways, card collection, automatic refunds or a general ledger.
+- Automatically generated timetables, substitute-teacher scheduling or complex timetable engines.
+- Student login accounts, a native mobile app, or mandatory realtime/WebSocket infrastructure.
+- Redis, message brokers or microservices without a demonstrated requirement.
 
 ## Documentation
 
-Project documentation will be maintained under:
+| Document | What it covers |
+| --- | --- |
+| [`PRD.md`](PRD.md) | Product requirements, engineering principles and source-of-truth hierarchy |
+| [`docs/PROJECT-STATE.md`](docs/PROJECT-STATE.md) | Milestone evidence and historical project state; read dated sections in context |
+| [`docs/CURRENT-TASK-HANDOFF.md`](docs/CURRENT-TASK-HANDOFF.md) | Workstream handoffs; verify against current commits and runtime evidence |
+| [`docs/domain/timetable-v1.md`](docs/domain/timetable-v1.md) | Timetable configuration, drafts and publication rules |
+| [`docs/domain/finance-v1.md`](docs/domain/finance-v1.md) | Fee structures, offline payments, balances, receipts and corrections |
+| [`docs/architecture/frontend-attendance.md`](docs/architecture/frontend-attendance.md) | Session-based Attendance UX and authorization boundaries |
+| [`docs/architecture/grades-results.md`](docs/architecture/grades-results.md) | Grades and Results rules and lifecycle |
+| [`docs/architecture/vercel-staging-and-cicd.md`](docs/architecture/vercel-staging-and-cicd.md) | STAGING pipeline and release gates |
+| [`docs/adr/README.md`](docs/adr/README.md) | Accepted architectural decisions and changes |
 
-```text
-docs/
-├── product/
-├── domain/
-├── architecture/
-├── adr/
-└── development/
-```
+Several documents retain historical checkpoints intentionally. When they conflict with current source, first determine the document's date and verify the code, accepted ADRs and latest release evidence.
 
-Important architectural decisions are recorded as ADRs (Architecture Decision Records).
+## Contributing and security
 
-The authoritative project instructions for AI (ex:Codex ...) are stored in:
+Madrasio is actively developed and is not presented here as an open contribution program. Before proposing changes, review [`PRD.md`](PRD.md), relevant domain rules and ADRs. Keep changes scoped, preserve tenant isolation and existing data, and run tests proportionate to risk. Do not commit credentials, private customer information, production dumps, or operator receipts.
 
-> `PRD.md`
-
----
-
-## Development Workflow
-
-The project is being developed incrementally.
-
-```text
-Foundation
-    ↓
-Authentication
-    ↓
-Schools & Membership
-    ↓
-Academic Structure
-    ↓
-Students / Teachers / Parents
-    ↓
-Grades
-    ↓
-Attendance
-    ↓
-Homework
-    ↓
-Announcements
-    ↓
-Notifications
-    ↓
-Hardening
-    ↓
-Production Readiness
-```
-
-Each milestone must satisfy its Definition of Done before the next milestone begins.
-
-### STAGING release
-
-STAGING uses a dedicated Vercel project and Supabase project. GitHub Actions is
-the only deployment authority: it validates and builds the exact `main` commit,
-applies and verifies Drizzle migrations explicitly through the STAGING Session
-Pooler, then promotes that exact commit to the machine-managed `staging-release`
-branch and invokes a secret Vercel Deploy Hook. Vercel builds the same verified
-commit independently; exact-SHA readiness and public smoke checks gate acceptance.
-Neither install, build, nor application startup runs migrations. See
-`docs/architecture/vercel-staging-and-cicd.md` for the environment matrix and
-operator contract.
-
-Task 047 security hardening is accepted: migration 0015, verified TLS/SSL
-enforcement, modern Supabase keys, password alignment, and Custom SMTP are live
-in STAGING. Task 048 operational health, backup limitations, alerting, and
-recovery contracts are documented in
-[`observability-and-operational-readiness.md`](docs/architecture/observability-and-operational-readiness.md).
-
-Task 049 Production provisioning is repository-gated and manual. The pre-client
-Free Release Candidate may contain no real School/customer data; backup capability
-and an isolated restore rehearsal are hard gates before onboarding. See
-[`production-release-candidate.md`](docs/architecture/production-release-candidate.md).
-
----
-
-## Contributing
-
-This project is currently under active development.
-
-Development conventions, architectural constraints, and coding rules are documented in:
-
-- `PRD.md`
-- `docs/architecture/`
-- `docs/adr/`
-
-Before making architectural changes, review the relevant documentation first.
-
----
+Security issues should be disclosed privately to the repository maintainer rather than posted as public issues with exploit details or secrets. See [secret-scanning guidance](docs/security/secret-scanning.md).
 
 ## License
 
-**License:** TBD
-
-The licensing model will be decided before the project is publicly distributed.
+This repository currently has **no published `LICENSE` file**. Public repository visibility does not by itself grant permission to copy, modify, or redistribute the software. Contact the maintainer for licensing or commercial-use questions.

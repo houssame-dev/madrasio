@@ -21,6 +21,7 @@ describe('Teacher Assignment workflows', () => {
     const otherYear = { ...year, id: otherYearId, name: '2027/2028', status: 'PLANNED' as const }; const otherClass = { ...klass, id: otherClassId, academicYearId: otherYearId, name: '2A' };
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => Response.json(page(String(input).includes(otherYearId) ? [otherClass] : [klass], 1, 100)));
     renderTeachers(<AssignmentForm schoolId={schoolId} teacherId={teacherId} years={[year, otherYear]} subjects={[subject]} activeAssignments={[]} onCancel={vi.fn()} onSaved={vi.fn()} />);
+    await userEvent.selectOptions(screen.getByLabelText('Academic Year'), year.id);
     await screen.findByRole('option', { name: '1A' }); await userEvent.selectOptions(screen.getByLabelText('Class'), classId); await userEvent.selectOptions(screen.getByLabelText('Academic Year'), otherYearId);
     expect(screen.getByLabelText('Class')).toHaveValue(''); expect(await screen.findByRole('option', { name: '2A' })).toBeInTheDocument();
   });

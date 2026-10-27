@@ -1,6 +1,6 @@
 'use client';
+import './grades.css';
 import { useTranslations } from 'next-intl';
-import { PageContainer } from '@/components/ui/page-container';
 import { useDomainText } from '@/i18n/use-domain-text';
 
 import { useQuery } from '@tanstack/react-query';
@@ -60,7 +60,7 @@ export function GradebooksWorkspace() {
   if (years.isError || classes.isError || subjects.isError || teacherScope.isError) return <ApiErrorState title={t.unavailable} onRetry={() => { void years.refetch(); void classes.refetch(); void subjects.refetch(); if (role === 'TEACHER') void teacherScope.refetch(); }} />;
   const availableClasses = academicYearId ? classes.data.filter((row) => row.academicYearId === academicYearId) : classes.data;
   const canOpenCreate = canCreate && (role !== 'TEACHER' || (teacherScope.data?.length ?? 0) > 0);
-  return <PageContainer variant="MANAGEMENT_WIDE" className="space-y-6">
+  return <div className="gr-workspace space-y-6">
     {can(role, 'grades.manage') ? <Link href="/grades/configuration" className="font-medium underline">{text("Manage grading configuration")}</Link> : null}
     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{role === 'TEACHER' ? t.teacherDescription : t.description}</p></div><div className="flex flex-wrap gap-2">{canOpenCreate ? <Button type="button" onClick={() => setCreating(true)}><Plus className="size-4" aria-hidden="true" />{t.createGradebook}</Button> : null}</div></header><p className="rounded-lg border bg-card p-4 text-sm leading-relaxed text-muted-foreground">{ui('grades')}</p>
     <section className="space-y-3 rounded-lg border bg-card p-4" aria-labelledby="gradebook-filters"><h2 id="gradebook-filters" className="text-sm font-semibold">{t.filters}</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -72,5 +72,5 @@ export function GradebooksWorkspace() {
     </div></section>
     {gradebooks.isError ? <ApiErrorState title={t.unavailable} description={t.unavailableDescription} onRetry={() => void gradebooks.refetch()} /> : <GradebooksTable schoolId={schoolId} result={gradebooks.data} loading={gradebooks.isPending} years={years.data} classes={classes.data} subjects={subjects.data} onPage={(next) => updateUrl({ page: next })} />}
     <Modal open={creating} title={t.createGradebook} description={t.createDescription} onClose={() => setCreating(false)}>{creating ? <GradebookForm schoolId={schoolId} years={years.data} classes={classes.data} subjects={subjects.data} assignments={role === 'TEACHER' ? teacherScope.data ?? [] : undefined} versions={versions.data ?? []} versionsPending={versions.isPending} versionsError={versions.isError} refetchVersions={() => versions.refetch()} onCancel={() => setCreating(false)} /> : null}</Modal>
-  </PageContainer>;
+  </div>;
 }

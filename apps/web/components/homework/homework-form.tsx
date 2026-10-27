@@ -7,7 +7,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Field, FormActions, InlineFeedback, inputClassName, selectClassName } from '@/components/academic/ui';
+import {
+  Field,
+  FormActions,
+  InlineFeedback,
+  inputClassName,
+  selectClassName,
+} from '@/components/academic/ui';
 import { listAllResource } from '@/lib/frontend/academic/api';
 import { academicKeys } from '@/lib/frontend/academic/queries';
 import type { AcademicPeriodDto, AcademicYearDto, SubjectDto } from '@/lib/frontend/academic/types';
@@ -18,7 +24,13 @@ import { homeworkKeys } from '@/lib/frontend/homework/queries';
 import { homeworkFormSchema, type HomeworkFormValues } from '@/lib/frontend/homework/schemas';
 import type { TeacherAssignmentDto } from '@/lib/frontend/teachers/types';
 
-export function HomeworkForm({ schoolId, years, subjects, assignments, onCancel }: {
+export function HomeworkForm({
+  schoolId,
+  years,
+  subjects,
+  assignments,
+  onCancel,
+}: {
   schoolId: string;
   years: AcademicYearDto[];
   subjects: SubjectDto[];
@@ -26,36 +38,187 @@ export function HomeworkForm({ schoolId, years, subjects, assignments, onCancel 
   onCancel: () => void;
 }) {
   const learning = useTranslations('learningUi');
+  const ui = useTranslations('homeworkExperience');
   const text = useDomainText();
   const t = useHomeworkCopy();
-  const router = useRouter(); const queryClient = useQueryClient(); const [error, setError] = useState<string>();
-  const form = useForm<HomeworkFormValues>({ resolver: zodResolver(homeworkFormSchema), defaultValues: { academicYearId: '', academicPeriodId: '', subjectId: '', title: '', description: '', dueDate: '' } });
-  const yearId = form.watch('academicYearId'); const periodId = form.watch('academicPeriodId');
-  const periods = useQuery({ queryKey: academicKeys.selectors(schoolId, `periods:${yearId || 'none'}`), queryFn: () => listAllResource<AcademicPeriodDto>(`/api/v1/academic-years/${yearId}/periods`), enabled: !!yearId });
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string>();
+  const form = useForm<HomeworkFormValues>({
+    resolver: zodResolver(homeworkFormSchema),
+    defaultValues: {
+      academicYearId: '',
+      academicPeriodId: '',
+      subjectId: '',
+      title: '',
+      description: '',
+      dueDate: '',
+    },
+  });
+  const yearId = form.watch('academicYearId');
+  const periodId = form.watch('academicPeriodId');
+  const periods = useQuery({
+    queryKey: academicKeys.selectors(schoolId, `periods:${yearId || 'none'}`),
+    queryFn: () => listAllResource<AcademicPeriodDto>(`/api/v1/academic-years/${yearId}/periods`),
+    enabled: !!yearId,
+  });
   const yearIds = new Set(assignments.map((assignment) => assignment.academicYearId));
-  const subjectIds = new Set(assignments.filter((assignment) => !yearId || assignment.academicYearId === yearId).map((assignment) => assignment.subjectId));
-  const eligibleYears = years.filter((year) => (year.status === 'PLANNED' || year.status === 'ACTIVE') && yearIds.has(year.id));
+  const subjectIds = new Set(
+    assignments
+      .filter((assignment) => !yearId || assignment.academicYearId === yearId)
+      .map((assignment) => assignment.subjectId),
+  );
+  const eligibleYears = years.filter(
+    (year) => (year.status === 'PLANNED' || year.status === 'ACTIVE') && yearIds.has(year.id),
+  );
   const eligiblePeriods = (periods.data ?? []).filter((period) => period.status !== 'CLOSED');
-  const eligibleSubjects = subjects.filter((subject) => subject.status === 'ACTIVE' && subjectIds.has(subject.id));
+  const eligibleSubjects = subjects.filter(
+    (subject) => subject.status === 'ACTIVE' && subjectIds.has(subject.id),
+  );
   const mutation = useMutation({
-    mutationFn: (values: HomeworkFormValues) => homeworkApi.create({ ...values, title: values.title.trim(), description: values.description.trim() || null }),
-    onSuccess: async (homework) => { await queryClient.invalidateQueries({ queryKey: homeworkKeys.lists(schoolId) }); router.push(`/homework/${homework.id}`); },
-    onError: (value) => { if (!mapHomeworkValidation(value, form.setError)) setError(text(homeworkErrorMessage(value))); },
+    mutationFn: (values: HomeworkFormValues) =>
+      homeworkApi.create({
+        ...values,
+        title: values.title.trim(),
+        description: values.description.trim() || null,
+      }),
+    onSuccess: async (homework) => {
+      await queryClient.invalidateQueries({ queryKey: homeworkKeys.lists(schoolId) });
+      router.push(`/homework/${homework.id}`);
+    },
+    onError: (value) => {
+      if (!mapHomeworkValidation(value, form.setError)) setError(text(homeworkErrorMessage(value)));
+    },
   });
   const submit = (values: HomeworkFormValues) => {
-    const year = years.find((item) => item.id === values.academicYearId); const period = periods.data?.find((item) => item.id === values.academicPeriodId);
-    if (year && (values.dueDate < year.startDate || values.dueDate > year.endDate)) { form.setError('dueDate', { message: t.dueInsideYear }); return; }
-    if (period && (values.dueDate < period.startDate || values.dueDate > period.endDate)) { form.setError('dueDate', { message: t.dueInsidePeriod }); return; }
-    setError(undefined); mutation.mutate(values);
+    const year = years.find((item) => item.id === values.academicYearId);
+    const period = periods.data?.find((item) => item.id === values.academicPeriodId);
+    if (year && (values.dueDate < year.startDate || values.dueDate > year.endDate)) {
+      form.setError('dueDate', { message: t.dueInsideYear });
+      return;
+    }
+    if (period && (values.dueDate < period.startDate || values.dueDate > period.endDate)) {
+      form.setError('dueDate', { message: t.dueInsidePeriod });
+      return;
+    }
+    setError(undefined);
+    mutation.mutate(values);
   };
-  return <form className="space-y-4" noValidate onSubmit={form.handleSubmit(submit)}>
-    {form.formState.isDirty ? <InlineFeedback brand kind="warning">{learning('unsaved')}</InlineFeedback> : null}
-    {error ? <InlineFeedback brand kind="error">{error}</InlineFeedback> : null}
-    <Field label={t.academicYear} htmlFor="homework-year" error={text(form.formState.errors.academicYearId?.message)}><select id="homework-year" className={selectClassName} {...form.register('academicYearId', { onChange: () => { form.setValue('academicPeriodId', ''); form.setValue('subjectId', ''); } })}><option value="">{t.selectYear}</option>{eligibleYears.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}</select></Field>
-    <div className="grid gap-4 sm:grid-cols-2"><Field label={t.academicPeriod} htmlFor="homework-period" error={text(form.formState.errors.academicPeriodId?.message)}><select id="homework-period" className={selectClassName} disabled={!yearId || periods.isPending} {...form.register('academicPeriodId')}><option value="">{t.selectPeriod}</option>{eligiblePeriods.map((period) => <option key={period.id} value={period.id}>{period.name}</option>)}</select></Field><Field label={t.subject} htmlFor="homework-subject" error={text(form.formState.errors.subjectId?.message)}><select id="homework-subject" className={selectClassName} disabled={!yearId} {...form.register('subjectId')}><option value="">{t.selectSubject}</option>{eligibleSubjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}{subject.code ? ` (${subject.code})` : ''}</option>)}</select></Field></div>
-    <Field label={t.titleField} htmlFor="homework-title" error={text(form.formState.errors.title?.message)}><input id="homework-title" className={inputClassName} {...form.register('title')} /></Field>
-    <Field label={t.descriptionField} htmlFor="homework-description" error={text(form.formState.errors.description?.message)} hint={t.plainText}><textarea id="homework-description" className={`${inputClassName} min-h-32 py-2`} {...form.register('description')} /></Field>
-    <Field label={t.dueDate} htmlFor="homework-due" error={text(form.formState.errors.dueDate?.message)}><input id="homework-due" type="date" dir="ltr" className={inputClassName} min={periods.data?.find((item) => item.id === periodId)?.startDate} max={periods.data?.find((item) => item.id === periodId)?.endDate} {...form.register('dueDate')} /></Field>
-    <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={t.create} />
-  </form>;
+  return (
+    <form className="hw-workspace hw-form" noValidate onSubmit={form.handleSubmit(submit)}>
+      {form.formState.isDirty ? (
+        <InlineFeedback brand kind="warning">
+          {learning('unsaved')}
+        </InlineFeedback>
+      ) : null}
+      {error ? (
+        <InlineFeedback brand kind="error">
+          {error}
+        </InlineFeedback>
+      ) : null}
+      <Field
+        label={t.academicYear}
+        htmlFor="homework-year"
+        error={text(form.formState.errors.academicYearId?.message)}
+      >
+        <select
+          id="homework-year"
+          className={selectClassName}
+          {...form.register('academicYearId', {
+            onChange: () => {
+              form.setValue('academicPeriodId', '');
+              form.setValue('subjectId', '');
+              form.setValue('dueDate', '');
+            },
+          })}
+        >
+          <option value="">{t.selectYear}</option>
+          {eligibleYears.map((year) => (
+            <option key={year.id} value={year.id}>
+              {year.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <div className="hw-full grid gap-4 sm:grid-cols-2">
+        <Field
+          label={t.academicPeriod}
+          htmlFor="homework-period"
+          error={text(form.formState.errors.academicPeriodId?.message)}
+        >
+          <select
+            id="homework-period"
+            className={selectClassName}
+            disabled={!yearId || periods.isPending}
+            {...form.register('academicPeriodId', { onChange: () => form.setValue('dueDate', '') })}
+          >
+            <option value="">{t.selectPeriod}</option>
+            {eligiblePeriods.map((period) => (
+              <option key={period.id} value={period.id}>
+                {period.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field
+          label={t.subject}
+          htmlFor="homework-subject"
+          error={text(form.formState.errors.subjectId?.message)}
+        >
+          <select
+            id="homework-subject"
+            className={selectClassName}
+            disabled={!yearId}
+            {...form.register('subjectId')}
+          >
+            <option value="">{t.selectSubject}</option>
+            {eligibleSubjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>
+                {subject.name}
+                {subject.code ? ` (${subject.code})` : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <Field
+        label={t.titleField}
+        htmlFor="homework-title"
+        error={text(form.formState.errors.title?.message)}
+      >
+        <input id="homework-title" className={inputClassName} {...form.register('title')} />
+      </Field>
+      <div className="hw-full">
+        <Field
+          label={t.descriptionField}
+          htmlFor="homework-description"
+          error={text(form.formState.errors.description?.message)}
+          hint={t.plainText}
+        >
+          <textarea
+            id="homework-description"
+            className={`${inputClassName} min-h-32 py-2`}
+            {...form.register('description')}
+          />
+        </Field>
+      </div>
+      <Field
+        label={t.dueDate}
+        htmlFor="homework-due"
+        error={text(form.formState.errors.dueDate?.message)}
+      >
+        <input
+          id="homework-due"
+          type="date"
+          dir="ltr"
+          className={inputClassName}
+          min={periods.data?.find((item) => item.id === periodId)?.startDate}
+          max={periods.data?.find((item) => item.id === periodId)?.endDate}
+          {...form.register('dueDate')}
+        />
+      </Field>
+      <p className="hw-context">{ui('draftNext')}</p>
+      <FormActions pending={mutation.isPending} onCancel={onCancel} submitLabel={t.create} />
+    </form>
+  );
 }

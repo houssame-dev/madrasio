@@ -103,6 +103,8 @@ function portalFetch() {
     const url = String(input);
     if (url === '/api/v1/me/parent-profiles') return Response.json({ data: [profile] });
     if (url === '/api/v1/notifications/unread-count') return Response.json({ data: { count: 2 } });
+    if (url.includes('/me/announcements') || url.includes('/notifications?')) return Response.json({data:[],meta:{page:1,pageSize:4,total:0}});
+    if (url.includes('/dashboard?')) return Response.json({data:{date:'2026-10-24',asOf:'2026-10-24T10:00:00Z',timezone:'UTC',from:'2026-10-18',through:'2026-10-31',upcomingCount:0,absenceRecords:0,homework:[]}});
     if (url.endsWith('/academic-years')) return Response.json({ data: [students.year] });
     if (url.includes('/placement?')) return Response.json({ data: {
       academicYearId: students.yearId, academicYearName: students.year.name,
@@ -124,8 +126,8 @@ describe.each(SUPPORTED_LOCALES)('%s people and Parent portal localization', (lo
     expect(profile).toHaveAttribute('href', '/students/' + students.studentId);
     const row = profile.closest('tr');
     if (!row) throw new Error('Expected the Student profile row');
-    expect(within(row).getByRole('cell', { name: 'Amina' })).toBeInTheDocument();
-    expect(within(row).getByRole('cell', { name: 'Bennani' })).toBeInTheDocument();
+    expect(within(row).getByText('Amina')).toBeInTheDocument();
+    expect(within(row).getByText('Bennani')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t('peopleStudents.createStudent') })).toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText(t('academic.filterStatus')), 'WITHDRAWN');
     expect(navigation.replace).toHaveBeenCalledWith('/students?status=WITHDRAWN&page=1', { scroll: false });
@@ -150,8 +152,8 @@ describe.each(SUPPORTED_LOCALES)('%s people and Parent portal localization', (lo
     expect(profile).toHaveAttribute('href', '/teachers/' + teachers.teacherId);
     const row = profile.closest('tr');
     if (!row) throw new Error('Expected the Teacher profile row');
-    expect(within(row).getByRole('cell', { name: 'Leila' })).toBeInTheDocument();
-    expect(within(row).getByRole('cell', { name: 'Amrani' })).toBeInTheDocument();
+    expect(within(row).getByText('Leila')).toBeInTheDocument();
+    expect(within(row).getByText('Amrani')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t('peopleTeachers.createTeacher') })).toBeInTheDocument();
   });
 
@@ -173,8 +175,8 @@ describe.each(SUPPORTED_LOCALES)('%s people and Parent portal localization', (lo
     expect(profile).toHaveAttribute('href', '/parents/' + parents.parentId);
     const row = profile.closest('tr');
     if (!row) throw new Error('Expected the Parent profile row');
-    expect(within(row).getByRole('cell', { name: 'Samira' })).toBeInTheDocument();
-    expect(within(row).getByRole('cell', { name: 'Alaoui' })).toBeInTheDocument();
+    expect(within(row).getByText('Samira')).toBeInTheDocument();
+    expect(within(row).getByText('Alaoui')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t('peopleParents.createParent') })).toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText(t('academic.filterStatus')), 'ARCHIVED');
     expect(navigation.replace).toHaveBeenCalledWith('/parents?status=ARCHIVED&page=1', { scroll: false });
@@ -205,7 +207,7 @@ describe.each(SUPPORTED_LOCALES)('%s people and Parent portal localization', (lo
     keep(parents.renderParents(localized(<ChildDetail studentId={parents.studentId} />, locale), 'PARENT'));
     await screen.findByText('Primary');
     await userEvent.click(screen.getByRole('button', { name: t('navigation.items.attendance') }));
-    expect(await screen.findByText(/Historical Class/)).toHaveTextContent(t('attendance.statuses.ABSENT'));
+    expect((await screen.findByText(/Historical Class/)).closest('li')).toHaveTextContent(t('attendance.statuses.ABSENT'));
     expect(screen.getByLabelText(t('attendance.dateFrom'))).toHaveAttribute('dir', 'ltr');
     await userEvent.click(screen.getByRole('button', { name: t('peopleUi.backOverview') }));
     expect(screen.getByRole('button', { name: t('navigation.items.attendance') })).toHaveFocus();
@@ -250,8 +252,8 @@ describe.each(SUPPORTED_LOCALES)('%s people and Parent portal localization', (lo
     expect(profile).toHaveAttribute('href', '/teachers/' + teachers.teacherId);
     const row = profile.closest('tr');
     if (!row) throw new Error('Expected the self-scoped Teacher profile row');
-    expect(within(row).getByRole('cell', { name: 'Leila' })).toBeInTheDocument();
-    expect(within(row).getByRole('cell', { name: 'Amrani' })).toBeInTheDocument();
+    expect(within(row).getByText('Leila')).toBeInTheDocument();
+    expect(within(row).getByText('Amrani')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: t('peopleTeachers.selfTitle') })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t('peopleTeachers.createTeacher') })).not.toBeInTheDocument();
   });
@@ -296,9 +298,9 @@ describe.each(SUPPORTED_LOCALES)('%s people and Parent portal localization', (lo
   it('renders the Parent dashboard through the existing role branch and localized notification shortcut', async () => {
     portalFetch(); const t = translator(locale);
     keep(parents.renderParents(localized(<Dashboard />, locale), 'PARENT'));
-    expect(await screen.findByRole('heading', { name: t('parentPortal.dashboardTitle') })).toBeInTheDocument();
-    expect(screen.getByText(t('dashboardUi.notifications'))).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: t('teachingDashboard.teacherTitle') })).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: t('parentWorkspace.title') })).toBeInTheDocument();
+    expect(screen.getByRole('heading', {name:t('parentWorkspace.notifications')})).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t('teacherWorkspace.title') })).not.toBeInTheDocument();
   });
 
   it('localizes server DOB feedback and retains the original field-focus and request contract', async () => {
@@ -321,10 +323,10 @@ describe.each(SUPPORTED_LOCALES)('%s people and Parent portal localization', (lo
   it('renders the Teacher dashboard with exact assignment navigation', async () => {
     teaching.successfulDashboardFetch(); const t = translator(locale);
     keep(teaching.renderDashboard(localized(<Dashboard />, locale)));
-    expect(await screen.findByRole('heading', { name: t('teachingDashboard.teacherTitle') })).toBeInTheDocument();
-    const link = await screen.findByRole('link', { name: t('teachingDashboard.gradeAction', { subjectName: 'Mathematics', className: '1A' }) });
+    expect(await screen.findByRole('heading', { name: t('teacherWorkspace.title') })).toBeInTheDocument();
+    const link = await screen.findByRole('link', { name: `${t('teacherWorkspace.grades')} · Mathematics · 1A` });
     expect(link.getAttribute('href')).toContain('subjectId=' + teaching.subjectId);
-    expect(screen.queryByRole('heading', { name: t('parentPortal.dashboardTitle') })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t('parentWorkspace.title') })).not.toBeInTheDocument();
   });
 });
 

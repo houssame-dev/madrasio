@@ -10,13 +10,13 @@ import { useAcademicCopy } from '@/i18n/use-domain-copy';
 export const inputClassName = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground';
 export const selectClassName = inputClassName;
 
-export function ManagementPageHeader({ readOnly }: { readOnly: boolean }) {
+export function ManagementPageHeader({ readOnly, title, description }: { readOnly: boolean; title?:string; description?:string }) {
   const t = useAcademicCopy();
   return (
     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t.description}</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{title ?? t.title}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{description ?? t.description}</p>
       </div>
       {readOnly ? <div className="rounded-md border bg-muted px-3 py-2 text-sm"><span className="font-medium">{t.readOnly}</span><span className="sr-only">. {t.readOnlyDescription}</span></div> : null}
     </header>

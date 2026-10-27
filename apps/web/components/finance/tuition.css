@@ -1,0 +1,40 @@
+/* Tuition content only; inherited application palette, typography and shell remain authoritative. */
+.tuition-workspace { min-width:0; font-size:14px; line-height:1.5; }
+.tuition-workspace h1 { font-size:clamp(25px,2.2vw,34px); line-height:1.2; font-weight:700; letter-spacing:-.025em; }
+.tuition-workspace h2 { font-size:17px; font-weight:700; }.tuition-workspace h3 { font-weight:600; }
+.tuition-workspace .tu-copy { color:hsl(var(--muted-foreground)); font-size:13px; margin-top:7px; }
+.tuition-workspace .tu-tabs { display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid hsl(var(--border)); padding-bottom:8px; }
+.tuition-workspace .tu-tabs button { display:inline-flex; min-height:42px; padding:8px 12px; color:hsl(var(--muted-foreground)); border-radius:7px; font-size:13px; font-weight:500; }
+.tuition-workspace .tu-tabs [aria-current=page] { color:var(--ws-active-text); background:var(--ws-active); font-weight:650; }
+.tuition-workspace .tu-subtabs,.tuition-workspace .tu-overview-actions,.tuition-workspace .tu-receipt-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.tuition-workspace .tu-overview { display:grid; gap:20px; }
+.tuition-workspace .tu-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:12px; margin-top:16px; }
+.tuition-workspace .tu-metrics article { display:flex; gap:14px; flex-wrap:wrap; align-items:start; }.tuition-workspace .tu-metrics p { font-size:12px; color:hsl(var(--muted-foreground)); }.tuition-workspace .tu-metrics strong { display:block; font-size:23px; font-weight:700; overflow-wrap:anywhere; }
+.tuition-workspace .tu-two-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.tuition-workspace .tu-bars { display:grid; gap:18px; margin-top:20px; }.tuition-workspace .tu-bars li>span { display:flex; justify-content:space-between; gap:12px; font-size:12px; }.tuition-workspace .tu-bars li>div { height:9px; background:hsl(var(--muted)); border-radius:5px; margin-top:7px; overflow:hidden; }.tuition-workspace .tu-bars li>div>span { display:block; background:#fca311; height:100%; border-radius:5px; }
+.tuition-workspace .tu-collection-total { display:block; font-size:28px; font-weight:700; margin-block:24px; }.tuition-workspace .tu-methods li { display:flex; gap:16px; justify-content:space-between; padding-block:13px; border-top:1px solid hsl(var(--border)); }
+.tuition-workspace .tu-follow-up li { border-top:1px solid hsl(var(--border)); }.tuition-workspace .tu-follow-up li:first-child { margin-top:14px; }.tuition-workspace .tu-follow-up :is(a,button) { display:flex; align-items:start; width:100%; flex-wrap:wrap; text-align:start; gap:8px 14px; padding:14px 0; font-size:12px; }.tuition-workspace .tu-follow-up strong { flex:1; min-width:120px; }.tuition-workspace .tu-follow-up span { color:hsl(var(--muted-foreground)); }
+.tuition-workspace .tu-empty { color:hsl(var(--muted-foreground)); padding-block:30px; text-align:center; }
+.tuition-workspace .tu-child-list { margin-top:16px; }.tuition-workspace .tu-child-list>:is(article,a) { display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:16px; padding:18px 0; border-bottom:1px solid hsl(var(--border)); }.tuition-workspace .tu-child-list p,.tuition-workspace .tu-child-list small { color:hsl(var(--muted-foreground)); font-size:12px; margin-top:5px; overflow-wrap:anywhere; }.tuition-workspace .tu-child-list strong { font-size:18px; }.tuition-workspace .tu-child-list>article>div { min-width:0; }.tuition-workspace .tu-child-list>a>div { flex:1; min-width:0; }.tuition-workspace .tu-child-list>a>svg { width:18px; height:18px; }
+.tuition-workspace .tu-pagination { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-top:20px; }.tuition-workspace .tu-receipt-details { display:grid; gap:14px; margin-block:24px; }.tuition-workspace .tu-receipt-details>div { display:flex; justify-content:space-between; gap:20px; }.tuition-workspace .tu-receipt-details dt { color:hsl(var(--muted-foreground)); }.tuition-workspace .tu-receipt-details dd { text-align:end; overflow-wrap:anywhere; min-width:0; }.tuition-workspace.tu-receipt { max-width:950px; margin-inline:auto; }.tuition-workspace.tu-receipt>header { margin-block:24px; }.tuition-workspace.tu-receipt>header>strong { display:block; margin-top:12px; overflow-wrap:anywhere; }
+.tuition-workspace .tu-reversal { padding:14px; border:1px solid hsl(var(--border)); border-radius:8px; }
+.tuition-workspace :is(a,button,input,select,[tabindex]):focus-visible { outline:2px solid hsl(var(--ring)); outline-offset:3px; }.tuition-workspace button:disabled { opacity:.5; cursor:not-allowed; }.tuition-workspace button:not(:disabled):hover { filter:brightness(.96); }
+[dir=rtl] .tuition-workspace h1 { letter-spacing:normal; line-height:1.5; }[dir=rtl] .tuition-workspace .tu-arrow { transform:rotate(180deg); }
+@media(max-width:800px) { .tuition-workspace .tu-two-columns { grid-template-columns:minmax(0,1fr); }.tuition-workspace .tu-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }.tuition-workspace .tu-metrics article { padding:14px; }.tuition-workspace .tu-metrics strong { font-size:19px; }.tuition-workspace .tu-metrics article:first-child:last-child { grid-column:1/-1; } }
+@media(max-width:420px) { .tuition-workspace .tu-metrics { grid-template-columns:minmax(0,1fr); }.tuition-workspace .tu-tabs button { padding:8px; }.tuition-workspace .tu-receipt-details>div { flex-wrap:wrap; gap:5px; }.tuition-workspace .tu-receipt-details dd { width:100%; text-align:start; } }
+
+.tuition-workspace .tu-payment-steps { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; padding:16px 0; border-block:1px solid hsl(var(--border)); }
+.tuition-workspace .tu-payment-steps li { display:flex; align-items:center; gap:8px; color:hsl(var(--muted-foreground)); font-size:12px; }.tuition-workspace .tu-payment-steps li>span { display:grid; place-items:center; background:hsl(var(--muted)); border-radius:50%; width:26px; height:26px; flex-shrink:0; }.tuition-workspace .tu-payment-steps [aria-current=step] { color:hsl(var(--foreground)); font-weight:650; }.tuition-workspace .tu-payment-steps [aria-current=step]>span { background:#fca311; color:#14213d; }
+.tuition-workspace .tu-payment-review { padding:20px; border:1px solid hsl(var(--border)); border-radius:10px; background:hsl(var(--muted)); }.tuition-workspace .tu-payment-review dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-block:16px; }.tuition-workspace .tu-payment-review dt { color:hsl(var(--muted-foreground)); font-size:12px; }.tuition-workspace .tu-payment-review dd { font-weight:600; overflow-wrap:anywhere; }
+@media(max-width:650px) { .tuition-workspace .tu-payment-steps { grid-template-columns:repeat(2,minmax(0,1fr)); }.tuition-workspace .tu-payment-review { padding:14px; } }
+
+.tuition-workspace button.bg-primary { background:#fca311; color:#14213d; }
+
+.tuition-workspace .tu-year-filter { max-width:300px; }
+
+.tuition-workspace .finance-data-table { min-width:0; width:100%; }
+.tuition-workspace .finance-data-table td>.finance-cell-label { display:block; }
+.tuition-workspace .tu-child-name { font-weight:650; font-size:16px; margin-top:12px; }
+.tuition-workspace#tuition { scroll-margin-top:calc(var(--app-topbar-height,68px) + 18px); }
+@media(min-width:1280px) { .tuition-workspace .finance-data-table td>.finance-cell-label { display:none; } }
+@media print { .tuition-workspace .finance-data-table td>.finance-cell-label { display:none!important; }.finance-table-scroll { overflow:visible; } }

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Dashboard } from '@/components/app/dashboard';
@@ -16,6 +16,7 @@ function mockChildAcademic() {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input);
     if (url === '/api/v1/me/parent-profiles') return Response.json({ data: [profile] });
+    if (url.includes('/tuition?')) return Response.json({data:{currency:'MAD',summary:{netCents:0,paidCents:0,outstandingCents:0},charges:[],payments:[],chargeTotal:0,paymentTotal:0,page:1}});
     if (url.endsWith('/academic-years')) return Response.json({ data: [year] });
     if (url.includes('/placement?')) return Response.json({ data: placement });
     if (url.includes('/attendance?')) return Response.json({ data: [{ id: 'a1', date: '2025-10-10', status: 'LATE', className: 'Old Class' }], meta: { page: 1, pageSize: 20, total: 1 } });
@@ -32,6 +33,8 @@ function mockPortal(data = [profile], unread = 2) {
     const url = String(input);
     if (url === '/api/v1/me/parent-profiles') return Response.json({ data });
     if (url === '/api/v1/notifications/unread-count') return Response.json({ data: { count: unread } });
+    if (url.endsWith('/academic-years')) return Response.json({ data: [] });
+    if (url.startsWith('/api/v1/me/announcements') || url.startsWith('/api/v1/notifications?')) return Response.json({ data: [], meta: { total: 0, page: 1, pageSize: 4 } });
     throw new Error(`Unexpected Parent portal request: ${url}`);
   });
 }
@@ -44,7 +47,7 @@ describe('Parent portal dashboard and children', () => {
     renderParents(<ChildDetail studentId={student.id} />, 'PARENT');
     await screen.findByText('15.50');
     await user.click(screen.getByRole('button', { name: 'Attendance' }));
-    expect(await screen.findByText(/Old Class/)).toHaveTextContent('2025-10-10');
+    expect((await screen.findByText(/Old Class/)).closest('li')).toHaveTextContent('2025-10-10');
     await user.click(screen.getByRole('button', { name: 'Back to child overview' }));
     screen.getByRole('button', { name: 'Homework' }).focus(); await user.keyboard('{Enter}');
     const summary = await screen.findByText('Reading practice'); summary.focus(); await user.keyboard('{Enter}');
@@ -55,14 +58,13 @@ describe('Parent portal dashboard and children', () => {
   it('renders the Parent dashboard from self bootstrap, deduplicates children, and reuses unread Notifications', async () => {
     const fetchMock = mockPortal([profile, secondProfile], 5);
     renderParents(<Dashboard />, 'PARENT');
-    expect(await screen.findByRole('heading', { name: 'Family workspace' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Parent Dashboard' })).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { name: 'Nora Alaoui' })).toHaveLength(1);
-    expect(within(screen.getByText('Related children').closest('article')!).getByText('1')).toBeInTheDocument();
-    expect(within(screen.getByText('Unread notifications').closest('article')!).getByText('5')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Notifications/ })).toHaveAttribute('href', '/notifications');
-    expect(screen.getByRole('link', { name: /^Announcements/ })).toHaveAttribute('href', '/announcements/inbox');
+    expect(screen.queryByRole('combobox', { name: 'Choose a child' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View child profile' })).toHaveAttribute('href', `/children/${student.id}`);
+    expect(await screen.findByText('No eligible academic years are available.')).toBeInTheDocument();
     expect(screen.queryByText(/Take attendance|Open gradebooks/)).not.toBeInTheDocument();
-    expect(fetchMock.mock.calls.map((call) => String(call[0])).sort()).toEqual(['/api/v1/me/parent-profiles', '/api/v1/notifications/unread-count']);
+    expect(fetchMock.mock.calls.every(([url]) => !String(url).includes('/finance') && !String(url).includes('/api/v1/results'))).toBe(true);
   });
 
   it('distinguishes no active profile from active profiles without current children', async () => {
@@ -106,17 +108,17 @@ describe('Parent portal dashboard and children', () => {
     expect(screen.getByRole('button', { name: 'Homework' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Attendance' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /calculate|finalize|publish|revise|edit/i })).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(fetchMock).toHaveBeenCalledTimes(7);
     expect(fetchMock.mock.calls.every((call) => !String(call[0]).includes('/api/v1/results'))).toBe(true);
   });
 
   it('does not guess when a child has multiple ACTIVE Academic Years', async () => {
     const secondYear = { ...year, id: crypto.randomUUID(), name: '2026/2027', startDate: '2026-09-01', endDate: '2027-07-01' };
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => String(input) === '/api/v1/me/parent-profiles' ? Response.json({ data: [profile] }) : Response.json({ data: [secondYear, year] }));
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => String(input) === '/api/v1/me/parent-profiles' ? Response.json({ data: [profile] }) : String(input).includes('/tuition?') ? Response.json({data:{currency:'MAD',summary:{netCents:0,paidCents:0,outstandingCents:0},charges:[],payments:[],chargeTotal:0,paymentTotal:0,page:1}}) : Response.json({ data: [secondYear, year] }));
     renderParents(<ChildDetail studentId={student.id} />, 'PARENT');
     expect(await screen.findByText('Select one of this child’s Academic Years to view placement and published results.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Subject results' })).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('hides a foreign or unrelated child without probing Student, Result, Homework, or Attendance APIs', async () => {

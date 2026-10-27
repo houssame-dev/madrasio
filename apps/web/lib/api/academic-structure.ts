@@ -45,7 +45,7 @@ async function id(context: Params, key = 'id') {
 async function run(operation: () => Promise<Response>): Promise<Response> { try { return await operation(); } catch (error) { return toApiErrorResponse(error); } }
 const one = (data: unknown, status = 200) => Response.json({ data }, { status });
 
-export function academicYearsGET(request: Request) { return run(async () => { const input = query(request, z.object({ ...baseQuery, status: yearStatus.optional() }).strict()); const value = await actor(); return Response.json(await service.listAcademicYears(value.db, value.actor, input)); }); }
+export function academicYearsGET(request: Request) { return run(async () => { const input = query(request, z.object({ ...baseQuery, status: yearStatus.optional(), search:z.string().trim().max(100).optional() }).strict()); const value = await actor(); return Response.json(await service.listAcademicYears(value.db, value.actor, input)); }); }
 export function academicYearsPOST(request: Request) { return run(async () => { const input = await parseBody(request, academicYearCreateSchema); const value = await actor(); return one(await service.createAcademicYear(value.db, value.actor, input), 201); }); }
 export function academicYearGET(_request: Request, context: Params) { return run(async () => { const value = await actor(); return one(await service.getAcademicYear(value.db, value.actor, await id(context))); }); }
 export function academicYearPATCH(request: Request, context: Params) { return run(async () => { const input = await parseBody(request, academicYearPatchSchema); const value = await actor(); return one(await service.patchAcademicYear(value.db, value.actor, await id(context), input)); }); }

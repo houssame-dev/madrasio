@@ -20,9 +20,8 @@ function setup(writable = true, empty = false, error = false) {
     throw Error('Unexpected attendance request');
   });
 }
-async function open(locale: 'en' | 'fr' | 'ar' = 'en') {
-  await screen.findByRole('option', { name: /2025-10-10.*Class A.*Mathematics/ });
-  await userEvent.selectOptions(await screen.findByLabelText(getCatalog(locale).attendance.sessions), `${session.publicationId}:${session.lessonKey}`);
+async function open(_locale: 'en' | 'fr' | 'ar' = 'en') {
+  await userEvent.click(await screen.findByRole('button', { name: /Mathematics.*Class A.*08:00/ }));
   await screen.findByText('Sara Amrani');
 }
 describe('Teacher session roster and Admin read-only access', () => {
@@ -36,6 +35,7 @@ describe('Teacher session roster and Admin read-only access', () => {
       return Response.json({ ...roster, data: { ...roster.data, session: { ...session, writable } } });
     });
     const { queryClient } = renderAttendance(<SessionAttendancePanel schoolId={schoolId} timezone="America/New_York" onDirtyChange={vi.fn()} />, 'TEACHER', 'America/New_York');
+    await screen.findByText('Not started');
     await open();
     expect(screen.queryByLabelText('Attendance status for Sara Amrani')).not.toBeInTheDocument();
     const scheduled = timer.mock.calls.find(([, delay]) => delay === 60_000);
@@ -55,13 +55,13 @@ describe('Teacher session roster and Admin read-only access', () => {
   it.each(['en', 'fr', 'ar'] as const)('records an actual selected session with accessible %s controls', async locale => {
     const fetch = setup(); const t = getCatalog(locale).attendance;
     renderAttendance(<SessionAttendancePanel schoolId={schoolId} timezone="UTC" onDirtyChange={vi.fn()} />, 'TEACHER', 'UTC', locale); await open(locale);
-    await userEvent.selectOptions(screen.getAllByRole('combobox')[1], 'ABSENT');
+    await userEvent.selectOptions(screen.getAllByRole('combobox')[0], 'ABSENT');
     await userEvent.click(screen.getByRole('button', { name: t.save }));
     await screen.findByText(t.saved);
     const writes = fetch.mock.calls.filter(([, init]) => init?.method === 'PUT'); expect(writes).toHaveLength(1);
     expect(String(writes[0][0])).toContain(`publicationId=${session.publicationId}`); expect(String(writes[0][0])).toContain(`lessonKey=${session.lessonKey}`);
     expect(JSON.parse(String(writes[0][1]?.body))).toEqual({ records: [{ studentId, status: 'ABSENT', note: null, expectedVersion: null }] });
-    expect(screen.getByText(/2025-10-10 08:00/)).toHaveAttribute('dir', 'ltr');
+    expect(screen.getByText('08:00–09:00')).toHaveAttribute('dir', 'ltr');
   });
   it('renders Admin session and legacy records with no recording, bulk or save controls', async () => {
     const fetch = setup(false); renderAttendance(<SessionAttendancePanel schoolId={schoolId} timezone="UTC" onDirtyChange={vi.fn()} />); await open();
@@ -170,4 +170,21 @@ it('retains invalid note edits and reports validation without sending a write', 
   expect(screen.getByRole('alert')).toHaveTextContent('Note must contain at most 1,000 characters.');
   expect(screen.getByLabelText('Attendance note for Sara Amrani')).toHaveValue('x'.repeat(1001));
   expect(fetch.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+});
+it('requires explicit discard before reviewing latest records after a stale correction', async () => {
+  const fetch = setup(true, false, true);
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  renderAttendance(<SessionAttendancePanel schoolId={schoolId} timezone="UTC" onDirtyChange={vi.fn()} />, 'TEACHER');
+  await open();
+  await userEvent.selectOptions(screen.getByLabelText('Attendance status for Omar Bennani'), 'EXCUSED');
+  await userEvent.click(screen.getByRole('button', { name: 'Save Attendance' }));
+  await screen.findByRole('alert');
+  await userEvent.click(screen.getByRole('button', { name: 'Review latest records' }));
+  expect(confirm).toHaveBeenCalledWith('Discard unsaved Attendance changes?');
+  expect(screen.getByLabelText('Attendance status for Omar Bennani')).toHaveValue('EXCUSED');
+  confirm.mockReturnValue(true);
+  await userEvent.click(screen.getByRole('button', { name: 'Review latest records' }));
+  await waitFor(() => expect(screen.getByLabelText('Attendance status for Omar Bennani')).toHaveValue('LATE'));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(fetch.mock.calls.filter(([, init]) => init?.method === 'PUT')).toHaveLength(1);
 });

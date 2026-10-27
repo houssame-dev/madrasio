@@ -137,7 +137,7 @@ describe.skipIf(!live)('STAGING recovery bundle local integration', () => {
         RECOVERY_REPOSITORY_GIT_SHA: gitSha,
         RECOVERY_POSTGRES_CONTAINER_IMAGE: PINNED_POSTGRES_CONTAINER,
       }),
-    ).resolves.toMatchObject({ tables: 58 });
+    ).resolves.toMatchObject({ tables: 59 });
     const restoredPool = new Pool({ connectionString: restoredUrl, ssl: false });
     try {
       await expect(
