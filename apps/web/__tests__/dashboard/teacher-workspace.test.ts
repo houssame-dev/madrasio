@@ -1,3 +1,4 @@
+import { schoolWallTimeToInstant } from '@school/shared';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
@@ -49,5 +50,38 @@ it('never derives write permission from ongoing status and preserves completed r
   expect(teacherAttendanceAction({...lesson,status:'upcoming',writable:true})).toBe('timetable'); expect(teacherAttendanceAction({...lesson,expected:0})).toBe('viewAttendance');
   expect(nextTeacherLesson([{...lesson,status:'completed'},{...lesson,status:'upcoming'},lesson])).toBe(lesson); expect(nextTeacherLesson([{...lesson,status:'completed'}])).toBeNull();
 });
-it('uses school timezone and fails closed on ambiguous wall time', () => { expect(teacherLessonStatus('2026-10-26','09:30','10:30','Africa/Casablanca',now)).toBe('completed'); expect(teacherLessonStatus('2026-11-01','01:30','02:30','America/New_York',now)).toBe('unavailable'); });
+it('uses school timezone and fails closed on ambiguous wall time', () => {
+  const date = '2026-10-26';
+  const zone = 'Africa/Casablanca';
+
+  const start = new Date(
+    schoolWallTimeToInstant(`${date}T09:30:00`, zone)
+  );
+
+  const end = new Date(
+    schoolWallTimeToInstant(`${date}T10:30:00`, zone)
+  );
+
+  expect(
+    teacherLessonStatus(date, '09:30', '10:30', zone, new Date(start.getTime() - 1))
+  ).toBe('upcoming');
+
+  expect(
+    teacherLessonStatus(date, '09:30', '10:30', zone, start)
+  ).toBe('ongoing');
+
+  expect(
+    teacherLessonStatus(date, '09:30', '10:30', zone, end)
+  ).toBe('completed');
+
+  expect(
+    teacherLessonStatus(
+      '2026-11-01',
+      '01:30',
+      '02:30',
+      'America/New_York',
+      new Date('2026-10-26T10:00:00Z')
+    )
+  ).toBe('unavailable');
+});
 it('validates navigation hints without treating them as authority', () => { expect(teacherSessionHint(new URLSearchParams({date:'2026-10-26',publicationId:publication,lessonKey:'one'}),'2026-10-26')).toEqual({date:'2026-10-26',selected:`${publication}:one`}); expect(teacherSessionHint(new URLSearchParams({date:'2099-01-01',publicationId:publication,lessonKey:'one'}),'2026-10-26')).toBeNull(); expect(teacherSessionHint(new URLSearchParams('schoolId=other'),'2026-10-26')).toBeNull(); });
