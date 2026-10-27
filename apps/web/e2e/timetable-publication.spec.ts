@@ -1,3 +1,4 @@
+import { workspaceContext } from './fixtures/workspace';
 import { expect, test } from '@playwright/test';
 import { publicationEn, publicationFr, publicationAr } from '../i18n/messages/timetable-publication';
 import { builderEn, builderFr, builderAr } from '../i18n/messages/timetable-builder';
@@ -17,7 +18,8 @@ for (const [locale, t, b] of [['en', publicationEn, builderEn], ['fr', publicati
       const url = new URL(route.request().url()); if (url.origin !== new URL(baseURL!).origin) return route.abort(); if (!url.pathname.startsWith('/api/v1/')) return route.continue();
       calls.push(url.pathname); let data: unknown;
       if (url.pathname === '/api/v1/me') data = { user: { id: tid(14) }, currentSchool: { id: tid(1), role, timezone: 'Africa/Casablanca' }, memberships: [{ schoolId: tid(1), schoolName: 'Synthetic School', role, status: 'ACTIVE' }] };
-      else if (url.pathname.endsWith('/unread-count')) data = { count: 0 };
+      else if (url.pathname === '/api/v1/dashboard/context') data = workspaceContext;
+        else if (url.pathname.endsWith('/unread-count')) data = { count: 0 };
       else if (url.pathname === '/api/v1/timetable/published') {
         if (route.request().method() === 'POST') { expect(publishSchema.parse(route.request().postDataJSON())).toMatchObject({ confirm: true, expectedRevision: 1, expectedSequence: 0 }); published = publishedFixture(role); data = { id: tid(80), sequence: 1 }; }
         else data = url.searchParams.get('studentId') === tid(38) ? { ...published, selectedStudentId: tid(38), schedules: [] } : { ...published, history: url.searchParams.has('classId') ? published.history : [] };
@@ -30,7 +32,7 @@ for (const [locale, t, b] of [['en', publicationEn, builderEn], ['fr', publicati
     if (role === 'SCHOOL_ADMIN') {
       await page.getByRole('button', { name: b.title, exact: true }).click(); await page.getByRole('button', { name: t.publish, exact: true }).click();
       await expect(page.getByRole('dialog').getByText(t.warnings)).toBeVisible(); await page.getByRole('dialog').getByRole('button', { name: t.confirm, exact: true }).click(); await expect(page.getByText(t.saved, { exact: true })).toBeVisible();
-      await page.getByRole('button', { name: t.title, exact: true }).click(); await page.getByLabel(t.class, { exact: true }).selectOption(tid(4)); await expect(page.getByRole('region', { name: t.history })).toBeVisible();
+      await page.locator('[data-tt-tab=published]').click(); await page.getByLabel(t.class, { exact: true }).selectOption(tid(4)); await expect(page.getByRole('region', { name: t.history })).toBeVisible();
       await page.getByLabel(t.view, { exact: true }).selectOption('TEACHER'); await page.getByLabel(t.teacher, { exact: true }).selectOption(tid(9));
     } else await expect(page.getByRole('heading', { name: role === 'TEACHER' ? t.myTitle : t.childrenTitle, exact: true })).toBeVisible();
     await expect(page.getByText('Math', { exact: true }).first()).toBeVisible(); await expect(page.locator('html')).toHaveAttribute('lang', locale); await expect(page.locator('html')).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');

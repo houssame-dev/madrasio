@@ -37,10 +37,11 @@ test('expired protected bootstrap redirects to the public login without exposing
   });
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Welcome to\s*Madrasio/);
   await expect(page.getByLabel('Email address')).toHaveAttribute('autocomplete', 'email');
-  await expect(page.getByLabel('Password')).toHaveAttribute('autocomplete', 'current-password');
-  await expect(page.getByText('Your school workspace')).not.toBeVisible();
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('autocomplete', 'current-password');
+  await expect(page.getByTestId('desktop-sidebar')).toHaveCount(0);
+  await expect(page.getByTestId('mobile-navigation-trigger')).toHaveCount(0);
 });
 
 test('server-rendered login cannot submit credentials before hydration', async ({ browser }) => {
@@ -67,13 +68,13 @@ test('server-rendered login cannot submit credentials before hydration', async (
 
     await expect(page.locator('form')).toHaveAttribute('method', 'post');
     await expect(page.getByLabel('Email address')).toBeDisabled();
-    await expect(page.getByLabel('Password')).toBeDisabled();
+    await expect(page.getByLabel('Password', { exact: true })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeDisabled();
 
     await page.getByLabel('Email address').evaluate((element, value) => {
       (element as HTMLInputElement).value = value;
     }, dummyEmail);
-    await page.getByLabel('Password').evaluate((element, value) => {
+    await page.getByLabel('Password', { exact: true }).evaluate((element, value) => {
       (element as HTMLInputElement).value = value;
     }, dummyPassword);
     await page.getByRole('button', { name: 'Sign in' }).click({ force: true });

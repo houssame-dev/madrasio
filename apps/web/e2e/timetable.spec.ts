@@ -1,3 +1,4 @@
+import { workspaceContext } from './fixtures/workspace';
 import { expect, test } from '@playwright/test';
 import { timetableEn, timetableFr, timetableAr } from '../i18n/messages/timetable';
 
@@ -15,7 +16,8 @@ for (const [locale, t] of [['en', timetableEn], ['fr', timetableFr], ['ar', time
       if (!url.pathname.startsWith('/api/v1/')) return route.continue();
       let data: unknown;
       if (url.pathname === '/api/v1/me') data = { user: { id: 'admin' }, currentSchool: { id: 'school', role: 'SCHOOL_ADMIN', timezone: 'Africa/Casablanca' }, memberships: [{ schoolId: 'school', schoolName: 'Synthetic School', role: 'SCHOOL_ADMIN', status: 'ACTIVE' }] };
-      else if (url.pathname.endsWith('/unread-count')) data = { count: 0 };
+      else if (url.pathname === '/api/v1/dashboard/context') data = workspaceContext;
+        else if (url.pathname.endsWith('/unread-count')) data = { count: 0 };
       else if (url.pathname === '/api/v1/timetable') data = {
         years: [{ id: id(1), name: '2026/27', status: 'ACTIVE', startDate: '2026-09-01', endDate: '2027-07-01' }], selectedYearId: id(1),
         stages: [{ id: id(2), name: 'Primary', status: 'ACTIVE' }], levels: [{ id: id(3), stageId: id(2), name: 'Level 1', status: 'ACTIVE' }],
@@ -30,7 +32,7 @@ for (const [locale, t] of [['en', timetableEn], ['fr', timetableFr], ['ar', time
     await page.goto('/timetable'); await expect(page.getByRole('heading', { name: t.title })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('lang', locale); await expect(page.locator('html')).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
     await page.getByLabel(t.scope, { exact: true }).selectOption(`stage:${id(2)}`); await page.getByLabel(t.inherit).uncheck();
-    await page.getByLabel(t.saturday, { exact: true }).check(); await page.getByRole('button', { name: t.save, exact: true }).click();
+    await page.getByRole('button', { name: t.saturday, exact: true }).click(); await page.getByLabel(t.saturday, { exact: true }).check(); await page.getByRole('button', { name: t.save, exact: true }).click();
     await expect.poll(() => writes.filter(w => w.path.endsWith('/configurations')).length).toBe(1);
     expect(writes[0].body).toMatchObject({ stageId: id(2), levelId: null, enabled: true, expectedRevision: 0 });
     await expect(page.getByRole('status')).toHaveText(t.saved);

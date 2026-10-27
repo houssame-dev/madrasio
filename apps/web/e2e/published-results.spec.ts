@@ -1,3 +1,4 @@
+import { workspaceContext } from './fixtures/workspace';
 import { expect, test } from '@playwright/test';
 
 /** Actual pages, hermetic authenticated boundary. Real scoped repositories are covered in PGlite tests. */
@@ -13,9 +14,12 @@ test('ordinary Parent navigation reaches all 55 publications and their history',
     if (!url.pathname.startsWith('/api/')) { await route.continue(); return; }
     let body: unknown;
     if (url.pathname === '/api/v1/me') body = { data: { user: { id: user }, currentSchool: { id: school, role: 'PARENT', timezone: 'UTC' }, memberships: [{ schoolId: school, schoolName: 'Local school', role: 'PARENT', status: 'ACTIVE' }] } };
+    else if (url.pathname === '/api/v1/dashboard/context') body = { data: workspaceContext };
     else if (url.pathname === '/api/v1/me/parent-profiles') body = { data: [{ parent: { id: id(7), firstName: 'Local', lastName: 'Parent', status: 'ACTIVE' }, children: [{ relationshipId: id(8), student: { id: child, firstName: 'Local', lastName: 'Child', studentCode: 'LOCAL' } }] }] };
     else if (url.pathname === '/api/v1/notifications/unread-count') body = { data: { count: 0 } };
     else if (url.pathname === `/api/v1/parent/children/${child}/academic-years`) body = { data: [{ id: year, name: 'Original year', status: 'ACTIVE', startDate: '2025-09-01', endDate: '2026-07-01' }] };
+    else if (url.pathname === `/api/v1/parent/children/${child}/tuition`) body = { data: { currency: 'MAD', today: workspaceContext.date, studentId: child, summary: { netCents: 0, paidCents: 0, outstandingCents: 0 }, charges: [], payments: [], total: 0, page: 1 } };
+    else if (url.pathname === `/api/v1/parent/children/${child}/attendance` || url.pathname === `/api/v1/parent/children/${child}/homeworks`) body = { data: [], meta: { page: 1, pageSize: 50, total: 0 } };
     else if (url.pathname === `/api/v1/parent/children/${child}/placement`) body = { data: null };
     else if (url.pathname === `/api/v1/parent/children/${child}/results`) {
       const p = Number(url.searchParams.get('page')); const subject = url.searchParams.get('resultType') === 'SUBJECT';
@@ -27,8 +31,7 @@ test('ordinary Parent navigation reaches all 55 publications and their history',
     } else throw new Error(`Unexpected local API path: ${url.pathname}`);
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
   });
-  await page.goto('/dashboard');
-  await page.getByRole('link', { name: 'View all children', exact: true }).click();
+  await page.goto('/children');
   await page.getByRole('link', { name: 'View Local Child', exact: true }).click();
   const section = page.getByRole('region', { name: 'Subject results', exact: true });
   await expect(section.locator('li')).toHaveCount(50);

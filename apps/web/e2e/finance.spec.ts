@@ -1,3 +1,5 @@
+import { tuitionEn, tuitionFr, tuitionAr } from '../i18n/messages/tuition';
+import { workspaceContext, emptyFinanceOverview } from './fixtures/workspace';
 import { expect, test } from '@playwright/test';
 import { financeEn, financeFr, financeAr } from '../i18n/messages/finance';
 import { paymentEn, paymentFr, paymentAr } from '../i18n/messages/finance-payments';
@@ -22,7 +24,9 @@ for (const [locale, t, c, p] of [['en', reportsEn, financeEn, paymentEn], ['fr',
         if (!url.pathname.startsWith('/api/v1/')) return route.continue();
         let data: unknown;
         if (url.pathname === '/api/v1/me') data = { user: { id: 'admin' }, currentSchool: { id: 'school', role: 'SCHOOL_ADMIN', timezone: 'UTC' }, memberships: [{ schoolId: 'school', schoolName: 'Synthetic School', role: 'SCHOOL_ADMIN', status: 'ACTIVE' }] };
+        else if (url.pathname === '/api/v1/dashboard/context') data = workspaceContext;
         else if (url.pathname.endsWith('/unread-count')) data = { count: 0 };
+        else if (url.pathname === '/api/v1/finance/overview') data = emptyFinanceOverview;
         else if (url.pathname === '/api/v1/finance') data = { settings: { currency: 'MAD', locked: true }, types: [], structures: [], years: [{ id: 'year', name: '2025/26' }], classes: [{ id: 'class', academicYearId: 'year', name: 'Class A' }], students: [student], charges: [], levels: [], total: 0, page: 1 };
         else if (url.pathname.endsWith('/payments/students')) data = [student];
         else if (url.pathname.includes('/reports/')) {
@@ -33,7 +37,7 @@ for (const [locale, t, c, p] of [['en', reportsEn, financeEn, paymentEn], ['fr',
         else throw new Error('Unexpected synthetic reports API path: ' + url.pathname);
         await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ data }) });
       });
-      await page.goto('/finance'); await page.getByRole('button', { name: t.title, exact: true }).click();
+      await page.goto('/finance'); await page.getByRole('navigation', { name: { en: tuitionEn, fr: tuitionFr, ar: tuitionAr }[locale].title }).getByRole('button', { name: { en: tuitionEn, fr: tuitionFr, ar: tuitionAr }[locale].reports, exact: true }).click();
       await expect(page.getByRole('region', { name: t.summary })).toBeVisible();
       await page.getByLabel(c.year, { exact: true }).selectOption('year'); await page.getByLabel(c.class, { exact: true }).selectOption('class'); await page.getByLabel(c.student, { exact: true }).selectOption('student');
       await expect.poll(() => requests.some(v => v.includes('academicYearId=year') && v.includes('classId=class') && v.includes('studentId=student'))).toBe(true);
@@ -60,8 +64,10 @@ test('long receipt prints all allocation rows across pages', async ({ page, cont
     const url = new URL(route.request().url()); if (url.origin !== new URL(baseURL!).origin) return route.abort();
     if (!url.pathname.startsWith('/api/v1/')) return route.continue();
     const data = url.pathname === '/api/v1/me' ? { user: { id: 'admin' }, currentSchool: { id: 'school', role: 'SCHOOL_ADMIN', timezone: 'UTC' }, memberships: [{ schoolId: 'school', schoolName: 'Print Test School', role: 'SCHOOL_ADMIN', status: 'ACTIVE' }] }
+      : url.pathname === '/api/v1/dashboard/context' ? workspaceContext
       : url.pathname.endsWith('/unread-count') ? { count: 0 }
-      : { payment: { id: 'long-payment', receiptReference: 'R-MULTIPAGE', currency: 'MAD', schoolName: 'Print Test School', schoolTimezone: 'UTC', studentName: 'Synthetic Student', receivedOn: '2026-01-01', method: 'CASH', amountCents: 6000, recordedBy: 'admin', recordedAt: '2026-01-01T12:00:00Z', reference: null }, allocations, reversal: null };
+      : url.pathname === '/api/v1/finance/payments/long-payment' ? { payment: { id: 'long-payment', receiptReference: 'R-MULTIPAGE', currency: 'MAD', schoolName: 'Print Test School', schoolTimezone: 'UTC', studentName: 'Synthetic Student', receivedOn: '2026-01-01', method: 'CASH', amountCents: 6000, recordedBy: 'admin', recordedAt: '2026-01-01T12:00:00Z', reference: null }, allocations, reversal: null } : undefined;
+    if (!data) throw new Error('Unexpected synthetic receipt API path: ' + url.pathname);
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ data }) });
   });
   await page.goto('/finance/receipts/long-payment'); await expect(page.getByRole('heading', { name: 'Receipt', exact: true })).toBeVisible();
@@ -87,7 +93,9 @@ for (const [locale, t] of [['en', financeEn], ['fr', financeFr], ['ar', financeA
         if (!url.pathname.startsWith('/api/v1/')) return route.continue();
         let data: unknown;
         if (url.pathname === '/api/v1/me') data = { user: { id: 'admin' }, currentSchool: { id: 'school', role: 'SCHOOL_ADMIN', timezone: 'UTC' }, memberships: [{ schoolId: 'school', schoolName: 'Synthetic School', role: 'SCHOOL_ADMIN', status: 'ACTIVE' }] };
+        else if (url.pathname === '/api/v1/dashboard/context') data = workspaceContext;
         else if (url.pathname === '/api/v1/notifications/unread-count') data = { count: 0 };
+        else if (url.pathname === '/api/v1/finance/overview') data = emptyFinanceOverview;
         else if (url.pathname === '/api/v1/finance') data = state;
         else if (url.pathname.endsWith('/preview')) { previews++; data = { items: [{ studentId: 'student', studentName: 'Amina Test', period: '2099-01', dueDate: '2099-01-10', amountCents: 125099, existingChargeId: null }], created: 1, skipped: 0, totalCents: 125099, previewHash: 'a'.repeat(64) }; }
         else if (url.pathname.endsWith('/generate')) { generations++; expect(previews).toBe(1); expect(route.request().postDataJSON()).toMatchObject({ previewHash: 'a'.repeat(64), studentIds: ['student'], periods: ['2099-01'] }); state.charges = [{ charge, studentName: 'Amina Test' }]; state.total = 1; data = { chargeIds: ['charge'], created: 1, skipped: 0, totalCents: 125099 }; }
@@ -102,8 +110,12 @@ for (const [locale, t] of [['en', financeEn], ['fr', financeFr], ['ar', financeA
       });
       await page.goto('/finance');
       await expect(page.locator('html')).toHaveAttribute('lang', locale); await expect(page.locator('html')).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
-      await expect(page.getByRole('heading', { level: 1, name: t.title })).toBeVisible();
+      const tuition = { en: tuitionEn, fr: tuitionFr, ar: tuitionAr }[locale];
+      await expect(page.getByRole('heading', { level: 1, name: tuition.title })).toBeVisible();
+      await page.getByRole('button', { name: tuition.configuration, exact: true }).click();
+      await page.getByRole('button', { name: tuition.structures, exact: true }).click();
       await expect(page.getByRole('button', { name: t.addStructure })).toBeDisabled();
+      await page.getByRole('navigation', { name: tuition.title }).getByRole('button', { name: tuition.charges, exact: true }).click();
       await page.getByRole('button', { name: t.generation, exact: true }).click();
       await page.getByLabel(t.structure, { exact: true }).selectOption('structure');
       await page.getByLabel('Amina Test').check();
@@ -146,7 +158,9 @@ for (const [locale, t, method] of [['en', paymentEn, 'CASH'], ['fr', paymentFr, 
         if (!url.pathname.startsWith('/api/v1/')) return route.continue();
         let data: unknown;
         if (url.pathname === '/api/v1/me') data = { user: { id: 'admin' }, currentSchool: { id: 'school', role: 'SCHOOL_ADMIN', timezone: 'UTC' }, memberships: [{ schoolId: 'school', schoolName: 'Original School', role: 'SCHOOL_ADMIN', status: 'ACTIVE' }] };
+        else if (url.pathname === '/api/v1/dashboard/context') data = workspaceContext;
         else if (url.pathname === '/api/v1/notifications/unread-count') data = { count: 0 };
+        else if (url.pathname === '/api/v1/finance/overview') data = emptyFinanceOverview;
         else if (url.pathname === '/api/v1/finance') data = { settings: { currency: 'MAD', locked: true }, types: [], structures: [], years: [], levels: [], classes: [], students: [], charges: [], page: 1, total: 0 };
         else if (url.pathname.endsWith('/payments/students')) data = [{ id: 'student', firstName: 'Amina', lastName: 'Test' }];
         else if (url.pathname.endsWith('/payments/options')) data = { student: { id: 'student' }, charges: charges.filter(c => c.allocatedCents < c.originalCents), hasMore: false, suggested: [] };
@@ -163,11 +177,12 @@ for (const [locale, t, method] of [['en', paymentEn, 'CASH'], ['fr', paymentFr, 
         else throw new Error('Unexpected synthetic payment API path');
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data }) });
       });
-      await page.goto('/finance'); await page.getByRole('button', { name: t.title, exact: true }).click();
+      await page.goto('/finance'); await page.getByRole('navigation', { name: { en: tuitionEn, fr: tuitionFr, ar: tuitionAr }[locale].title }).getByRole('button', { name: { en: tuitionEn, fr: tuitionFr, ar: tuitionAr }[locale].payments, exact: true }).click();
       await page.getByLabel(t.student, { exact: true }).selectOption('student'); await page.getByLabel(t.amount, { exact: true }).fill('150.00');
       await page.getByLabel(t.method, { exact: true }).selectOption(method); await page.getByRole('button', { name: t.suggest }).click();
       await expect(page.getByLabel(`${t.allocated} Tuition 2025-12`)).toHaveValue('100.00');
       await page.getByLabel(`${t.allocated} Tuition 2025-12`).fill('50.00'); await page.getByLabel(`${t.allocated} Tuition 2026-01`).fill('100.00');
+      await expect(page.getByRole('button', { name: t.record, exact: true })).toHaveCount(0); await page.getByRole('button', { name: { en: tuitionEn, fr: tuitionFr, ar: tuitionAr }[locale].review, exact: true }).click();
       await expect(page.getByRole('button', { name: t.record, exact: true })).toBeDisabled(); await page.getByLabel(t.confirm, { exact: true }).check();
       await page.screenshot({ path: info.outputPath('allocations.png'), fullPage: true });
       await page.getByRole('button', { name: t.record, exact: true }).click();
