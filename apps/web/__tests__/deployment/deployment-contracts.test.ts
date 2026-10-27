@@ -123,7 +123,7 @@ describe('STAGING deployment contracts', () => {
 
   it('builds two bounded Cron commands that reference Vault rather than secret values', () => {
     expect(CRON_JOBS).toHaveLength(2);
-    expect(CRON_SCHEDULE).toBe('* * * * *');
+    expect(CRON_SCHEDULE).toBe('*/5 * * * *');
     for (const job of CRON_JOBS) {
       const command = buildCronCommand(job.path);
       expect(command).toContain(job.path);

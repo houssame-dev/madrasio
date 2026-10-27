@@ -262,7 +262,11 @@ The guarded `pnpm configure:staging-cron` command requires explicit
 `RUN_STAGING_CRON_CONFIGURATION=1`, the exact STAGING Session Pooler target, a
 stable HTTPS origin, and a strong server-only `CRON_SECRET`. It enables/verifies
 `pg_cron` and `pg_net`, upserts the two named Vault secrets, rejects ambiguous
-duplicate secret/job names, and schedules these named jobs every minute:
+duplicate secret/job names, and schedules the two named STAGING jobs every
+five minutes (`*/5 * * * *`). Production uses its own independently configured
+two jobs at the same five-minute cadence. STAGING background processing may
+wait up to five minutes per stage, so an announcement-to-notification chain
+may need two polling cycles:
 
 | Job                                           | Target                                               |
 | --------------------------------------------- | ---------------------------------------------------- |

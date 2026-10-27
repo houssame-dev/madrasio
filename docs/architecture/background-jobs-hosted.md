@@ -158,9 +158,9 @@ not enable them because no public Staging origin exists. Task 046 must:
 3. enable/verify Supabase Cron and `pg_net` in STAGING as managed environment
    infrastructure, without a Drizzle domain migration;
 4. store the scheduler credential in Supabase Vault, never plaintext in SQL;
-5. register an every-minute authenticated POST to
+5. register an every-five-minute authenticated POST to
    `https://<staging-origin>/api/internal/jobs/process-scheduled-announcements`;
-6. register an every-minute authenticated POST to
+6. register an every-five-minute authenticated POST to
    `https://<staging-origin>/api/internal/jobs/process-outbox`;
 7. smoke-test unauthorized denial and authenticated invocation against that
    exact origin, then verify database outcomes.
@@ -179,7 +179,8 @@ registration and hosted invocation remain acceptance steps and must not occur
 until the stable Vercel origin and matching server secret exist. Realtime
 delivery, exponential backoff, dead-letter
 queues, and broader observability are also outside this task. Durable database
-state and repeatable one-minute polling are sufficient for the current load.
+state and repeatable five-minute polling in STAGING and Production are sufficient
+for the current load. Each environment's Cron jobs remain independently configured.
 
 Task 045 may proceed: Outbox projection, retries, concurrency, scheduled
 publication, protected routes, Parent Notification API/UI, and identity-free
