@@ -82,8 +82,8 @@ describe('Task 047 security contracts', () => {
     expect(template).not.toContain('/auth/confirm');
     expect(template).not.toContain('.Data');
   });
-  it('requires the complete reviewed Timetable migration chain before deployment', () => {
-    expect(EXPECTED_MIGRATION_COUNT).toBe(31);
-    expect(EXPECTED_LATEST_MIGRATION).toBe('0030_attendance-sessions');
+  it('requires the complete reviewed migration chain through School Holidays before deployment', () => {
+    expect(EXPECTED_MIGRATION_COUNT).toBe(32);
+    expect(EXPECTED_LATEST_MIGRATION).toBe('0031_school-holidays');
   });
 });
