@@ -96,11 +96,23 @@ async function manifestFixture(rowCount: number) {
 }
 
 describe('Production manifest and bundle construction', () => {
+  it.each([30, 31])('preserves pre-holiday %i-migration bundles without inventing a holiday table', async count => {
+    const fixture = await manifestFixture(1);
+    try {
+      const current = fixture.manifest, ordered = current.migrations.ordered.slice(0, count);
+      const previous = { ...current, fingerprints: current.fingerprints.filter(f => f.table !== 'public.school_holidays'), migrations: { count, latest: ordered.at(-1)!, ordered, createdAt: current.migrations.createdAt.slice(0, count), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
+      expect(previous.fingerprints).toHaveLength(59);
+      expect(parseRecoveryManifest(previous)).toEqual(previous);
+      expect(() => assertRecoveryMigrationCompatibility(previous.migrations, previous.migrations)).not.toThrow();
+      expect(() => assertRecoveryMigrationCompatibility(current.migrations, previous.migrations)).toThrow('matching source revision');
+      expect(() => validateRecoveryManifest(previous)).toThrow();
+    } finally { await rm(fixture.directory, { recursive: true, force: true }); }
+  });
   it('preserves 0028 draft-only bundles with their original 58-table inventory', async () => {
     const fixture = await manifestFixture(1);
     try {
       const current = fixture.manifest, ordered = current.migrations.ordered.slice(0, 29);
-      const previous = { ...current, fingerprints: current.fingerprints.filter(f => f.table !== 'public.timetable_publications'), migrations: { count: 29, latest: '0028_timetable-weekly-drafts', ordered, createdAt: current.migrations.createdAt.slice(0, 29), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
+      const previous = { ...current, fingerprints: current.fingerprints.filter(f => !['public.timetable_publications', 'public.school_holidays'].includes(f.table)), migrations: { count: 29, latest: '0028_timetable-weekly-drafts', ordered, createdAt: current.migrations.createdAt.slice(0, 29), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
       expect(previous.fingerprints).toHaveLength(58); expect(parseRecoveryManifest(previous)).toEqual(previous);
       expect(() => assertRecoveryMigrationCompatibility(previous.migrations, previous.migrations)).not.toThrow();
       expect(() => assertRecoveryMigrationCompatibility(current.migrations, previous.migrations)).toThrow('matching source revision');
@@ -111,7 +123,7 @@ describe('Production manifest and bundle construction', () => {
     const fixture = await manifestFixture(1);
     try {
       const current = fixture.manifest, ordered = current.migrations.ordered.slice(0, 28);
-      const previous = { ...current, fingerprints: current.fingerprints.filter(f => !['public.timetable_drafts', 'public.timetable_lessons', 'public.timetable_publications'].includes(f.table)),
+      const previous = { ...current, fingerprints: current.fingerprints.filter(f => !['public.school_holidays', 'public.timetable_drafts', 'public.timetable_lessons', 'public.timetable_publications'].includes(f.table)),
         migrations: { count: 28, latest: '0027_timetable-foundation', ordered, createdAt: current.migrations.createdAt.slice(0, 28), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
       expect(previous.fingerprints).toHaveLength(56); expect(parseRecoveryManifest(previous)).toEqual(previous);
       expect(() => assertRecoveryMigrationCompatibility(previous.migrations, previous.migrations)).not.toThrow();
@@ -124,7 +136,7 @@ describe('Production manifest and bundle construction', () => {
     const fixture = await manifestFixture(1);
     try {
       const current = fixture.manifest, ordered = current.migrations.ordered.slice(0, count);
-      const previous = { ...current, fingerprints: current.fingerprints.filter(f => !f.table.startsWith('public.timetable_')), migrations: { count, latest: ordered.at(-1)!, ordered,
+      const previous = { ...current, fingerprints: current.fingerprints.filter(f => f.table !== 'public.school_holidays' && !f.table.startsWith('public.timetable_')), migrations: { count, latest: ordered.at(-1)!, ordered,
         createdAt: current.migrations.createdAt.slice(0, count), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
       expect(parseRecoveryManifest(previous)).toEqual(previous);
       expect(previous.fingerprints).toHaveLength(53);
@@ -139,7 +151,7 @@ describe('Production manifest and bundle construction', () => {
     try {
       const current = fixture.manifest;
       const ordered = current.migrations.ordered.slice(0, 23);
-      const legacy = { ...current, fingerprints: current.fingerprints.filter(f => !f.table.startsWith('public.finance_') && !f.table.startsWith('public.timetable_')),
+      const legacy = { ...current, fingerprints: current.fingerprints.filter(f => f.table !== 'public.school_holidays' && !f.table.startsWith('public.finance_') && !f.table.startsWith('public.timetable_')),
         migrations: { count: 23, latest: '0022_homework-actual-handin-attachments', ordered, createdAt: current.migrations.createdAt.slice(0, 23), fileSha256: Object.fromEntries(ordered.map(tag => [`${tag}.sql`, current.migrations.fileSha256[`${tag}.sql`]])) } };
       expect(parseRecoveryManifest(legacy)).toEqual(legacy);
       expect(legacy.fingerprints).toHaveLength(45);
@@ -212,10 +224,10 @@ describe('Production manifest and bundle construction', () => {
       );
       expect(restoredManifest.format).toBe('madrasio-recovery-v1');
       expect(restoredManifest.migrations).toMatchObject({
-        count: 31,
-        latest: '0030_attendance-sessions',
+        count: 32,
+        latest: '0031_school-holidays',
       });
-      expect(restoredManifest.fingerprints).toHaveLength(59);
+      expect(restoredManifest.fingerprints).toHaveLength(60);
       expect(restoredManifest.fingerprints.every((item) => item.rowCount === rowCount)).toBe(true);
       expect(contents.get('recovery-data.dump')).toEqual(await readFile(fixture.dump));
     } finally {
@@ -232,8 +244,8 @@ describe('Production manifest and bundle construction', () => {
       /\/database\/drizzle\/migrations\/?$/,
     );
     await expect(loadMigrationMetadata(migrationsDirectory)).resolves.toMatchObject({
-      count: 31,
-      latest: '0030_attendance-sessions',
+      count: 32,
+      latest: '0031_school-holidays',
     });
     await expect(loadMigrationMetadata(join(tmpdir(), 'missing-migrations'))).rejects.toMatchObject(
       {

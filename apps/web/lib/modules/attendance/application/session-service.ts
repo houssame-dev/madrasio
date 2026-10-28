@@ -1,3 +1,4 @@
+import { schoolHolidaysOnDate } from '@/lib/modules/school-holidays/service';
 import 'server-only';
 import { and, asc, eq, isNull, lte, gte, or } from 'drizzle-orm';
 import * as s from '@school/database';
@@ -25,6 +26,8 @@ export async function listSessions(db: AttendanceDb, actor: AttendanceActor, raw
   const role = await authority(db, actor, false);
   const [school] = await db.select().from(s.schools).where(eq(s.schools.id, actor.schoolId));
   if (school?.status !== 'ACTIVE') throw new ForbiddenError();
+  const holidays = await schoolHolidaysOnDate(db, actor.schoolId, date);
+  if (holidays.length) return { date, sessions: [], holidays };
   const publications = await db.select().from(s.timetablePublications).where(eq(s.timetablePublications.schoolId, actor.schoolId));
   const classes = await db.select({ id: s.classes.id, status: s.classes.status }).from(s.classes).where(eq(s.classes.schoolId, actor.schoolId));
   const scope = role === 'TEACHER' ? await db.select({ assignment: s.teacherAssignments, teacher: s.teachers }).from(s.teacherAssignments)
@@ -39,7 +42,7 @@ export async function listSessions(db: AttendanceDb, actor: AttendanceActor, raw
       const classStatus = classes.find(c => c.id === p.classId)?.status ?? 'ARCHIVED';
       return { publicationId: p.id, date, classId: p.classId, classStatus, academicYearId: p.academicYearId, className: p.snapshot.className, ...lesson, writable: role === 'TEACHER' && started && classStatus === 'ACTIVE' };
     }));
-  return { date, sessions: sessions.sort((a, b) => a.start.localeCompare(b.start) || a.className.localeCompare(b.className)) };
+  return { date, holidays, sessions: sessions.sort((a, b) => a.start.localeCompare(b.start) || a.className.localeCompare(b.className)) };
 }
 
 async function session(db: AttendanceDb, actor: AttendanceActor, input: SessionIdentity, write: boolean, now: Date) {

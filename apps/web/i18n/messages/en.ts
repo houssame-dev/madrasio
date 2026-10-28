@@ -1,3 +1,5 @@
+import { globalSearchEn } from './global-search';
+import { schoolHolidaysEn } from './school-holidays';
 import { communicationsExperienceEn } from './communications-experience';
 import { homeworkExperienceEn } from './homework-experience';
 import { peopleExperienceEn } from './people-experience';
@@ -24,6 +26,8 @@ import { reportsEn } from './finance-reports';
 import { paymentEn } from './finance-payments';
 import { financeEn } from './finance';
 const messages = {
+  schoolHolidays: schoolHolidaysEn,
+  globalSearch: globalSearchEn,
   communicationsExperience: communicationsExperienceEn,
   homeworkExperience: homeworkExperienceEn,
   peopleExperience: peopleExperienceEn,

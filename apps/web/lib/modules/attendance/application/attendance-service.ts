@@ -1,3 +1,4 @@
+import { schoolHolidaysOnDate } from '@/lib/modules/school-holidays/service';
 import type { Role } from '@/lib/authorization/roles';
 import { schoolDateFromInstant } from '@school/shared';
 import {
@@ -95,6 +96,7 @@ export async function getDailyAttendance(
     data: {
       class: view(context.class),
       attendanceDate: date,
+      holidays: await schoolHolidaysOnDate(db, actor.schoolId, date),
       students: result.rows.map((row) => ({
         student: {
           id: row.studentId,

@@ -1,3 +1,4 @@
+import { schoolHolidaysOnDate } from '@/lib/modules/school-holidays/service';
 import 'server-only';
 import { and, countDistinct, desc, eq, gte, isNull, lte, or } from 'drizzle-orm';
 import * as s from '@school/database';
@@ -54,7 +55,8 @@ export async function adminOverview(db: Db, actor: Actor, requestedYear?: string
     collectionsReport(db, actor, { from: `${date.slice(0, 7)}-01`, to: date }, now),
   ]);
   const currentYearDay = selected.startDate <= date && date <= selected.endDate;
-  const applicable = currentYearDay ? applicablePublications(publications, date) : [];
+  const closed = (await schoolHolidaysOnDate(db, actor.schoolId, date)).length > 0;
+  const applicable = currentYearDay && !closed ? applicablePublications(publications, date) : [];
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay() || 7;
   const lessons: AdminLesson[] = applicable.flatMap(p => p.snapshot.lessons.filter(l => l.weekday === weekday).map(l => {
     const expected = rosterCounts.find(c => c.classId === p.classId)?.count ?? 0;
@@ -65,7 +67,7 @@ export async function adminOverview(db: Db, actor: Actor, requestedYear?: string
   })).sort((a, b) => a.start.localeCompare(b.start) || a.className.localeCompare(b.className));
   return { ...context, years: years.map(({ id, name }) => ({ id, name })), selectedYear: { id: selected.id, name: selected.name }, lessons,
     metrics: { enrolled: enrolled.count, classes: classes.length, teachers: teachers.count, pending: lessons.filter(l => l.recording === 'pending').length, recorded: lessons.filter(l => l.recording === 'recorded').length,
-      missingTimetable: currentYearDay ? classes.filter(c => !applicable.some(p => p.classId === c.id)).length : 0,
+      missingTimetable: currentYearDay && !closed ? classes.filter(c => !applicable.some(p => p.classId === c.id)).length : 0,
       currency: outstanding.currency, outstandingCents: outstanding.summary.outstandingCents, overdueCents: outstanding.summary.days1to30Cents + outstanding.summary.days31to60Cents + outstanding.summary.days61plusCents,
       overdueStudents: outstanding.summary.overdueStudents, collectedCents: collected.netCents } };
 }

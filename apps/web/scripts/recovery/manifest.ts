@@ -110,7 +110,7 @@ export const recoveryManifestSchema = z
     const preTimetable = legacy || preTimetableHeads[value.migrations.count] === value.migrations.latest;
     const foundationOnly = value.migrations.count === 28 && value.migrations.latest === '0027_timetable-foundation';
     const draftsOnly = value.migrations.count === 29 && value.migrations.latest === '0028_timetable-weekly-drafts';
-    const expected = RECOVERY_TABLES.filter(table => !(draftsOnly && table === 'public.timetable_publications') &&
+    const expected = RECOVERY_TABLES.filter(table => !(value.migrations.count <= 31 && table === 'public.school_holidays') && !(draftsOnly && table === 'public.timetable_publications') &&
       !(preTimetable && table.startsWith('public.timetable_')) && !(legacy && table.startsWith('public.finance_')) &&
       !(foundationOnly && ['public.timetable_drafts', 'public.timetable_lessons', 'public.timetable_publications'].includes(table)));
     const actual = value.fingerprints.map(item => item.table).sort();

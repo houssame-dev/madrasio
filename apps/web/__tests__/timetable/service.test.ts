@@ -21,7 +21,7 @@ afterEach(async () => { await test?.client.close(); });
 function config(extra = {}) { return { academicYearId: school.yearId, expectedRevision: 0, days, ...extra }; }
 function load(extra = {}) { return { academicYearId: school.yearId, classId: school.classId, subjectId: school.subjectMathId, teacherAssignmentId: assignmentId, roomId: null, lessonsPerWeek: 3, durationMinutes: 60, expectedRevision: 0, enabled: true, ...extra }; }
 it('replays 0027 with private RLS tables and guarded assignment context', async () => {
-  expect((await test.client.query('select * from drizzle.__drizzle_migrations')).rows).toHaveLength(31);
+  expect((await test.client.query('select * from drizzle.__drizzle_migrations')).rows).toHaveLength(32);
   await test.client.exec('create role anon; create role authenticated; create role service_role');
   expect((await test.client.query(applicationSecurityAuditSql)).rows).toEqual([]);
   const first = await saveLoad(db, actor, load());

@@ -1,3 +1,29 @@
+# Local checkpoint — Global Search V1 — 2026-10-28
+
+Local implementation and verification complete; awaiting user review. Compact desktop search / tablet-mobile icon and Base UI palette extend only unused navbar space. Existing role navigation, notifications/profile/drawer and approved visuals preserved.
+
+- GET /api/v1/search: strict bounded input,6 results/category, minimal projections, active server context. Admin same-School records; Teacher current assignments/enrollments; Parent active child links. No finance/grades/attendance/history search, indexing service, dependency or migration.
+-325ms debounce, abort/live/key guards, response scope check, no persisted query cache/history; EN/FR/AR, RTL, four themes and320/390/768/1024/1440px.
+- Focused21; connected674+5 opt-in skips+21 existing TODOs; Academic/Attendance UI99; Finance/Timetable UI76. Complete synthetic Playwright97+5 hosted-only skips; additional2 representative navbar-capture journeys passed. PGlite authorization tests are distinct from browser fixtures; no native/hosted Search acceptance claimed.
+- Root lint/typecheck, production build and diff check pass. Independent Impeccable ship at captured scope; optional engine detector unavailable.2,496 sampled initial-text contrast values,minimum4.99859:1.
+- Pending School Holidays0031 and source preserved; only additive shared catalogue plumbing/counts and this prepended checkpoint overlap its work. Search adds no release migration and does not constitute hosted acceptance.
+- Full exact delta, tests and screenshots: test-results/global-search-v1/REPORT.md. Guide: docs/frontend/global-search-v1.md. No staging/commit/push/deploy/provider/hosted change. Next:user local visual/implementation review.
+
+---
+
+# Local checkpoint — School Holidays V1 — 2026-10-28
+
+Local implementation and verification complete; awaiting user review. Manual full-day School-wide holidays within Years & Periods, scoped CRUD/audit and dated Timetable/Attendance/dashboard closure handling. Existing shell, Auth, dashboards, modules and invitation template preserved.
+
+- Clean baseline efdf97d7b8bb55354f380d016cede91a0213284b. No staging/commit/push/deploy/hosted change.
+- Forward migration0031; current32 migrations/58 application tables/60 recovery tables. Historical bundles parse with exact-source restore requirements. No hosted migration applied.
+- Database383; frontend131; connected668 with20 gated skips; focused18; manifest/history40 (overlapping suites). Actual PostgreSQL17.6 races2/2; full-row active/removed recovery and atomic audits verified.
+- Complete synthetic Playwright76 passed/5 hosted-only skips; final feature15/15 includes loading/error/empty, unsaved handling, contrast and320/390/768/1440px. Browser APIs intercepted, not hosted acceptance.
+- Root lint/typecheck, production build60 routes and diff check pass. Independent Impeccable: ship at bounded captured scope, no detector certification.
+- Full evidence and file inventory: test-results/school-holidays-v1/REPORT.md. Guide: docs/frontend/school-holidays-v1.md. Next: user local review; release/migration/hosted acceptance need separate authorization.
+
+---
+
 # Local checkpoint — V1 launch readiness audit — 2026-10-27
 
 **LOCAL GO; HOSTED ACCEPTANCE PENDING.** All eight modules and approved designs remain intact. Targeted private-download CSP precedence correction verified on the final HTTP response and four native browser downloads. Integrated DB383 passed; web2,933 passed/5 stale shell assertions failed/50 gated skips/21TODO; corrected shell rerun26/26 closes all five failures. Seven native PostgreSQL suites38/38, live age/local Supabase recovery14/14, native snapshot1/1. Browser95 cases plus real local file/job/attendance/receipt/result/school-switch/logout checks pass. Root lint/typecheck/build58 routes and diff check pass; Product Owner also independently confirmed the root checks. No fresh all-green full-suite invocation is claimed.

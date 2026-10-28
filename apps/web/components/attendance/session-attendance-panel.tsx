@@ -1,4 +1,5 @@
 'use client';
+import { HolidayState } from '@/components/academic/holiday-state';
 import { useCallback, useEffect, useState } from 'react';
 import { schoolWallTimeToInstant } from '@school/shared';
 import { useQuery } from '@tanstack/react-query';
@@ -57,7 +58,8 @@ export function SessionAttendancePanel({ schoolId, timezone, onDirtyChange }: { 
       <p className="text-sm text-muted-foreground"><time dateTime={date}>{datedLabel}</time> · <bdi>{timezone}</bdi></p>
       {!session ? <p className="at-notice">{t('sessionDescription')}</p> : null}
     </>
-    {sessions.isPending ? <InlineLoading label={t('loading')} /> : sessions.isError ? <ApiErrorState title={t('rosterUnavailable')} onRetry={() => void sessions.refetch()} /> : !sessions.data.data.sessions.length ? <EmptyState title={t('noSessions')} /> : null}
+    {sessions.isPending ? <InlineLoading label={t('loading')} /> : sessions.isError ? <ApiErrorState title={t('rosterUnavailable')} onRetry={() => void sessions.refetch()} /> : !sessions.data.data.sessions.length && !sessions.data.data.holidays?.length ? <EmptyState title={t('noSessions')} /> : null}
+    {sessions.isSuccess && sessions.data.data.holidays?.length ? <HolidayState attendance holidays={sessions.data.data.holidays} /> : null}
     {!session && sessions.isSuccess && sessions.data.data.sessions.length > 0 ? <div className="at-card">
       <h2>{ui(app.currentSchool?.role === 'TEACHER' ? 'mySessions' : 'publishedSessions')}</h2>
       <p className="text-sm text-muted-foreground">{ui('chooseSession')}</p>

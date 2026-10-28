@@ -24,7 +24,7 @@ it('appends 0028 to populated 0027, preserving foundation rows and private recov
     const after = await Promise.all(['schools', 'timetable_configurations', 'timetable_rooms', 'timetable_loads'].map(table => client.query(`select to_jsonb(t) row from ${table} t`)));
     expect(after.map(r => r.rows)).toEqual(before.map(r => r.rows));
     for (const statement of (await readFile(join(migrationsFolder, '0029_timetable-publications.sql'), 'utf8')).split('--> statement-breakpoint')) if (statement.trim()) await client.exec(statement);
-    expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
+    expect((await client.query(applicationSecurityAuditSql.replace('app_tables) <> 58', 'app_tables) <> 57'))).rows).toEqual([]);
     expect((await client.query("select tablename from pg_tables where schemaname='public' and rowsecurity")).rows).toHaveLength(57);
     const previous = JSON.parse(await readFile(join(migrationsFolder, 'meta/0027_snapshot.json'), 'utf8'));
     const current = JSON.parse(await readFile(join(migrationsFolder, 'meta/0028_snapshot.json'), 'utf8')); expect(current.prevId).toBe(previous.id);

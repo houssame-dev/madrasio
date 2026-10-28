@@ -1,4 +1,5 @@
 'use client';
+import { HolidayState } from '@/components/academic/holiday-state';
 
 import { useQuery } from '@tanstack/react-query';
 import { useDomainText } from '@/i18n/use-domain-text';
@@ -34,6 +35,8 @@ export function DailyAttendancePanel({ schoolId, timezone, academicYear, classId
   if (outsideYear) return <InlineFeedback kind="error">{t.outsideYear}</InlineFeedback>;
   if (query.isPending) return <InlineLoading label={t.loading} />;
   if (query.isError) return <ApiErrorState title={t.rosterUnavailable} description={text(attendanceErrorMessage(query.error))} onRetry={() => void query.refetch()} />;
+  const closure = query.data.data.holidays?.length ? <HolidayState attendance holidays={query.data.data.holidays} /> : null;
+  if (closure && query.data.data.students.length === 0) return closure;
   if (query.data.data.students.length === 0) return <EmptyState title={t.emptyRoster} description={t.historicalRoster} />;
-  return <AttendanceRoster key={`${classId}:${date}:${page}`} schoolId={schoolId} classId={classId} date={date} roster={query.data} onRefetch={() => query.refetch()} onDirtyChange={stableDirty} onPage={setPage} />;
+  return <>{closure}<AttendanceRoster key={`${classId}:${date}:${page}`} schoolId={schoolId} classId={classId} date={date} roster={query.data} onRefetch={() => query.refetch()} onDirtyChange={stableDirty} onPage={setPage} /></>;
 }

@@ -32,6 +32,7 @@ export interface DailyRosterResponse {
   data: {
     class: ClassDto;
     attendanceDate: string;
+    holidays?: import('@/lib/modules/school-holidays/contracts').HolidayView[];
     students: DailyRosterRow[];
     session?: AttendanceSession;
   };

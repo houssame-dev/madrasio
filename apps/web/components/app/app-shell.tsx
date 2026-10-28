@@ -12,6 +12,7 @@ import { NavigationLinks } from './navigation-links';
 import { ProfileMenu } from './profile-menu';
 import { NotificationUnreadBadge } from '@/components/notifications/notification-unread-badge';
 import { BrandMark } from '@/components/branding/brand-mark';
+import { GlobalSearch } from './global-search';
 
 export function AppShell({ context, children }: { context: MeResponseDto; children: ReactNode }) {
   const t = useTranslations('shell');
@@ -96,7 +97,7 @@ export function AppShell({ context, children }: { context: MeResponseDto; childr
         <div ref={contentRef} aria-hidden={mobileOpen || undefined} className={cn('transition-[padding] motion-reduce:transition-none', collapsed ? 'lg:ps-[var(--app-sidebar-collapsed-width)]' : 'lg:ps-[var(--app-sidebar-width)]')}>
           <header className="ws-navbar sticky top-0 z-20 flex h-[var(--app-topbar-height)] items-center gap-1 border-b px-[var(--app-page-padding)] sm:gap-3">
             <Button ref={mobileTriggerRef} data-testid="mobile-navigation-trigger" type="button" variant="ghost" size="icon" className="shrink-0 lg:hidden" aria-label={t('navigation.open')} aria-expanded={mobileOpen} aria-controls="mobile-navigation" onClick={() => setMobileOpen(true)}><Menu className="size-5" aria-hidden="true" /></Button>
-            <div className="min-w-0 flex-1" />
+            <div className="min-w-0 flex-1"><GlobalSearch key={`${context.user.id}:${context.currentSchool.id}:${context.currentSchool.role}`} context={context} /></div>
             <NotificationUnreadBadge />
             <ProfileMenu key={context.currentSchool.id} context={context} />
           </header>

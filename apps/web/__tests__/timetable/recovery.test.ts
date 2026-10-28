@@ -11,7 +11,7 @@ import type { QueryClient } from '@/scripts/recovery/snapshot';
 import { getDraft, saveDraft } from '@/lib/modules/timetable/application/builder';
 import { publishDraft, readPublished } from '@/lib/modules/timetable/application/publication';
 
-it('restores nonempty timetable revisions and room audit history in FK order with all 59 fingerprints', async () => {
+it('restores nonempty timetable revisions and room audit history in FK order with all 60 fingerprints', async () => {
   const source = await createGradesTestDb(), target = await createGradesTestDb();
   try {
     for (const instance of [source, target]) await instance.client.exec('create table auth.identities(id uuid primary key,user_id uuid not null references auth.users(id),provider text not null)');
@@ -32,7 +32,7 @@ it('restores nonempty timetable revisions and room audit history in FK order wit
     await publishDraft(db, actor, { ...context, draftId: savedDraft.draft!.id, expectedRevision: 2, expectedSequence: 0, effectiveFrom: '2025-09-01', requestKey: randomUUID(), confirm: true }, new Date('2025-09-01T12:00:00Z'));
     const a = source.client as unknown as QueryClient, b = target.client as unknown as QueryClient;
     await assertRecoveryInventory(a); await assertRecoveryInventory(b);
-    const order = buildRestoreOrder(await loadForeignKeys(a)); expect(order).toHaveLength(59);
+    const order = buildRestoreOrder(await loadForeignKeys(a)); expect(order).toHaveLength(60);
     expect(order.indexOf('public.timetable_loads')).toBeGreaterThan(order.indexOf('public.teacher_assignments'));
     expect(order.indexOf('public.timetable_loads')).toBeGreaterThan(order.indexOf('public.timetable_rooms'));
     const fingerprints = await Promise.all(order.map(table => fingerprintTable(a, table)));

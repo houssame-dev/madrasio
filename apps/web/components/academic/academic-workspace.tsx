@@ -1,4 +1,5 @@
 'use client';
+import { SchoolCalendar } from './school-calendar';
 import { BookOpen, CalendarDays, Layers, School } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import './planning.css';
@@ -31,6 +32,7 @@ function isSection(value: string | null): value is Section {
 }
 
 export function AcademicWorkspace() {
+  const calendarCopy = useTranslations('schoolHolidays');
   const t = useAcademicCopy();
   const copy = useTranslations('academicPlanning');
   const context = useAppContext();
@@ -57,13 +59,16 @@ export function AcademicWorkspace() {
   const shared = { schoolId: context.currentSchool!.id, canManage, page, status, onPage: (nextPage: number) => updateUrl({ page: nextPage }), onStatus: (nextStatus?: string) => updateUrl({ status: nextStatus, page: 1 }) };
   const area = section === 'tracks' ? 'structure' : section === 'subjects' ? 'curricula' : section;
   const cards = [{id:'years',icon:CalendarDays},{id:'structure',icon:Layers},{id:'curricula',icon:BookOpen},{id:'classes',icon:School}] as const;
+  const calendar = area === 'years' && searchParams.get('view') === 'calendar' && role === 'SCHOOL_ADMIN';
   const yearId = searchParams.get('yearId') || undefined;
   const nested = (key:string) => searchParams.get(key) || undefined;
   return <div className="academic-planning space-y-6" key={`${context.user.id}:${shared.schoolId}`}><ManagementPageHeader title={copy('title')} description={copy('description')} readOnly={!canManage} /><nav aria-label={t.academicSections} className="ap-areas">{cards.map(({id,icon:Icon}) => <button key={id} type="button" aria-current={area===id?'page':undefined} className={cn('ap-area',area===id&&'ap-area-active')} onClick={()=>updateUrl({section:id,page:1,status:undefined,search:undefined})}><span className="ap-area-icon"><Icon aria-hidden="true" /></span><span><strong>{copy(id)}</strong><small>{copy(`${id}Hint`)}</small></span></button>)}</nav>
+    {area === 'years' && role === 'SCHOOL_ADMIN' ? <nav className="ap-subnav" aria-label={calendarCopy('years')}>{(['periods','calendar'] as const).map(v => <button key={v} aria-current={(v === 'calendar') === calendar ? 'page' : undefined} onClick={() => updateUrl({view: v === 'calendar' ? v : undefined})}>{calendarCopy(v === 'calendar' ? 'calendar' : 'years')}</button>)}</nav> : null}
+    {calendar ? <SchoolCalendar schoolId={shared.schoolId} /> : null}
     {area==='structure'?<nav className="ap-subnav" aria-label={copy('structure')}>{(['structure','tracks'] as const).map(id=><button key={id} aria-current={section===id?'page':undefined} onClick={()=>updateUrl({section:id,page:1,status:undefined,search:undefined})}>{id==='structure'?copy('stagesLevels'):t.sections.tracks}</button>)}</nav>:null}
     {area==='curricula'?<nav className="ap-subnav" aria-label={copy('curricula')}>{(['subjects','curricula'] as const).map(id=><button key={id} aria-current={section===id?'page':undefined} onClick={()=>updateUrl({section:id,page:1,status:undefined,search:undefined})}>{t.sections[id]}</button>)}</nav>:null}
     <ManagementGuide area={section} />
-    {section === 'years' ? <YearsSection {...shared} search={search} onSearch={value=>updateUrl({search:value,page:1})} yearId={yearId} onSelectYear={value=>updateUrl({yearId:value})} /> : null}
+    {section === 'years' && !calendar ? <YearsSection {...shared} search={search} onSearch={value=>updateUrl({search:value,page:1})} yearId={yearId} onSelectYear={value=>updateUrl({yearId:value})} /> : null}
     {section === 'structure' ? <StructureSection schoolId={shared.schoolId} canManage={canManage} page={page} onPage={shared.onPage} stageId={nested('stageId')} onSelectStage={value=>updateUrl({stageId:value})} /> : null}
     {section === 'tracks' ? <TracksSection {...shared} /> : null}
     {section === 'subjects' ? <SubjectsSection {...shared} search={search} onSearch={(nextSearch) => updateUrl({ search: nextSearch, page: 1 })} /> : null}

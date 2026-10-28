@@ -133,3 +133,5 @@ export * from './finance';
 export * from './timetable';
 export * from './timetable-drafts';
 export * from './timetable-publications';
+
+export * from './school-holidays';

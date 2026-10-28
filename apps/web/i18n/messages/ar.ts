@@ -1,3 +1,5 @@
+import { globalSearchAr } from './global-search';
+import { schoolHolidaysAr } from './school-holidays';
 import { communicationsExperienceAr } from './communications-experience';
 import { homeworkExperienceAr } from './homework-experience';
 import { peopleExperienceAr } from './people-experience';
@@ -27,6 +29,8 @@ import { financeAr } from './finance';
 
 import { authShowcaseAr } from './auth-showcase';
 const messages = {
+  schoolHolidays: schoolHolidaysAr,
+  globalSearch: globalSearchAr,
   communicationsExperience: communicationsExperienceAr,
   homeworkExperience: homeworkExperienceAr,
   peopleExperience: peopleExperienceAr,

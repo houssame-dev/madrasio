@@ -13,7 +13,7 @@ it('appends 0029 to populated 0028, preserves all existing rows/snapshots and de
     await client.query("insert into schools(id,name) values($1,'Pre-publication School')", [id(1)]);
     const before = await client.query('select to_jsonb(s) row from schools s');
     for (const sql of (await readFile(join(migrationsFolder, '0029_timetable-publications.sql'), 'utf8')).split('--> statement-breakpoint')) if (sql.trim()) await client.exec(sql);
-    expect((await client.query('select to_jsonb(s) row from schools s')).rows).toEqual(before.rows); expect((await client.query(applicationSecurityAuditSql)).rows).toEqual([]);
+    expect((await client.query('select to_jsonb(s) row from schools s')).rows).toEqual(before.rows); expect((await client.query(applicationSecurityAuditSql.replace('app_tables) <> 58', 'app_tables) <> 57'))).rows).toEqual([]);
     expect((await client.query('select * from timetable_publications')).rows).toEqual([]);
     const previous = JSON.parse(await readFile(join(migrationsFolder, 'meta/0028_snapshot.json'), 'utf8')), current = JSON.parse(await readFile(join(migrationsFolder, 'meta/0029_snapshot.json'), 'utf8'));
     expect(current.prevId).toBe(previous.id); for (const key of Object.keys(previous.tables)) expect(current.tables[key]).toEqual(previous.tables[key]);

@@ -34,7 +34,7 @@ describe('shared locale and catalog contract', () => {
 
   it('has identical, non-empty keys in all catalogs', () => {
     const englishKeys = keys(getCatalog('en'));
-    expect(englishKeys).toHaveLength(2020);
+    expect(englishKeys).toHaveLength(2091);
     for (const locale of SUPPORTED_LOCALES) {
       expect(keys(getCatalog(locale))).toEqual(englishKeys);
       const t = createTranslator({ locale, messages: getCatalog(locale), namespace: 'foundation' });

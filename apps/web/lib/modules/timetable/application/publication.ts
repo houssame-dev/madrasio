@@ -1,3 +1,4 @@
+import { schoolHolidaysOnDate } from '@/lib/modules/school-holidays/service';
 import 'server-only';
 import { createHash } from 'node:crypto';
 import { and, eq, desc } from 'drizzle-orm';
@@ -88,9 +89,12 @@ export async function readPublished(db: TimetableDb, actor: Actor, raw: unknown,
       }
     } else throw new ForbiddenError();
     if (role === 'SCHOOL_ADMIN' && input.teacherId) selected = selected.map(p => ({ ...p, snapshot: { ...p.snapshot, lessons: p.snapshot.lessons.filter(l => l.teacherId === input.teacherId) } })).filter(p => p.snapshot.lessons.length);
+    const holidays = role === 'PARENT' && !children.length ? [] : await schoolHolidaysOnDate(tx, actor.schoolId, date);
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay() || 7;
+    const dated = holidays.length ? selected.map(p => ({ ...p, snapshot: { ...p.snapshot, lessons: p.snapshot.lessons.filter(l => l.weekday !== weekday) } })) : selected;
     const publicRow = (p: (typeof selected)[number]) => ({ id: p.id, classId: p.classId, sequence: p.sequence, effectiveFrom: p.effectiveFrom, effectiveUntil: p.effectiveUntil, publishedAt: p.publishedAt, ...p.snapshot });
     const history = role === 'SCHOOL_ADMIN' && input.classId ? publicationRanges(all.filter(p => p.classId === input.classId)).map(publicRow) : [];
-    return { date, today, role, children, classes, teachers, selectedStudentId: input.studentId ?? children.at(0)?.id ?? null, schedules: selected.map(publicRow), history,
+    return { date, today, role, holidays, children, classes, teachers, selectedStudentId: input.studentId ?? children.at(0)?.id ?? null, schedules: dated.map(publicRow), history,
       latestSequence: input.classId ? Math.max(0, ...all.filter(p => p.classId === input.classId).map(p => p.sequence)) : 0,
       latestEffectiveFrom: input.classId ? all.find(p => p.classId === input.classId)?.effectiveFrom ?? null : null };
   }, { isolationLevel: 'repeatable read', accessMode: 'read only' });

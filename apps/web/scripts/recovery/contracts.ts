@@ -60,6 +60,7 @@ export const APPLICATION_TABLES = [
   'period_results',
   'publication_recipient_snapshots',
   'result_publications',
+  'school_holidays',
   'school_memberships',
   'schools',
   'stages',

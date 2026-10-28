@@ -21,7 +21,7 @@ const repoRoot = resolve(process.cwd(), '../..');
 describe('STAGING pre-migration journal admission', () => {
   const timestamps = journal.entries.map(entry => String(entry.when));
 
-  it.each([27, 28, 29, 30, 31])('accepts the exact reviewed %i-migration prefix', count => {
+  it.each([27, 28, 29, 30, 31, 32])('accepts the exact reviewed %i-migration prefix', count => {
     expect(() => assertStagingPreMigrationChain(journal, timestamps.slice(0, count))).not.toThrow();
   });
 
@@ -30,7 +30,7 @@ describe('STAGING pre-migration journal admission', () => {
     expect(() => assertStagingPreMigrationChain(journal, applied)).toThrow('must match');
   });
 
-  it.each([27, 28, 29, 30, 31])('rejects missing/replaced, duplicate and reordered timestamps at count %i', count => {
+  it.each([27, 28, 29, 30, 31, 32])('rejects missing/replaced, duplicate and reordered timestamps at count %i', count => {
     const prefix = timestamps.slice(0, count);
     const replaced = [...prefix]; replaced[10] = '9999999999999';
     const missingMiddle = [...timestamps.slice(0, 10), ...timestamps.slice(11)];

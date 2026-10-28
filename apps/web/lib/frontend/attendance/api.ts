@@ -14,7 +14,7 @@ function query(path: `/api/v1/${string}`, params: object = {}): `/api/v1/${strin
 }
 
 export const attendanceApi = {
-  sessions: (date: string) => apiRequest<{ data: { date: string; sessions: import('./types').AttendanceSession[] } }>(query('/api/v1/attendance/sessions', { date })),
+  sessions: (date: string) => apiRequest<{ data: { date: string; holidays?: import('@/lib/modules/school-holidays/contracts').HolidayView[]; sessions: import('./types').AttendanceSession[] } }>(query('/api/v1/attendance/sessions', { date })),
   sessionRoster: (session: { publicationId: string; lessonKey: string; date: string }, page = 1) => apiRequest<DailyRosterResponse>(query('/api/v1/attendance/session', { publicationId: session.publicationId, lessonKey: session.lessonKey, date: session.date, page })),
   saveSession: (session: { publicationId: string; lessonKey: string; date: string }, records: (AttendanceEntryInput & { expectedVersion: number | null })[]) => apiRequest(query('/api/v1/attendance/session', { publicationId: session.publicationId, lessonKey: session.lessonKey, date: session.date }), { method: 'PUT', body: JSON.stringify({ records }) }),
   daily: (classId: string, date: string, page = 1) => apiRequest<DailyRosterResponse>(query(`/api/v1/classes/${classId}/attendance/${date}`, { page, pageSize: 100 })),
